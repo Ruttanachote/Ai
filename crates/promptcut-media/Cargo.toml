@@ -1,0 +1,12 @@
+[package]
+name = "promptcut-media"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+promptcut-core.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+tracing.workspace = true

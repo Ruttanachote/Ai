@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/promptcut-core",
+    "crates/promptcut-ai",
+    "crates/promptcut-media",
+    "crates/promptcut-server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/ruttanachote/ai"
+
+[workspace.dependencies]
+promptcut-core = { path = "crates/promptcut-core" }
+promptcut-ai = { path = "crates/promptcut-ai" }
+promptcut-media = { path = "crates/promptcut-media" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "signal", "fs"] }
+axum = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+async-trait = "0.1"
+anyhow = "1"
+dotenvy = "0.15"
+
+[profile.release]
+lto = "thin"
+strip = true

@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+.env
+*.mp4
+*.mov
+*.wav
+.DS_Store

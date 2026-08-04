@@ -1,0 +1,24 @@
+[package]
+name = "promptcut-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+promptcut-core.workspace = true
+promptcut-ai.workspace = true
+promptcut-media.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+axum.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+dotenvy.workspace = true
+async-trait.workspace = true
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
