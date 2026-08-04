@@ -23,6 +23,9 @@
 | `promptcut-media` | ffmpeg wrapper: probe, cut, concat, burn captions (สร้าง args แบบ testable) |
 | `promptcut-server` | Axum HTTP API: projects, assets, chat-to-edit, render jobs |
 
+Frontend อยู่ที่ [`web/`](web/) — Vue 3 + TypeScript + Vite (layout 3 แผง + timeline
+ตาม docs/03-uxui.md, proposal card แบบ Apply/Reject)
+
 ## เอกสาร
 
 - [docs/01-mvp-features.md](docs/01-mvp-features.md) — วิเคราะห์ฟีเจอร์ MVP (จากการศึกษาตลาดจริง)
@@ -36,6 +39,8 @@
 cp .env.example .env          # ใส่ ANTHROPIC_API_KEY
 cargo test                    # unit tests ทุก crate
 cargo run -p promptcut-server # เปิด API ที่ :8080
+
+cd web && npm install && npm run dev   # เปิด UI ที่ :5173 (proxy /api ให้แล้ว)
 ```
 
 ต้องมี `ffmpeg` ใน PATH สำหรับงาน media จริง (ส่วนอื่นทดสอบได้โดยไม่ต้องมี)

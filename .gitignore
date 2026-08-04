@@ -1,4 +1,6 @@
 /target
+node_modules
+web/dist
 **/*.rs.bk
 .env
 *.mp4
