@@ -5,10 +5,57 @@ mod state;
 
 use std::sync::Arc;
 
-use promptcut_ai::{AnthropicClient, ClaudeEditAgent, EditAgent};
+use promptcut_ai::{AnthropicClient, ClaudeCliAgent, ClaudeEditAgent, EditAgent};
 
-use crate::config::Config;
+use crate::config::{AgentMode, Config};
 use crate::state::AppState;
+
+/// Resolve the AI backend from config: explicit mode wins; `auto` prefers the
+/// API key and falls back to a locally installed Claude Code CLI.
+async fn select_agent(config: &Config) -> (Option<Arc<dyn EditAgent>>, &'static str) {
+    let api_agent = |key: &str| -> Arc<dyn EditAgent> {
+        Arc::new(ClaudeEditAgent::new(AnthropicClient::new(
+            key.to_string(),
+            config.model.clone(),
+        )))
+    };
+    let cli_agent = || -> Arc<dyn EditAgent> {
+        Arc::new(ClaudeCliAgent {
+            binary: config.claude_cli_bin.clone(),
+            ..ClaudeCliAgent::default()
+        })
+    };
+
+    match config.agent_mode {
+        AgentMode::Api => match &config.anthropic_api_key {
+            Some(key) => (Some(api_agent(key)), "api"),
+            None => {
+                tracing::warn!("PROMPTCUT_AGENT=api but ANTHROPIC_API_KEY not set — chat disabled");
+                (None, "disabled")
+            }
+        },
+        AgentMode::ClaudeCli => {
+            if ClaudeCliAgent::is_available(&config.claude_cli_bin).await {
+                (Some(cli_agent()), "claude-cli")
+            } else {
+                tracing::warn!(bin = %config.claude_cli_bin, "claude CLI not found — chat disabled");
+                (None, "disabled")
+            }
+        }
+        AgentMode::Auto => {
+            if let Some(key) = &config.anthropic_api_key {
+                (Some(api_agent(key)), "api")
+            } else if ClaudeCliAgent::is_available(&config.claude_cli_bin).await {
+                (Some(cli_agent()), "claude-cli")
+            } else {
+                tracing::warn!(
+                    "no ANTHROPIC_API_KEY and no claude CLI found — chat editing disabled"
+                );
+                (None, "disabled")
+            }
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -21,21 +68,16 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::from_env();
 
-    let agent: Option<Arc<dyn EditAgent>> = match &config.anthropic_api_key {
-        Some(key) => {
-            tracing::info!(model = %config.model, "AI agent enabled");
-            Some(Arc::new(ClaudeEditAgent::new(AnthropicClient::new(
-                key.clone(),
-                config.model.clone(),
-            ))))
+    let (agent, agent_mode) = select_agent(&config).await;
+    match agent_mode {
+        "api" => tracing::info!(model = %config.model, "AI agent enabled via Anthropic API"),
+        "claude-cli" => {
+            tracing::info!(bin = %config.claude_cli_bin, "AI agent enabled via Claude Code CLI")
         }
-        None => {
-            tracing::warn!("ANTHROPIC_API_KEY not set — chat editing disabled");
-            None
-        }
-    };
+        _ => {}
+    }
 
-    let app = routes::router(AppState::new(agent, config.model.clone()));
+    let app = routes::router(AppState::new(agent, config.model.clone(), agent_mode));
     let listener = tokio::net::TcpListener::bind(&config.bind).await?;
     tracing::info!("promptcut-server listening on {}", config.bind);
     axum::serve(listener, app)
@@ -57,7 +99,8 @@ mod tests {
     use tower::ServiceExt;
 
     fn test_app(agent: Option<Arc<dyn EditAgent>>) -> axum::Router {
-        routes::router(AppState::new(agent, "test-model".into()))
+        let mode = if agent.is_some() { "api" } else { "disabled" };
+        routes::router(AppState::new(agent, "test-model".into(), mode))
     }
 
     #[tokio::test]

@@ -31,10 +31,11 @@ pub struct EditProposal {
 }
 
 /// Shape of the `propose_edits` tool input the model must produce.
+/// Shared with the CLI agent, whose prompt asks for this exact JSON shape.
 #[derive(Debug, Deserialize)]
-struct ProposeEditsInput {
-    summary: String,
-    operations: Vec<EditOperation>,
+pub(crate) struct ProposeEditsInput {
+    pub(crate) summary: String,
+    pub(crate) operations: Vec<EditOperation>,
 }
 
 #[async_trait]

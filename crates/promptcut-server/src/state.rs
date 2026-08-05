@@ -14,14 +14,21 @@ pub struct AppState {
     pub projects: Arc<RwLock<HashMap<Uuid, Project>>>,
     pub agent: Option<Arc<dyn EditAgent>>,
     pub model_name: String,
+    /// "api" | "claude-cli" | "disabled" — surfaced on /api/health for the UI.
+    pub agent_mode: &'static str,
 }
 
 impl AppState {
-    pub fn new(agent: Option<Arc<dyn EditAgent>>, model_name: String) -> Self {
+    pub fn new(
+        agent: Option<Arc<dyn EditAgent>>,
+        model_name: String,
+        agent_mode: &'static str,
+    ) -> Self {
         Self {
             projects: Arc::new(RwLock::new(HashMap::new())),
             agent,
             model_name,
+            agent_mode,
         }
     }
 }

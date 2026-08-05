@@ -25,7 +25,9 @@ onMounted(async () => {
       </template>
       <template v-else-if="health">
         <span class="dot" :class="health.agent_enabled ? 'on' : 'warn'" />
-        {{ health.agent_enabled ? `AI พร้อม (${health.model})` : 'AI ปิดอยู่ — ตั้ง ANTHROPIC_API_KEY' }}
+        <template v-if="health.agent_mode === 'claude-cli'">AI พร้อม (Claude Code — subscription)</template>
+        <template v-else-if="health.agent_enabled">AI พร้อม ({{ health.model }})</template>
+        <template v-else>AI ปิดอยู่ — ตั้ง ANTHROPIC_API_KEY หรือ login Claude Code</template>
       </template>
     </span>
   </header>

@@ -5,9 +5,11 @@
 //! so its output is always structured JSON — never free text we have to parse.
 
 pub mod agent;
+pub mod cli_agent;
 pub mod client;
 
 pub use agent::{ClaudeEditAgent, EditAgent, EditProposal, MockEditAgent, ProposalRequest};
+pub use cli_agent::ClaudeCliAgent;
 pub use client::AnthropicClient;
 
 #[derive(Debug, thiserror::Error)]
@@ -20,4 +22,12 @@ pub enum AiError {
     NoToolCall,
     #[error("model returned operations that failed schema validation: {0}")]
     BadToolInput(#[from] serde_json::Error),
+    #[error("claude CLI not found — install Claude Code and run `claude` once to log in")]
+    CliMissing,
+    #[error("claude CLI exited with status {status}: {stderr}")]
+    CliFailed { status: i32, stderr: String },
+    #[error("claude CLI timed out after {0} seconds")]
+    CliTimeout(u64),
+    #[error("could not parse claude CLI output: {0}")]
+    CliOutput(String),
 }

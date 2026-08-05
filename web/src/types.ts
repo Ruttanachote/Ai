@@ -87,5 +87,6 @@ export interface EditProposal {
 export interface Health {
   status: string
   agent_enabled: boolean
+  agent_mode: 'api' | 'claude-cli' | 'disabled'
   model: string
 }

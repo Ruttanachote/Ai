@@ -31,6 +31,7 @@ async fn health(State(state): State<AppState>) -> Json<serde_json::Value> {
     Json(json!({
         "status": "ok",
         "agent_enabled": state.agent.is_some(),
+        "agent_mode": state.agent_mode,
         "model": state.model_name,
     }))
 }
@@ -127,7 +128,10 @@ async fn chat(
     Json(body): Json<ChatBody>,
 ) -> Result<Json<EditProposal>, ApiError> {
     let agent = state.agent.clone().ok_or_else(|| {
-        ApiError::unavailable("AI agent is disabled: set ANTHROPIC_API_KEY to enable chat editing")
+        ApiError::unavailable(
+            "AI agent is disabled: set ANTHROPIC_API_KEY, or install and log in to \
+             Claude Code (`claude`) to use your subscription locally",
+        )
     })?;
 
     let request = {

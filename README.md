@@ -36,12 +36,26 @@ Frontend อยู่ที่ [`web/`](web/) — Vue 3 + TypeScript + Vite (lay
 ## เริ่มใช้งาน (dev)
 
 ```bash
-cp .env.example .env          # ใส่ ANTHROPIC_API_KEY
+cp .env.example .env          # ตั้งค่า AI backend (ดูด้านล่าง)
 cargo test                    # unit tests ทุก crate
 cargo run -p promptcut-server # เปิด API ที่ :8080
 
 cd web && npm install && npm run dev   # เปิด UI ที่ :5173 (proxy /api ให้แล้ว)
 ```
+
+## AI backend มี 2 โหมด (เลือกอัตโนมัติ)
+
+| โหมด | วิธีเปิด | ค่าใช้จ่าย | เหมาะกับ |
+|---|---|---|---|
+| **Anthropic API** | ใส่ `ANTHROPIC_API_KEY` ใน `.env` | ตาม usage (เติมเครดิตที่ console.anthropic.com) | production / แจกให้คนอื่นใช้ |
+| **Claude Code CLI** | ติดตั้ง + login [Claude Code](https://claude.com/claude-code) ในเครื่อง (ไม่ต้องใส่ key) | รวมใน subscription ที่มีอยู่ | ใช้ส่วนตัวในเครื่องตัวเอง |
+
+โหมด `auto` (ค่าเริ่มต้น): มี API key → ใช้ API, ไม่มีแต่เจอ `claude` CLI → เรียก
+`claude -p` แบบ headless ให้อัตโนมัติ บังคับโหมดได้ด้วย `PROMPTCUT_AGENT=api|claude-cli`
+
+> ⚠️ ข้อกำหนดของ Anthropic: subscription (Pro/Max) ใช้ได้กับ Claude Code/Claude.ai
+> เท่านั้น — โหมด CLI จึงเหมาะกับใช้งานส่วนตัวบนเครื่องตัวเอง ถ้า deploy เป็นบริการ
+> ให้ผู้อื่นใช้ ต้องใช้โหมด API
 
 ต้องมี `ffmpeg` ใน PATH สำหรับงาน media จริง (ส่วนอื่นทดสอบได้โดยไม่ต้องมี)
 
