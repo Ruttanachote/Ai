@@ -59,16 +59,16 @@ flowchart LR
   GW <--> ACL
   ACL <--> G1
   ACL --> G2
-  ACL -.portal-assist.-> G3
+  ACL -.->|"portal-assist"| G3
   ACL <--> G4
   ACL --> G5
-  ACL -.portal-assist.-> G6
+  ACL -.->|"portal-assist"| G6
   RPT --> G7
   ACL <--> P1
   ACL --> P2
   ACL <--> P3
   ACL <--> P4
-  ACL -.file.-> S1
+  ACL -.->|"file"| S1
   CORE --> RPT
 ```
 

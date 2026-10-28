@@ -17,7 +17,7 @@
 | ไฟล์ | เนื้อหา |
 |---|---|
 | [docs/00-blueprint.md](docs/00-blueprint.md) | ข้อตกลงกลางที่ทุกเล่มต้องใช้ตรงกัน: แหล่งข้อมูล, รหัสโมดูล, รหัสบทบาท, workflow ID, แผนเฟส, sizing, การตัดสินใจหลัก |
-| [docs/01-overview.md](docs/01-overview.md) | บทสรุปผู้บริหาร, บริบท มกช. (มีแหล่งอ้างอิง), ผู้มีส่วนได้ส่วนเสีย, ขอบเขต/นอกขอบเขต, หลักการออกแบบ, **ทะเบียนสมมติฐาน A-01..A-90**, สารบัญเอกสารชุด |
+| [docs/01-overview.md](docs/01-overview.md) | บทสรุปผู้บริหาร, บริบท มกช. (มีแหล่งอ้างอิง), ผู้มีส่วนได้ส่วนเสีย, ขอบเขต/นอกขอบเขต, หลักการออกแบบ, **ทะเบียนสมมติฐาน A-01..A-90** (+ pointer ไป CA-01..CA-15 ของเล่ม 12), สารบัญเอกสารชุด |
 | [docs/02-student-journey.md](docs/02-student-journey.md) | เส้นทางนักศึกษาทีละขั้นทุกช่องทาง (โควตา, ทั่วไป, TCAS ถ้าใช้, โรงเรียนกีฬา ม.1/ม.4, บัณฑิตศึกษา, โอนย้าย, ผู้พิการ, ต่างชาติ) จนถึงรับปริญญาและศิษย์เก่า |
 | [docs/03-academic-calendar.md](docs/03-academic-calendar.md) | ปฏิทินงานรายเดือนทั้งปี ช่วงพีค งานอัตโนมัติตามกำหนด และ calendar-as-configuration |
 | [docs/04-roles-permissions.md](docs/04-roles-permissions.md) | ลำดับชั้นองค์กร, บทบาท, scope, permission matrix (RBAC+ABAC), SoD, การรักษาราชการแทน/การมอบอำนาจลงนาม, admin roles, break-glass |
@@ -30,7 +30,7 @@
 | [docs/10-security-compliance.md](docs/10-security-compliance.md) | PDPA, พ.ร.บ.ข้อมูลข่าวสารของราชการ 2540, คุ้มครองเด็ก, ไซเบอร์, DGA/ETDA, สารบรรณ/จดหมายเหตุ, threat model, procurement |
 | [docs/11-operations.md](docs/11-operations.md) | Environments, deployment, DR/backup/ransomware, testing, release & change freeze, cutover, support L0–L3, handover/exit plan |
 | [docs/12-roadmap-cost-risk.md](docs/12-roadmap-cost-risk.md) | แผนตามปฏิทินการศึกษาจริง, pilot coverage, ทีมและ FTE, ต้นทุนพร้อมสูตร, ค่าดูแลหลังปีที่ 5, ความเสี่ยง |
-| [docs/13-open-questions.md](docs/13-open-questions.md) | คำถาม 75 ข้อที่ต้องยืนยันกับ มกช. จัดกลุ่ม พร้อมสมมติฐานที่ผูกและผลกระทบถ้าคำตอบต่าง |
+| [docs/13-open-questions.md](docs/13-open-questions.md) | คำถาม 77 ข้อที่ต้องยืนยันกับ มกช. จัดกลุ่ม พร้อมสมมติฐานที่ผูกและผลกระทบถ้าคำตอบต่าง |
 
 ## ภาคผนวกและสื่อประกอบ
 
