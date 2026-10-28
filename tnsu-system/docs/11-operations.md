@@ -137,7 +137,7 @@ flowchart TB
 | OpenBao | 1 vCPU / 2 GB | 3 | 3 | — |
 | Superset / dbt | 2 vCPU / 4 GB | 2 / job | 2 | — |
 | PostgreSQL core cluster | 16 vCPU / 128 GB / NVMe 1 TB | primary + sync standby (site A) + standby cluster (site B) | เท่าเดิม | 4,500 row/s ที่ 300 cmd/s; ข้อมูล OLTP 150–300 GB ใน 5 ปี; มี `core`, `hlt_vault`, `hlt_keys`, `keycloak` |
-| PostgreSQL core — ELT replica (v1.1) | 4 vCPU / 32 GB / NVMe 1 TB | 1 (site A, nofailover) | 1 | ELT รายชั่วโมงผ่าน FDW (A-112) |
+| PostgreSQL core — ELT replica (v1.1) | 4 vCPU / 32 GB / NVMe 1 TB | 1 (site A, nofailover) | 1 | ELT รายชั่วโมงผ่าน FDW (A-107) |
 | etcd (v1.1) | ไซต์ A: บน node PG (volume แยก); ไซต์ B: 1 บน node PG + VM 2 vCPU × 2 | 3 + 3 | 3 + 3 | Patroni DCS |
 | PostgreSQL analytics+apps cluster (v1.1 รวม) | 8 vCPU / 64 GB | primary + replica | 2 | marts + Moodle, Zammad, Superset meta |
 
@@ -296,7 +296,7 @@ flowchart LR
 
 | ข้อมูล | วิธี | ความถี่ | เก็บ | ปลายทาง |
 |---|---|---|---|---|
-| PostgreSQL core (db core, keycloak) | pgBackRest full + diff + WAL archive (`archive_timeout` ≤ 60 s), เข้ารหัส | full รายสัปดาห์, diff รายวัน, WAL ต่อเนื่อง | 35 วัน + รายเดือน 12 เดือน (**v1.1 ตัดรายปี 7 ปี** — backup ไม่ใช่ archive; ข้อมูลที่ต้องเก็บยาวอยู่ใน records archive + **fiscal-close export** รายปี ตามเล่ม 08 หัวข้อ 8; เสนอ Q-92) | `backup-pg` site A + replicate site B (**Object Lock compliance mode, tenant แยก**) |
+| PostgreSQL core (db core, keycloak) | pgBackRest full + diff + WAL archive (`archive_timeout` ≤ 60 s), เข้ารหัส | full รายสัปดาห์, diff รายวัน, WAL ต่อเนื่อง | 35 วัน + รายเดือน 12 เดือน (**v1.1 ตัดรายปี 7 ปี** — backup ไม่ใช่ archive; ข้อมูลที่ต้องเก็บยาวอยู่ใน records archive + **fiscal-close export** รายปี ตามเล่ม 08 หัวข้อ 8; เสนอ Q-93) | `backup-pg` site A + replicate site B (**Object Lock compliance mode, tenant แยก**) |
 | PostgreSQL `hlt_vault` | เหมือน core (stanza และกุญแจ backup แยก) | เหมือน core | **13 เดือน** (07 ADR-011) | เหมือน core |
 | **PostgreSQL `hlt_keys` (wrapped DEK, v1.1)** | เหมือน core (stanza และกุญแจ backup แยก) | เหมือน core | **≤ 35 วัน** (สั้นกว่า `hlt_vault` เพื่อให้ crypto-shredding มีผลกับ backup ภายในกรอบที่ประกาศ; D-04) | เหมือน core; ไม่อยู่ในสำเนา offline เกิน 35 วัน |
 | PostgreSQL analytics+apps cluster | pgBackRest + WAL (Moodle/Zammad ต้อง PITR ได้) | full รายสัปดาห์, diff รายวัน | 35 วัน | `backup-pg` |
@@ -458,7 +458,7 @@ flowchart LR
 1. อ่านข้อมูลบุคคลจำนวนมากผิดปกติต่อผู้ใช้ (bulk read เกิน baseline × 5)
 2. เข้าถึงนอกเวลาทำการโดยบัญชีเจ้าหน้าที่ที่ปกติไม่ทำ
 3. เข้าถึงข้อมูลข้ามวิทยาเขตนอก scope ปกติ (แม้ RLS อนุญาตผ่าน role ระดับมหาวิทยาลัย)
-4. อ่าน health_vault โดยไม่มี care relationship (ถูกปฏิเสธซ้ำ)
+4. อ่าน `hlt_vault` โดยไม่มี care relationship (ถูกปฏิเสธซ้ำ)
 5. Ad-hoc export > 500 แถว/ครั้ง หรือ > 2,000 แถว/วัน (ค่าเดียวกับ 07 ADR-017 และ 08 หัวข้อ 10.3; แทนค่า 100 ของ 08 v1.0) หรือ standard export ที่ปริมาณเกิน baseline × 3
 6. เปลี่ยนบัญชีรับเงินคืนแล้วขอคืนเงินภายใน cooling period
 7. Waiver/คืนเงินมูลค่าสูงหรือถี่จากผู้อนุมัติคนเดียวกัน
@@ -744,3 +744,51 @@ flowchart LR
 | S11-02 | object storage ปีแรก 8–10 TB, โต 3–4 TB/ปี | ต้นทุน storage ในเล่ม 12 เปลี่ยน |
 | S11-03 | ผู้ให้บริการ cloud ให้ scale ชั่วคราว (staging, DR pre-scale) โดยไม่ต้องจัดซื้อใหม่ | ต้องจองความจุถาวรเพิ่ม |
 | S11-04 | มกช. มีสถานที่เก็บสื่อ offline 2 แห่งที่ปลอดภัย | ต้องใช้บริการ vault ภายนอกในไทย |
+
+### 19.4 ผลการปิด review v1-review (รอบ v1.1)
+
+แหล่ง: `research_notes/ออกแบบระบบการศึกษา TNSU ระดับ production/v1-review/` — **AC** = architecture_compliance.md, **CO** = consistency.md, **UX** = ux_exec_change.md · ตาม [00-fix-decisions-v1.1](00-fix-decisions-v1.1.md)
+
+| ข้อ | การจัดการ | หัวข้อ |
+|---|---|---|
+| AC Top-1 / K-01 / K-08 seal model, quorum บนเส้นทาง DR | **แก้** HSM auto-unseal ทั้ง 2 ไซต์, recovery key = authorization, ซ้อม HSM สูญหาย + ซ้อมนอกเวลาด้วยผู้แทนสำรอง (D-04) | 8 |
+| AC Top-2 / K-03 / CO OWN-02 ชื่อ DB, ไม่มีแถว key store ใน backup | **แก้** `hlt_vault`/`hlt_keys` + แถว backup ≤ 35 วัน + erasure ledger | 1, 6 |
+| AC K-05 offline 1 ปี/รายปี 7 ปี vs DSR | **แก้** retention offline ต่อชุดข้อมูล, ตัด backup รายปี 7 ปี (Q-93), restore-then-reapply-erasure | 6, 7.3 |
+| AC A-06 RPO ของ OpenBao | **แก้** snapshot ทุก 15 นาที + snapshot-before-use + alert อายุ snapshot | 6, 10.1 |
+| AC Top-6 OpenBao ไม่อยู่ใน game day/SLO | **แก้** game day OpenBao/HSM/etcd + dashboard ต่อ component ใน chain | 4.1, 4.2, 7.1, 10.1 |
+| AC N-04 DB ↔ object หลัง failover | **แก้** ขั้นตอน 2a ของ runbook | 7.2 |
+| AC N-05 site B degraded | **แก้** ขั้นตอน 2b + วัดใน drill | 7.1, 7.2 |
+| AC N-06 synthetic 1 นาที | **แก้** request-based SLI | 10.2 |
+| AC A-01 / A-02 topology ไม่มี DCS, PG 3 cluster | **แก้** etcd ต่อไซต์ + 2 cluster + sizing ใหม่ (≈ 344 vCPU, สัญญา ≈ 400) | 2, 2.1 |
+| AC A-04 bus factor | **แก้** KT metric ≥ 2 คนต่อ runbook วิกฤต | 8, 16 |
+| AC S-01 CI/CD/GitOps | **แก้** 2 reviewers env repo, signed commits, runner prod แยก OIDC | 3 |
+| AC Top-8 / O-04 reverse-delta | **แก้** shadow comparison ด้วย legacy-rule PolicySet; rollback = delta report + คีย์ 4-eyes (D-07) | 13.3–13.5 |
+| AC O-01 K8s upgrade 1–2 ครั้ง/ปี | **แก้** ≥ 3 ครั้ง/ปี ใช้ 3 หน้าต่าง (D-07) | 5.1, 5.3 |
+| AC O-02 freeze ปี go-live > 30%, R3 อยู่ใน freeze | **แก้** FZ-GL ราย module ใน ring, เป้า ≤ 40% ปี go-live, R3/Wave 2b = deploy flag ปิดภายใน 24 ก.ย. + go/no-go 15 ต.ค. + planned activation 1 พ.ย. (ตรงกับเล่ม 12) | 5.2 |
+| AC O-03 on-call vs MA FTE | **แก้** ขั้นต่ำ ≥ 6 คน/tier + named engineer ≥ 3; หมายเหตุผลต่อ MA ในเล่ม 12 | 15 |
+| AC O-05 Wave 2 แน่น | **แก้ส่วนปฏิบัติการ** Wave 2a/2b + โรงเรียนชุด A/B, rehearsal กระจาย, ทีม hypercare/rehearsal แยก, MS-H2b (วันที่/FTE เป็นของเล่ม 12) | 13 |
+| AC O-06 test ที่ขาด | **แก้** OpenBao/HSM game day, PgBouncer prepared statement, bridge contract, DB ↔ object, PDF text extraction, PIT incremental/nightly | 4.1 |
+| AC O-07 exit กับกุญแจ | **แก้** key handover/seal migration + export ถอดรหัสใน enclave | 18 |
+| AC O-08 / K-07 ต้นทุน HSM 2 ไซต์, TSA, on-call | **หมายเหตุให้เล่ม 12** (ไม่คำนวณใหม่ตาม D-01) | 12 |
+| AC O-10 restore รายวันทั้ง DB | **แก้** รายวันแบบสุ่ม/WAL, full รายสัปดาห์ | 6 |
+| AC Top-5 / D-09 SQLi RLS bypass (ส่วน test) | **แก้** test set_config/token ปลอม, lint BYPASSRLS/security_invoker, UEBA ข้อ 13 | 4.1, 10.3 |
+| CO NUM-02 ภาระประกาศผล | **แก้** scenario 300/s | 4.2 |
+| UX UXR-01 Wave 2 floor-walker | **แก้** 2a/2b + floor-walker 1 คน/OrgUnit 2 สัปดาห์แรก, hypercare 6 สัปดาห์ | 13, 14 |
+| UX UXR-02 / UXR-57 อบรมในเดือนพีค, ตัวเลขขัดกับเล่ม 14 | **แก้** อ้าง training-needs matrix ของเล่ม 14 (ก.พ.–มี.ค.), ตัดตัวเลขซ้ำ | 14 |
+| UX UXR-03 / UXR-04 L1 ไม่มีคน, LINE OA inbox เดียว | **แก้** อ้าง staffing model เล่ม 12 หัวข้อ 5.6 + กลไก routing ตาม OrgUnit ใน Zammad, ticket ทุกช่องทาง | 15 |
+| UX UXR-12 KPI จาก observability | **แก้** `fct_slo_daily` | 10.1 |
+| UX UXR-31 MFA หายวันลงทะเบียน | **แก้** จุดบริการด่วน + ขยาย window อัตโนมัติ | 15 |
+| UX UXR-37 export threshold | **แก้** UEBA ใช้ค่าเดียว 500/ครั้ง, 2,000/วัน | 10.3 |
+| UX UXR-38 import encoding | **แก้** test case | 4.1 |
+| UX UXR-40 offline counter | **แก้** business continuity kit + drill รายปี | 7.1, 7.4, 14 |
+| UX UXR-47 accessibility tester | **แก้** ผู้ตรวจอิสระ + sample + PDF + LIFF | 4.1 |
+| UX UXR-18 / BR-10 legacy analytics feed | **แก้** เพิ่ม BR-10 ใน bridges | 13.3 |
+
+### 19.5 สมมติฐาน/คำถามใหม่ที่เสนอ (ให้ผู้นำรวมเข้าทะเบียน A ในเล่ม 01 และ Q ในเล่ม 13)
+
+> เลขชุดเดียวกับเล่ม 07 และ 08; โมเดล helpdesk L1 และ on-call ใช้สมมติฐาน/คำถามที่เล่ม 12 เสนอแล้ว (หัวข้อ 5.5–5.6) จึงไม่เสนอซ้ำ
+
+| รหัสเสนอ | ประเภท | ข้อความ | ผลถ้าผิด / ผลของคำตอบ | ยืนยันด้วย |
+|---|---|---|---|---|
+| A-107 | สมมติฐาน | ELT physical replica 4 vCPU/32 GB และ etcd บน node PG (volume แยก) ไม่กระทบ latency ของ primary | ต้องแยก etcd เป็น VM 3 ตัวที่ไซต์ A (+6 vCPU) | load test + game day ก่อน R2 |
+| Q-93 | คำถาม | (ร่วมกับเล่ม 08) อนุมัติให้ตัด backup รายปี 7 ปีของ core เหลือ 35 วัน + รายเดือน 12 เดือน + fiscal-close export | ไม่อนุมัติ → privacy notice ต้องระบุว่าข้อมูลที่ลบอยู่ใน backup ได้ถึง 7 ปี | DPO + ตรวจสอบภายใน |
