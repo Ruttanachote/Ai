@@ -1115,6 +1115,7 @@ erDiagram
   DIM_ORG_UNIT ||--o{ FCT_ELIGIBILITY_CHECK : "scopes"
   DIM_ORG_UNIT ||--o{ AGG_SAFEGUARDING_MONTHLY : "scopes"
   DIM_ORG_UNIT ||--o{ DIM_STAFF_FTE_TERM : "staffed"
+  STAFF_FTE_IMPORT ||--o{ DIM_STAFF_FTE_TERM : "loads"
   DIM_ORG_UNIT ||--o{ FCT_SLO_DAILY : "served"
   DIM_ORG_UNIT ||--o{ LEGACY_FEED_TERM : "pre-go-live feed"
 
@@ -1208,25 +1209,25 @@ erDiagram
   }
 ```
 
-| Fact/entity ใหม่ | ใช้กับ KPI (หัวข้อของ KPI ใน v1.0 เล่ม 14; รหัส `KPI-xx` ตามเล่ม 14 v1.1) | ต้นทาง | หมายเหตุ |
+| Fact/entity ใหม่ | ใช้กับ KPI (รหัสตาม KPI dictionary เล่ม 14 v1.1; ในวงเล็บคือรหัส v1.0) | ต้นทาง | หมายเหตุ |
 |---|---|---|---|
-| `ALERT_INTERVENTION` (REC) + `fct_alert` | นักศึกษาเสี่ยงได้รับการดูแล (v1.0 K-04) | `rec.AcademicAlert*` | "ติดตาม" = มี `AdvisingNote` หรือ referral ไม่ใช่แค่กดรับทราบ (UXR-09) |
-| `fct_cohort_status` + `dim_cohort` | อัตราคงอยู่ปี 1, จบตามเวลา (v1.0 K-03/K-05) | `STUDENT_STATUS_HISTORY` + `CENSUS_SNAPSHOT` | census 10 มิ.ย./10 พ.ย.; cohort = first-time เต็มเวลา; 2 มุมมอง (วิทยาเขต/มหาวิทยาลัย: ย้ายภายใน มกช. ไม่นับเป็นการสูญเสียระดับมหาวิทยาลัย); exclude ผู้เสียชีวิต; "ตามเวลา" = ระยะหลักสูตร (UXR-07) |
-| `LEGACY_COHORT_SUMMARY` | แนวโน้ม 5 ปีของ K-03/K-05 | migrate `StudentStatusHistory` ระดับรุ่น (รวมผู้ออก) 6–8 รุ่นเข้า **ANA เท่านั้น** หรือตัวเลขรวมที่นายทะเบียนรับรอง | ติดป้าย "ข้อมูลก่อนระบบ"; ถ้าไม่มีให้แสดงหมายเหตุว่าอัตราย้อนหลังคำนวณจากนักศึกษาที่ยังมีสถานะ ซึ่งสูงเกินจริงอย่างเป็นระบบ (UXR-08, D-10) |
-| `dim_admission_plan` | เติมเต็มแผนรับ (v1.0 K-02) | ADM `AdmissionPlan`, `SeatQuota` | |
-| `fct_application` (มีแล้ว) + คอลัมน์ `is_unique_applicant`, `lost_to` (`OTHER_TNSU_CAMPUS`/`OUTSIDE`) | funnel/yield (v1.0 K-01) | ADM | yield 2 ระดับ: unique applicant และ application/choice (UXR-06) |
-| `dim_staff_fte_term` | FTES ต่ออาจารย์ (v1.0 K-07) | import ไฟล์อัตรากำลังรายภาคจาก HR เดิมผ่าน S-21 จนกว่ามี X-HR | เจ้าของข้อมูล = กองบริหารงานบุคคล (UXR-10) |
-| `fct_payment` (มีแล้ว) + งวดตามใบแจ้งหนี้ที่ครบกำหนด, แยก deferment กยศ. | รายได้/ค้างชำระ (v1.0 K-08) | FIN | ตัด waiver (UXR-14) |
-| `fct_loan_confirmation` | กยศ. ยืนยันทันกำหนด (v1.0 K-09) | SCH | ตัวหาร = ผู้กู้ที่มีสัญญาในภาคนั้น |
-| `fct_competition_result`, `fct_eligibility_check` | ผลงานกีฬา, eligibility ก่อนแข่ง (v1.0 K-10/K-11) | ATH | |
-| `agg_safeguarding_monthly` | โรงเรียนกีฬา + safeguarding (v1.0 K-12) | SAFE ส่ง **aggregate** รายเดือน (ไม่ replicate รายเคส), suppress n < 5 | UXR-13 |
-| `fct_case`, `fct_petition` | ร้องเรียน/คำร้องปิดใน SLA (v1.0 K-13/K-14) | CASE, SVC (metadata เท่านั้น) | UXR-11 |
-| `SERVICE_FEEDBACK` + `fct_service_feedback` | CSAT (v1.0 K-14) | แบบสอบถามสั้นหลังธุรกรรม (SVC survey engine) | ส่งแบบสุ่มไม่เกิน 1 ครั้ง/คน/เดือน (กัน fatigue) |
-| `fct_slo_daily` | availability/p95/เวลารอคิว (v1.0 K-16) | export รายวันจาก Prometheus (07 ADR-017) | เจ้าของ = SRE (UXR-12) |
-| `legacy_feed_term` | ตัวเลขทั้งมหาวิทยาลัยก่อน Wave 2 ครบ | ไฟล์มาตรฐานรายภาคจาก OrgUnit ที่ยังใช้ระบบเดิม (หัวข้อ 13.1) | DQ score ต่อไฟล์ (UXR-18) |
+| `ALERT_INTERVENTION` (REC) + `fct_alert` | KPI-04 (K-04) | `rec.AcademicAlert*` | "ติดตาม" = มี `AdvisingNote` หรือ referral ไม่ใช่แค่กดรับทราบ (UXR-09) |
+| `fct_cohort_status` + `dim_cohort` | KPI-03, KPI-05 (K-03/K-05) | `STUDENT_STATUS_HISTORY` + `CENSUS_SNAPSHOT` | census 10 มิ.ย./10 พ.ย.; cohort = first-time เต็มเวลา; 2 มุมมอง (วิทยาเขต/มหาวิทยาลัย: ย้ายภายใน มกช. ไม่นับเป็นการสูญเสียระดับมหาวิทยาลัย); exclude ผู้เสียชีวิต; "ตามเวลา" = ระยะหลักสูตร (UXR-07) |
+| `LEGACY_COHORT_SUMMARY` | แนวโน้ม 5 ปีของ KPI-03/KPI-05 | **TR-10 ของเล่ม 12:** migrate `StudentStatusHistory` ระดับรุ่น (รวมผู้ออก) 6–8 รุ่นเข้า **ANA เท่านั้น** หรือตัวเลขรวมที่นายทะเบียนรับรอง | ติดป้าย "ข้อมูลก่อนระบบ"; ถ้าไม่มีให้แสดงหมายเหตุว่าอัตราย้อนหลังคำนวณจากนักศึกษาที่ยังมีสถานะ ซึ่งสูงเกินจริงอย่างเป็นระบบ (UXR-08, D-10) |
+| `dim_admission_plan` | KPI-02 (K-02) | ADM `AdmissionPlan`, `SeatQuota` | |
+| `fct_application` (มีแล้ว) + คอลัมน์ `is_unique_applicant`, `lost_to` (`OTHER_TNSU_CAMPUS`/`OUTSIDE`) | KPI-01 (K-01) | ADM | yield 2 ระดับ: unique applicant และ application/choice (UXR-06) |
+| `STAFF_FTE_IMPORT` (staging ใน ANA: ไฟล์, ภาค, ผู้นำเข้า, checksum, สถานะตรวจ) → `dim_staff_fte_term` | KPI-07 (K-07) | import ไฟล์อัตรากำลังรายภาคจาก HR เดิมผ่าน S-21 จนกว่ามี X-HR | เจ้าของข้อมูล = กองบริหารงานบุคคล (UXR-10) |
+| `fct_payment` (มีแล้ว) + งวดตามใบแจ้งหนี้ที่ครบกำหนด, แยก deferment กยศ. | KPI-08 (K-08) | FIN | ตัด waiver (UXR-14) |
+| `fct_loan_confirmation` | KPI-09 (K-09) | SCH | ตัวหาร = ผู้กู้ที่มีสัญญาในภาคนั้น |
+| `fct_competition_result`, `fct_eligibility_check` | KPI-10, KPI-11 (K-10/K-11) | ATH | |
+| `agg_safeguarding_monthly` | KPI-12, KPI-32 (K-12) | SAFE ส่ง **aggregate** รายเดือน (ไม่ replicate รายเคส), suppress n < 5 | UXR-13 |
+| `fct_case`, `fct_petition` | KPI-13, KPI-14, KPI-24 (K-13/K-14) | CASE, SVC (metadata เท่านั้น) | UXR-11 |
+| `SERVICE_FEEDBACK` + `fct_service_feedback` | KPI-15 (K-14) | แบบสอบถามสั้นหลังธุรกรรม (SVC survey engine) | ส่งแบบสุ่มไม่เกิน 1 ครั้ง/คน/เดือน (กัน fatigue) |
+| `fct_slo_daily` | KPI-17 (K-16) | export รายวันจาก Prometheus (07 ADR-017) | เจ้าของ = SRE (UXR-12) |
+| `legacy_feed_term` | ตัวเลขทั้งมหาวิทยาลัยก่อน Wave 2 ครบ (KPI-01..05 ระดับมหาวิทยาลัย) | **BR-10 ของเล่ม 12:** ไฟล์มาตรฐานรายภาคจาก OrgUnit ที่ยังใช้ระบบเดิม (หัวข้อ 13.1) | DQ score ต่อไฟล์ (UXR-18) |
 | `STANDING_EVALUATION` (REC) | — (รองรับ D-08: คำนวณสถานภาพก่อนเปิดลงทะเบียนภาคถัดไป + สิทธิ์ระหว่างอุทธรณ์) | REC DMN | |
 
-**ขนาดของ model:** v1.0 มี 11 แผนภาพ **333 entity**; **v1.1 มี 12 แผนภาพ 360 entity** (นับไม่ซ้ำด้วยสคริปต์: +28 ได้แก่ entity ของ KPI/fact 18 ตัวในหัวข้อ 2.12, `ALERT_INTERVENTION`, `STANDING_EVALUATION`, `READINESS_STATUS`, `PARA_CLASSIFICATION`, `SELECTION_ROUND`, `SELECTION_DECISION`, `SESSION_ATTENDANCE`, `SERVICE_FEEDBACK`, `FEEDBACK_SURVEY`, `COMPETITION_DELEGATION`; −1 `DELEGATION` ที่เปลี่ยนชื่อ; `WELLNESS_ENTRY` ย้ายจาก ATH ไป HLT) ครอบคลุมทุกโมดูลในขอบเขตหลัก; entity ใหม่อื่นจาก workflow W-148+ ของ D-08 (เช่น concussion protocol, critical incident ผู้เยาว์) ให้เล่ม 06 เป็นเจ้าของรายชื่อและใช้กติกาเดียวกัน ส่วน entity ที่ไม่ได้แสดงในแผนภาพ (เช่น `NOTIFICATION_RULE`, `FORM_DEFINITION`, `DIGITAL_ID_CARD`, `ANNOUNCEMENT`, `EVENT_REGISTRATION`, `FACILITY`, `BOOKING`) มีรายชื่ออยู่ใน 06-modules และใช้กติกาเดียวกัน (`org_unit_id`, UUIDv7, ชั้นข้อมูล)
+**ขนาดของ model:** v1.0 มี 11 แผนภาพ **333 entity**; **v1.1 มี 12 แผนภาพ 361 entity** (นับไม่ซ้ำด้วยสคริปต์: +29 ได้แก่ entity ของ KPI/fact 19 ตัวในหัวข้อ 2.12 (รวม `STAFF_FTE_IMPORT`), `ALERT_INTERVENTION`, `STANDING_EVALUATION`, `READINESS_STATUS`, `PARA_CLASSIFICATION`, `SELECTION_ROUND`, `SELECTION_DECISION`, `SESSION_ATTENDANCE`, `SERVICE_FEEDBACK`, `FEEDBACK_SURVEY`, `COMPETITION_DELEGATION`; −1 `DELEGATION` ที่เปลี่ยนชื่อ; `WELLNESS_ENTRY` ย้ายจาก ATH ไป HLT) ครอบคลุมทุกโมดูลในขอบเขตหลัก; entity ใหม่อื่นจาก workflow W-148+ ของ D-08 (เช่น concussion protocol, critical incident ผู้เยาว์) ให้เล่ม 06 เป็นเจ้าของรายชื่อและใช้กติกาเดียวกัน ส่วน entity ที่ไม่ได้แสดงในแผนภาพ (เช่น `NOTIFICATION_RULE`, `FORM_DEFINITION`, `DIGITAL_ID_CARD`, `ANNOUNCEMENT`, `EVENT_REGISTRATION`, `FACILITY`, `BOOKING`) มีรายชื่ออยู่ใน 06-modules และใช้กติกาเดียวกัน (`org_unit_id`, UUIDv7, ชั้นข้อมูล)
 
 ## 3. Master data และเจ้าของข้อมูล
 
@@ -1492,8 +1493,8 @@ KPI คุณภาพข้อมูลตั้งต้น (เสนอ; น
 | P0 Discovery (เม.ย.–มิ.ย. 2570, M1–M3) | **Profiling ทุกวิทยาเขตและโรงเรียน** (ไม่ย้ายจริง) | inventory + profiling report + เลือก pilot |
 | R1 (ก.ย. 2571, M18) | reference data, OrgUnit, หลักสูตร/ProgramOffering ของ 2 วิทยาเขต pilot; **ผู้สมัครเป็นข้อมูลใหม่** | นักศึกษาปัจจุบันยังอยู่ระบบเดิม |
 | R2 (พ.ค. 2572, M26) | นักศึกษาปัจจุบันของ pilot ที่รอยต่อปีการศึกษา: Person, Student, ประวัติผลการเรียนทั้งหมด, สถานภาพ, ยอดคงค้าง, hold, กยศ., หอพักที่ active | parallel run 1 ภาค |
-| R2 ขึ้นไป (พ.ค. 2572, M26) — **legacy analytics feed** (v1.1, UXR-18) | ไฟล์มาตรฐานรายภาค (รายชื่อ, สถานภาพ, ลงทะเบียน, ลูกหนี้) จาก OrgUnit ที่ยังใช้ระบบเดิมเข้า ANA staging (`legacy_feed_term`) พร้อม DQ score | ผู้บริหารเห็นภาพทั้งมหาวิทยาลัยก่อน Wave 2 ครบ; ใช้ template เดียวกับ BR-06 ของเล่ม 12 |
-| R2 (M26) — **cohort history สรุป** (v1.1, UXR-08, D-10) | `StudentStatusHistory` ระดับรุ่นย้อนหลัง 6–8 รุ่น **รวมผู้ลาออก/พ้นสภาพ** ของวิทยาเขต pilot เข้า **ANA เท่านั้น** (`LEGACY_COHORT_SUMMARY`/`fct_cohort_status` source = LEGACY_MIGRATED) หรือ ตัวเลขรวมรายรุ่นที่นายทะเบียนรับรอง; ทำซ้ำในแต่ละ wave | ไม่เข้า REC; ติดป้าย "ข้อมูลก่อนระบบ"; ถ้าไม่มีให้ KPI ย้อนหลังแสดงหมายเหตุว่าสูงเกินจริง |
+| R2 ขึ้นไป (พ.ค. 2572, M26) — **legacy analytics feed = BR-10 ของเล่ม 12** (v1.1, UXR-18) | ไฟล์มาตรฐานรายภาค (รายชื่อ, สถานภาพ, ลงทะเบียน, ลูกหนี้) จาก OrgUnit ที่ยังใช้ระบบเดิมเข้า ANA staging (`legacy_feed_term`) พร้อม DQ score | ผู้บริหารเห็นภาพทั้งมหาวิทยาลัยก่อน Wave 2 ครบ; ใช้ template เดียวกับ BR-06 ของเล่ม 12 |
+| R2 (M26) — **cohort history สรุป = TR-10 ของเล่ม 12** (v1.1, UXR-08, D-10) | `StudentStatusHistory` ระดับรุ่นย้อนหลัง 6–8 รุ่น **รวมผู้ลาออก/พ้นสภาพ** ของวิทยาเขต pilot เข้า **ANA เท่านั้น** (`LEGACY_COHORT_SUMMARY`/`fct_cohort_status` source = LEGACY_MIGRATED) หรือ ตัวเลขรวมรายรุ่นที่นายทะเบียนรับรอง; ทำซ้ำในแต่ละ wave | ไม่เข้า REC; ติดป้าย "ข้อมูลก่อนระบบ"; ถ้าไม่มีให้ KPI ย้อนหลังแสดงหมายเหตุว่าสูงเกินจริง |
 | Wave 1 (มิ.ย. 2573, M39; โรงเรียน พ.ค. 2573, M38) | +5 วิทยาเขต + โรงเรียนกีฬานำร่อง 1 แห่ง | ซ้อมอย่างน้อย 3 รอบต่อ wave |
 | **Wave 2a** (มิ.ย. 2574, M51; v1.1 ตาม D-07) | วิทยาเขตชุดแรกของ Wave 2 + โรงเรียนกีฬาที่เหลือชุดแรก (พ.ค. 2574, M50) — รายชื่อเป็นของเล่ม 12 | rehearsal ≥ 3 รอบต่อ OrgUnit; data engineer ไม่ต้องทำ 22 OrgUnit พร้อมกัน |
 | **Wave 2b** (พ.ย. 2574, M56; ต้นภาค 2) | วิทยาเขตที่เหลือ (+ โรงเรียนชุดสอง พ.ค. 2575 ถ้าจำเป็น ตามที่เล่ม 12 เสนอ) | migrate ณ รอยต่อภาค 1→2: ประวัติถึงภาค 1/2574 + ยอดคงค้างกลางปีการศึกษา + การลงทะเบียนภาค 2 ทำในระบบใหม่ |

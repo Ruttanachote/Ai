@@ -514,7 +514,7 @@ flowchart LR
 
 วันที่, milestone (MS-2, MS-2b, MS-W1, MS-W2a/2b, MS-H/MS-H2b) และ bridges BR-01..BR-09 อยู่ในเล่ม 12 หัวข้อ 2–3; mapping ข้อมูลอยู่ในเล่ม 08 หัวข้อนี้คือ **กลไก** (ปิด Top-7, DATA-03, DATA-04)
 
-**ผลของ Wave 2a/2b ต่อการปฏิบัติการ (v1.1, D-07):** (1) Wave 2a (1 มิ.ย. 2574, M51) และโรงเรียนชุด A (16 พ.ค. 2574, M50) ใช้ factory เดียวกัน แต่ rehearsal ≥ 3 รอบต่อ OrgUnit กระจายในช่วง ม.ค.–เม.ย. 2574 แทนการทำ ~30 รอบใน 12 สัปดาห์; (2) **Wave 2b (1 พ.ย. 2574, M56) migrate ณ รอยต่อภาค 1→2:** ประวัติถึงภาค 1/2574 + ยอดคงค้างกลางปีการศึกษา + การลงทะเบียนภาค 2 ทำในระบบใหม่; ใช้ dark deploy + planned activation ตามหัวข้อ 5.2 ข้อ 6; rehearsal ก.ค.–ก.ย. 2574 ซึ่งชนกับ hypercare ของ 2a ช่วงต้น → ทีม migration และทีม hypercare ต้องเป็นคนละชุด; (3) **shadow comparison ของ 2b จบ มี.ค. 2575 ชนกับ MS-H (M60)** → ใช้ MS-H2b ≤ 30 มิ.ย. 2575 ตามเล่ม 12 และส่งต่อ on-call/hypercare ของ 2b ให้ MA ตั้งแต่ เม.ย. 2575; (4) data engineer ช่วง T5 ตามที่เล่ม 12 ปรับ — เล่มนี้ใช้เกณฑ์ "ไม่เกิน 6 OrgUnit อยู่ในช่วง rehearsal พร้อมกันต่อ data engineer 1 คู่"
+**ผลของ Wave 2a/2b ต่อการปฏิบัติการ (v1.1, D-07):** (1) Wave 2a (1 มิ.ย. 2574, M51) และ**โรงเรียนกีฬาชุด A** (16 พ.ค. 2574, M50; ชุด B 16 พ.ค. 2575, M62 เฉพาะถ้าจำเป็น ตามเล่ม 12) ใช้ factory เดียวกัน แต่ rehearsal ≥ 3 รอบต่อ OrgUnit กระจายในช่วง ม.ค.–เม.ย. 2574 แทนการทำ ~30 รอบใน 12 สัปดาห์; (2) **Wave 2b (1 พ.ย. 2574, M56) migrate ณ รอยต่อภาค 1→2:** ประวัติถึงภาค 1/2574 + ยอดคงค้างกลางปีการศึกษา + การลงทะเบียนภาค 2 ทำในระบบใหม่; ใช้ dark deploy + planned activation ตามหัวข้อ 5.2 ข้อ 6; rehearsal ก.ค.–ก.ย. 2574 ซึ่งชนกับ hypercare ของ 2a ช่วงต้น → ทีม migration และทีม hypercare ต้องเป็นคนละชุด; (3) **shadow comparison ของ 2b จบ มี.ค. 2575 ชนกับ MS-H (M60)** → ใช้ MS-H2b ≤ 30 มิ.ย. 2575 ตามเล่ม 12 และส่งต่อ on-call/hypercare ของ 2b ให้ MA ตั้งแต่ เม.ย. 2575; (4) data engineer ช่วง T5 ตามที่เล่ม 12 ปรับ — เล่มนี้ใช้เกณฑ์ "ไม่เกิน 6 OrgUnit อยู่ในช่วง rehearsal พร้อมกันต่อ data engineer 1 คู่"
 
 ### 13.1 Migration factory
 
@@ -548,7 +548,7 @@ flowchart LR
 
 ### 13.3 Bridge กับระบบเดิม
 
-ใช้ bridges ตามเล่ม 12 หัวข้อ 3.2: BR-01 dedupe ผู้สมัครกับวิทยาเขตที่ยังใช้ระบบเดิม, BR-02 initial load + delta รายคืน, **BR-03 shadow comparison (v1.1 แทน reverse-delta ตาม D-07: ไม่เขียนกลับระบบเดิม เว้นแต่วิทยาเขตมี import/write API ที่ยืนยันใน P0)**, BR-04 legacy archive, BR-05 งานที่ยังไม่มีโมดูล, BR-06 รายงานระดับมหาวิทยาลัยที่รวมสองระบบ, BR-07 roster ไป LMS เดิม, BR-08 ไฟล์ไป GFMIS/บัญชีกลาง (ถาวร), BR-09 รายชื่อผู้จบจากระบบเดิมสำหรับพิธีรับปริญญารวม ทุก bridge เป็น job ใน core worker (ไม่มี ETL tool แยก) มี dashboard และวันยกเลิก
+ใช้ bridges ตามเล่ม 12 หัวข้อ 3.2: BR-01 dedupe ผู้สมัครกับวิทยาเขตที่ยังใช้ระบบเดิม, BR-02 initial load + delta รายคืน, **BR-03 shadow comparison (v1.1 แทน reverse-delta ตาม D-07: ไม่เขียนกลับระบบเดิม เว้นแต่วิทยาเขตมี import/write API ที่ยืนยันใน P0)**, BR-04 legacy archive, BR-05 งานที่ยังไม่มีโมดูล, BR-06 รายงานระดับมหาวิทยาลัยที่รวมสองระบบ, BR-07 roster ไป LMS เดิม, BR-08 ไฟล์ไป GFMIS/บัญชีกลาง (ถาวร), BR-09 รายชื่อผู้จบจากระบบเดิมสำหรับพิธีรับปริญญารวม, **BR-10 legacy analytics feed** (v1.1: ไฟล์มาตรฐานรายภาคจากทุก OrgUnit ที่ยังใช้ระบบเดิมเข้า ANA ตั้งแต่ R2 พร้อม DQ score; schema `legacy_feed_term` ในเล่ม 08 หัวข้อ 2.12) ทุก bridge เป็น job ใน core worker (ไม่มี ETL tool แยก) มี dashboard และวันยกเลิก
 
 ### 13.4 Parallel run 1 ภาค
 
@@ -581,13 +581,14 @@ flowchart LR
 
 | องค์ประกอบ | รายละเอียด |
 |---|---|
-| **Champion** | **2 คนต่อวิทยาเขต/โรงเรียน** (30 OrgUnit → 60 คน) แต่งตั้งเป็นลายลักษณ์อักษร + key user 4 คนต่อวิทยาเขต; บทบาท: ให้ข้อมูล, UAT, อบรมต่อ, ช่วยหน้างาน, รับเรื่อง L0/L1 ในวิทยาเขต |
-| Train-the-trainer | vendor อบรม champion ก่อน wave ≥ 3 เดือน; champion อบรมผู้ใช้ในวิทยาเขต |
+| **Champion** | **2 คนต่อวิทยาเขต/โรงเรียน** (30 OrgUnit → 60 คน) แต่งตั้งเป็นลายลักษณ์อักษร + key user 4 คนต่อวิทยาเขต; บทบาท: ให้ข้อมูล, UAT, อบรมต่อ, ช่วยหน้างาน, escalation ของกลุ่มบทบาท — **v1.1: champion ไม่ใช่ L1** (L1 = service desk ส่วนกลาง ตามเล่ม 12 หัวข้อ 5.6) |
+| Train-the-trainer | ตารางเวลาและจำนวนชั่วโมงเป็นของ **training-needs matrix ในเล่ม 14** (v1.1: อบรมหลัก **ก.พ.–มี.ค.** หลังส่งเกรดภาค 2 + refresher 1 วันใน sandbox ก่อน go-live + คลินิกหน้างานสัปดาห์แรก; ไม่จัดอบรมหลักในเดือนพีค พ.ค.) — เล่มนี้รับผิดชอบเฉพาะ sandbox/environment และการจองทรัพยากรอบรม (UX UXR-02, UXR-57) |
 | หลักสูตรตาม persona | นายทะเบียน, การเงิน, อาจารย์/ที่ปรึกษา, โค้ช, กรรมการสอบทักษะ, เจ้าหน้าที่หอพัก, ครูประจำชั้น, `campus_itadmin`, helpdesk; ผู้ใช้ภายนอก (ผู้สมัคร นักศึกษา ผู้ปกครอง) ใช้ micro-learning + คู่มือภาพ |
 | Sandbox | namespace `training` ที่มี synthetic data ของวิทยาเขตนั้น รีเซ็ตได้ |
-| สื่อ | micro-learning ภาษาไทย (วิดีโอสั้น ≤ 3 นาที), คู่มือ PDF/UA, คอร์สใน Moodle พร้อมแบบทดสอบ, FAQ ใน knowledge base |
-| Communication plan | ต่อ wave: T−6 เดือน (ประกาศ, ผู้บริหารวิทยาเขต), T−3 (อบรม champion), T−1 (อบรมผู้ใช้ ≥ 95% ก่อน go-live ตาม MS-2/MS-W1), T0 (ประกาศถึงนักศึกษา/ผู้ปกครอง ผ่าน ENG + LINE), T+1 สัปดาห์ (คลินิกหน้างาน) |
-| Hypercare | 4–6 สัปดาห์หลัง go-live ต่อ wave: floor-walker ในวิทยาเขต (vendor + champion), war room ช่วงลงทะเบียนวันแรก, SLA ตอบสนองเร่งขึ้น |
+| สื่อ | ตามมาตรฐานสื่อของเล่ม 14 (ความยาววิดีโอ ฯลฯ — v1.1 ไม่กำหนดตัวเลขซ้ำในเล่มนี้เพื่อไม่ให้ขัดกัน), คู่มือ PDF/UA, คอร์สใน Moodle พร้อมแบบทดสอบ, FAQ ใน knowledge base |
+| Communication plan | ต่อ wave ตามแผนในเล่ม 14 (เป้าอบรมผู้ใช้ ≥ 95% ก่อน go-live ตาม MS-2/MS-W1/MS-W2a/2b) |
+| Hypercare | **6 สัปดาห์** หลัง go-live ต่อ wave (ค่าเดียวกับเล่ม 12/14): **floor-walker 1 คนต่อ OrgUnit ใน 2 สัปดาห์แรก** (ผู้รับจ้าง + champion; UX UXR-01 — ทำได้เพราะ Wave 2 แบ่งเป็น 2a/2b ไม่เกิน ~11 OrgUnit ต่อช่วง), war room ช่วงลงทะเบียนวันแรก, SLA ตอบสนองเร่งขึ้น; ทีม hypercare ของ 2a กับทีม rehearsal ของ 2b ต้องเป็นคนละชุด (หัวข้อ 13) |
+| Paper-fallback SOP | business continuity kit + ซ้อมปีละ 1 ครั้งต่อ OrgUnit (หัวข้อ 7.4) อยู่ในหลักสูตรเจ้าหน้าที่ counter |
 | วัด adoption | % คำร้องออนไลน์ vs กระดาษ, % ผู้ใช้ active รายสัปดาห์, เวลาปิดคำร้อง, ticket ต่อผู้ใช้ 100 คน, คะแนนความพึงพอใจ, % อาจารย์ส่งเกรดในระบบทันเวลา — ต่อวิทยาเขต |
 | การต่อต้านการเปลี่ยนแปลง | สนับสนุนจากรองอธิการบดีประจำวิทยาเขต (MoU ใน P0), เก็บ feedback รายสัปดาห์ช่วง hypercare, ตอบกลับสิ่งที่เปลี่ยนให้เห็น |
 
@@ -598,11 +599,16 @@ flowchart LR
 | ระดับ | ผู้รับผิดชอบ | หน้าที่ | ช่องทาง / เวลา |
 |---|---|---|---|
 | L0 Self-service | — | knowledge base ไทย/อังกฤษ, FAQ, สถานะคำร้อง, หน้า status; **ไม่มี chatbot** จนกว่าจะผ่านเงื่อนไข ADR-024 | web, PWA, LINE (ลิงก์) 24×7 |
-| L1 | Helpdesk ของ มกช. (ส่วนกลาง + champion/เจ้าหน้าที่วิทยาเขต) บน Zammad | รับเรื่อง, แนะนำการใช้งาน, reset รหัสผ่าน, triage, แจ้งเหตุ | เวลาราชการ; **ขยาย 07.00–22.00 น. ในช่วงวิกฤต** |
+| L1 | **Service desk ส่วนกลางของ มกช.** (v1.1: headcount, ปริมาณ ticket ต่อช่วงพีค, ผู้รับผิดชอบ LINE OA กลาง และชั่วโมงบริการตาม **helpdesk L1 staffing model ในเล่ม 12 หัวข้อ 5.6** — ปกติ 3–4 agent, พีครับสมัคร 6–8, วันลงทะเบียน/ประกาศผล 8–12) บน Zammad; champion เป็นผู้ช่วยหน้างาน ไม่ใช่ L1 | รับเรื่อง, แนะนำการใช้งาน, reset รหัสผ่าน, triage, แจ้งเหตุ | จ.–ศ. 08.30–16.30 น.; **07.00–22.00 น. ทุกวันในช่วงวิกฤต** (ตามเล่ม 12) |
 | L2 | ทีม application ของ มกช. (2 คนตามเล่ม 12) + vendor application support | ปัญหา config/ข้อมูล, rerun job/dead-letter, data-fix (4-eyes), วิเคราะห์ log/trace | ticket; vendor **on-call 24×7** |
 | L3 | Vendor engineering / MSP + SOC | bug fix, performance, infra, security incident, DR | ticket + on-call **24×7** |
 
-**On-call (ปิด OPS-03):** vendor/MSP ถือ rotation L2/L3 24×7 ตลอดสัญญาและ MA (rotation ≥ 6 คนต่อ tier ฝั่ง vendor); ทีม IT มกช. (5 → 10 คน) ถือ L1 + การตัดสินใจทางธุรกิจ และเข้าร่วม rotation แบบ shadow เพื่อ KT; escalation matrix มีชื่อและเบอร์ ทบทวนรายไตรมาส
+**กลไกปฏิบัติการของ L1 (v1.1, UX UXR-03/UXR-04):**
+- **ทุกช่องทางเปิด ticket ใน Zammad** (โทร, LINE OA chat, walk-in/assisted digital, เว็บ) — LINE OA กลางเชื่อม Zammad ผ่าน connector; แชตถูก **route ตาม OrgUnit** จาก segment/rich menu ของ LIFF ที่รู้วิทยาเขต/โรงเรียนของผู้ใช้ (ผู้ใช้ที่ยังไม่ login เลือกวิทยาเขตใน rich menu) ไปยัง group ของ agent ที่ดูแลวิทยาเขตนั้น; auto-reply แบบ keyword และลิงก์ knowledge base เป็น L0
+- Zammad มี group ต่อ OrgUnit + queue "ด่วนวันลงทะเบียน"; SLA ของ ticket ตาม SEV ด้านล่าง; รายงาน ticket ต่อ 1,000 ผู้ใช้ (KPI-44 ในเล่ม 14) ส่งเข้า ANA
+- **จุดบริการด่วนวันลงทะเบียน (UX UXR-31):** ผู้ที่ทำมือถือหาย/MFA ใช้ไม่ได้ในวัน window ยืนยันตัวตนต่อหน้าที่เคาน์เตอร์ (บัตร + ThaID ถ้าทำได้) + ผู้อนุมัติคนที่สอง → reset แล้ว **ขยาย window ของผู้นั้นอัตโนมัติ** เท่ากับเวลาที่เสียไป (บันทึกใน audit); ไม่ลดความเข้มของขั้นตอน reset
+
+**On-call (ปิด OPS-03; v1.1 ระบุขั้นต่ำตาม D-07):** vendor/MSP ถือ rotation L2/L3 24×7 ตลอดสัญญาและ MA; **ขั้นต่ำ ≥ 6 คนต่อ tier** (สัปดาห์ละ 1 คนในรอบ 6 สัปดาห์) โดยต้องมี **named engineer ≥ 3 คนที่รู้ระบบนี้** (ผ่าน KT + ซ้อม runbook) ส่วนที่เหลือมาจาก pool ของ MSP ที่ผ่านการอบรม — ถ้า MSP ไม่มี pool ร่วม MA ต่ำสุดต้องเป็น 10–12 FTE แทน 8 FTE (**หมายเหตุผลต่อ MA ในเล่ม 12 หัวข้อ 5.5**); ทีม IT มกช. (5 → 10 คน) ถือการตัดสินใจทางธุรกิจ, ops ในเวลาราชการ และเข้าร่วม rotation แบบ shadow → reverse-shadow เพื่อ KT; escalation matrix มีชื่อและเบอร์ ทบทวนรายไตรมาส
 
 **ขั้นตอนที่มีความเสี่ยงสูงที่ helpdesk (ปิด SEC-03 ส่วนปฏิบัติการ):**
 - **Reset MFA/passkey:** ต้องยืนยันตัวตนด้วย ThaID หรือมาแสดงตัวพร้อมบัตร + บันทึกเหตุผล + **ผู้อนุมัติคนที่สอง**; แจ้งเตือนเจ้าของบัญชีทุกช่องทาง; ห้ามทำผ่านโทรศัพท์อย่างเดียว
@@ -617,7 +623,7 @@ flowchart LR
 | SEV-2 | 30 นาที | 4 ชม. | 2 วันทำการ | 24×7 ในช่วงวิกฤต, นอกนั้น 07.00–22.00 น. |
 | SEV-3 | 4 ชม. | 2 วันทำการ | 10 วันทำการ | เวลาทำการ |
 | SEV-4 | 1 วันทำการ | — | release ถัดไป | เวลาทำการ |
-| Availability | 99.9% รายเดือน (journey นักศึกษา) และ 99.9% ในช่วงวิกฤต วัดด้วย synthetic ภายนอก; SLO ภายใน 99.95% สำหรับ journey ลงทะเบียน ([07](07-architecture.md) หัวข้อ 10.7) | | | service credit ตามสัญญา (ค่าปรับตามระเบียบพัสดุ **[ต้องตรวจสอบ]**) |
+| Availability | 99.9% รายเดือน (journey นักศึกษา) และ 99.9% ในช่วงวิกฤต วัดด้วย request-based SLI จาก log ของ APISIX + synthetic ภายนอก; SLO ภายใน **99.94%** สำหรับ journey ลงทะเบียนช่วงวิกฤต (v1.1 คำนวณใหม่ใน [07](07-architecture.md) หัวข้อ 10.7; เสนอ Q-90) | | | service credit ตามสัญญา (ค่าปรับตามระเบียบพัสดุ **[ต้องตรวจสอบ]**) |
 
 ---
 
@@ -635,7 +641,7 @@ flowchart LR
 | SBOM + ทะเบียน licence + obligation | CycloneDX + ตาราง | ทุก release (เงื่อนไขตรวจรับ) |
 | Test evidence (ผล load test, pen test, DR drill, ซ้อมกุญแจ) | รายงาน | ตามรอบ |
 
-**Knowledge transfer (KT) metrics:** จำนวนคนของ มกช. ที่ทำ runbook แต่ละข้อได้เอง (เป้า ≥ 80% ของ runbook หลักทำได้โดยทีม มกช. ภายใน MS-H ตามเล่ม 12), shadow → reverse-shadow ใน on-call, ทีม มกช. ทำ release ได้เองอย่างน้อย 2 ครั้งก่อนส่งมอบ
+**Knowledge transfer (KT) metrics:** จำนวนคนของ มกช. ที่ทำ runbook แต่ละข้อได้เอง (เป้า ≥ 80% ของ runbook หลักทำได้โดยทีม มกช. ภายใน MS-H ตามเล่ม 12; KPI-37 ในเล่ม 14), **(v1.1, AC A-04) bus factor ≥ 2 คนของ มกช. ต่อ runbook วิกฤต** (OpenBao restore/HSM-lost, Patroni/etcd failover/PITR, Keycloak upgrade, restore + reapply erasure) เป็นเงื่อนไข MS-W1 และทุก component ใน [07](07-architecture.md) หัวข้อ 5.3 มีผู้ดูแลหลัก/สำรอง, shadow → reverse-shadow ใน on-call, ทีม มกช. ทำ release ได้เองอย่างน้อย 2 ครั้งก่อนส่งมอบ
 
 **Independent rebuild test (ปิด OPS-05):** ก่อนรับมอบแต่ละ release และครั้งสุดท้ายก่อน **ส่งมอบ มี.ค. 2575 (MS-H)** บุคคลที่สามหรือทีม มกช. สร้าง environment ใหม่ทั้งหมดจาก repo ของ มกช. (OpenTofu + Argo CD + backup ตัวอย่าง) **โดย vendor ไม่ช่วย** ภายใน 1 วันทำการสำหรับ platform และ 3 วันรวมการ restore ข้อมูลทดสอบ; สิ่งที่ติดขัดถือเป็นข้อบกพร่องที่ vendor ต้องแก้ก่อนรับมอบ
 
@@ -659,7 +665,8 @@ flowchart LR
 | **Transition assistance** | ≥ 6 เดือนในสัญญา (ตามเล่ม 12 MS-H) เมื่อสิ้นสุดหรือเปลี่ยนผู้ดูแล: ส่งต่อ on-call, ทำ KT ให้ผู้รับช่วง, ร่วม incident ตามที่ร้องขอ |
 | **Data export ทั้งระบบ** | PostgreSQL dump (custom format + plain SQL), Parquet ต่อตาราง + data dictionary, JSON Schema ของ API/event, ไฟล์ใน object storage ตามโครงสร้างเดิม + manifest/checksum, เอกสารลงนามเป็น PDF/A + XML ขมธอ. 25-2563, BPMN/DMN XML, template HTML/CSS, audit log เป็น JSON Lines — ทั้งหมดเป็น open format |
 | ทดสอบ export | ปีละ 1 ครั้ง: export ทั้งระบบแล้วนำเข้า PostgreSQL ใหม่ + ตรวจ checksum; ผลเป็นหลักฐานใน MA |
-| ไม่ผูกผู้ให้บริการ cloud | Kubernetes มาตรฐาน, S3 API, PostgreSQL ที่ดูแลเอง, OpenTofu module แยก provider layer → ย้าย GDCC ↔ CSP ได้ (ADR-020) |
+| **กุญแจและ seal (v1.1, AC O-07)** | export มีคอลัมน์เข้ารหัสและข้อมูลใน `hlt_vault` ที่ผู้รับช่วงใช้ไม่ได้ถ้าไม่มีกุญแจ จึงมี 2 ทาง: (ก) **key handover** — ส่งมอบ escrow package + recovery keys (ซึ่งเป็นของ มกช. อยู่แล้ว) และทำ **seal migration** ไป HSM/KMS ของผู้ให้บริการใหม่ (ใช้ recovery keys authorize) (ข) **export แบบถอดรหัสใน migration enclave** ที่มี control เท่า production สำหรับผู้รับช่วงที่ใช้ schema อื่น; ใบรับรองลงนาม (e-seal) ต้องออกใหม่ถ้า HSM เปลี่ยน — ทั้งสองทางซ้อมใน export test รายปี |
+| ไม่ผูกผู้ให้บริการ cloud | Kubernetes มาตรฐาน, S3 API, PostgreSQL ที่ดูแลเอง, OpenTofu module แยก provider layer → ย้าย GDCC ↔ CSP ได้ (ADR-020) โดยต้องทำ seal migration ของ OpenBao และย้ายกุญแจลงนามตามแถวบน |
 | ผู้รับช่วงที่เป็นไปได้ | ทีม มกช. (10 คน) + MSP รายใหม่ ผ่าน TOR MA ที่ใช้ runbook และ SLA ชุดนี้ |
 | ข้อมูลผู้ใช้ภายนอก | DSR export ต่อบุคคล (PDPA) จาก PRIV ในรูป JSON/PDF |
 | สิทธิ์ที่ต้องโอนเมื่อ exit | domain, certificate, บัญชีผู้ให้บริการ, repo, registry (เป็นของ มกช. อยู่แล้วตามหัวข้อ 17) |
@@ -676,11 +683,11 @@ flowchart LR
 | ข้อ | การจัดการ | หัวข้อ |
 |---|---|---|
 | Top-2 Key backup/escrow | **แก้** ขั้นตอนซ้อมกู้รายไตรมาส + restore from zero เป็นเงื่อนไข go-live | 8 |
-| Top-7 Parallel run/rollback | **แก้** parallel run 1 ภาค + reverse-delta + rollback window ถึงวันลงทะเบียนวันแรก + เกณฑ์เชิงตัวเลข | 13.4–13.5 |
+| Top-7 Parallel run/rollback | **แก้** parallel run 1 ภาค + rollback window ถึงวันลงทะเบียนวันแรก + เกณฑ์เชิงตัวเลข (v1.1: reverse-delta เปลี่ยนเป็น shadow comparison — ดู 19.4) | 13.4–13.5 |
 | NFR-05 Ransomware RTO | **แก้** ขั้นตอน 0–72 ชม. + clean-room rebuild drill รายปี | 7.3, 7.1 |
 | NFR-06 RPO กับเลขใบเสร็จ | **แก้** runbook ชุดเลขใหม่ + reconcile; sync replication ข้าม site สำหรับ `fin` **เลื่อน** ไปผล GDCC spike (ต้องรู้ latency) | 7.2 |
 | SEC-03 (ส่วนปฏิบัติการ) | **แก้** ขั้นตอน reset MFA ที่ helpdesk | 15 |
-| SEC-05 (ส่วนตรวจจับ) | **แก้** UEBA rules 12 ข้อ | 10.3 |
+| SEC-05 (ส่วนตรวจจับ) | **แก้** UEBA rules 12 ข้อ (v1.1: 15 ข้อ) | 10.3 |
 | SEC-06 SIEM/SOC | **แก้** MSSP/SOC 24×7, MTTD ≤ 15 นาที, log sources | 9.3 |
 | SEC-07 IR vs PDPA/NCSA | **แก้** timeline, processor ≤ 24 ชม., แจ้งผู้ปกครอง, breach tabletop 2 ครั้ง/ปี; กรอบเวลา NCSA **[ต้องตรวจสอบ]** ส่งต่อเล่ม 10 | 9.2, 7.1 |
 | SEC-08 Backup immutability | **แก้** 3-2-1-1-0, compliance mode, tenant แยก, offline รายสัปดาห์, ครอบคลุม Git/registry/OpenBao/state | 6 |
@@ -689,12 +696,12 @@ flowchart LR
 | DATA-07 Test data | **แก้** synthetic เป็นค่าเริ่มต้น, migration enclave | 1 |
 | OPS-01 8 environments | **แก้** 5 ชุด | 1 |
 | OPS-02 TCO | **แก้บางส่วน** ตัวขับต้นทุน + KPI; ตัวเลขส่งต่อเล่ม 12 | 12 |
-| OPS-03 On-call | **แก้** vendor/MSP 24×7, ทีม มกช. shadow | 15 |
+| OPS-03 On-call | **แก้** vendor/MSP 24×7, ทีม มกช. shadow (v1.1 เพิ่มขั้นต่ำ — ดู 19.4) | 15 |
 | OPS-04 Release/freeze | **แก้** freeze ราย ring จากปฏิทิน, เพดาน freeze ทั้งระบบ | 5 |
 | OPS-05 Exit plan | **แก้** transition ≥ 6 เดือน, export open format, independent rebuild test, KT metrics | 16–18 |
 | OPS-06 Training | **แก้** champion 2 คน/OrgUnit, train-the-trainer, adoption KPI | 14 |
 | OPS-07 Moodle | **แก้** อยู่ใน namespace `adopted` เฉพาะเมื่อ มกช. ไม่มี instance เดิม (คำถามเล่ม 13) | 2 |
-| DEL-03 Testing strategy | **แก้** pyramid + gate 14 ชั้น | 4.1 |
+| DEL-03 Testing strategy | **แก้** pyramid + gate 14 ชั้น (v1.1: 15 ชั้น) | 4.1 |
 | DEL-04 Coverage | **แก้** mutation testing + defect escape rate | 4.1 |
 | DEL-05 Game day/chaos | **แก้** fault injection ใน registration scenario + game day ก่อนทุกช่วงลงทะเบียน | 4.2, 7.1 |
 | OBS-01 RUM | **แก้** dashboard RUM ราย OrgUnit/ISP + synthetic จากวิทยาเขต | 10 |
