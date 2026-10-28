@@ -172,15 +172,15 @@ flowchart TB
 - Provisioning ไปยัง M365/Google Workspace (SCIM), eduroam (RADIUS ผ่าน UniNet) และ Moodle; ทุกปลายทางต่างประเทศอยู่ใน cross-border transfer register ของ PRIV
 - Service account / client credentials สำหรับ adapter และบัญชี break-glass ที่ต้อง **อนุมัติ 2 คน** (จัดการผ่าน ADMIN)
 
-**Entities หลัก:** `UserAccount`, `IdentityLink(provider, subject, ial)`, `CredentialBinding`, `RoleAssignment`, `ActingAssignment`, `DelegatedAuthority`, `ExternalPerson(sponsor, valid_to)`, `RelationshipGrant`, `GuardianAccessGrant` (อนุพันธ์), `ServiceAccount`, `AccessPolicy`
+- **Entities หลัก:** `UserAccount`, `IdentityLink(provider, subject, ial)`, `CredentialBinding`, `RoleAssignment`, `ActingAssignment`, `DelegatedAuthority`, `ExternalPerson(sponsor, valid_to)`, `RelationshipGrant`, `GuardianAccessGrant` (อนุพันธ์), `ServiceAccount`, `AccessPolicy`
 
-**Events ที่ publish:** `iam.AccountProvisioned`, `iam.IdentityVerified`, `iam.AccountSuspended`, `iam.RoleAssigned`, `iam.ExternalAccessExpired`
-**Events ที่ consume:** `case.AppealFiled`, `case.AppealDecided`, `priv.AgeOfMajorityReached`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.StudentReadmitted`, `rec.ProgramTransferred`, `rec.GuardianRelationChanged`, `rec.PersonDataCorrected`, `rec.AdvisorAssigned`, `grd.DegreeConferred`, `ssc.HomeroomAssigned`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `alu.AlumnusRegistered`, `ath.CoachAssigned`, `xhr.StaffJoined`, `xhr.StaffMoved`, `xhr.StaffLeft`
+- **Events ที่ publish:** `iam.AccountProvisioned`, `iam.IdentityVerified`, `iam.AccountSuspended`, `iam.RoleAssigned`, `iam.ExternalAccessExpired`
+- **Events ที่ consume:** `case.AppealFiled`, `case.AppealDecided`, `priv.AgeOfMajorityReached`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.StudentReadmitted`, `rec.ProgramTransferred`, `rec.GuardianRelationChanged`, `rec.PersonDataCorrected`, `rec.AdvisorAssigned`, `grd.DegreeConferred`, `ssc.HomeroomAssigned`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `alu.AlumnusRegistered`, `ath.CoachAssigned`, `xhr.StaffJoined`, `xhr.StaffMoved`, `xhr.StaffLeft`
 
-**Workflow:** W-21 (ส่วนยืนยันตัวตนของผู้ยื่น), W-23 (ผลการตรวจประวัติจำกัดสิทธิ์), JML ในเล่ม 05
-**Integrations:** ThaID, DGA Digital ID (ทางเลือก), AD/LDAP, M365/Google (SCIM), eduroam/UniNet, X-HR
-**แนวทาง:** **Adopt** Keycloak + **Build** provisioning, relationship/ABAC service และ adapter ThaID
-**Release:** R1 (ผู้สมัคร, เจ้าหน้าที่รับเข้า, ThaID, MFA บุคลากร, บุคคลภายนอกสำหรับกรรมการสอบทักษะ) · R2 (นักศึกษา, ผู้ปกครอง, relationship attributes ครบ)
+- **Workflow:** W-21 (ส่วนยืนยันตัวตนของผู้ยื่น), W-23 (ผลการตรวจประวัติจำกัดสิทธิ์), JML ในเล่ม 05
+- **Integrations:** ThaID, DGA Digital ID (ทางเลือก), AD/LDAP, M365/Google (SCIM), eduroam/UniNet, X-HR
+- **แนวทาง:** **Adopt** Keycloak + **Build** provisioning, relationship/ABAC service และ adapter ThaID
+- **Release:** R1 (ผู้สมัคร, เจ้าหน้าที่รับเข้า, ThaID, MFA บุคลากร, บุคคลภายนอกสำหรับกรรมการสอบทักษะ) · R2 (นักศึกษา, ผู้ปกครอง, relationship attributes ครบ)
 
 ### 5.2 ORG — Organisation, Campus & Academic Calendar
 
@@ -198,15 +198,15 @@ flowchart TB
 - ทะเบียนอาคารและห้อง (`Building`, `Room` พร้อมเลขทะเบียนราชพัสดุและคุณลักษณะการเข้าถึงสำหรับผู้พิการ) ซึ่ง FAC ใช้ในการจอง
 - `Signatory` ต่อ OrgUnit × ประเภทเอกสาร อ้างไปยัง `DelegatedAuthority` ใน IAM (เช่น วิทยาเขตมหาสารคามให้ผู้ช่วยอธิการบดีฝ่ายวิชาการและรองอธิการบดีประจำวิทยาเขตลงนามใบรับรอง ([TNSU MK](https://tnsumk.ac.th/reg/index.php/services/registrar-services/certificate-thai)))
 
-**Entities หลัก:** `OrgUnit`, `OrgSetting`, `ExternalCode`, `ParentAgency`, `InstitutionName`, `AcademicYear`, `FiscalYear`, `AcademicCalendar`, `CalendarEvent`, `WindowException`, `BlackoutPeriod`, `Building`, `Room`, `Signatory`
+- **Entities หลัก:** `OrgUnit`, `OrgSetting`, `ExternalCode`, `ParentAgency`, `InstitutionName`, `AcademicYear`, `FiscalYear`, `AcademicCalendar`, `CalendarEvent`, `WindowException`, `BlackoutPeriod`, `Building`, `Room`, `Signatory`
 
-**Events ที่ publish:** `org.OrgUnitCreated`, `org.SettingChanged`, `org.ParentAgencyChanged`, `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `org.BlackoutPeriodSet`
-**Events ที่ consume:** `admin.ConfigChangeApproved`, `admin.OrgUnitGoLive`, `adm.RoundPublished`, `ath.CompetitionScheduled`
+- **Events ที่ publish:** `org.OrgUnitCreated`, `org.SettingChanged`, `org.ParentAgencyChanged`, `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `org.BlackoutPeriodSet`
+- **Events ที่ consume:** `admin.ConfigChangeApproved`, `admin.OrgUnitGoLive`, `adm.RoundPublished`, `ath.CompetitionScheduled`
 
-**Workflow:** ปฏิทินการศึกษา (ใหม่, เล่ม 05), W-15 (เปลี่ยนกฎวิชาการ ส่วนวันที่มีผล)
-**Integrations:** GFMIS/สำนักงบประมาณ (รหัสเป็น config), X-HR (ผังตำแหน่ง)
-**แนวทาง:** **Build**
-**Release:** R1 (OrgUnit ทุกแห่ง, ปฏิทินรอบรับสมัคร, window engine) · R2 (ปฏิทินภาคการศึกษาเต็ม, blackout) · Wave 1 (ปฏิทินโรงเรียนกีฬา)
+- **Workflow:** ปฏิทินการศึกษา (ใหม่, เล่ม 05), W-15 (เปลี่ยนกฎวิชาการ ส่วนวันที่มีผล)
+- **Integrations:** GFMIS/สำนักงบประมาณ (รหัสเป็น config), X-HR (ผังตำแหน่ง)
+- **แนวทาง:** **Build**
+- **Release:** R1 (OrgUnit ทุกแห่ง, ปฏิทินรอบรับสมัคร, window engine) · R2 (ปฏิทินภาคการศึกษาเต็ม, blackout) · Wave 1 (ปฏิทินโรงเรียนกีฬา)
 
 ### 5.3 NOTI — Notification delivery
 
@@ -221,14 +221,14 @@ flowchart TB
 - **Suppression**: เคารพ `safe.ContactRestrictionApplied`, custody restriction (`rec.GuardianRelationChanged`), ธงผู้เสียชีวิต (compassionate mode จาก `rec.StudentExited` เหตุ DECEASED ระงับข้อความอัตโนมัติทั้งหมดถึงบัญชีนั้นและผู้ปกครอง ยกเว้นข้อความที่เจ้าหน้าที่ส่งเอง)
 - Rate limit ต่อช่องทาง, retry, DLQ, delivery receipt; เป้า P0 ออกครบทุกช่องทางใน 60 วินาทีถึงผู้รับ ~25,000 คน (ความจุต่อช่องทางคำนวณในเล่ม 07)
 
-**Entities หลัก:** `NotificationRule`, `MessageTemplate(version)`, `Message`, `Delivery`, `InboxItem`, `ChannelPreference`, `ChannelBinding` (LINE userId), `QuietHoursPolicy`, `SuppressionEntry`
+- **Entities หลัก:** `NotificationRule`, `MessageTemplate(version)`, `Message`, `Delivery`, `InboxItem`, `ChannelPreference`, `ChannelBinding` (LINE userId), `QuietHoursPolicy`, `SuppressionEntry`
 
-**Events ที่ publish:** `noti.MessageDelivered`, `noti.DeliveryFailed`
-**Events ที่ consume:** `iam.AccountProvisioned`, `iam.AccountSuspended`, `eng.AnnouncementPublished`, `eng.EmergencyDeclared`, `svc.RequestSubmitted`, `svc.RequestCompleted`, `svc.RequestSlaBreached`, `svc.DigitalIdIssued`, `svc.DigitalIdRevoked`, `svc.AppointmentBooked`, `svc.QueueTicketCalled`, `case.CaseReceived`, `case.AppealDecided`, `case.CaseClosed`, `priv.AgeOfMajorityReached`, `priv.ErasureApproved`, `priv.BreachDeclared`, `rpt.ReportDue`, `rpt.ReportOverdue`, `admin.ConfigChangeApproved`, `admin.BreakGlassActivated`, `admin.JobFailed`, `adm.ApplicationSubmitted`, `adm.SkillTestSessionPlanned`, `adm.ResultsAnnounced`, `adm.OfferMade`, `adm.OfferConfirmed`, `adm.OfferDeclined`, `reg.SectionCancelled`, `att.AbsenceThresholdWarning`, `att.ExamEligibilityChanged`, `exm.ExamTimetablePublished`, `exm.ExamConflictDetected`, `exm.MakeupExamScheduled`, `exm.InvigilatorAssigned`, `asm.GradesSubmitted`, `asm.GradesPublished`, `asm.IncompleteExpired`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.StudentReadmitted`, `rec.AcademicStandingChanged`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.GuardianRelationChanged`, `rec.AdvisorAssigned`, `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `grd.CredentialIssued`, `grd.CredentialRevoked`, `grd.BadgeIssued`, `grd.CeremonyRegistrationClosed`, `grad.CommitteeAppointed`, `grad.MilestonePassed`, `pra.PlacementAssigned`, `pra.PlacementChanged`, `ssc.PromotionDecided`, `ssc.HomeroomAssigned`, `ssc.ProgressReportPublished`, `fin.InvoiceIssued`, `fin.PaymentReceived`, `fin.ReceiptIssued`, `fin.ReceiptVoided`, `fin.DebtOverdue`, `fin.DebtCleared`, `fin.PaymentPlanAgreed`, `fin.RefundPaid`, `fin.PayoutMade`, `sch.AwardGranted`, `sch.AwardSuspended`, `hou.Allocated`, `hou.CheckedIn`, `hou.CheckedOut`, `hou.LeavePassApproved`, `hou.LeavePassOverdue`, `aff.DisciplinarySanctionIssued`, `aff.MilitaryDefermentSubmitted`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `hlt.InjuryReported`, `hlt.InsuranceClaimSubmitted`, `ath.AthleteProfileCreated`, `ath.CompetitionLeaveApproved`, `ath.EligibilityConfirmed`, `ath.EligibilityFailed`, `ath.TripApproved`, `ath.TalentStageChanged`, `fac.BookingConfirmed`, `fac.BookingCancelled`, `lab.CalibrationDue`, `rev.EnrollmentConfirmed`, `xhr.ProfessionalLicenceExpiring`, `xintl.VisaExpiring`
+- **Events ที่ publish:** `noti.MessageDelivered`, `noti.DeliveryFailed`
+- **Events ที่ consume:** `iam.AccountProvisioned`, `iam.AccountSuspended`, `eng.AnnouncementPublished`, `eng.EmergencyDeclared`, `svc.RequestSubmitted`, `svc.RequestCompleted`, `svc.RequestSlaBreached`, `svc.DigitalIdIssued`, `svc.DigitalIdRevoked`, `svc.AppointmentBooked`, `svc.QueueTicketCalled`, `case.CaseReceived`, `case.AppealDecided`, `case.CaseClosed`, `priv.AgeOfMajorityReached`, `priv.ErasureApproved`, `priv.BreachDeclared`, `rpt.ReportDue`, `rpt.ReportOverdue`, `admin.ConfigChangeApproved`, `admin.BreakGlassActivated`, `admin.JobFailed`, `adm.ApplicationSubmitted`, `adm.SkillTestSessionPlanned`, `adm.ResultsAnnounced`, `adm.OfferMade`, `adm.OfferConfirmed`, `adm.OfferDeclined`, `reg.SectionCancelled`, `att.AbsenceThresholdWarning`, `att.ExamEligibilityChanged`, `exm.ExamTimetablePublished`, `exm.ExamConflictDetected`, `exm.MakeupExamScheduled`, `exm.InvigilatorAssigned`, `asm.GradesSubmitted`, `asm.GradesPublished`, `asm.IncompleteExpired`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.StudentReadmitted`, `rec.AcademicStandingChanged`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.GuardianRelationChanged`, `rec.AdvisorAssigned`, `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `grd.CredentialIssued`, `grd.CredentialRevoked`, `grd.BadgeIssued`, `grd.CeremonyRegistrationClosed`, `grad.CommitteeAppointed`, `grad.MilestonePassed`, `pra.PlacementAssigned`, `pra.PlacementChanged`, `ssc.PromotionDecided`, `ssc.HomeroomAssigned`, `ssc.ProgressReportPublished`, `fin.InvoiceIssued`, `fin.PaymentReceived`, `fin.ReceiptIssued`, `fin.ReceiptVoided`, `fin.DebtOverdue`, `fin.DebtCleared`, `fin.PaymentPlanAgreed`, `fin.RefundPaid`, `fin.PayoutMade`, `sch.AwardGranted`, `sch.AwardSuspended`, `hou.Allocated`, `hou.CheckedIn`, `hou.CheckedOut`, `hou.LeavePassApproved`, `hou.LeavePassOverdue`, `aff.DisciplinarySanctionIssued`, `aff.MilitaryDefermentSubmitted`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `hlt.InjuryReported`, `hlt.InsuranceClaimSubmitted`, `ath.AthleteProfileCreated`, `ath.CompetitionLeaveApproved`, `ath.EligibilityConfirmed`, `ath.EligibilityFailed`, `ath.TripApproved`, `ath.TalentStageChanged`, `fac.BookingConfirmed`, `fac.BookingCancelled`, `lab.CalibrationDue`, `rev.EnrollmentConfirmed`, `xhr.ProfessionalLicenceExpiring`, `xintl.VisaExpiring`
 
-**Integrations:** LINE Messaging API, SMTP relay, SMS gateway, Web Push (VAPID); FCM/APNs (สัญญาแยก)
-**แนวทาง:** **Build** (บาง) บน PostgreSQL job queue
-**Release:** R1 (in-app, อีเมล, LINE, SMS OTP) · R2 (ผู้ปกครอง, digest)
+- **Integrations:** LINE Messaging API, SMTP relay, SMS gateway, Web Push (VAPID); FCM/APNs (สัญญาแยก)
+- **แนวทาง:** **Build** (บาง) บน PostgreSQL job queue
+- **Release:** R1 (in-app, อีเมล, LINE, SMS OTP) · R2 (ผู้ปกครอง, digest)
 
 ### 5.4 ENG — News, Announcements, Events & Engagement
 
@@ -247,15 +247,15 @@ flowchart TB
 - **Journey/checklist** ที่ติดตามความคืบหน้าได้ (รายงานตัวออนไลน์, ปฐมนิเทศ, ยื่นจบ, ผ่อนผันทหาร) และ reminder จาก window ของ ORG (benchmark G5)
 - DLP check ก่อนเผยแพร่ (ตรวจรูปแบบเลขบัตร/ชื่อ + ผลการเรียน) และบังคับใส่ alt text (WCAG 2.1 AA)
 
-**Entities หลัก:** `NewsArticle`, `Announcement(no, year_be, type, signer, signature_ref, saraban_ref, supersedes_id, requires_ack, priority)`, `AudienceSegment`, `RecipientSnapshot`, `Acknowledgement`, `Event`, `EventSession`, `EventRegistration`, `Ticket`, `CheckIn`, `PermissionSlip`, `Survey`, `SurveyResponse`, `Journey`, `JourneyStep`, `EmergencyIncident`, `SafetyCheckIn`
+- **Entities หลัก:** `NewsArticle`, `Announcement(no, year_be, type, signer, signature_ref, saraban_ref, supersedes_id, requires_ack, priority)`, `AudienceSegment`, `RecipientSnapshot`, `Acknowledgement`, `Event`, `EventSession`, `EventRegistration`, `Ticket`, `CheckIn`, `PermissionSlip`, `Survey`, `SurveyResponse`, `Journey`, `JourneyStep`, `EmergencyIncident`, `SafetyCheckIn`
 
-**Events ที่ publish:** `eng.AnnouncementPublished`, `eng.AnnouncementAcknowledged`, `eng.EventCheckedIn`, `eng.EmergencyDeclared`, `eng.SurveyClosed`, `eng.PermissionSlipDecided`
-**Events ที่ consume:** `iam.RoleAssigned`, `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `noti.MessageDelivered`, `noti.DeliveryFailed`, `doc.DocumentSigned`, `doc.SentToSaraban`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `priv.ErasureApproved`, `rpt.OitItemPublished`, `admin.OrgUnitGoLive`, `adm.RoundPublished`, `adm.ResultsAnnounced`, `exm.ExamTimetablePublished`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.GuardianRelationChanged`, `grd.DegreeConferred`, `grd.CeremonyRegistrationClosed`, `fin.PaymentReceived`, `aff.ClubProjectApproved`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `alu.AlumnusRegistered`, `ath.SquadAssigned`, `ath.CompetitionScheduled`, `ath.TripApproved`, `ath.CompetitionResultRecorded`, `fac.BookingConfirmed`
+- **Events ที่ publish:** `eng.AnnouncementPublished`, `eng.AnnouncementAcknowledged`, `eng.EventCheckedIn`, `eng.EmergencyDeclared`, `eng.SurveyClosed`, `eng.PermissionSlipDecided`
+- **Events ที่ consume:** `iam.RoleAssigned`, `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `noti.MessageDelivered`, `noti.DeliveryFailed`, `doc.DocumentSigned`, `doc.SentToSaraban`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `priv.ErasureApproved`, `rpt.OitItemPublished`, `admin.OrgUnitGoLive`, `adm.RoundPublished`, `adm.ResultsAnnounced`, `exm.ExamTimetablePublished`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.GuardianRelationChanged`, `grd.DegreeConferred`, `grd.CeremonyRegistrationClosed`, `fin.PaymentReceived`, `aff.ClubProjectApproved`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `alu.AlumnusRegistered`, `ath.SquadAssigned`, `ath.CompetitionScheduled`, `ath.TripApproved`, `ath.CompetitionResultRecorded`, `fac.BookingConfirmed`
 
-**Workflow:** W-36 (ประกาศ/ประกาศฉุกเฉิน), W-47 (ปฐมนิเทศ), W-56 (ประเมินการสอน), W-60 (กิจกรรม)
-**Integrations:** NOTI, DOC/e-Saraban, X-CMS (เว็บไซต์ + หน้า OIT), FIN, FAC, AFF, PRIV
-**แนวทาง:** **Build**
-**Release:** R1 (ข่าว, ประกาศ, ประกาศผลคัดเลือก, ฉุกเฉิน P0, journey ผู้สมัคร) · R2 (กิจกรรม/check-in, survey, permission slip, journey นักศึกษาใหม่)
+- **Workflow:** W-36 (ประกาศ/ประกาศฉุกเฉิน), W-47 (ปฐมนิเทศ), W-56 (ประเมินการสอน), W-60 (กิจกรรม)
+- **Integrations:** NOTI, DOC/e-Saraban, X-CMS (เว็บไซต์ + หน้า OIT), FIN, FAC, AFF, PRIV
+- **แนวทาง:** **Build**
+- **Release:** R1 (ข่าว, ประกาศ, ประกาศผลคัดเลือก, ฉุกเฉิน P0, journey ผู้สมัคร) · R2 (กิจกรรม/check-in, survey, permission slip, journey นักศึกษาใหม่)
 
 ### 5.5 SVC — Shared Services
 
@@ -270,15 +270,15 @@ flowchart TB
 - **Booking & queue**: availability ของบุคลากร/จุดบริการ (อาจารย์ที่ปรึกษา, เคาน์เตอร์ทะเบียน, ทุน, ให้คำปรึกษา, กายภาพ, DC tutor, ประชุมผู้ปกครอง), นัดออนไลน์/วิดีโอ, drop-in queue พร้อม e-ticket และแจ้งเตือนเมื่อใกล้ถึงคิว (ช่วงรายงานตัว/รับปริญญา), สถิติ no-show; นัดหมายด้านสุขภาพ/จิตวิทยาเก็บเฉพาะ slot และจุดบริการแบบ masked ส่วนเนื้อหาอยู่ใน HLT
 - บริการทั่วไปที่ทำเป็นแบบฟอร์มได้โดยไม่ต้องมีโมดูลใหม่: ลงทะเบียนรถ/สติกเกอร์, ของหาย, ขอ IT service/licence (เชื่อม X-HELP)
 
-**Entities หลัก:** `DigitalIdCard`, `CardToken`, `ScanEvent`, `FormDefinition(version)`, `ApprovalChainTemplate`, `ServiceRequest`, `RequestStep`, `RequestReceipt`, `PaymentGate`, `ServicePoint`, `AvailabilitySlot`, `Appointment`, `QueueTicket`, `ServiceKpiSnapshot`
+- **Entities หลัก:** `DigitalIdCard`, `CardToken`, `ScanEvent`, `FormDefinition(version)`, `ApprovalChainTemplate`, `ServiceRequest`, `RequestStep`, `RequestReceipt`, `PaymentGate`, `ServicePoint`, `AvailabilitySlot`, `Appointment`, `QueueTicket`, `ServiceKpiSnapshot`
 
-**Events ที่ publish:** `svc.RequestSubmitted`, `svc.RequestCompleted`, `svc.RequestSlaBreached`, `svc.DigitalIdIssued`, `svc.DigitalIdRevoked`, `svc.AppointmentBooked`, `svc.QueueTicketCalled`
-**Events ที่ consume:** `iam.AccountProvisioned`, `iam.AccountSuspended`, `eng.SurveyClosed`, `doc.DocumentSigned`, `priv.ErasureApproved`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.PersonDataCorrected`, `grd.DegreeConferred`, `fin.PaymentReceived`
+- **Events ที่ publish:** `svc.RequestSubmitted`, `svc.RequestCompleted`, `svc.RequestSlaBreached`, `svc.DigitalIdIssued`, `svc.DigitalIdRevoked`, `svc.AppointmentBooked`, `svc.QueueTicketCalled`
+- **Events ที่ consume:** `iam.AccountProvisioned`, `iam.AccountSuspended`, `eng.SurveyClosed`, `doc.DocumentSigned`, `priv.ErasureApproved`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.PersonDataCorrected`, `grd.DegreeConferred`, `fin.PaymentReceived`
 
-**Workflow:** W-34 (คำร้องออนไลน์อื่น ๆ), W-58 (ขอเอกสาร), W-61 (นัดพบอาจารย์ที่ปรึกษา) และเป็นช่องทางยื่นของ W-03, W-05, W-10, W-24, W-25, W-27
-**Integrations:** Flowable (engine), FIN (payment gate), DOC, ธนาคารผู้ออกบัตร (export)
-**แนวทาง:** **Build** + **Adopt** Flowable engine
-**Release:** R1 บางส่วน (form builder สำหรับคำร้องของผู้สมัคร เช่น ขอยกเว้นค่าสมัคร, ใบรับ, booking สำหรับรายงานตัว) · R2 เต็ม (catalogue คำร้อง, digital ID, queue)
+- **Workflow:** W-34 (คำร้องออนไลน์อื่น ๆ), W-58 (ขอเอกสาร), W-61 (นัดพบอาจารย์ที่ปรึกษา) และเป็นช่องทางยื่นของ W-03, W-05, W-10, W-24, W-25, W-27
+- **Integrations:** Flowable (engine), FIN (payment gate), DOC, ธนาคารผู้ออกบัตร (export)
+- **แนวทาง:** **Build** + **Adopt** Flowable engine
+- **Release:** R1 บางส่วน (form builder สำหรับคำร้องของผู้สมัคร เช่น ขอยกเว้นค่าสมัคร, ใบรับ, booking สำหรับรายงานตัว) · R2 เต็ม (catalogue คำร้อง, digital ID, queue)
 
 ### 5.6 CASE — Case Management (ประตูเดียว)
 
@@ -293,15 +293,15 @@ flowchart TB
 - **Information Rights Desk**: คำขอดู/แก้/ลบข้อมูลของตนใช้ตัวเลือกฐานกฎหมาย (PDPA หรือ พ.ร.บ.ข้อมูลข่าวสารฯ หมวด 3) เพราะบางกรณีเป็นทั้งสองอย่าง เช่น ขอดูกระดาษคำตอบ (C-02); คำขอ DSR ส่ง `case.DsrReceived` ให้ PRIV ดำเนินการ และรองรับผู้ยื่นแทน (ผู้ปกครอง/ผู้รับมอบอำนาจ) พร้อมหลักฐาน (G-27)
 - เจ้าหน้าที่เห็นเฉพาะเรื่องที่ได้รับมอบหมาย; การอ่านทุกครั้ง audit; ผู้ถูกร้องไม่มีสิทธิ์เห็นเรื่อง
 
-**Entities หลัก:** `CaseFile(type, channel, anonymous_token_hash, classification, org_unit_id)`, `CaseParty`, `CaseAssignment`, `CaseDeadline`, `CaseEvidence`, `CaseDecision`, `Appeal`, `OfficialInfoRequest(exemption_basis)`, `DsrIntake(requester_type, proof_ref)`, `LegalHold`, `CaseStatsSnapshot`
+- **Entities หลัก:** `CaseFile(type, channel, anonymous_token_hash, classification, org_unit_id)`, `CaseParty`, `CaseAssignment`, `CaseDeadline`, `CaseEvidence`, `CaseDecision`, `Appeal`, `OfficialInfoRequest(exemption_basis)`, `DsrIntake(requester_type, proof_ref)`, `LegalHold`, `CaseStatsSnapshot`
 
-**Events ที่ publish:** `case.CaseReceived`, `case.CaseRoutedToSafeguarding`, `case.DisciplinaryReferralMade`, `case.AppealFiled`, `case.AppealDecided`, `case.OfficialInfoRequestReceived`, `case.DsrReceived`, `case.CaseClosed`
-**Events ที่ consume:** `priv.DsrFulfilled`
+- **Events ที่ publish:** `case.CaseReceived`, `case.CaseRoutedToSafeguarding`, `case.DisciplinaryReferralMade`, `case.AppealFiled`, `case.AppealDecided`, `case.OfficialInfoRequestReceived`, `case.DsrReceived`, `case.CaseClosed`
+- **Events ที่ consume:** `priv.DsrFulfilled`
 
-**Workflow:** W-16, W-17, W-18, W-19, W-20, W-21 (ส่วนรับเรื่อง)
-**Integrations:** ThaID (ยืนยันตัวผู้ยื่น), e-Saraban (ผ่าน DOC), ช่องทางภายนอก ป.ป.ท./ผู้ตรวจการแผ่นดิน (ส่งต่อแบบเอกสาร)
-**แนวทาง:** **Build**
-**Release:** R1 (ร้องเรียน/แจ้งเบาะแส, อุทธรณ์ผลคัดเลือก, OIR) · R2 เต็ม (อุทธรณ์ทุกประเภท, DSR intake)
+- **Workflow:** W-16, W-17, W-18, W-19, W-20, W-21 (ส่วนรับเรื่อง)
+- **Integrations:** ThaID (ยืนยันตัวผู้ยื่น), e-Saraban (ผ่าน DOC), ช่องทางภายนอก ป.ป.ท./ผู้ตรวจการแผ่นดิน (ส่งต่อแบบเอกสาร)
+- **แนวทาง:** **Build**
+- **Release:** R1 (ร้องเรียน/แจ้งเบาะแส, อุทธรณ์ผลคัดเลือก, OIR) · R2 เต็ม (อุทธรณ์ทุกประเภท, DSR intake)
 
 ### 5.7 DOC — Documents, Thai PDF engine & e-Signature
 
@@ -318,15 +318,15 @@ flowchart TB
 - **Records management**: `RetentionClass` ต่อประเภทเอกสาร, workflow **บัญชีขอทำลาย/คณะกรรมการทำลาย/ส่งมอบหอจดหมายเหตุ** (W-40) และ archival package (PDF/A + XML metadata + checksum) (C-23)
 - **Digitisation queue** สำหรับเอกสารกระดาษเดิม (ทะเบียนก่อนยุคดิจิทัลของสถาบันการพลศึกษา) พร้อมการรับรองสำเนา (G-17, C-20)
 
-**Entities หลัก:** `DocumentTemplate`, `TemplateVersion`, `GeneratedDocument`, `SignaturePolicy`, `SignatureRequest`, `SignatureRecord`, `TimestampToken`, `LtvRenewalJob`, `SarabanReference`, `SecrecyMarking`, `RetentionClass`, `DisposalBatch`, `ArchivalPackage`, `VerificationRecord`, `DigitisationTask`, `AdministrativeOrder(notice_of_rights, served_at)`
+- **Entities หลัก:** `DocumentTemplate`, `TemplateVersion`, `GeneratedDocument`, `SignaturePolicy`, `SignatureRequest`, `SignatureRecord`, `TimestampToken`, `LtvRenewalJob`, `SarabanReference`, `SecrecyMarking`, `RetentionClass`, `DisposalBatch`, `ArchivalPackage`, `VerificationRecord`, `DigitisationTask`, `AdministrativeOrder(notice_of_rights, served_at)`
 
-**Events ที่ publish:** `doc.DocumentSigned`, `doc.SentToSaraban`, `doc.SignatureRenewalDue`, `doc.DisposalApproved`
-**Events ที่ consume:** `org.SettingChanged`, `org.ParentAgencyChanged`, `grd.CredentialRevoked`, `grad.CommitteeAppointed`, `pra.PlacementAssigned`, `ssc.BasicEdCompleted`, `aff.MilitaryDefermentSubmitted`, `aff.MilitaryDefermentEnded`, `ath.EligibilityConfirmed`
+- **Events ที่ publish:** `doc.DocumentSigned`, `doc.SentToSaraban`, `doc.SignatureRenewalDue`, `doc.DisposalApproved`
+- **Events ที่ consume:** `org.SettingChanged`, `org.ParentAgencyChanged`, `grd.CredentialRevoked`, `grad.CommitteeAppointed`, `pra.PlacementAssigned`, `ssc.BasicEdCompleted`, `aff.MilitaryDefermentSubmitted`, `aff.MilitaryDefermentEnded`, `ath.EligibilityConfirmed`
 
-**Workflow:** W-40, W-58 (ส่วนผลิต), W-11 (คำสั่งพ้นสภาพ)
-**Integrations:** e-Saraban ของ มกช. (interface **[ต้องตรวจสอบ]**), CA/TSA ภายใต้ NRCA, HSM, ETDA/DGA verification, หอจดหมายเหตุ
-**แนวทาง:** **Build** wrapper + **Adopt** engine และ signing library ที่อยู่ใน licence allow-list (ตัวเลือกใน ADR เล่ม 07)
-**Release:** R1 (ใบเสร็จค่าสมัคร, ประกาศผล, บัตรประจำตัวสอบ) · R2 (เอกสารมาตรฐาน: หนังสือรับรอง, transcript ไม่สมบูรณ์, คำสั่ง, e-Saraban) · R3 (credential ระดับ 3, LTV) · Wave 1 (ปพ.)
+- **Workflow:** W-40, W-58 (ส่วนผลิต), W-11 (คำสั่งพ้นสภาพ)
+- **Integrations:** e-Saraban ของ มกช. (interface **[ต้องตรวจสอบ]**), CA/TSA ภายใต้ NRCA, HSM, ETDA/DGA verification, หอจดหมายเหตุ
+- **แนวทาง:** **Build** wrapper + **Adopt** engine และ signing library ที่อยู่ใน licence allow-list (ตัวเลือกใน ADR เล่ม 07)
+- **Release:** R1 (ใบเสร็จค่าสมัคร, ประกาศผล, บัตรประจำตัวสอบ) · R2 (เอกสารมาตรฐาน: หนังสือรับรอง, transcript ไม่สมบูรณ์, คำสั่ง, e-Saraban) · R3 (credential ระดับ 3, LTV) · Wave 1 (ปพ.)
 
 > **หมายเหตุถึงเล่ม 12:** R1 ต้องมี engine ขั้นต่ำของ DOC (ใบเสร็จ, ประกาศ, บัตรสอบ) เพราะ FIN/ENG/ADM ใน R1 ใช้งาน แม้ blueprint ระบุ DOC ใน R2 (R2 = ชุดเอกสารมาตรฐานเต็ม)
 
@@ -346,15 +346,15 @@ flowchart TB
 - **Research use gate**: การใช้ข้อมูล ATH/LAB/HLT เพื่อวิจัยต้องมี ethics approval ref (จาก X-RES หรือบันทึกด้วยมือก่อนมี X-RES) + consent เฉพาะ + pseudonymisation (C-22, G-27)
 - ธงผู้เสียชีวิตและ retention ของข้อมูลผู้เสียชีวิต (G-05)
 
-**Entities หลัก:** `Purpose`, `LawfulBasisMapping`, `PrivacyNotice(version)`, `Consent`, `ConsentPolicyRule`, `GuardianConsent`, `DsrExecution`, `RopaEntry`, `Dpia`, `DataSharingAgreement`, `ProcessorAgreement`, `CrossBorderTransfer`, `BreachIncident`, `ErasureJob`, `ResearchUseApproval`
+- **Entities หลัก:** `Purpose`, `LawfulBasisMapping`, `PrivacyNotice(version)`, `Consent`, `ConsentPolicyRule`, `GuardianConsent`, `DsrExecution`, `RopaEntry`, `Dpia`, `DataSharingAgreement`, `ProcessorAgreement`, `CrossBorderTransfer`, `BreachIncident`, `ErasureJob`, `ResearchUseApproval`
 
-**Events ที่ publish:** `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `priv.AgeOfMajorityReached`, `priv.ErasureApproved`, `priv.DsrFulfilled`, `priv.BreachDeclared`
-**Events ที่ consume:** `iam.IdentityVerified`, `case.DsrReceived`, `doc.DisposalApproved`, `aud.AnomalyDetected`, `admin.BreakGlassActivated`, `adm.ApplicationSubmitted`, `rec.StudentMatriculated`, `rec.StudentExited`, `rec.GuardianRelationChanged`, `xres.EthicsApprovalGranted`
+- **Events ที่ publish:** `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `priv.AgeOfMajorityReached`, `priv.ErasureApproved`, `priv.DsrFulfilled`, `priv.BreachDeclared`
+- **Events ที่ consume:** `iam.IdentityVerified`, `case.DsrReceived`, `doc.DisposalApproved`, `aud.AnomalyDetected`, `admin.BreakGlassActivated`, `adm.ApplicationSubmitted`, `rec.StudentMatriculated`, `rec.StudentExited`, `rec.GuardianRelationChanged`, `xres.EthicsApprovalGranted`
 
-**Workflow:** W-21 (ดำเนินการ DSR)
-**Integrations:** สคส. (ช่องทางแจ้งเหตุ **[ต้องตรวจสอบ]**), สกมช.
-**แนวทาง:** **Build**
-**Release:** R1 (notice, consent ผู้สมัครผู้เยาว์, ROPA/DPIA register, cross-border register) · R2 (DSR execution, research gate, ผู้ปกครองครบ)
+- **Workflow:** W-21 (ดำเนินการ DSR)
+- **Integrations:** สคส. (ช่องทางแจ้งเหตุ **[ต้องตรวจสอบ]**), สกมช.
+- **แนวทาง:** **Build**
+- **Release:** R1 (notice, consent ผู้สมัครผู้เยาว์, ROPA/DPIA register, cross-border register) · R2 (DSR execution, research gate, ผู้ปกครองครบ)
 
 ### 5.9 AUD — Audit
 
@@ -369,14 +369,14 @@ flowchart TB
 - รายงาน access review รายไตรมาส และ **auditor export package** (CSV + hash + data dictionary) สำหรับ สตง./ผู้ตรวจสอบภายใน (C-36)
 - ค้นหา audit ใน PostgreSQL partition (ไม่ใช้ OpenSearch ตาม Minimum Operable Stack) และส่งต่อ SIEM/SOC
 
-**Entities หลัก:** `AuditEvent(actor, on_behalf_of, action, resource, org_unit_id, purpose, ip, trace_id, prev_hash)`, `AuditPartitionSeal`, `IntegrityCheckRun`, `AnomalyRule`, `AnomalyFinding`, `AccessReview`, `AuditorExport`
+- **Entities หลัก:** `AuditEvent(actor, on_behalf_of, action, resource, org_unit_id, purpose, ip, trace_id, prev_hash)`, `AuditPartitionSeal`, `IntegrityCheckRun`, `AnomalyRule`, `AnomalyFinding`, `AccessReview`, `AuditorExport`
 
-**Events ที่ publish:** `aud.AnomalyDetected`
-**Events ที่ consume:** — (ไม่ consume domain event) (รับ audit stream จากทุกโมดูลผ่าน library ไม่ใช่ domain event)
+- **Events ที่ publish:** `aud.AnomalyDetected`
+- **Events ที่ consume:** — (ไม่ consume domain event) (รับ audit stream จากทุกโมดูลผ่าน library ไม่ใช่ domain event)
 
-**Integrations:** SIEM/MSSP (syslog/OTLP)
-**แนวทาง:** **Build** + **Adopt** pgaudit
-**Release:** R1
+- **Integrations:** SIEM/MSSP (syslog/OTLP)
+- **แนวทาง:** **Build** + **Adopt** pgaudit
+- **Release:** R1
 
 ### 5.10 ANA — Analytics & BI
 
@@ -392,12 +392,12 @@ flowchart TB
 
 **Entities หลัก (warehouse):** `fct_enrollment`, `fct_grade`, `fct_payment`, `fct_application`, `fct_activity_hours`, `fct_training_load_pseudo`, `dim_student` (pseudonymised), `dim_program`, `dim_org_unit`, `dim_term`, `mart_qa_*`, `mart_ita_*`, `ExportRequest`, `DatasetCatalogEntry` (dbt docs)
 
-**Events ที่ publish:** `ana.MartRefreshed`
-**Events ที่ consume:** `org.OrgUnitCreated`, `priv.ConsentWithdrawn`, `priv.ErasureApproved`, `rpt.CensusSnapshotTaken`, `asm.CloResultsComputed`, `lms.EngagementSnapshot`, `fin.FiscalPeriodClosed`, `alu.EmploymentSurveyCompleted`
+- **Events ที่ publish:** `ana.MartRefreshed`
+- **Events ที่ consume:** `org.OrgUnitCreated`, `priv.ConsentWithdrawn`, `priv.ErasureApproved`, `rpt.CensusSnapshotTaken`, `asm.CloResultsComputed`, `lms.EngagementSnapshot`, `fin.FiscalPeriodClosed`, `alu.EmploymentSurveyCompleted`
 
-**Integrations:** data.go.th/GD Catalog (metadata, ร่าง **[ต้องตรวจสอบ]**)
-**แนวทาง:** **Adopt** Superset + dbt + **Build** models
-**Release:** R2 (core dashboards + marts ที่ RPT ใช้) · R3/Wave (ขยาย)
+- **Integrations:** data.go.th/GD Catalog (metadata, ร่าง **[ต้องตรวจสอบ]**)
+- **แนวทาง:** **Adopt** Superset + dbt + **Build** models
+- **Release:** R2 (core dashboards + marts ที่ RPT ใช้) · R3/Wave (ขยาย)
 
 ### 5.11 RPT — Regulatory Reporting Hub
 
@@ -413,15 +413,15 @@ flowchart TB
 - **QA workspace**: `QaCycle`, SAR ระดับหลักสูตร/คณะ (CUPT QA/AUN-QA สำหรับอุดมศึกษา และ สมศ. สำหรับโรงเรียนกีฬา), คลังหลักฐานที่ลิงก์ไปยัง dataset ของ ANA, กรรมการประเมิน, แผนพัฒนา (G-19)
 - **Regulation register**: ข้อบังคับ/ประกาศของมหาวิทยาลัยพร้อมการอ้างราชกิจจานุเบกษา (เล่ม/ตอน/หน้า) และ PolicySet ที่อ้างถึง (C-05)
 
-**Entities หลัก:** `RegulatoryObligation`, `ReportDefinition`, `ReportTemplateVersion`, `ReportRun`, `ValidationResult`, `SubmissionEvidence`, `CensusSnapshot`, `FtesComputation`, `OitItem`, `OitSnapshot`, `KpiIndicator`, `KpiMeasurement`, `QaCycle`, `SelfAssessmentReport`, `QaEvidence`, `RegulationRegisterEntry`
+- **Entities หลัก:** `RegulatoryObligation`, `ReportDefinition`, `ReportTemplateVersion`, `ReportRun`, `ValidationResult`, `SubmissionEvidence`, `CensusSnapshot`, `FtesComputation`, `OitItem`, `OitSnapshot`, `KpiIndicator`, `KpiMeasurement`, `QaCycle`, `SelfAssessmentReport`, `QaEvidence`, `RegulationRegisterEntry`
 
-**Events ที่ publish:** `rpt.CensusSnapshotTaken`, `rpt.ReportDue`, `rpt.ReportOverdue`, `rpt.OitItemPublished`
-**Events ที่ consume:** `org.OrgUnitCreated`, `org.ParentAgencyChanged`, `eng.AnnouncementPublished`, `eng.SurveyClosed`, `svc.RequestSubmitted`, `svc.RequestCompleted`, `case.CaseReceived`, `case.OfficialInfoRequestReceived`, `case.CaseClosed`, `priv.BreachDeclared`, `ana.MartRefreshed`, `admin.OrgUnitGoLive`, `cur.CurriculumVersionApproved`, `cur.ProgramOfferingOpened`, `reg.TermRegistrationClosed`, `grd.DegreeConferred`, `fin.ReceiptVoided`, `fin.WriteOffApproved`, `fin.FiscalPeriodClosed`, `safe.AgencyReferralMade`, `alu.EmploymentSurveyCompleted`, `ath.CompetitionResultRecorded`, `xhelp.TicketResolved`, `xplan.KpiTargetSet`
+- **Events ที่ publish:** `rpt.CensusSnapshotTaken`, `rpt.ReportDue`, `rpt.ReportOverdue`, `rpt.OitItemPublished`
+- **Events ที่ consume:** `org.OrgUnitCreated`, `org.ParentAgencyChanged`, `eng.AnnouncementPublished`, `eng.SurveyClosed`, `svc.RequestSubmitted`, `svc.RequestCompleted`, `case.CaseReceived`, `case.OfficialInfoRequestReceived`, `case.CaseClosed`, `priv.BreachDeclared`, `ana.MartRefreshed`, `admin.OrgUnitGoLive`, `cur.CurriculumVersionApproved`, `cur.ProgramOfferingOpened`, `reg.TermRegistrationClosed`, `grd.DegreeConferred`, `fin.ReceiptVoided`, `fin.WriteOffApproved`, `fin.FiscalPeriodClosed`, `safe.AgencyReferralMade`, `alu.EmploymentSurveyCompleted`, `ath.CompetitionResultRecorded`, `xhelp.TicketResolved`, `xplan.KpiTargetSet`
 
-**Workflow:** W-35 (ส่งรายงานให้หน่วยงานรัฐ)
-**Integrations:** สป.อว. (HEdata, ภาวะการมีงานทำ, CHECO), ITAS ของสำนักงาน ป.ป.ช., คุรุสภา, สพฐ./สทศ. (ถ้ามีภาระ), กองทุนพัฒนาการกีฬาแห่งชาติ — ส่วนใหญ่เป็น portal/ไฟล์ (เล่ม 09)
-**แนวทาง:** **Build**
-**Release:** R1 (OIT item registry + snapshot สำหรับหน้า ITA disclosure) · R2 core (obligation registry, census, HEdata, KPI) · R3 (QA workspace)
+- **Workflow:** W-35 (ส่งรายงานให้หน่วยงานรัฐ)
+- **Integrations:** สป.อว. (HEdata, ภาวะการมีงานทำ, CHECO), ITAS ของสำนักงาน ป.ป.ช., คุรุสภา, สพฐ./สทศ. (ถ้ามีภาระ), กองทุนพัฒนาการกีฬาแห่งชาติ — ส่วนใหญ่เป็น portal/ไฟล์ (เล่ม 09)
+- **แนวทาง:** **Build**
+- **Release:** R1 (OIT item registry + snapshot สำหรับหน้า ITA disclosure) · R2 core (obligation registry, census, HEdata, KPI) · R3 (QA workspace)
 
 ### 5.12 ADMIN — Admin Console / Platform Ops
 
@@ -438,14 +438,14 @@ flowchart TB
 - Job scheduler & integration monitor (สถานะ batch กยศ./TCAS/ธนาคาร/GFMIS/สป.อว., DLQ replay), system health (ฝัง Grafana), feature flags (flagd/config ใน Git), cost dashboard, หน้าจอบันทึกบุคลากรขั้นต่ำก่อนมี X-HR
 - ไม่มีหน้าจอสร้างประกาศ (เป็นของ ENG) มีเพียงการตั้งค่าช่องทางของ NOTI
 
-**Entities หลัก:** `AdminChangeRequest(type, diff, maker, checker, state)`, `ReleaseRing`, `FeatureFlag`, `JitGrant`, `BreakGlassSession(approver_1, approver_2)`, `RecertCampaign`, `CalendarOperation`, `RolloverChecklistItem`, `DataFixRequest`, `JobRun`, `IntegrationRun`, `CostRecord`, `MinimalStaffRecord`
+- **Entities หลัก:** `AdminChangeRequest(type, diff, maker, checker, state)`, `ReleaseRing`, `FeatureFlag`, `JitGrant`, `BreakGlassSession(approver_1, approver_2)`, `RecertCampaign`, `CalendarOperation`, `RolloverChecklistItem`, `DataFixRequest`, `JobRun`, `IntegrationRun`, `CostRecord`, `MinimalStaffRecord`
 
-**Events ที่ publish:** `admin.ConfigChangeApproved`, `admin.BreakGlassActivated`, `admin.JobFailed`, `admin.OrgUnitGoLive`
-**Events ที่ consume:** `iam.RoleAssigned`, `iam.ExternalAccessExpired`, `org.OrgUnitCreated`, `org.CalendarPublished`, `org.BlackoutPeriodSet`, `noti.DeliveryFailed`, `svc.RequestSlaBreached`, `doc.SignatureRenewalDue`, `doc.DisposalApproved`, `priv.BreachDeclared`, `aud.AnomalyDetected`, `rpt.ReportOverdue`
+- **Events ที่ publish:** `admin.ConfigChangeApproved`, `admin.BreakGlassActivated`, `admin.JobFailed`, `admin.OrgUnitGoLive`
+- **Events ที่ consume:** `iam.RoleAssigned`, `iam.ExternalAccessExpired`, `org.OrgUnitCreated`, `org.AcademicCalendarPublished`, `org.BlackoutPeriodSet`, `noti.DeliveryFailed`, `svc.RequestSlaBreached`, `doc.SignatureRenewalDue`, `doc.DisposalApproved`, `priv.BreachDeclared`, `aud.AnomalyDetected`, `rpt.ReportOverdue`
 
-**Integrations:** Keycloak Admin API, Argo CD, OpenBao, Grafana, PAM tool
-**แนวทาง:** **Build** + **Adopt**
-**Release:** R1 ขั้นต่ำ (4-eyes config, job monitor, break-glass, onboarding 2 วิทยาเขต pilot) · R2 (policy console, rollover orchestrator, data-fix)
+- **Integrations:** Keycloak Admin API, Argo CD, OpenBao, Grafana, PAM tool
+- **แนวทาง:** **Build** + **Adopt**
+- **Release:** R1 ขั้นต่ำ (4-eyes config, job monitor, break-glass, onboarding 2 วิทยาเขต pilot) · R2 (policy console, rollover orchestrator, data-fix)
 
 > **หมายเหตุถึงเล่ม 12:** blueprint R1 ไม่ได้ระบุ ADMIN แต่ R1 ใช้งานจริงไม่ได้หากไม่มีส่วนขั้นต่ำข้างต้น จึงถือเป็นส่วนหนึ่งของ platform baseline ของ R1
 
@@ -472,15 +472,15 @@ flowchart TB
 - ช่องทาง **feeder จากโรงเรียนกีฬา** (ดึงผลงาน/ผลการเรียนเมื่อได้รับ consent; `ssc.BasicEdCompleted`, `ath.TalentStageChanged`), **บัณฑิตศึกษา** (rolling หลายรอบ, ภาคปกติ/พิเศษ, ทรานสคริปต์, หลักฐานภาษา, concept paper), **เทียบโอน/โอนย้าย** (ส่ง CUR ประเมินการเทียบโอน), **กลับเข้าศึกษาใหม่** (REC ผูกประวัติเดิม)
 - อุทธรณ์ผลคัดเลือกผ่าน CASE (W-18) ภายในกรอบเวลา โดยใช้ score lock และ audit เป็นหลักฐาน
 
-**Entities หลัก:** `AdmissionCycle`, `AdmissionChannel`, `AdmissionRound`, `AdmissionPlan`, `SeatQuota`, `ScoringScheme`, `Rubric`, `RubricItem`, `Applicant` (บทบาทของ Person), `Application`, `ApplicationChoice`, `ApplicationDocument`, `VerificationTask`, `SportAchievement`, `FeeWaiverRequest`, `AdmissionTestSession`, `TestStation`, `JudgePanel`, `JudgeAssignment`, `ConflictDeclaration`, `JudgeScore`, `ScoreModeration`, `CompositeScore`, `RankList`, `Offer`, `ReserveList`, `ClearingRun`, `TestIncident`, `TcasSyncBatch`, `QualificationEquivalence`
+- **Entities หลัก:** `AdmissionCycle`, `AdmissionChannel`, `AdmissionRound`, `AdmissionPlan`, `SeatQuota`, `ScoringScheme`, `Rubric`, `RubricItem`, `Applicant` (บทบาทของ Person), `Application`, `ApplicationChoice`, `ApplicationDocument`, `VerificationTask`, `SportAchievement`, `FeeWaiverRequest`, `AdmissionTestSession`, `TestStation`, `JudgePanel`, `JudgeAssignment`, `ConflictDeclaration`, `JudgeScore`, `ScoreModeration`, `CompositeScore`, `RankList`, `Offer`, `ReserveList`, `ClearingRun`, `TestIncident`, `TcasSyncBatch`, `QualificationEquivalence`
 
-**Events ที่ publish:** `adm.RoundPublished`, `adm.ApplicationSubmitted`, `adm.ApplicationFeeWaived`, `adm.SkillTestSessionPlanned`, `adm.ResultsAnnounced`, `adm.OfferMade`, `adm.OfferConfirmed`, `adm.OfferDeclined`, `adm.AccommodationRequested`
-**Events ที่ consume:** `iam.IdentityVerified`, `iam.ExternalAccessExpired`, `org.SettingChanged`, `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `case.AppealFiled`, `case.AppealDecided`, `priv.GuardianConsentDecided`, `priv.ErasureApproved`, `admin.ConfigChangeApproved`, `cur.ProgramOfferingOpened`, `cur.ProgramOfferingClosed`, `cur.AccreditedIntakeCapSet`, `ssc.BasicEdCompleted`, `fin.PaymentReceived`, `aff.AccommodationGranted`, `hlt.MedicalClearanceChanged`, `ath.TalentStageChanged`, `fac.BookingConfirmed`, `fac.BookingCancelled`
+- **Events ที่ publish:** `adm.RoundPublished`, `adm.ApplicationSubmitted`, `adm.ApplicationFeeWaived`, `adm.SkillTestSessionPlanned`, `adm.ResultsAnnounced`, `adm.OfferMade`, `adm.OfferConfirmed`, `adm.OfferDeclined`, `adm.AccommodationRequested`
+- **Events ที่ consume:** `iam.IdentityVerified`, `iam.ExternalAccessExpired`, `org.SettingChanged`, `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `case.AppealFiled`, `case.AppealDecided`, `priv.GuardianConsentDecided`, `priv.ErasureApproved`, `admin.ConfigChangeApproved`, `cur.ProgramOfferingOpened`, `cur.ProgramOfferingClosed`, `cur.AccreditedIntakeCapSet`, `ssc.BasicEdCompleted`, `fin.PaymentReceived`, `aff.AccommodationGranted`, `hlt.MedicalClearanceChanged`, `ath.TalentStageChanged`, `fac.BookingConfirmed`, `fac.BookingCancelled`
 
-**Workflow:** W-41, W-42, W-43, W-18 และ workflow ใหม่ของเล่ม 05: ตั้งค่าและประกาศรอบรายวิทยาเขต, clearing ข้ามวิทยาเขต, ให้คะแนนสอบทักษะหลายกรรมการ + moderation, รับนักเรียนโรงเรียนกีฬา ม.1/ม.4, รับ ป.โท/เอก, โอนย้าย/เทียบโอนจาก ปวส., ผู้สมัครพิการ, ผู้สมัครต่างชาติ
-**Integrations:** ThaID, ธนาคาร/Thai QR (ผ่าน FIN), TCAS (ทางเลือก), X-CMS (หน้าประกาศสาธารณะ), สมาคมกีฬา/กกท. (ตรวจหลักฐาน, portal/หนังสือ)
-**แนวทาง:** **Build**
-**Release:** R1 (2 วิทยาเขต pilot สำหรับรอบโควตา ต.ค. 2571 ของปีการศึกษา 2572 และรอบทั่วไปถัดไป) · Wave 1/2 ขยายวิทยาเขต · Wave 1 ช่องทางโรงเรียนกีฬา
+- **Workflow:** W-41, W-42, W-43, W-18 และ workflow ใหม่ของเล่ม 05: ตั้งค่าและประกาศรอบรายวิทยาเขต, clearing ข้ามวิทยาเขต, ให้คะแนนสอบทักษะหลายกรรมการ + moderation, รับนักเรียนโรงเรียนกีฬา ม.1/ม.4, รับ ป.โท/เอก, โอนย้าย/เทียบโอนจาก ปวส., ผู้สมัครพิการ, ผู้สมัครต่างชาติ
+- **Integrations:** ThaID, ธนาคาร/Thai QR (ผ่าน FIN), TCAS (ทางเลือก), X-CMS (หน้าประกาศสาธารณะ), สมาคมกีฬา/กกท. (ตรวจหลักฐาน, portal/หนังสือ)
+- **แนวทาง:** **Build**
+- **Release:** R1 (2 วิทยาเขต pilot สำหรับรอบโควตา ต.ค. 2571 ของปีการศึกษา 2572 และรอบทั่วไปถัดไป) · Wave 1/2 ขยายวิทยาเขต · Wave 1 ช่องทางโรงเรียนกีฬา
 
 > **คำถามเปิด (ส่งเล่ม 13):** ถ้าวิทยาเขต pilot ต้องออกรหัสนักศึกษาทันทีหลังยืนยันสิทธิ์รอบโควตา (ม.ค. 2572) ก่อน R2 ต้องย้ายความสามารถ "ออกรหัส + Student record ขั้นต่ำ" ของ REC มาไว้ใน R1 หรือให้ ADM จองเลขจาก ID scheme ของ ORG ไว้ก่อน **[ต้องตรวจสอบ]**
 
@@ -499,15 +499,15 @@ flowchart TB
 - Catalogue ของ **profile BASIC_ED** (กลุ่มสาระ, ตัวชี้วัด, รายวิชาพื้นฐาน/เพิ่มเติม, ชั่วโมง/หน่วยกิตตามโครงสร้าง) สำหรับ SSC
 - บันทึกมติสภาแบบ manual (เลขที่/วันที่ + แนบรายงานการประชุม + 4-eyes) จนกว่าจะมี X-MEET (G-28)
 
-**Entities หลัก:** `Program`, `CurriculumVersion`, `CurriculumBlock`, `Course`, `CourseVersion`, `Requisite`, `EquivalenceRule`, `Plo`, `Clo`, `CloMapping(level)`, `CourseSpecDocument`, `ProgramOffering`, `ProgramFaculty`, `AccreditedIntakeCap`, `TransferRule`, `CreditTransferEvaluation`, `CreditBankEntry`, `ProgramClosure`, `LearningArea`, `Indicator`
+- **Entities หลัก:** `Program`, `CurriculumVersion`, `CurriculumBlock`, `Course`, `CourseVersion`, `Requisite`, `EquivalenceRule`, `Plo`, `Clo`, `CloMapping(level)`, `CourseSpecDocument`, `ProgramOffering`, `ProgramFaculty`, `AccreditedIntakeCap`, `TransferRule`, `CreditTransferEvaluation`, `CreditBankEntry`, `ProgramClosure`, `LearningArea`, `Indicator`
 
-**Events ที่ publish:** `cur.CurriculumVersionApproved`, `cur.CourseVersionPublished`, `cur.ProgramOfferingOpened`, `cur.ProgramOfferingClosed`, `cur.AccreditedIntakeCapSet`
-**Events ที่ consume:** `asm.CloResultsComputed`, `rev.CompletionRecorded`, `xmeet.ResolutionRecorded`
+- **Events ที่ publish:** `cur.CurriculumVersionApproved`, `cur.CourseVersionPublished`, `cur.ProgramOfferingOpened`, `cur.ProgramOfferingClosed`, `cur.AccreditedIntakeCapSet`
+- **Events ที่ consume:** `asm.CloResultsComputed`, `rev.CompletionRecorded`, `xmeet.ResolutionRecorded`
 
-**Workflow:** W-08 (ปรับปรุงหลักสูตร), W-25 (เทียบโอน ส่วนประเมิน)
-**Integrations:** CHECO (export/portal), คุรุสภา (รหัสหลักสูตรที่รับรอง), Thai MOOC/NCBS (**[ต้องตรวจสอบ]**)
-**แนวทาง:** **Build**
-**Release:** R1 ขั้นต่ำ (`Program`/`ProgramOffering`/cap ของ 2 วิทยาเขต pilot ที่ ADM ต้องใช้) · R2 เต็ม · Wave 1 (BASIC_ED catalogue)
+- **Workflow:** W-08 (ปรับปรุงหลักสูตร), W-25 (เทียบโอน ส่วนประเมิน)
+- **Integrations:** CHECO (export/portal), คุรุสภา (รหัสหลักสูตรที่รับรอง), Thai MOOC/NCBS (**[ต้องตรวจสอบ]**)
+- **แนวทาง:** **Build**
+- **Release:** R1 ขั้นต่ำ (`Program`/`ProgramOffering`/cap ของ 2 วิทยาเขต pilot ที่ ADM ต้องใช้) · R2 เต็ม · Wave 1 (BASIC_ED catalogue)
 
 ### 6.3 REG — Course Registration & Timetable
 
@@ -521,15 +521,15 @@ flowchart TB
 - Add/drop/W และลงเกิน/ต่ำกว่าเกณฑ์ผ่านคำร้องใน SVC (อนุมัติโดยอาจารย์ที่ปรึกษา/ผู้สอน), เจ้าหน้าที่ลงทะเบียนแทน, **ลงทะเบียนล่าช้าพร้อมค่าปรับ 2 แบบ (รายวัน/เหมาครั้งเดียว)** ตาม `FinePolicy` (blueprint ข้อ 2.8) ส่งให้ FIN
 - ผลต่อสิทธิ์อื่น: การถอน W ตรวจผลต่อทุน/กยศ./สิทธิ์นักกีฬา (eligibility) ก่อนยืนยัน
 
-**Entities หลัก:** `Term` (อ้าง ORG), `OfferingPlan`, `TeachingAssignment`, `Section`, `Meeting`, `SeatPool`, `SeatReservation`, `EligibilitySnapshot`, `RegistrationCart`, `Enrollment(home_org_unit_id, host_org_unit_id)`, `Waitlist`, `SectionCancellation`, `RegistrationOverride`
+- **Entities หลัก:** `Term` (อ้าง ORG), `OfferingPlan`, `TeachingAssignment`, `Section`, `Meeting`, `SeatPool`, `SeatReservation`, `EligibilitySnapshot`, `RegistrationCart`, `Enrollment(home_org_unit_id, host_org_unit_id)`, `Waitlist`, `SectionCancellation`, `RegistrationOverride`
 
-**Events ที่ publish:** `reg.OfferingPlanApproved`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `reg.LateRegistrationFineAssessed`, `reg.TermRegistrationClosed`
-**Events ที่ consume:** `org.SettingChanged`, `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `org.BlackoutPeriodSet`, `cur.CurriculumVersionApproved`, `cur.CourseVersionPublished`, `cur.ProgramOfferingClosed`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.AcademicStandingChanged`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.PolicySetPublished`, `grd.AcademicPlanApproved`, `fin.PaymentReceived`, `fin.DefermentGranted`, `hlt.MedicalClearanceChanged`, `ath.CompetitionScheduled`, `xhr.StaffJoined`, `xhr.StaffMoved`, `xhr.StaffLeft`
+- **Events ที่ publish:** `reg.OfferingPlanApproved`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `reg.LateRegistrationFineAssessed`, `reg.TermRegistrationClosed`
+- **Events ที่ consume:** `org.SettingChanged`, `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `org.BlackoutPeriodSet`, `cur.CurriculumVersionApproved`, `cur.CourseVersionPublished`, `cur.ProgramOfferingClosed`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.AcademicStandingChanged`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.PolicySetPublished`, `grd.AcademicPlanApproved`, `fin.PaymentReceived`, `fin.DefermentGranted`, `hlt.MedicalClearanceChanged`, `ath.CompetitionScheduled`, `xhr.StaffJoined`, `xhr.StaffMoved`, `xhr.StaffLeft`
 
-**Workflow:** W-49, W-50, W-03 และ workflow ใหม่: ส่ง/อนุมัติตารางสอน, ลงทะเบียนล่าช้าพร้อมค่าปรับ
-**Integrations:** FAC, LMS (ผ่าน event), Valkey waiting room
-**แนวทาง:** **Build**
-**Release:** R2
+- **Workflow:** W-49, W-50, W-03 และ workflow ใหม่: ส่ง/อนุมัติตารางสอน, ลงทะเบียนล่าช้าพร้อมค่าปรับ
+- **Integrations:** FAC, LMS (ผ่าน event), Valkey waiting room
+- **แนวทาง:** **Build**
+- **Release:** R2
 
 ### 6.4 ATT — Attendance
 
@@ -542,15 +542,15 @@ flowchart TB
 - ส่ง `att.ExamEligibilityChanged` ให้ EXM/ASM
 - **Profile BASIC_ED**: เช็คชื่อรายวัน/รายคาบของโรงเรียนกีฬา และส่งรายงานการมาเรียนให้ผู้ปกครอง (ATT เป็นเจ้าของ attendance ทั้งสองระดับ)
 
-**Entities หลัก:** `AttendanceSession`, `QrSessionToken`, `AttendanceMark`, `AttendanceExcuse(source_type, source_ref)`, `ClassLeaveRequest`, `ExamEligibility`
+- **Entities หลัก:** `AttendanceSession`, `QrSessionToken`, `AttendanceMark`, `AttendanceExcuse(source_type, source_ref)`, `ClassLeaveRequest`, `ExamEligibility`
 
-**Events ที่ publish:** `att.AbsenceThresholdWarning`, `att.ExamEligibilityChanged`
-**Events ที่ consume:** `org.CalendarPublished`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `rec.PolicySetPublished`, `pra.PlacementAssigned`, `lms.EngagementSnapshot`, `aff.AccommodationGranted`, `hlt.AvailabilityChanged`, `hlt.InjuryReported`, `hlt.SickLeaveCertified`, `ath.CompetitionScheduled`, `ath.CompetitionLeaveApproved`, `ath.TripApproved`
+- **Events ที่ publish:** `att.AbsenceThresholdWarning`, `att.ExamEligibilityChanged`
+- **Events ที่ consume:** `org.AcademicCalendarPublished`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `rec.PolicySetPublished`, `pra.PlacementAssigned`, `lms.EngagementSnapshot`, `aff.AccommodationGranted`, `hlt.AvailabilityChanged`, `hlt.InjuryReported`, `hlt.SickLeaveCertified`, `ath.CompetitionScheduled`, `ath.CompetitionLeaveApproved`, `ath.TripApproved`
 
-**Workflow:** W-52, W-53, W-04 (ฝั่งรับผลลาแข่ง)
-**Integrations:** LMS (engagement), SVC (digital ID สำหรับ check-in)
-**แนวทาง:** **Build**
-**Release:** R2 (อุดมศึกษา) · Wave 1 (โรงเรียนกีฬา)
+- **Workflow:** W-52, W-53, W-04 (ฝั่งรับผลลาแข่ง)
+- **Integrations:** LMS (engagement), SVC (digital ID สำหรับ check-in)
+- **แนวทาง:** **Build**
+- **Release:** R2 (อุดมศึกษา) · Wave 1 (โรงเรียนกีฬา)
 
 ### 6.5 EXM — Examination management
 
@@ -566,15 +566,15 @@ flowchart TB
 - สอบออนไลน์ผ่าน Moodle Quiz + Safe Exam Browser (ผ่าน LMS) เป็นทางเลือก
 - **ไม่รวม** การสอบคัดเลือกเข้าศึกษา (เป็นของ ADM)
 
-**Entities หลัก:** `ExamPeriod` (อ้าง ORG), `ExamSession`, `ExamRoomAllocation`, `ExamSeat`, `ExamCandidate`, `InvigilationDuty`, `MakeupExamRequest`, `MakeupExam`, `ExamIncident`, `ExamPaperCustody`
+- **Entities หลัก:** `ExamPeriod` (อ้าง ORG), `ExamSession`, `ExamRoomAllocation`, `ExamSeat`, `ExamCandidate`, `InvigilationDuty`, `MakeupExamRequest`, `MakeupExam`, `ExamIncident`, `ExamPaperCustody`
 
-**Events ที่ publish:** `exm.ExamTimetablePublished`, `exm.ExamConflictDetected`, `exm.MakeupExamScheduled`, `exm.InvigilatorAssigned`, `exm.MisconductReported`, `exm.ExamAttendanceRecorded`
-**Events ที่ consume:** `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `org.BlackoutPeriodSet`, `case.AppealFiled`, `case.AppealDecided`, `cur.CourseVersionPublished`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `att.ExamEligibilityChanged`, `rec.PolicySetPublished`, `aff.AccommodationGranted`, `hlt.AvailabilityChanged`, `hlt.SickLeaveCertified`, `ath.CompetitionScheduled`, `ath.CompetitionLeaveApproved`, `fac.BookingConfirmed`, `fac.BookingCancelled`
+- **Events ที่ publish:** `exm.ExamTimetablePublished`, `exm.ExamConflictDetected`, `exm.MakeupExamScheduled`, `exm.InvigilatorAssigned`, `exm.MisconductReported`, `exm.ExamAttendanceRecorded`
+- **Events ที่ consume:** `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `org.BlackoutPeriodSet`, `case.AppealFiled`, `case.AppealDecided`, `cur.CourseVersionPublished`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `att.ExamEligibilityChanged`, `rec.PolicySetPublished`, `aff.AccommodationGranted`, `hlt.AvailabilityChanged`, `hlt.SickLeaveCertified`, `ath.CompetitionScheduled`, `ath.CompetitionLeaveApproved`, `fac.BookingConfirmed`, `fac.BookingCancelled`
 
-**Workflow:** W-54, W-05, W-55
-**Integrations:** FAC (ห้อง), LMS (สอบออนไลน์), X-PAY (ค่าตอบแทน)
-**แนวทาง:** **Build**
-**Release:** R2
+- **Workflow:** W-54, W-05, W-55
+- **Integrations:** FAC (ห้อง), LMS (สอบออนไลน์), X-PAY (ค่าตอบแทน)
+- **แนวทาง:** **Build**
+- **Release:** R2
 
 ### 6.6 ASM — Assessment & Grading
 
@@ -591,15 +591,15 @@ flowchart TB
 - รับผลฝึกสอนจาก `pra.EvaluationFinalized` (G-25) และขาดสอบจาก EXM
 - ผล CLO ราย assessment; ผลประเมินการสอนที่ประมวลแล้ว (แบบสอบถามอยู่ใน ENG) และตัวเลือก "ประเมินก่อนดูเกรด"
 
-**Entities หลัก:** `GradingScheme`, `AssessmentComponent`, `ComponentScore`, `GradeSubmission`, `GradeSnapshot(hash, signature_ref)`, `Grade`, `GradeChangeRequest`, `IncompleteDeadline`, `IntegrityCase`, `CloResult`, `TeachingEvaluationResult`
+- **Entities หลัก:** `GradingScheme`, `AssessmentComponent`, `ComponentScore`, `GradeSubmission`, `GradeSnapshot(hash, signature_ref)`, `Grade`, `GradeChangeRequest`, `IncompleteDeadline`, `IntegrityCase`, `CloResult`, `TeachingEvaluationResult`
 
-**Events ที่ publish:** `asm.GradesSubmitted`, `asm.GradesPublished`, `asm.GradeChanged`, `asm.IncompleteExpired`, `asm.CloResultsComputed`
-**Events ที่ consume:** `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `eng.SurveyClosed`, `case.AppealFiled`, `case.AppealDecided`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `att.ExamEligibilityChanged`, `exm.MakeupExamScheduled`, `exm.MisconductReported`, `exm.ExamAttendanceRecorded`, `rec.PolicySetPublished`, `pra.EvaluationFinalized`, `lms.GradebookSynced`, `aff.AccommodationGranted`, `ath.CompetitionLeaveApproved`
+- **Events ที่ publish:** `asm.GradesSubmitted`, `asm.GradesPublished`, `asm.GradeChanged`, `asm.IncompleteExpired`, `asm.CloResultsComputed`
+- **Events ที่ consume:** `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `eng.SurveyClosed`, `case.AppealFiled`, `case.AppealDecided`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `att.ExamEligibilityChanged`, `exm.MakeupExamScheduled`, `exm.MisconductReported`, `exm.ExamAttendanceRecorded`, `rec.PolicySetPublished`, `pra.EvaluationFinalized`, `lms.GradebookSynced`, `aff.AccommodationGranted`, `ath.CompetitionLeaveApproved`
 
-**Workflow:** W-01, W-02, W-16 (ฝั่งตรวจใหม่), W-56 (ผล)
-**Integrations:** Moodle (LTI AGS ผ่าน LMS)
-**แนวทาง:** **Build**
-**Release:** R2
+- **Workflow:** W-01, W-02, W-16 (ฝั่งตรวจใหม่), W-56 (ผล)
+- **Integrations:** Moodle (LTI AGS ผ่าน LMS)
+- **แนวทาง:** **Build**
+- **Release:** R2
 
 ### 6.7 REC — Student Records, Academic Standing & Lifecycle status
 
@@ -619,15 +619,15 @@ flowchart TB
 - ดำเนินผลคำร้องสถานภาพ (ลาพัก, ลาออก, ย้ายสาขา/วิทยาเขต พร้อมประวัติเดิม, เปลี่ยนชื่อ, ขยายเวลา) ที่ยื่นผ่าน SVC และออกใบรับรองสถานภาพ (กีฬามหาวิทยาลัย/ทหาร/ทุน) ผ่าน DOC
 - `CourseSubstitution` และ `CurriculumMigration` รายบุคคล (เปลี่ยนไปใช้หลักสูตรปรับปรุง) ที่ degree audit อ่าน (G-21)
 
-**Entities หลัก:** `Person`, `PersonIdentifier`, `NameHistory`, `ContactPoint`, `EmergencyContact`, `GuardianRelation`, `CustodyRestriction`, `Student`, `StudentNumberScheme`, `StudentStatusHistory`, `ExitCase`, `ExitCaseTask`, `TermRecord`, `AcademicStanding`, `PolicySet`, `PolicySetAssignment`, `Hold`, `AdvisorAssignment`, `AdvisingNote`, `AcademicAlert`, `CourseSubstitution`, `CurriculumMigration`
+- **Entities หลัก:** `Person`, `PersonIdentifier`, `NameHistory`, `ContactPoint`, `EmergencyContact`, `GuardianRelation`, `CustodyRestriction`, `Student`, `StudentNumberScheme`, `StudentStatusHistory`, `ExitCase`, `ExitCaseTask`, `TermRecord`, `AcademicStanding`, `PolicySet`, `PolicySetAssignment`, `Hold`, `AdvisorAssignment`, `AdvisingNote`, `AcademicAlert`, `CourseSubstitution`, `CurriculumMigration`
 
-**Events ที่ publish:** `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.StudentReadmitted`, `rec.ProgramTransferred`, `rec.AcademicStandingChanged`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.GuardianRelationChanged`, `rec.PersonDataCorrected`, `rec.PolicySetPublished`, `rec.AdvisorAssigned`
-**Events ที่ consume:** `case.AppealFiled`, `case.AppealDecided`, `doc.DocumentSigned`, `doc.SentToSaraban`, `priv.AgeOfMajorityReached`, `admin.ConfigChangeApproved`, `adm.OfferConfirmed`, `cur.CurriculumVersionApproved`, `cur.ProgramOfferingClosed`, `att.AbsenceThresholdWarning`, `att.ExamEligibilityChanged`, `asm.GradesPublished`, `asm.GradeChanged`, `asm.IncompleteExpired`, `grd.DegreeConferred`, `grad.MilestonePassed`, `grad.ExtensionApproved`, `ssc.PromotionDecided`, `ssc.BasicEdCompleted`, `ssc.TransferCertificateIssued`, `fin.DebtOverdue`, `fin.DebtCleared`, `fin.PaymentPlanAgreed`, `fin.DefermentGranted`, `aff.DisciplinarySanctionIssued`, `fac.EquipmentOverdue`, `xhr.StaffJoined`, `xhr.StaffLeft`, `xlib.LoanOverdue`, `xmeet.ResolutionRecorded`, `xintl.VisaExpiring`
+- **Events ที่ publish:** `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.StudentReadmitted`, `rec.ProgramTransferred`, `rec.AcademicStandingChanged`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.GuardianRelationChanged`, `rec.PersonDataCorrected`, `rec.PolicySetPublished`, `rec.AdvisorAssigned`
+- **Events ที่ consume:** `case.AppealFiled`, `case.AppealDecided`, `doc.DocumentSigned`, `doc.SentToSaraban`, `priv.AgeOfMajorityReached`, `admin.ConfigChangeApproved`, `adm.OfferConfirmed`, `cur.CurriculumVersionApproved`, `cur.ProgramOfferingClosed`, `att.AbsenceThresholdWarning`, `att.ExamEligibilityChanged`, `asm.GradesPublished`, `asm.GradeChanged`, `asm.IncompleteExpired`, `grd.DegreeConferred`, `grad.MilestonePassed`, `grad.ExtensionApproved`, `ssc.PromotionDecided`, `ssc.BasicEdCompleted`, `ssc.TransferCertificateIssued`, `fin.DebtOverdue`, `fin.DebtCleared`, `fin.PaymentPlanAgreed`, `fin.DefermentGranted`, `aff.DisciplinarySanctionIssued`, `fac.EquipmentOverdue`, `xhr.StaffJoined`, `xhr.StaffLeft`, `xlib.LoanOverdue`, `xmeet.ResolutionRecorded`, `xintl.VisaExpiring`
 
-**Workflow:** W-44, W-57, W-10, W-11, W-17 (ผล), W-24, W-25 (ย้ายสาขา), W-26, W-15
-**Integrations:** สป.อว. (ผ่าน RPT), โรงเรียนเดิม (หนังสือตรวจวุฒิผ่าน DOC/e-Saraban), ทะเบียนราษฎร (ทางเลือกผ่าน MOU **[ต้องตรวจสอบ]**)
-**แนวทาง:** **Build**
-**Release:** R1 ขั้นต่ำ (**Person master** + GuardianRelation สำหรับผู้สมัครผู้เยาว์ เพราะ ADM/IAM/PRIV ใน R1 อ้าง Person ที่ REC เป็นเจ้าของ) · R2 เต็ม (ดูคำถามเปิดใน ADM เรื่องการออกรหัสก่อน R2) · Wave 1 (BASIC_ED)
+- **Workflow:** W-44, W-57, W-10, W-11, W-17 (ผล), W-24, W-25 (ย้ายสาขา), W-26, W-15
+- **Integrations:** สป.อว. (ผ่าน RPT), โรงเรียนเดิม (หนังสือตรวจวุฒิผ่าน DOC/e-Saraban), ทะเบียนราษฎร (ทางเลือกผ่าน MOU **[ต้องตรวจสอบ]**)
+- **แนวทาง:** **Build**
+- **Release:** R1 ขั้นต่ำ (**Person master** + GuardianRelation สำหรับผู้สมัครผู้เยาว์ เพราะ ADM/IAM/PRIV ใน R1 อ้าง Person ที่ REC เป็นเจ้าของ) · R2 เต็ม (ดูคำถามเปิดใน ADM เรื่องการออกรหัสก่อน R2) · Wave 1 (BASIC_ED)
 
 > **หมายเหตุถึงเล่ม 12:** blueprint ระบุ REC ใน R2 แต่ Person master เป็นส่วนของ REC ตามกฎเจ้าของเดียว จึงต้องส่งส่วนนี้ใน R1
 
@@ -645,15 +645,15 @@ flowchart TB
 - **พิธีพระราชทานปริญญาบัตรรวมทุกวิทยาเขตครั้งเดียว** (ปีการศึกษา 2567 รับเมื่อ 22 มิ.ย. 2569; blueprint ข้อ 2.2): cohort ข้ามวิทยาเขต, แจ้งความประสงค์รับ/ไม่รับ, ยืนยันการสะกดชื่อ ไทย/อังกฤษ, คำขอแต่งกายตามเพศสภาพ, ชุดครุย (ลิงก์ร้านคู่สัญญา), ถ่ายภาพ, ซ้อมย่อย/ซ้อมใหญ่ด้วย QR, ลำดับแถว/ที่นั่ง, รายชื่อส่งหน่วยงานที่เกี่ยวข้อง **[ต้องตรวจสอบ]**, การรับปริญญาบัตรสำหรับผู้ไม่เข้าพิธี (มารับ/มอบฉันทะ/EMS), นักกีฬาที่ติดแข่งขอเลื่อน
 - ส่งรายชื่อผู้สำเร็จหลักสูตรครูให้คุรุสภา (ร่วมกับ PRA ผ่าน RPT)
 
-**Entities หลัก:** `DegreeAudit`, `AuditException`, `AcademicPlan`, `PlannedCourse`, `GraduationApplication`, `ClearanceItem`, `HonoursDetermination`, `ConferralBatch`, `CouncilResolution`, `Credential`, `PhysicalDiploma(serial, print_batch)`, `CredentialReissue`, `CredentialRevocation`, `BadgeClass`, `BadgeAssertion`, `LearnerRecord`, `Ceremony`, `CeremonyRegistration`
+- **Entities หลัก:** `DegreeAudit`, `AuditException`, `AcademicPlan`, `PlannedCourse`, `GraduationApplication`, `ClearanceItem`, `HonoursDetermination`, `ConferralBatch`, `CouncilResolution`, `Credential`, `PhysicalDiploma(serial, print_batch)`, `CredentialReissue`, `CredentialRevocation`, `BadgeClass`, `BadgeAssertion`, `LearnerRecord`, `Ceremony`, `CeremonyRegistration`
 
-**Events ที่ publish:** `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `grd.CredentialIssued`, `grd.CredentialRevoked`, `grd.BadgeIssued`, `grd.CeremonyRegistrationClosed`, `grd.AcademicPlanApproved`
-**Events ที่ consume:** `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `doc.DocumentSigned`, `cur.CurriculumVersionApproved`, `asm.GradesPublished`, `asm.GradeChanged`, `rec.StudentExited`, `rec.StudentReadmitted`, `rec.ProgramTransferred`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.PersonDataCorrected`, `rec.PolicySetPublished`, `grad.MilestonePassed`, `grad.ThesisSubmitted`, `pra.PlacementCompleted`, `fin.DebtCleared`, `sch.LoanClearanceStatusChanged`, `hou.CheckedOut`, `aff.ActivityHoursRecorded`, `aff.ActivityRequirementMet`, `rev.CompletionRecorded`, `xlib.ClearanceStatusChanged`, `xmeet.ResolutionRecorded`
+- **Events ที่ publish:** `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `grd.CredentialIssued`, `grd.CredentialRevoked`, `grd.BadgeIssued`, `grd.CeremonyRegistrationClosed`, `grd.AcademicPlanApproved`
+- **Events ที่ consume:** `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `doc.DocumentSigned`, `cur.CurriculumVersionApproved`, `asm.GradesPublished`, `asm.GradeChanged`, `rec.StudentExited`, `rec.StudentReadmitted`, `rec.ProgramTransferred`, `rec.HoldPlaced`, `rec.HoldReleased`, `rec.PersonDataCorrected`, `rec.PolicySetPublished`, `grad.MilestonePassed`, `grad.ThesisSubmitted`, `pra.PlacementCompleted`, `fin.DebtCleared`, `sch.LoanClearanceStatusChanged`, `hou.CheckedOut`, `aff.ActivityHoursRecorded`, `aff.ActivityRequirementMet`, `rev.CompletionRecorded`, `xlib.ClearanceStatusChanged`, `xmeet.ResolutionRecorded`
 
-**Workflow:** W-06, W-64, W-67 (ฝั่ง verify) และ workflow ใหม่ "จัดการใบประกาศนียบัตรแทน"
-**Integrations:** DGA/ETDA Digital Transcript, CA/TSA/HSM (ผ่าน DOC), คุรุสภา, wallet ที่รองรับ OB 3.0
-**แนวทาง:** **Build** + **Adopt** library มาตรฐาน OB/VC (ตาม licence policy)
-**Release:** R3 (degree audit, planner, e-Transcript, e-Degree, ปริญญาบัตร, พิธี, badge กิจกรรม/อบรม) · Wave 1 (CLR เต็ม, ePortfolio)
+- **Workflow:** W-06, W-64, W-67 (ฝั่ง verify) และ workflow ใหม่ "จัดการใบประกาศนียบัตรแทน"
+- **Integrations:** DGA/ETDA Digital Transcript, CA/TSA/HSM (ผ่าน DOC), คุรุสภา, wallet ที่รองรับ OB 3.0
+- **แนวทาง:** **Build** + **Adopt** library มาตรฐาน OB/VC (ตาม licence policy)
+- **Release:** R3 (degree audit, planner, e-Transcript, e-Degree, ปริญญาบัตร, พิธี, badge กิจกรรม/อบรม) · Wave 1 (CLR เต็ม, ePortfolio)
 
 > นักศึกษา pilot ที่จบก่อน R3 ใช้ระบบเดิมผ่าน legacy bridge ตามเล่ม 11/12
 
@@ -668,15 +668,15 @@ flowchart TB
 - ตรวจการคัดลอกผลงาน (อักขราวิสุทธิ์ หรือ Turnitin แบบไม่เก็บใน repository; อยู่ใน cross-border register) และบันทึกหลักฐานการตีพิมพ์
 - คำร้องขยายเวลา, ลงทะเบียนรักษาสภาพระหว่างทำวิทยานิพนธ์
 
-**Entities หลัก:** `ThesisProject`, `ThesisCommittee`, `CommitteeMember`, `ThesisMilestone`, `ExamBoardSession`, `PlagiarismReport`, `PublicationEvidence`, `ProgressReport`, `ExtensionRequest`, `ThesisSubmission`
+- **Entities หลัก:** `ThesisProject`, `ThesisCommittee`, `CommitteeMember`, `ThesisMilestone`, `ExamBoardSession`, `PlagiarismReport`, `PublicationEvidence`, `ProgressReport`, `ExtensionRequest`, `ThesisSubmission`
 
-**Events ที่ publish:** `grad.CommitteeAppointed`, `grad.MilestonePassed`, `grad.ThesisSubmitted`, `grad.ExtensionApproved`
-**Events ที่ consume:** `xres.EthicsApprovalGranted`
+- **Events ที่ publish:** `grad.CommitteeAppointed`, `grad.MilestonePassed`, `grad.ThesisSubmitted`, `grad.ExtensionApproved`
+- **Events ที่ consume:** `xres.EthicsApprovalGranted`
 
-**Workflow:** workflow ใหม่ "เสนอ/สอบโครงร่างและสอบป้องกันวิทยานิพนธ์"
-**Integrations:** อักขราวิสุทธิ์/Turnitin (**[ต้องตรวจสอบ licence]**), ThaiLIS, X-LIB, X-RES
-**แนวทาง:** **Build**
-**Release:** R3 (นักศึกษาบัณฑิตศึกษาของ pilot ก่อน R3 ใช้ระบบเดิม; G-08 ดูเล่ม 12)
+- **Workflow:** workflow ใหม่ "เสนอ/สอบโครงร่างและสอบป้องกันวิทยานิพนธ์"
+- **Integrations:** อักขราวิสุทธิ์/Turnitin (**[ต้องตรวจสอบ licence]**), ThaiLIS, X-LIB, X-RES
+- **แนวทาง:** **Build**
+- **Release:** R3 (นักศึกษาบัณฑิตศึกษาของ pilot ก่อน R3 ใช้ระบบเดิม; G-08 ดูเล่ม 12)
 
 ### 6.10 PRA — Teaching practicum & internship/co-op
 
@@ -694,15 +694,15 @@ flowchart TB
 - หนังสือรับรองการปฏิบัติการสอน, ติดตามความพร้อมขอใบอนุญาต (P License/B License; ทดสอบสมรรถนะ **[ต้องตรวจสอบ]**), ส่งรายชื่อผู้สำเร็จให้คุรุสภาผ่าน RPT
 - ใช้ engine เดียวกันกับฝึกงานโค้ช/สหกิจ (scheme ต่างกัน)
 
-**Entities หลัก:** `PartnerSchool`, `PartnerAgreement`, `PracticumScheme`, `PracticumRound`, `PlacementQuota`, `RatioRule`, `PracticumPreference`, `Placement`, `MentorAssignment`, `MentorQualification`, `SupervisorAssignment`, `TeachingLog`, `LessonPlanSubmission`, `SupervisionVisit`, `Evaluation`, `PlacementChange`, `PracticumIncident`, `TeachingPracticeCertificate`, `LicenceReadiness`, `InternshipHost`
+- **Entities หลัก:** `PartnerSchool`, `PartnerAgreement`, `PracticumScheme`, `PracticumRound`, `PlacementQuota`, `RatioRule`, `PracticumPreference`, `Placement`, `MentorAssignment`, `MentorQualification`, `SupervisorAssignment`, `TeachingLog`, `LessonPlanSubmission`, `SupervisionVisit`, `Evaluation`, `PlacementChange`, `PracticumIncident`, `TeachingPracticeCertificate`, `LicenceReadiness`, `InternshipHost`
 
-**Events ที่ publish:** `pra.PlacementAssigned`, `pra.PlacementChanged`, `pra.SupervisionVisitLogged`, `pra.EvaluationFinalized`, `pra.PlacementCompleted`
-**Events ที่ consume:** `iam.ExternalAccessExpired`, `cur.AccreditedIntakeCapSet`, `reg.EnrollmentConfirmed`, `rec.StudentExited`, `grd.DegreeConferred`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `ath.CompetitionLeaveApproved`, `xhr.StaffLeft`
+- **Events ที่ publish:** `pra.PlacementAssigned`, `pra.PlacementChanged`, `pra.SupervisionVisitLogged`, `pra.EvaluationFinalized`, `pra.PlacementCompleted`
+- **Events ที่ consume:** `iam.ExternalAccessExpired`, `cur.AccreditedIntakeCapSet`, `reg.EnrollmentConfirmed`, `rec.StudentExited`, `grd.DegreeConferred`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `ath.CompetitionLeaveApproved`, `xhr.StaffLeft`
 
-**Workflow:** W-32, W-62, W-23 (ฝั่งตรวจประวัตินักศึกษาฝึกสอน)
-**Integrations:** คุรุสภา (ไฟล์/portal), DOC (หนังสือขอความอนุเคราะห์)
-**แนวทาง:** **Build**
-**Release:** R3
+- **Workflow:** W-32, W-62, W-23 (ฝั่งตรวจประวัตินักศึกษาฝึกสอน)
+- **Integrations:** คุรุสภา (ไฟล์/portal), DOC (หนังสือขอความอนุเคราะห์)
+- **แนวทาง:** **Build**
+- **Release:** R3
 
 ### 6.11 SSC — Sports School academic profile
 
@@ -718,15 +718,15 @@ flowchart TB
 - รองรับนักเรียนรหัส G และ **ปฏิทินโรงเรียนกีฬาแยก** (ORG profile BASIC_ED)
 - **เส้นทางต่อ มกช.** (feeder) ส่งผลการเรียน/ผลงานให้ ADM เมื่อได้รับ consent
 
-**Entities หลัก:** `GradeLevel`, `Homeroom`, `HomeroomAssignment`, `CharacteristicAssessment`, `ReadingThinkingWritingAssessment`, `DevelopmentActivityResult`, `RemedialAttempt`, `PromotionDecision`, `BasicEdCompletion`, `PorPorRecord`, `TransferCertificate`, `SchoolLeaving`, `HomeVisit`, `StudentCareRecord`, `ParentMeeting`, `TeacherLicence` (ชั่วคราว), `MealPlan`, `PerCapitaSubsidyReport`
+- **Entities หลัก:** `GradeLevel`, `Homeroom`, `HomeroomAssignment`, `CharacteristicAssessment`, `ReadingThinkingWritingAssessment`, `DevelopmentActivityResult`, `RemedialAttempt`, `PromotionDecision`, `BasicEdCompletion`, `PorPorRecord`, `TransferCertificate`, `SchoolLeaving`, `HomeVisit`, `StudentCareRecord`, `ParentMeeting`, `TeacherLicence` (ชั่วคราว), `MealPlan`, `PerCapitaSubsidyReport`
 
-**Events ที่ publish:** `ssc.PromotionDecided`, `ssc.BasicEdCompleted`, `ssc.TransferCertificateIssued`, `ssc.HomeroomAssigned`, `ssc.ProgressReportPublished`
-**Events ที่ consume:** `org.CalendarPublished`, `eng.AnnouncementAcknowledged`, `eng.EmergencyDeclared`, `eng.PermissionSlipDecided`, `doc.DocumentSigned`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `att.AbsenceThresholdWarning`, `asm.GradesPublished`, `rec.StudentExited`, `rec.GuardianRelationChanged`, `rec.PolicySetPublished`, `hou.LeavePassApproved`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `hlt.MedicalClearanceChanged`, `hlt.InjuryReported`, `hlt.MedicalAlertUpdated`, `xhr.ProfessionalLicenceExpiring`
+- **Events ที่ publish:** `ssc.PromotionDecided`, `ssc.BasicEdCompleted`, `ssc.TransferCertificateIssued`, `ssc.HomeroomAssigned`, `ssc.ProgressReportPublished`
+- **Events ที่ consume:** `org.AcademicCalendarPublished`, `eng.AnnouncementAcknowledged`, `eng.EmergencyDeclared`, `eng.PermissionSlipDecided`, `doc.DocumentSigned`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `att.AbsenceThresholdWarning`, `asm.GradesPublished`, `rec.StudentExited`, `rec.GuardianRelationChanged`, `rec.PolicySetPublished`, `hou.LeavePassApproved`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `hlt.MedicalClearanceChanged`, `hlt.InjuryReported`, `hlt.MedicalAlertUpdated`, `xhr.ProfessionalLicenceExpiring`
 
-**Workflow:** W-13 (ร่วมกับ HOU), workflow ใหม่ "รับนักเรียนโรงเรียนกีฬา ม.1/ม.4" (ร่วมกับ ADM)
-**Integrations:** สทศ. (O-NET), ต้นสังกัด/ศธ. (ข้อมูลรายบุคคล **[ต้องตรวจสอบ]**)
-**แนวทาง:** **Build** (ใช้ REG/ASM/REC/ATT ร่วมผ่าน AcademicProfile strategy)
-**Release:** Wave 1 (โรงเรียนกีฬานำร่อง 1 แห่ง พ.ค. 2573) · Wave 2 (ที่เหลือ พ.ค. 2574)
+- **Workflow:** W-13 (ร่วมกับ HOU), workflow ใหม่ "รับนักเรียนโรงเรียนกีฬา ม.1/ม.4" (ร่วมกับ ADM)
+- **Integrations:** สทศ. (O-NET), ต้นสังกัด/ศธ. (ข้อมูลรายบุคคล **[ต้องตรวจสอบ]**)
+- **แนวทาง:** **Build** (ใช้ REG/ASM/REC/ATT ร่วมผ่าน AcademicProfile strategy)
+- **Release:** Wave 1 (โรงเรียนกีฬานำร่อง 1 แห่ง พ.ค. 2573) · Wave 2 (ที่เหลือ พ.ค. 2574)
 
 ### 6.12 LMS — LMS integration
 
@@ -738,14 +738,14 @@ flowchart TB
 - Engagement snapshot → ATT (การเข้าเรียนออนไลน์) และ ANA
 - หลักสูตรอบรมบังคับ (anti-doping, PDPA, safeguarding training) และสอบออนไลน์ (Moodle Quiz + Safe Exam Browser) สำหรับ EXM; Thai MOOC/Open edX สำหรับคอร์สสาธารณะของ REV **[ต้องตรวจสอบ]**
 
-**Entities หลัก:** `LmsCourseLink`, `LtiDeployment`, `LmsSyncJob`, `LmsEnrolmentLink`, `GradebookSync`
+- **Entities หลัก:** `LmsCourseLink`, `LtiDeployment`, `LmsSyncJob`, `LmsEnrolmentLink`, `GradebookSync`
 
-**Events ที่ publish:** `lms.GradebookSynced`, `lms.EngagementSnapshot`
-**Events ที่ consume:** `iam.AccountProvisioned`, `cur.CourseVersionPublished`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `aff.AccommodationGranted`
+- **Events ที่ publish:** `lms.GradebookSynced`, `lms.EngagementSnapshot`
+- **Events ที่ consume:** `iam.AccountProvisioned`, `cur.CourseVersionPublished`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `aff.AccommodationGranted`
 
-**Integrations:** Moodle (Adopt), Safe Exam Browser, Thai MOOC (**[ต้องตรวจสอบ]**)
-**แนวทาง:** **Adopt** Moodle + **Integrate** ผ่าน LTI
-**Release:** R3
+- **Integrations:** Moodle (Adopt), Safe Exam Browser, Thai MOOC (**[ต้องตรวจสอบ]**)
+- **แนวทาง:** **Adopt** Moodle + **Integrate** ผ่าน LTI
+- **Release:** R3
 
 ---
 ## 7. Student services
@@ -771,15 +771,15 @@ flowchart TB
 - adapter ชำระเงินจากต่างประเทศ (บัตร/โอน) สำหรับผู้สมัครต่างชาติ
 - **Pocket-money ledger** แบบ closed-loop สำหรับนักเรียนโรงเรียนกีฬา (ผู้ปกครองเติมและดูรายการได้, วงเงินต่อวัน) — ต้องตรวจเกณฑ์ ธปท. ก่อน **[ต้องตรวจสอบ]**
 
-**Entities หลัก:** `PartyAccount`, `FeeSchedule`, `FeeItem`, `FinePolicy`, `Waiver`, `Invoice`, `InvoiceLine`, `PaymentIntent`, `Payment`, `PaymentCallback`, `PaymentAllocation`, `BankStatementLine`, `Reconciliation`, `Receipt`, `ReceiptVoid`, `CreditNote`, `PaymentPlan`, `Installment`, `Deferment`, `Sponsor`, `SponsorAgreement`, `SponsorInvoice`, `CashierSession`, `CashDeposit`, `RefundRule`, `Refund`, `BeneficiaryAccount`, `WriteOff`, `DunningStep`, `Payout`, `WithholdingTax`, `TaxCertificate`, `Advance`, `FundCode`, `FiscalPeriod`, `GfmisExportBatch`, `PocketMoneyLedger`
+- **Entities หลัก:** `PartyAccount`, `FeeSchedule`, `FeeItem`, `FinePolicy`, `Waiver`, `Invoice`, `InvoiceLine`, `PaymentIntent`, `Payment`, `PaymentCallback`, `PaymentAllocation`, `BankStatementLine`, `Reconciliation`, `Receipt`, `ReceiptVoid`, `CreditNote`, `PaymentPlan`, `Installment`, `Deferment`, `Sponsor`, `SponsorAgreement`, `SponsorInvoice`, `CashierSession`, `CashDeposit`, `RefundRule`, `Refund`, `BeneficiaryAccount`, `WriteOff`, `DunningStep`, `Payout`, `WithholdingTax`, `TaxCertificate`, `Advance`, `FundCode`, `FiscalPeriod`, `GfmisExportBatch`, `PocketMoneyLedger`
 
-**Events ที่ publish:** `fin.InvoiceIssued`, `fin.PaymentReceived`, `fin.ReceiptIssued`, `fin.ReceiptVoided`, `fin.DebtOverdue`, `fin.DebtCleared`, `fin.PaymentPlanAgreed`, `fin.DefermentGranted`, `fin.SponsorBilled`, `fin.RefundPaid`, `fin.PayoutMade`, `fin.WriteOffApproved`, `fin.FiscalPeriodClosed`
-**Events ที่ consume:** `iam.IdentityVerified`, `org.SettingChanged`, `org.ParentAgencyChanged`, `org.CalendarPublished`, `doc.DocumentSigned`, `admin.ConfigChangeApproved`, `adm.RoundPublished`, `adm.ApplicationSubmitted`, `adm.ApplicationFeeWaived`, `adm.OfferMade`, `adm.OfferConfirmed`, `adm.OfferDeclined`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `reg.LateRegistrationFineAssessed`, `reg.TermRegistrationClosed`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.StudentReadmitted`, `rec.ProgramTransferred`, `rec.PersonDataCorrected`, `grd.GraduationApplicationSubmitted`, `grad.ExtensionApproved`, `ssc.PromotionDecided`, `sch.AwardGranted`, `sch.AwardDisbursed`, `sch.AwardSuspended`, `sch.LoanTuitionConfirmed`, `sch.LoanDisbursementReceived`, `hou.Allocated`, `hou.CheckedIn`, `hou.ChargePosted`, `hou.CheckedOut`, `aff.StudentJobTimesheetApproved`, `aff.ClubProjectApproved`, `alu.DonationReceived`, `ath.TripApproved`, `ath.TripClosed`, `fac.BookingCharged`, `lab.ServiceInvoiced`, `rev.EnrollmentConfirmed`, `rev.TicketSold`, `rev.SponsorshipContracted`, `xpay.PaymentFileAccepted`
+- **Events ที่ publish:** `fin.InvoiceIssued`, `fin.PaymentReceived`, `fin.ReceiptIssued`, `fin.ReceiptVoided`, `fin.DebtOverdue`, `fin.DebtCleared`, `fin.PaymentPlanAgreed`, `fin.DefermentGranted`, `fin.SponsorBilled`, `fin.RefundPaid`, `fin.PayoutMade`, `fin.WriteOffApproved`, `fin.FiscalPeriodClosed`
+- **Events ที่ consume:** `iam.IdentityVerified`, `org.SettingChanged`, `org.ParentAgencyChanged`, `org.AcademicCalendarPublished`, `doc.DocumentSigned`, `admin.ConfigChangeApproved`, `adm.RoundPublished`, `adm.ApplicationSubmitted`, `adm.ApplicationFeeWaived`, `adm.OfferMade`, `adm.OfferConfirmed`, `adm.OfferDeclined`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `reg.LateRegistrationFineAssessed`, `reg.TermRegistrationClosed`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.StudentReadmitted`, `rec.ProgramTransferred`, `rec.PersonDataCorrected`, `grd.GraduationApplicationSubmitted`, `grad.ExtensionApproved`, `ssc.PromotionDecided`, `sch.AwardGranted`, `sch.AwardDisbursed`, `sch.AwardSuspended`, `sch.LoanTuitionConfirmed`, `sch.LoanDisbursementReceived`, `hou.Allocated`, `hou.CheckedIn`, `hou.ChargePosted`, `hou.CheckedOut`, `aff.StudentJobTimesheetApproved`, `aff.ClubProjectApproved`, `alu.DonationReceived`, `ath.TripApproved`, `ath.TripClosed`, `fac.BookingCharged`, `lab.ServiceInvoiced`, `rev.EnrollmentConfirmed`, `rev.TicketSold`, `rev.SponsorshipContracted`, `xpay.PaymentFileAccepted`
 
-**Workflow:** W-43 (ค่าแรกเข้า), W-51, W-27, W-09, W-28, W-29 และ workflow ใหม่ "ปิดปีงบประมาณ", "เดินทางกลับ/ล้างเงินยืม" (ร่วมกับ ATH)
-**Integrations:** ธนาคาร (callback API + SFTP statement), Thai QR/PromptPay, New GFMIS Thai, e-Payment ภาครัฐ (ทางเลือก), กรมสรรพากร (**[ต้องตรวจสอบ]**), payment gateway ต่างประเทศ
-**แนวทาง:** **Build**
-**Release:** R1 (ค่าสมัคร, ค่ายืนยันสิทธิ์, ใบเสร็จ, reconcile, waiver ค่าสมัคร, คืนเงินเมื่อยกเลิกรอบ) · R2 เต็ม · Wave 1 (pocket money ถ้าผ่านการตรวจ)
+- **Workflow:** W-43 (ค่าแรกเข้า), W-51, W-27, W-09, W-28, W-29 และ workflow ใหม่ "ปิดปีงบประมาณ", "เดินทางกลับ/ล้างเงินยืม" (ร่วมกับ ATH)
+- **Integrations:** ธนาคาร (callback API + SFTP statement), Thai QR/PromptPay, New GFMIS Thai, e-Payment ภาครัฐ (ทางเลือก), กรมสรรพากร (**[ต้องตรวจสอบ]**), payment gateway ต่างประเทศ
+- **แนวทาง:** **Build**
+- **Release:** R1 (ค่าสมัคร, ค่ายืนยันสิทธิ์, ใบเสร็จ, reconcile, waiver ค่าสมัคร, คืนเงินเมื่อยกเลิกรอบ) · R2 เต็ม · Wave 1 (pocket money ถ้าผ่านการตรวจ)
 
 ### 7.2 SCH — Scholarships & Student Loans
 
@@ -792,15 +792,15 @@ flowchart TB
 - **Portal-assist task** แจ้ง กยศ. เมื่อผู้กู้พ้นสภาพ/ลาออก/เสียชีวิต (จาก `rec.StudentExited`) และสถานะ clearance กยศ. ก่อนจบ
 - กยศ. ระดับ ม.ปลาย สำหรับโรงเรียนกีฬา **[ต้องตรวจสอบ]**
 
-**Entities หลัก:** `FundingSource`, `ScholarshipProgram`, `ScholarshipApplication`, `ScreeningResult`, `CommitteeReview`, `Award`, `AwardCondition`, `AwardConditionCheck`, `ExternalGrantReport`, `LoanBorrower`, `LoanTermRecord`, `LoanActualCostExport`, `LoanDisbursementImport`, `LoanPortalTask`
+- **Entities หลัก:** `FundingSource`, `ScholarshipProgram`, `ScholarshipApplication`, `ScreeningResult`, `CommitteeReview`, `Award`, `AwardCondition`, `AwardConditionCheck`, `ExternalGrantReport`, `LoanBorrower`, `LoanTermRecord`, `LoanActualCostExport`, `LoanDisbursementImport`, `LoanPortalTask`
 
-**Events ที่ publish:** `sch.AwardGranted`, `sch.AwardDisbursed`, `sch.AwardSuspended`, `sch.LoanTuitionConfirmed`, `sch.LoanDisbursementReceived`, `sch.LoanClearanceStatusChanged`
-**Events ที่ consume:** `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `case.AppealFiled`, `case.AppealDecided`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `reg.TermRegistrationClosed`, `asm.GradesPublished`, `asm.GradeChanged`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.AcademicStandingChanged`, `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `fin.InvoiceIssued`, `fin.SponsorBilled`, `fin.RefundPaid`, `fin.PayoutMade`, `aff.ActivityHoursRecorded`, `aff.DisciplinarySanctionIssued`, `ath.EligibilityConfirmed`, `ath.EligibilityFailed`, `ath.CompetitionResultRecorded`
+- **Events ที่ publish:** `sch.AwardGranted`, `sch.AwardDisbursed`, `sch.AwardSuspended`, `sch.LoanTuitionConfirmed`, `sch.LoanDisbursementReceived`, `sch.LoanClearanceStatusChanged`
+- **Events ที่ consume:** `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `case.AppealFiled`, `case.AppealDecided`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `reg.TermRegistrationClosed`, `asm.GradesPublished`, `asm.GradeChanged`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.AcademicStandingChanged`, `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `fin.InvoiceIssued`, `fin.SponsorBilled`, `fin.RefundPaid`, `fin.PayoutMade`, `aff.ActivityHoursRecorded`, `aff.DisciplinarySanctionIssued`, `ath.EligibilityConfirmed`, `ath.EligibilityFailed`, `ath.CompetitionResultRecorded`
 
-**Workflow:** W-07, W-48
-**Integrations:** กยศ. DSL (portal + ไฟล์), ธนาคาร (statement), แหล่งทุนภายนอก (รายงาน)
-**แนวทาง:** **Build**
-**Release:** R2
+- **Workflow:** W-07, W-48
+- **Integrations:** กยศ. DSL (portal + ไฟล์), ธนาคาร (statement), แหล่งทุนภายนอก (รายงาน)
+- **แนวทาง:** **Build**
+- **Release:** R2
 
 ### 7.3 HOU — Housing / Dormitory (รวม ตม.30 และ exeat)
 
@@ -816,15 +816,15 @@ flowchart TB
 - เรื่องคุ้มครองเด็กส่งเข้า SAFE โดยตรงจากหน้าจอหอ (ไม่เก็บใน `DormIncident`)
 - **ตม.30** (W-38; พ.ร.บ.คนเข้าเมือง ม.38 แจ้งภายใน 24 ชม.): check-in ของคนต่างด้าวสร้าง task พร้อมข้อมูลที่ต้องกรอกในพอร์ทัล สตม. (portal-assist), ติดตาม deadline และเก็บหลักฐานการแจ้ง (C-40)
 
-**Entities หลัก:** `Dormitory`, `DormRoom`, `Bed`, `HousingRound`, `HousingApplication`, `AllocationRule`, `Allocation`, `HousingContract`, `Deposit`, `RoomInventoryCheck`, `RoomChange`, `GuestStay`, `MeterReading`, `UtilityCharge`, `MaintenanceTicket`, `Parcel`, `DormConductPoint`, `LeavePass`, `StandingExeatConsent`, `AuthorisedPickup`, `VisitorLog`, `RollCall`, `Tm30Notification`, `DormIncident`
+- **Entities หลัก:** `Dormitory`, `DormRoom`, `Bed`, `HousingRound`, `HousingApplication`, `AllocationRule`, `Allocation`, `HousingContract`, `Deposit`, `RoomInventoryCheck`, `RoomChange`, `GuestStay`, `MeterReading`, `UtilityCharge`, `MaintenanceTicket`, `Parcel`, `DormConductPoint`, `LeavePass`, `StandingExeatConsent`, `AuthorisedPickup`, `VisitorLog`, `RollCall`, `Tm30Notification`, `DormIncident`
 
-**Events ที่ publish:** `hou.Allocated`, `hou.CheckedIn`, `hou.ChargePosted`, `hou.CheckedOut`, `hou.LeavePassApproved`, `hou.LeavePassOverdue`, `hou.IncidentLogged`, `hou.ForeignResidentReported`
-**Events ที่ consume:** `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `eng.AnnouncementAcknowledged`, `eng.EmergencyDeclared`, `eng.PermissionSlipDecided`, `svc.DigitalIdRevoked`, `case.AppealFiled`, `case.AppealDecided`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `adm.OfferConfirmed`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.GuardianRelationChanged`, `grd.GraduationApplicationSubmitted`, `ssc.PromotionDecided`, `ssc.TransferCertificateIssued`, `fin.PaymentReceived`, `aff.DisciplinarySanctionIssued`, `aff.AccommodationGranted`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `hlt.MedicalClearanceChanged`, `hlt.MedicalAlertUpdated`, `ath.SquadAssigned`, `ath.TripApproved`
+- **Events ที่ publish:** `hou.Allocated`, `hou.CheckedIn`, `hou.ChargePosted`, `hou.CheckedOut`, `hou.LeavePassApproved`, `hou.LeavePassOverdue`, `hou.IncidentLogged`, `hou.ForeignResidentReported`
+- **Events ที่ consume:** `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `eng.AnnouncementAcknowledged`, `eng.EmergencyDeclared`, `eng.PermissionSlipDecided`, `svc.DigitalIdRevoked`, `case.AppealFiled`, `case.AppealDecided`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `adm.OfferConfirmed`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.GuardianRelationChanged`, `grd.GraduationApplicationSubmitted`, `ssc.PromotionDecided`, `ssc.TransferCertificateIssued`, `fin.PaymentReceived`, `aff.DisciplinarySanctionIssued`, `aff.AccommodationGranted`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `hlt.MedicalClearanceChanged`, `hlt.MedicalAlertUpdated`, `ath.SquadAssigned`, `ath.TripApproved`
 
-**Workflow:** W-46, W-13, W-38
-**Integrations:** พอร์ทัล สตม. (portal-assist), ระบบ access control หอ (ทางเลือกผ่าน adapter)
-**แนวทาง:** **Build**
-**Release:** R2 (หอมหาวิทยาลัย + ตม.30) · Wave 1 (boarding เต็มที่โรงเรียนนำร่อง)
+- **Workflow:** W-46, W-13, W-38
+- **Integrations:** พอร์ทัล สตม. (portal-assist), ระบบ access control หอ (ทางเลือกผ่าน adapter)
+- **แนวทาง:** **Build**
+- **Release:** R2 (หอมหาวิทยาลัย + ตม.30) · Wave 1 (boarding เต็มที่โรงเรียนนำร่อง)
 
 ### 7.4 AFF — Student Affairs
 
@@ -839,15 +839,15 @@ flowchart TB
 - **ผ่อนผันการตรวจเลือกทหาร** (W-59): คัดรายชื่อชายอายุ 20–26 ปีที่ไม่ได้เรียน รด. จากวันเกิดล่วงหน้า 1 ปี, รวบรวม สด.9/สด.35, สร้างบัญชีรายชื่อส่งสัสดีผ่าน DOC/e-Saraban, เตือนแสดงตนทุกปี, แจ้งยุติสิทธิ์เมื่อพ้นสภาพ/จบ/อายุเกิน (C-39); ทะเบียนนักศึกษาวิชาทหาร (รด.) และตรวจชนกับตารางแข่ง/เรียน
 - **งานนักศึกษา (student jobs)**: ตำแหน่ง, สมัคร, สัญญา (จ้างงาน/ทุนแลกงาน), timesheet ที่หน่วยงานรับรอง → FIN payout + ภาษี; กติกาห้ามจ้างผู้เยาว์นอกเวลาที่กฎหมายกำหนด และนักศึกษาต่างชาติที่ไม่มีใบอนุญาตทำงาน **[ต้องตรวจสอบ]** (C-38)
 
-**Entities หลัก:** `ActivityCategory`, `Activity`, `ActivityHourLedgerEntry`, `ExternalActivityClaim`, `ActivityRequirement`, `Club`, `ClubMembership`, `ClubProject`, `DisciplinaryCase`, `Hearing`, `Sanction`, `ConductStatus`, `CounsellingCase` (pointer; เนื้อหาใน HLT), `RiskAssessment`, `CrisisReferral`, `EmergencyDisclosure`, `DisabilityRegistration` (pointer), `AccommodationPlan`, `AccommodationItem`, `MilitaryDefermentRecord`, `DefermentBatch`, `RotcEnrollment`, `StudentJobPosition`, `StudentJobContract`, `Timesheet`
+- **Entities หลัก:** `ActivityCategory`, `Activity`, `ActivityHourLedgerEntry`, `ExternalActivityClaim`, `ActivityRequirement`, `Club`, `ClubMembership`, `ClubProject`, `DisciplinaryCase`, `Hearing`, `Sanction`, `ConductStatus`, `CounsellingCase` (pointer; เนื้อหาใน HLT), `RiskAssessment`, `CrisisReferral`, `EmergencyDisclosure`, `DisabilityRegistration` (pointer), `AccommodationPlan`, `AccommodationItem`, `MilitaryDefermentRecord`, `DefermentBatch`, `RotcEnrollment`, `StudentJobPosition`, `StudentJobContract`, `Timesheet`
 
-**Events ที่ publish:** `aff.ActivityHoursRecorded`, `aff.ActivityRequirementMet`, `aff.DisciplinarySanctionIssued`, `aff.AccommodationGranted`, `aff.MilitaryDefermentSubmitted`, `aff.MilitaryDefermentEnded`, `aff.StudentJobTimesheetApproved`, `aff.ClubProjectApproved`
-**Events ที่ consume:** `org.CalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `eng.EventCheckedIn`, `eng.PermissionSlipDecided`, `case.DisciplinaryReferralMade`, `case.AppealFiled`, `case.AppealDecided`, `doc.DocumentSigned`, `priv.GuardianConsentDecided`, `adm.AccommodationRequested`, `exm.MisconductReported`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `fin.PayoutMade`, `hou.IncidentLogged`
+- **Events ที่ publish:** `aff.ActivityHoursRecorded`, `aff.ActivityRequirementMet`, `aff.DisciplinarySanctionIssued`, `aff.AccommodationGranted`, `aff.MilitaryDefermentSubmitted`, `aff.MilitaryDefermentEnded`, `aff.StudentJobTimesheetApproved`, `aff.ClubProjectApproved`
+- **Events ที่ consume:** `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `eng.EventCheckedIn`, `eng.PermissionSlipDecided`, `case.DisciplinaryReferralMade`, `case.AppealFiled`, `case.AppealDecided`, `doc.DocumentSigned`, `priv.GuardianConsentDecided`, `adm.AccommodationRequested`, `exm.MisconductReported`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `fin.PayoutMade`, `hou.IncidentLogged`
 
-**Workflow:** W-12, W-33, W-59, W-60, W-61 (ส่วนให้คำปรึกษา)
-**Integrations:** สัสดี/กรมการรักษาดินแดน (หนังสือ + ไฟล์ผ่าน DOC), สายด่วน/หน่วยบริการสุขภาพจิต (ส่งต่อ)
-**แนวทาง:** **Build**
-**Release:** R2
+- **Workflow:** W-12, W-33, W-59, W-60, W-61 (ส่วนให้คำปรึกษา)
+- **Integrations:** สัสดี/กรมการรักษาดินแดน (หนังสือ + ไฟล์ผ่าน DOC), สายด่วน/หน่วยบริการสุขภาพจิต (ส่งต่อ)
+- **แนวทาง:** **Build**
+- **Release:** R2
 
 ### 7.5 SAFE — Safeguarding & Child Protection
 
@@ -863,15 +863,15 @@ flowchart TB
 - กติกา **two-adult communication** (บังคับใช้ใน NOTI), ซ่อนตำแหน่งห้องพัก/ตารางรายบุคคลของเด็กจากบทบาทที่ไม่จำเป็น
 - **DPIA ผู้เยาว์บังคับก่อน Wave 1** และรายงานสถิติแบบไม่ระบุตัวตนให้ RPT
 
-**Entities หลัก:** `SafeguardingConcern`, `ConcernParty`, `SafeguardingAssessment`, `ChronologyEntry`, `SafetyPlan`, `ContactRestriction`, `AgencyReferral`, `SafeguardingEvidence`, `StaffClearance`, `ClearanceRequirement`, `SafeguardingTraining`
+- **Entities หลัก:** `SafeguardingConcern`, `ConcernParty`, `SafeguardingAssessment`, `ChronologyEntry`, `SafetyPlan`, `ContactRestriction`, `AgencyReferral`, `SafeguardingEvidence`, `StaffClearance`, `ClearanceRequirement`, `SafeguardingTraining`
 
-**Events ที่ publish:** `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `safe.AgencyReferralMade`
-**Events ที่ consume:** `case.CaseRoutedToSafeguarding`, `rec.GuardianRelationChanged`, `pra.PlacementAssigned`, `pra.PlacementChanged`, `hou.LeavePassOverdue`, `ath.CoachAssigned`, `xhr.StaffJoined`, `xhr.StaffLeft`
+- **Events ที่ publish:** `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `safe.AgencyReferralMade`
+- **Events ที่ consume:** `case.CaseRoutedToSafeguarding`, `rec.GuardianRelationChanged`, `pra.PlacementAssigned`, `pra.PlacementChanged`, `hou.LeavePassOverdue`, `ath.CoachAssigned`, `xhr.StaffJoined`, `xhr.StaffLeft`
 
-**Workflow:** W-22, W-23
-**Integrations:** พม./สายด่วน 1300/ตำรวจ (ส่งต่อแบบเอกสาร/โทรศัพท์ บันทึกในระบบ), หน่วยงานตรวจประวัติ (**[ต้องตรวจสอบช่องทาง]**)
-**แนวทาง:** **Build**
-**Release:** R2 (โครงสร้าง: StaffClearance, การรับแจ้ง, ContactRestriction ซึ่ง PRA ใน R3 ต้องใช้) · Wave 1 (เต็มพร้อมโรงเรียนกีฬานำร่อง)
+- **Workflow:** W-22, W-23
+- **Integrations:** พม./สายด่วน 1300/ตำรวจ (ส่งต่อแบบเอกสาร/โทรศัพท์ บันทึกในระบบ), หน่วยงานตรวจประวัติ (**[ต้องตรวจสอบช่องทาง]**)
+- **แนวทาง:** **Build**
+- **Release:** R2 (โครงสร้าง: StaffClearance, การรับแจ้ง, ContactRestriction ซึ่ง PRA ใน R3 ต้องใช้) · Wave 1 (เต็มพร้อมโรงเรียนกีฬานำร่อง)
 
 ### 7.6 HLT — Health (health vault: ที่เก็บข้อมูลสุขภาพแห่งเดียว)
 
@@ -888,15 +888,15 @@ flowchart TB
 - **การเข้าถึงกรณีพิเศษ** (W-14): break-glass ที่ต้องอนุมัติ 2 คน หรือเปิดใช้เองในเหตุฉุกเฉินแล้ว review โดย 2 คนภายใน 24 ชม. และ audit ทุกการอ่าน
 - Retention ผูกกับกฎหมายที่ใช้กับห้องพยาบาล (สถานะห้องพยาบาลตาม พ.ร.บ.สถานพยาบาล **[ต้องตรวจสอบใน P0]**, C-42)
 
-**Entities หลัก:** `HealthSubject` (pseudonymous key), `Encounter`, `Diagnosis`, `Treatment`, `Referral`, `MedicalClearance`, `MedicalAlert`, `TreatmentConsent`, `MedicationOrder`, `MedicationAdministration`, `Injury`, `RehabPlan`, `RtpClearance`, `AvailabilityStatus`, `PsychSession`, `CounsellingNote`, `DisabilityEvidence`, `ScreeningResult`, `BodyComposition`, `Vaccination`, `InsurancePolicy`, `InsuranceEnrolment`, `InsuranceClaim`, `TueReference`, `DisclosureGrant`, `VaultAccessLog`
+- **Entities หลัก:** `HealthSubject` (pseudonymous key), `Encounter`, `Diagnosis`, `Treatment`, `Referral`, `MedicalClearance`, `MedicalAlert`, `TreatmentConsent`, `MedicationOrder`, `MedicationAdministration`, `Injury`, `RehabPlan`, `RtpClearance`, `AvailabilityStatus`, `PsychSession`, `CounsellingNote`, `DisabilityEvidence`, `ScreeningResult`, `BodyComposition`, `Vaccination`, `InsurancePolicy`, `InsuranceEnrolment`, `InsuranceClaim`, `TueReference`, `DisclosureGrant`, `VaultAccessLog`
 
-**Events ที่ publish:** `hlt.MedicalClearanceChanged`, `hlt.AvailabilityChanged`, `hlt.InjuryReported`, `hlt.SickLeaveCertified`, `hlt.MedicalAlertUpdated`, `hlt.InsuranceClaimSubmitted`
-**Events ที่ consume:** `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.AgeOfMajorityReached`, `priv.ErasureApproved`, `adm.SkillTestSessionPlanned`, `rec.StudentMatriculated`, `rec.StudentExited`, `ath.AthleteProfileCreated`, `ath.TripApproved`
+- **Events ที่ publish:** `hlt.MedicalClearanceChanged`, `hlt.AvailabilityChanged`, `hlt.InjuryReported`, `hlt.SickLeaveCertified`, `hlt.MedicalAlertUpdated`, `hlt.InsuranceClaimSubmitted`
+- **Events ที่ consume:** `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.AgeOfMajorityReached`, `priv.ErasureApproved`, `adm.SkillTestSessionPlanned`, `rec.StudentMatriculated`, `rec.StudentExited`, `ath.AthleteProfileCreated`, `ath.TripApproved`
 
-**Workflow:** W-14, W-39, W-45 และ workflow ใหม่ "ประกันอุบัติเหตุ/เคลม"
-**Integrations:** บริษัทประกัน (ไฟล์), โรงพยาบาลคู่สัญญา (ใบส่งตัว), wearable/แล็บ (ผ่าน ATH/LAB เฉพาะข้อมูลที่จัดเป็นสุขภาพ)
-**แนวทาง:** **Build**
-**Release:** R1 ขั้นต่ำ (vault + `MedicalClearance` สำหรับสอบทักษะของ ADM) · R2 พื้นฐาน (คลินิก, alert, ประกัน, injury, counselling notes, disability evidence) · R3 (sports medicine เต็มพร้อม ATH) · Wave 1 (MAR/treatment consent ในหอประจำ)
+- **Workflow:** W-14, W-39, W-45 และ workflow ใหม่ "ประกันอุบัติเหตุ/เคลม"
+- **Integrations:** บริษัทประกัน (ไฟล์), โรงพยาบาลคู่สัญญา (ใบส่งตัว), wearable/แล็บ (ผ่าน ATH/LAB เฉพาะข้อมูลที่จัดเป็นสุขภาพ)
+- **แนวทาง:** **Build**
+- **Release:** R1 ขั้นต่ำ (vault + `MedicalClearance` สำหรับสอบทักษะของ ADM) · R2 พื้นฐาน (คลินิก, alert, ประกัน, injury, counselling notes, disability evidence) · R3 (sports medicine เต็มพร้อม ATH) · Wave 1 (MAR/treatment consent ในหอประจำ)
 
 > **หมายเหตุถึงเล่ม 12:** blueprint ไม่ได้ระบุ HLT ใน R1 แต่การคัดกรองสุขภาพก่อนสอบทักษะ (G-07) ต้องเก็บใน HLT เพราะเป็นที่เก็บข้อมูลสุขภาพแห่งเดียว จึงเสนอ vault ขั้นต่ำใน R1
 
@@ -912,15 +912,15 @@ flowchart TB
 - **Hall of fame** ศิษย์เก่าโอลิมเปียน/ทีมชาติ/โค้ช/ครู จาก `ath.CompetitionResultRecorded` เมื่อได้รับ consent
 - CRM: ประเมิน CiviCRM (AGPL ภายใต้ licence policy) แทนการสร้างเองสำหรับ campaign **[ต้องตรวจสอบ]**
 
-**Entities หลัก:** `Alumnus`, `AlumniProfileUpdate`, `EmploymentRecord`, `EmploymentSurveyCycle`, `EmployerSurveyResult`, `JobPosting`, `Donation`, `Campaign`, `HallOfFameEntry`
+- **Entities หลัก:** `Alumnus`, `AlumniProfileUpdate`, `EmploymentRecord`, `EmploymentSurveyCycle`, `EmployerSurveyResult`, `JobPosting`, `Donation`, `Campaign`, `HallOfFameEntry`
 
-**Events ที่ publish:** `alu.AlumnusRegistered`, `alu.EmploymentSurveyCompleted`, `alu.DonationReceived`
-**Events ที่ consume:** `eng.SurveyClosed`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `rec.PersonDataCorrected`, `grd.DegreeConferred`, `grd.CredentialIssued`, `grd.CredentialRevoked`, `grd.BadgeIssued`, `ath.CompetitionResultRecorded`
+- **Events ที่ publish:** `alu.AlumnusRegistered`, `alu.EmploymentSurveyCompleted`, `alu.DonationReceived`
+- **Events ที่ consume:** `eng.SurveyClosed`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `rec.PersonDataCorrected`, `grd.DegreeConferred`, `grd.CredentialIssued`, `grd.CredentialRevoked`, `grd.BadgeIssued`, `ath.CompetitionResultRecorded`
 
-**Workflow:** W-65, W-66, W-67 (นายจ้างตรวจสอบวุฒิผ่านหน้า verify ของ DOC)
-**Integrations:** สป.อว. (ภาวะการมีงานทำผ่าน RPT), ธนาคาร
-**แนวทาง:** **Build** + ทางเลือก **Adopt** CRM
-**Release:** R3
+- **Workflow:** W-65, W-66, W-67 (นายจ้างตรวจสอบวุฒิผ่านหน้า verify ของ DOC)
+- **Integrations:** สป.อว. (ภาวะการมีงานทำผ่าน RPT), ธนาคาร
+- **แนวทาง:** **Build** + ทางเลือก **Adopt** CRM
+- **Release:** R3
 
 ---
 
@@ -945,15 +945,15 @@ flowchart TB
 - เบิก/คืนชุดและอุปกรณ์ต่อนักกีฬาผ่าน FAC inventory
 - **Import adapters**: CSV/Excel, Catapult/Polar/Garmin (ต้องผ่าน DPIA + cross-border register และไม่บังคับให้นักกีฬาผูกบัญชีส่วนตัวโดยไม่แจ้ง)
 
-**Entities หลัก:** `AthleteProfile`, `SportDiscipline`, `AthleteTier`, `Squad`, `SquadMembership`, `CoachAssignment`, `TrainingPlan`, `TrainingSession`, `SessionLoad`, `WellnessEntry`, `Competition`, `Delegation`, `CompetitionEntry`, `CompetitionResult`, `NationalTeamCallUp`, `CompetitionLeaveBatch`, `CompetitionLeaveItem`, `EligibilityRuleSet`, `EligibilityCheck`, `TeamTrip`, `TripRoster`, `TripItinerary`, `TripBudget`, `TripAdvance`, `TripExpenseClaim`, `PerDiemPolicy`, `AthleteAward`, `NutritionPlan`, `FuellingLog`, `TalentPoolEntry`, `MaturationMeasure`, `PathwayStage`, `DcTutorAssignment`, `AntiDopingEducation`, `TueReminder`, `DeviceImportBatch`, `HostedEvent`
+- **Entities หลัก:** `AthleteProfile`, `SportDiscipline`, `AthleteTier`, `Squad`, `SquadMembership`, `CoachAssignment`, `TrainingPlan`, `TrainingSession`, `SessionLoad`, `WellnessEntry`, `Competition`, `Delegation`, `CompetitionEntry`, `CompetitionResult`, `NationalTeamCallUp`, `CompetitionLeaveBatch`, `CompetitionLeaveItem`, `EligibilityRuleSet`, `EligibilityCheck`, `TeamTrip`, `TripRoster`, `TripItinerary`, `TripBudget`, `TripAdvance`, `TripExpenseClaim`, `PerDiemPolicy`, `AthleteAward`, `NutritionPlan`, `FuellingLog`, `TalentPoolEntry`, `MaturationMeasure`, `PathwayStage`, `DcTutorAssignment`, `AntiDopingEducation`, `TueReminder`, `DeviceImportBatch`, `HostedEvent`
 
-**Events ที่ publish:** `ath.AthleteProfileCreated`, `ath.SquadAssigned`, `ath.CoachAssigned`, `ath.CompetitionScheduled`, `ath.CompetitionLeaveApproved`, `ath.EligibilityConfirmed`, `ath.EligibilityFailed`, `ath.TripApproved`, `ath.TripClosed`, `ath.CompetitionResultRecorded`, `ath.TrainingPlanPublished`, `ath.TalentStageChanged`
-**Events ที่ consume:** `eng.EmergencyDeclared`, `eng.PermissionSlipDecided`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `priv.ErasureApproved`, `adm.OfferConfirmed`, `reg.SectionScheduled`, `reg.EnrollmentConfirmed`, `reg.WithdrawalApproved`, `reg.TermRegistrationClosed`, `att.AbsenceThresholdWarning`, `exm.ExamTimetablePublished`, `exm.ExamConflictDetected`, `exm.MakeupExamScheduled`, `asm.GradesPublished`, `asm.GradeChanged`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.AcademicStandingChanged`, `rec.GuardianRelationChanged`, `ssc.BasicEdCompleted`, `fin.PayoutMade`, `sch.AwardGranted`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `hlt.MedicalClearanceChanged`, `hlt.AvailabilityChanged`, `hlt.InjuryReported`, `hlt.MedicalAlertUpdated`, `fac.BookingConfirmed`, `fac.BookingCancelled`, `lab.TestResultRecorded`, `xhr.StaffLeft`, `xhr.ProfessionalLicenceExpiring`, `xres.EthicsApprovalGranted`
+- **Events ที่ publish:** `ath.AthleteProfileCreated`, `ath.SquadAssigned`, `ath.CoachAssigned`, `ath.CompetitionScheduled`, `ath.CompetitionLeaveApproved`, `ath.EligibilityConfirmed`, `ath.EligibilityFailed`, `ath.TripApproved`, `ath.TripClosed`, `ath.CompetitionResultRecorded`, `ath.TrainingPlanPublished`, `ath.TalentStageChanged`
+- **Events ที่ consume:** `eng.EmergencyDeclared`, `eng.PermissionSlipDecided`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `priv.ErasureApproved`, `adm.OfferConfirmed`, `reg.SectionScheduled`, `reg.EnrollmentConfirmed`, `reg.WithdrawalApproved`, `reg.TermRegistrationClosed`, `att.AbsenceThresholdWarning`, `exm.ExamTimetablePublished`, `exm.ExamConflictDetected`, `exm.MakeupExamScheduled`, `asm.GradesPublished`, `asm.GradeChanged`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.AcademicStandingChanged`, `rec.GuardianRelationChanged`, `ssc.BasicEdCompleted`, `fin.PayoutMade`, `sch.AwardGranted`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `hlt.MedicalClearanceChanged`, `hlt.AvailabilityChanged`, `hlt.InjuryReported`, `hlt.MedicalAlertUpdated`, `fac.BookingConfirmed`, `fac.BookingCancelled`, `lab.TestResultRecorded`, `xhr.StaffLeft`, `xhr.ProfessionalLicenceExpiring`, `xres.EthicsApprovalGranted`
 
-**Workflow:** W-68, W-30, W-04, W-31, W-39 (ฝั่งสถานะ) และ workflow ใหม่ "ยื่นลาแข่งแบบยกคณะ (batch)", "เดินทางกลับ/ล้างเงินยืม"
-**Integrations:** wearables/แล็บ (adapters), กกท./สมาคมกีฬา (ไฟล์/portal), เจ้าภาพกีฬามหาวิทยาลัย (ใบรับรองสถานภาพ), DCAT/ADAMS (ไม่มี API, เก็บ reference)
-**แนวทาง:** **Build** + import adapters
-**Release:** R2 core (profile, squad, coach, training, competitions, ลาแข่ง batch) · R3 เต็ม (eligibility, travel & per diem, nutrition, psychology, talent pathway)
+- **Workflow:** W-68, W-30, W-04, W-31, W-39 (ฝั่งสถานะ) และ workflow ใหม่ "ยื่นลาแข่งแบบยกคณะ (batch)", "เดินทางกลับ/ล้างเงินยืม"
+- **Integrations:** wearables/แล็บ (adapters), กกท./สมาคมกีฬา (ไฟล์/portal), เจ้าภาพกีฬามหาวิทยาลัย (ใบรับรองสถานภาพ), DCAT/ADAMS (ไม่มี API, เก็บ reference)
+- **แนวทาง:** **Build** + import adapters
+- **Release:** R2 core (profile, squad, coach, training, competitions, ลาแข่ง batch) · R3 เต็ม (eligibility, travel & per diem, nutrition, psychology, talent pathway)
 
 ### 8.2 FAC — Sports facilities booking
 
@@ -965,14 +965,14 @@ flowchart TB
 - คิดค่าบริการบุคคลภายนอก (tax code) → FIN, check-in ด้วย digital ID/QR, รายงานอัตราการใช้งาน
 - **Inventory & uniform issue**: สินค้า/ขนาด/คลัง, เบิก-คืนต่อนักกีฬา, ของสิ้นเปลือง, อุปกรณ์ค้างคืน → REC hold (clearance), เลขครุภัณฑ์อ้าง X-PROC
 
-**Entities หลัก:** `Facility`, `FacilitySlot`, `BookingPolicy`, `Booking`, `RecurringBookingSeries`, `BookingCheckIn`, `Equipment`, `EquipmentLoan`, `InventoryItem`, `StockLocation`, `IssueTransaction`
+- **Entities หลัก:** `Facility`, `FacilitySlot`, `BookingPolicy`, `Booking`, `RecurringBookingSeries`, `BookingCheckIn`, `Equipment`, `EquipmentLoan`, `InventoryItem`, `StockLocation`, `IssueTransaction`
 
-**Events ที่ publish:** `fac.BookingConfirmed`, `fac.BookingCancelled`, `fac.BookingCharged`, `fac.EquipmentOverdue`
-**Events ที่ consume:** `svc.DigitalIdRevoked`, `adm.SkillTestSessionPlanned`, `reg.OfferingPlanApproved`, `reg.SectionScheduled`, `exm.ExamTimetablePublished`, `grd.GraduationApplicationSubmitted`, `fin.PaymentReceived`, `aff.AccommodationGranted`, `aff.ClubProjectApproved`, `ath.SquadAssigned`, `ath.CompetitionScheduled`, `ath.TrainingPlanPublished`, `xproc.AssetRegistered`
+- **Events ที่ publish:** `fac.BookingConfirmed`, `fac.BookingCancelled`, `fac.BookingCharged`, `fac.EquipmentOverdue`
+- **Events ที่ consume:** `svc.DigitalIdRevoked`, `adm.SkillTestSessionPlanned`, `reg.OfferingPlanApproved`, `reg.SectionScheduled`, `exm.ExamTimetablePublished`, `grd.GraduationApplicationSubmitted`, `fin.PaymentReceived`, `aff.AccommodationGranted`, `aff.ClubProjectApproved`, `ath.SquadAssigned`, `ath.CompetitionScheduled`, `ath.TrainingPlanPublished`, `xproc.AssetRegistered`
 
-**Integrations:** ระบบประตู/ไฟสนาม (ทางเลือก), X-PROC
-**แนวทาง:** **Build**
-**Release:** R3 (ใน R1–R2 การจองสนามสอบทักษะและห้องเรียนใช้ booking ขั้นต่ำของ FAC ที่ส่งพร้อม ADM/REG — ดูหมายเหตุ)
+- **Integrations:** ระบบประตู/ไฟสนาม (ทางเลือก), X-PROC
+- **แนวทาง:** **Build**
+- **Release:** R3 (ใน R1–R2 การจองสนามสอบทักษะและห้องเรียนใช้ booking ขั้นต่ำของ FAC ที่ส่งพร้อม ADM/REG — ดูหมายเหตุ)
 
 > **หมายเหตุถึงเล่ม 12:** ADM (R1) และ REG/EXM (R2) ต้องจองสนาม/ห้อง จึงต้องมี FAC แบบขั้นต่ำ (ทะเบียน facility + booking ภายใน) ก่อน FAC เต็มใน R3
 
@@ -986,13 +986,13 @@ flowchart TB
 - การใช้ข้อมูลเพื่อวิจัยต้องมี ethics ref (X-RES/บันทึกด้วยมือ) + consent ผ่าน PRIV
 - รายงานผลผ่าน DOC
 
-**Entities หลัก:** `TestProtocol`, `ProtocolVersion`, `Instrument`, `CalibrationRecord`, `InstrumentQualification`, `LabSession`, `LabTestResult`, `ExternalClientOrder`, `LabReport`
+- **Entities หลัก:** `TestProtocol`, `ProtocolVersion`, `Instrument`, `CalibrationRecord`, `InstrumentQualification`, `LabSession`, `LabTestResult`, `ExternalClientOrder`, `LabReport`
 
-**Events ที่ publish:** `lab.TestResultRecorded`, `lab.CalibrationDue`, `lab.ServiceInvoiced`
-**Events ที่ consume:** `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `fin.PaymentReceived`, `ath.SquadAssigned`, `ath.TrainingPlanPublished`, `fac.BookingConfirmed`, `fac.BookingCancelled`, `xres.EthicsApprovalGranted`
+- **Events ที่ publish:** `lab.TestResultRecorded`, `lab.CalibrationDue`, `lab.ServiceInvoiced`
+- **Events ที่ consume:** `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `fin.PaymentReceived`, `ath.SquadAssigned`, `ath.TrainingPlanPublished`, `fac.BookingConfirmed`, `fac.BookingCancelled`, `xres.EthicsApprovalGranted`
 
-**แนวทาง:** **Build**
-**Release:** R3 พื้นฐาน (protocol, calibration, จองผ่าน FAC, ส่งผลให้ ATH) · สัญญาแยก (LIMS ขั้นสูง, บริการภายนอกเต็มรูปแบบ)
+- **แนวทาง:** **Build**
+- **Release:** R3 พื้นฐาน (protocol, calibration, จองผ่าน FAC, ส่งผลให้ ATH) · สัญญาแยก (LIMS ขั้นสูง, บริการภายนอกเต็มรูปแบบ)
 
 ### 8.4 REV — Revenue services
 
@@ -1003,13 +1003,13 @@ flowchart TB
 - Ticketing สำหรับงานแข่งขัน/กิจกรรม (งานใหญ่ใช้ partner), สัญญา sponsorship และติดตามสิ่งที่ต้องส่งมอบ (โลโก้บนชุด/ป้าย)
 - ค่าย/อบรมที่มีผู้เยาว์ต้องใช้ permission slip, StaffClearance ของวิทยากร และ PDPA ผู้เยาว์ตามโมดูลเจ้าของ
 
-**Entities หลัก:** `RevOffering`, `RevSession`, `RevEnrollment`, `RevAssessment`, `TicketedEvent`, `Ticket`, `SponsorshipContract`, `SponsorDeliverable`
+- **Entities หลัก:** `RevOffering`, `RevSession`, `RevEnrollment`, `RevAssessment`, `TicketedEvent`, `Ticket`, `SponsorshipContract`, `SponsorDeliverable`
 
-**Events ที่ publish:** `rev.EnrollmentConfirmed`, `rev.CompletionRecorded`, `rev.TicketSold`, `rev.SponsorshipContracted`
-**Events ที่ consume:** `fin.PaymentReceived`
+- **Events ที่ publish:** `rev.EnrollmentConfirmed`, `rev.CompletionRecorded`, `rev.TicketSold`, `rev.SponsorshipContracted`
+- **Events ที่ consume:** `fin.PaymentReceived`
 
-**แนวทาง:** **Build** + ทางเลือก **Adopt** CRM/ticketing partner
-**Release:** สัญญาแยก (เฟสหลัง, 2574+)
+- **แนวทาง:** **Build** + ทางเลือก **Adopt** CRM/ticketing partner
+- **Release:** สัญญาแยก (เฟสหลัง, 2574+)
 
 ---
 
@@ -1060,7 +1060,7 @@ flowchart TB
 | 6 | `org.OrgUnitCreated` | ORG | ADMIN, ANA, RPT | org_unit_id, type, parent_id |
 | 7 | `org.SettingChanged` | ORG | FIN, REG, DOC, ADM | org_unit_id, setting_key, valid_from |
 | 8 | `org.ParentAgencyChanged` | ORG | DOC, RPT, FIN | agency_id, valid_from, codes |
-| 9 | `org.CalendarPublished` | ORG | REG, ATT, EXM, ASM, FIN, SCH, HOU, ENG, SSC, ADMIN, ADM, AFF, GRD | calendar_id, academic_year, term, org_unit_scope, version |
+| 9 | `org.AcademicCalendarPublished` | ORG | REG, ATT, EXM, ASM, FIN, SCH, HOU, ENG, SSC, ADMIN, ADM, AFF, GRD | calendar_id, academic_year, term, org_unit_scope, version |
 | 10 | `org.CalendarWindowOpened` | ORG | REG, ASM, GRD, ENG, SCH, AFF, ADM, HOU, EXM | window_type (REGISTRATION/LATE_REG/ADD_DROP/W/GRADE_ENTRY/GRAD_APPLY/ADMISSION_*), org_unit_scope, start/end |
 | 11 | `org.CalendarWindowClosed` | ORG | REG, ASM, GRD, ENG, SCH, AFF, ADM, HOU, EXM | เหมือน CalendarWindowOpened |
 | 12 | `org.BlackoutPeriodSet` | ORG | EXM, REG, ADMIN | org_unit_scope, start/end, reason (เช่น พลศึกษาเกมส์), source_ref |
@@ -1270,7 +1270,7 @@ flowchart TB
 | v0.9 | ปัญหา | v1.0 |
 |---|---|---|
 | `athlete.ResultRecorded` vs `athlete.CompetitionResultRecorded` | ชื่อไม่ตรงกัน (I-06, IC-13) | `ath.CompetitionResultRecorded` |
-| `org.AcademicCalendarPublished` (ENG subscribe แต่ไม่มีผู้ publish) | ไม่มี publisher (I-07, IC-14) | `org.CalendarPublished` (ORG เป็นเจ้าของปฏิทิน) |
+| `org.AcademicCalendarPublished` (ENG subscribe แต่ไม่มีผู้ publish) | ไม่มี publisher (I-07, IC-14) | คงชื่อ `org.AcademicCalendarPublished` และให้ ORG publish (ORG เป็นเจ้าของปฏิทิน) |
 | `registration.SectionScheduled`, `admissions.SkillTestSessionPlanned`, `athlete.TrainingPlanPublished` | ไม่มี publisher (I-07) | `reg.SectionScheduled`, `adm.SkillTestSessionPlanned`, `ath.TrainingPlanPublished` อยู่ใน Pub ของเจ้าของแล้ว |
 | `loan.DisbursementConfirmed` vs `loan.DisbursementReceived` | ชื่อไม่ตรงกัน (I-08) | `sch.LoanDisbursementReceived` |
 | `eng.EventCheckedIn` ไม่อยู่ใน Sub ของ AFF | ขาด subscriber (I-09) | AFF subscribe แล้ว |
