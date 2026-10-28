@@ -1,0 +1,138 @@
+<title>TNSU Workflow ตามบทบาท</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: เลือกบทบาท → การ์ดงานของบทบาทนั้น → ขั้นตอนเรียงลงมาเป็นข้อ ไฮไลต์ขั้นที่เป็นหน้าที่ของคุณ */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --ink: #1a2230;
+  --muted: #5d6879;
+  --line: #dce1e8;
+  --accent: #1f5fa8;
+  --accent-soft: #e3ecf8;
+  --you: #fff4d6;
+  --you-line: #e0a400;
+  --new: #a85800;
+  --new-soft: #fbecd8;
+  --font-display: "Chakra Petch", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161e; --surface: #18202b; --ink: #e7ecf3; --muted: #9ba7b7; --line: #2b3545;
+    --accent: #82b4ee; --accent-soft: #1e2e46; --you: #3a3013; --you-line: #e9b93c; --new: #f2a955; --new-soft: #3b2b15;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161e; --surface: #18202b; --ink: #e7ecf3; --muted: #9ba7b7; --line: #2b3545;
+  --accent: #82b4ee; --accent-soft: #1e2e46; --you: #3a3013; --you-line: #e9b93c; --new: #f2a955; --new-soft: #3b2b15;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 64px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-size: 13px; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 5vw, 38px); line-height: 1.2; margin: 0; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 21px; margin: 0; }
+p { margin: 0; max-width: 66ch; }
+.muted { color: var(--muted); }
+
+/* ขั้นที่ 1: เลือกบทบาท */
+.picker { display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+.group { display: grid; gap: 6px; }
+.group-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button {
+  font: 500 15px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 14px; cursor: pointer;
+}
+.chips button:hover { border-color: var(--accent); }
+.chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ผลลัพธ์ */
+.result-head { display: grid; gap: 4px; }
+.result-head strong { color: var(--accent); }
+.lists { display: grid; gap: 28px; }
+.list { display: grid; gap: 12px; }
+.cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.card-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.wid { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.card h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin: 0; flex: 1 1 auto; min-width: 0; }
+.badge-new { font-size: 12px; font-weight: 600; color: var(--new); background: var(--new-soft); border-radius: 4px; padding: 0 7px; }
+.sla { font-size: 13px; color: var(--muted); }
+
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+ol.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; position: relative; padding-bottom: 10px; }
+ol.steps li:last-child { padding-bottom: 0; }
+ol.steps li::before {
+  content: ""; position: absolute; left: 13px; top: 28px; bottom: 0; width: 2px; background: var(--line);
+}
+ol.steps li:last-child::before { display: none; }
+.num {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; font-weight: 600; background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.step { display: grid; gap: 1px; padding: 3px 8px; border-radius: 8px; min-width: 0; }
+.who { font-size: 13px; font-weight: 600; color: var(--muted); }
+.what { font-size: 15px; }
+li.mine .step { background: var(--you); box-shadow: inset 3px 0 0 var(--you-line); }
+li.mine .who { color: var(--ink); }
+li.mine .num { background: var(--you-line); color: var(--surface); }
+.empty { color: var(--muted); font-size: 15px; background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 16px; }
+
+
+.stage-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.stage-nav a { font-size: 14px; color: var(--accent); text-decoration: none; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 3px 10px; }
+.stage-nav a:hover { border-color: var(--accent); }
+.stage { display: grid; gap: 12px; scroll-margin-top: 16px; }
+.stage-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
+.stage-title .n { font-family: var(--font-display); font-weight: 700; color: var(--accent); font-size: 20px; font-variant-numeric: tabular-nums; }
+.stage-title p { font-size: 14px; }
+.myrole { font-size: 12px; font-weight: 600; border-radius: 4px; padding: 0 7px; }
+.myrole.start { background: var(--accent); color: var(--surface); }
+.myrole.part { background: var(--accent-soft); color: var(--accent); }
+#q { font: 15px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; width: 100%; max-width: 420px; }
+#q:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rules { display: grid; gap: 6px; padding-left: 22px; margin: 0; max-width: 78ch; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">มหาวิทยาลัยการกีฬาแห่งชาติ · ระบบสารสนเทศ · ร่างแบบ 28 ต.ค. 2569</div>
+    <h1>Workflow ตามบทบาท</h1>
+    <p class="muted">เลือกบทบาทเพื่อดูทุกงานที่บทบาทนั้นเกี่ยวข้อง เรียงตามช่วงเวลาตั้งแต่สมัครเรียนจนเป็นศิษย์เก่า ขั้นตอนที่ไฮไลต์สีเหลืองคือหน้าที่ของบทบาทที่เลือก</p>
+  </header>
+
+  <div class="picker" id="picker"></div>
+
+  <div class="result-head" id="resultHead" aria-live="polite"></div>
+  <div class="lists" id="lists"></div>
+
+  <section style="display:grid;gap:10px">
+    <h2>กฎที่ใช้กับทุก workflow</h2>
+    <ol class="rules">
+      <li>ถ้าผู้อนุมัติลาหรือตำแหน่งว่าง ระบบส่งให้ผู้รักษาราชการแทนอัตโนมัติ</li>
+      <li>ห้ามอนุมัติเรื่องของตัวเอง ระบบจะส่งข้ามไปยังระดับถัดไป</li>
+      <li>เกินเวลาที่กำหนด ระบบเตือน ถ้าเกินถึง 2 เท่า จะแจ้งหัวหน้าถัดไป</li>
+      <li>ทุกขั้นตอนมีบันทึกย้อนหลังที่แก้ไขไม่ได้ ถ้าปฏิเสธต้องระบุเหตุผล</li>
+      <li>คำสั่งที่กระทบสิทธิ์ เช่น พ้นสภาพ ลงโทษ หรือไม่ให้ทุน ต้องบอกเหตุผลและบอกว่าอุทธรณ์ได้อย่างไร</li>
+      <li>เรื่องของนักเรียนผู้เยาว์ต้องแจ้งผู้ปกครองที่มีสิทธิ์ และตรวจคำสั่งจำกัดสิทธิ์ผู้ปกครองก่อน</li>
+      <li>ผู้ดูแลระบบไม่ได้อยู่ในสายอนุมัติงานใดเลย</li>
+    </ol>
+  </section>
+
+  <footer>สร้างจาก tnsu-system/docs/data/workflows.json · รายละเอียดเต็มอยู่ในเล่ม 05-workflows.md · ระยะเวลาบางข้อยังต้องยืนยันกับ มกช.</footer>
+</div>
+
