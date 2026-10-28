@@ -1209,9 +1209,9 @@ erDiagram
   }
 ```
 
-| Fact/entity ใหม่ | ใช้กับ KPI (รหัสตาม KPI dictionary เล่ม 14 v1.1; ในวงเล็บคือรหัส v1.0) | ต้นทาง | หมายเหตุ |
+| Fact/entity ใหม่ | ใช้กับ KPI (รหัสตาม KPI dictionary เล่ม 14 v1.1; ในวงเล็บคือรหัส K-xx ของเล่ม 14 v1.0 ซึ่งเลิกใช้แล้ว — ไม่ใช่ K-x ของเล่ม 03) | ต้นทาง | หมายเหตุ |
 |---|---|---|---|
-| `ALERT_INTERVENTION` (REC) + `fct_alert` | KPI-04 (K-04) | `rec.AcademicAlert*` | "ติดตาม" = มี `AdvisingNote` หรือ referral ไม่ใช่แค่กดรับทราบ (UXR-09) |
+| `ALERT_INTERVENTION` (REC) + `fct_alert` | KPI-04 (K-04) | entity `ACADEMIC_ALERT` + `ALERT_INTERVENTION` ของ REC (ไม่ใช่ event) | "ติดตาม" = มี `AdvisingNote` หรือ referral ไม่ใช่แค่กดรับทราบ (UXR-09) |
 | `fct_cohort_status` + `dim_cohort` | KPI-03, KPI-05 (K-03/K-05) | `STUDENT_STATUS_HISTORY` + `CENSUS_SNAPSHOT` | census 10 มิ.ย./10 พ.ย.; cohort = first-time เต็มเวลา; 2 มุมมอง (วิทยาเขต/มหาวิทยาลัย: ย้ายภายใน มกช. ไม่นับเป็นการสูญเสียระดับมหาวิทยาลัย); exclude ผู้เสียชีวิต; "ตามเวลา" = ระยะหลักสูตร (UXR-07) |
 | `LEGACY_COHORT_SUMMARY` | แนวโน้ม 5 ปีของ KPI-03/KPI-05 | **TR-10 ของเล่ม 12:** migrate `StudentStatusHistory` ระดับรุ่น (รวมผู้ออก) 6–8 รุ่นเข้า **ANA เท่านั้น** หรือตัวเลขรวมที่นายทะเบียนรับรอง | ติดป้าย "ข้อมูลก่อนระบบ"; ถ้าไม่มีให้แสดงหมายเหตุว่าอัตราย้อนหลังคำนวณจากนักศึกษาที่ยังมีสถานะ ซึ่งสูงเกินจริงอย่างเป็นระบบ (UXR-08, D-10) |
 | `dim_admission_plan` | KPI-02 (K-02) | ADM `AdmissionPlan`, `SeatQuota` | |
@@ -1636,14 +1636,7 @@ flowchart LR
 | FS O-1..O-6, O-9, O-10 / D-06 over-engineering | **แก้**: periodization optional, ไม่มี ACWR alert/meal log/vendor adapter/HostedEvent, maturation เฉพาะ talent pathway, LAB สัญญาแยก, ClearingRun เลื่อน | 2.8, 6 |
 | D-08 สถานภาพก่อนเปิดลงทะเบียนภาคถัดไป | **แก้ส่วนข้อมูล**: `STANDING_EVALUATION` | 2.4 |
 
-### 16.2 สมมติฐาน/คำถามใหม่ที่เสนอ (ให้ผู้นำรวมเข้าทะเบียน A ในเล่ม 01 และ Q ในเล่ม 13)
+### 16.2 สมมติฐาน/คำถามใหม่ของเล่มนี้ (ลงทะเบียนกลางแล้ว)
 
-> เลขชุดเดียวกับเล่ม 07 และ 11 (ไม่ซ้ำกัน); รายการที่เกี่ยวกับเล่มนี้:
+นิยามอยู่ใน [01-overview](01-overview.md) หัวข้อ 7.11 และ [13-open-questions](13-open-questions.md) หัวข้อ 9.2 เท่านั้น: **A-108** ระบบเดิมไม่มี write API → shadow comparison · **A-109** ดึงประวัติสถานภาพระดับรุ่น 6–8 รุ่นได้ · **A-118** backup ของ `hlt_keys` ≤ 35 วัน · **Q-92** import/write API ของผู้ขายระบบเดิม · **Q-93** ตัด backup รายปี 7 ปีของ core · **Q-94** ขอบเขตประวัติรุ่นสำหรับ KPI ย้อนหลัง
 
-| รหัสเสนอ | ประเภท | ข้อความ | ผลถ้าผิด / ผลของคำตอบ | ยืนยันด้วย |
-|---|---|---|---|---|
-| A-108 | สมมติฐาน | ระบบเดิมของวิทยาเขตส่วนใหญ่**ไม่มี API ที่รับการเขียนกลับ** จึงใช้ shadow comparison เป็นค่าเริ่มต้นของ parallel run | ถ้ามี API → เปิด write-back เฉพาะวิทยาเขตนั้น (rollback อัตโนมัติได้) | Q-92 |
-| A-109 | สมมติฐาน | ดึง `StudentStatusHistory` ระดับรุ่นย้อนหลัง 6–8 รุ่น (รวมผู้ออก) จากระบบเดิมได้ หรือนายทะเบียนรับรองตัวเลขรวมรายรุ่นได้ | ไม่ได้ทั้งสองทาง → KPI คงอยู่/สำเร็จย้อนหลังแสดงพร้อมหมายเหตุว่าสูงเกินจริง | Q-94 |
-| Q-92 | คำถาม | ผู้ขายระบบทะเบียนเดิมของแต่ละวิทยาเขตมี import/write API หรือไม่ (ใช้ตัดสิน write-back vs shadow comparison และวิธี rollback) | ตามคำตอบรายวิทยาเขต | P0 data profiling |
-| Q-93 | คำถาม | อนุมัติให้ backup ของ core เก็บ 35 วัน + รายเดือน 12 เดือน (ตัดรายปี 7 ปี) และใช้ fiscal-close export เข้า records archive แทน | ไม่อนุมัติ → ข้อมูลที่ลบตาม DSR อยู่ใน backup ได้ถึง 7 ปี (ต้องเขียนใน privacy notice) | DPO + สำนักงานตรวจสอบภายใน |
-| Q-94 | คำถาม | สำหรับ KPI ย้อนหลัง จะ migrate status history ระดับรุ่นหรือใช้ตัวเลขรวมที่นายทะเบียนรับรอง และย้อนหลังกี่รุ่น | กำหนดขอบเขตงาน migration ของ ANA | Design Authority + นายทะเบียน |

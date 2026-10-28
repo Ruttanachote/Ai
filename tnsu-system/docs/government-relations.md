@@ -193,7 +193,7 @@ flowchart LR
 | หน่วยงาน | ความสัมพันธ์ | ข้อมูล/รายงาน | ช่องทาง | ความถี่ | ผลต่อระบบ | สถานะ |
 |---|---|---|---|---|---|---|
 | สมศ. (อุดมศึกษา) | ประเมินภายนอกตาม พ.ร.บ.การศึกษาแห่งชาติ | SAR สถาบัน/หลักสูตร, KPI | Portal/File | ตามรอบ 🟡 | QA data mart, evidence store | 🟡 (ไม่พบรายงานของ มกช.) |
-| QA ภายใน (CUPT QA/AUN-QA/EdPEx) | กรอบ QA ภายในที่มหาวิทยาลัยเลือก | SAR หลักสูตร, ELO, retention | Internal | รายปีการศึกษา | QA module | ✅ กรอบทั่วไป (process_requirements) ; 🟡 กรอบที่ มกช. ใช้ |
+| QA ภายใน (CUPT QA/AUN-QA/EdPEx) | กรอบ QA ภายในที่มหาวิทยาลัยเลือก | SAR หลักสูตร, ELO, retention | Internal | รายปีการศึกษา | QA (CUR + ANA `mart_qa_*` + RPT) | ✅ กรอบทั่วไป (process_requirements) ; 🟡 กรอบที่ มกช. ใช้ |
 | สำนักงาน ป.ป.ช. – ITA | ประเมินคุณธรรมและความโปร่งใส 3 เครื่องมือ IIT/EIT/OIT (30/30/40) | OIT: ข้อมูลเปิดเผยบนเว็บไซต์ (แผน งบ จัดซื้อ HR สถิติบริการ ข้อร้องเรียน), รายชื่อผู้มีส่วนได้เสีย (EIT) | Portal (ITAS) + เว็บไซต์ | รายปีงบ: **OIT ตอบ/อนุมัติข้อมูล 2 มี.ค.–30 มิ.ย.; IIT ปิด 30 มิ.ย.; EIT ถึง 30 ก.ย.** (รอบปีงบ 2569 ✅ [Mahidol LC](https://lc.mahidol.ac.th/documents/OIT/2026_Timeline.pdf); ⚠️ แก้ v1.1 จากเดิม "OIT ภายใน เม.ย., ตรวจ พ.ค.") | OIT publishing CMS, procurement & complaint statistics, e-Service stats | ✅ [S36][S37][S38]; 🟡 คะแนน มกช. |
 | สำนักงาน ก.พ.ร. | ประเมินผลการปฏิบัติราชการ (PMQA 4.0, DG Readiness, ความพึงพอใจ) และเป็นผู้เสนอโครงสร้างกระทรวงใหม่ | คำรับรอง/KPI, รายงานผล, PMQA | Portal/File | รอบ 6/12 เดือน 🟡 | KPI management, survey module, digital-readiness evidence | ✅ KPI template 2569 [S39]; ก.พ.ร. เสนอร่างแยกกระทรวง [S8]; 🟡 มกช. อยู่ในกรอบ ก.พ.ร. |
 | สตง. | ตรวจสอบการเงิน/งบการเงิน/ผลสัมฤทธิ์ และรับเรื่องร้องเรียน | งบการเงิน, เอกสารเบิกจ่าย, สัญญา | Paper + เข้าตรวจระบบ | รายปี + ตามเหตุการณ์ | Finance audit trail, read-only auditor role, document retention | ✅ มีการร้องเรียน สตง. เรื่อง มกช. [S14]; 🟡 รอบตรวจ |
@@ -285,7 +285,7 @@ flowchart LR
 |---|---|---|---|---|---|---|
 | วช. (NRCT) – NRIIS | เสนอขอทุน, รายงานความก้าวหน้า, มาตรฐานจริยธรรมการวิจัยในมนุษย์ | ข้อเสนอ, รายงาน, ผลผลิต | Portal (NRIIS) | ตามรอบทุน | Research management, ERP budget link | 🟡 |
 | สกสว. / PMU (บพค., บพข., บพท. ฯลฯ) | กรอบงบ ววน. (FF/SF) | ข้อเสนอ, KPI ผลผลิต/ผลลัพธ์ | Portal | รายปี | Research KPI | 🟡 |
-| คณะกรรมการจริยธรรมการวิจัยในมนุษย์ (ภายใน) ตามมาตรฐาน | งานวิจัยวิทยาศาสตร์การกีฬาใช้อาสาสมัคร (รวมผู้เยาว์) | Protocol, consent, approval | Internal | ต่อโครงการ | IRB/EC module, consent repository | 🟡 (ไม่พบข้อมูล EC ของ มกช.) |
+| คณะกรรมการจริยธรรมการวิจัยในมนุษย์ (ภายใน) ตามมาตรฐาน | งานวิจัยวิทยาศาสตร์การกีฬาใช้อาสาสมัคร (รวมผู้เยาว์) | Protocol, consent, approval | Internal | ต่อโครงการ | X-RES (วิจัย+จริยธรรม, สัญญาแยก), consent ใน PRIV | 🟡 (ไม่พบข้อมูล EC ของ มกช.) |
 | TCI / ThaiJO | มกช. มีวารสาร TNSU Journal บน ThaiJO | บทความ, ข้อมูลผลงาน | Portal | ต่อฉบับ | Publication registry (ใช้ในตำแหน่งวิชาการ/QA) | ✅ [S78] |
 
 ### 3.13 เอกสาร จดหมายเหตุ ราชกิจจาฯ พิธีการ
@@ -421,7 +421,7 @@ flowchart LR
 
 ### 4.12 วิจัย
 
-ผลต่อระบบ: research project registry ที่ผูก NRIIS project ID 🟡, EC/IRB module (protocol, consent ของผู้เยาว์, อนุมัติ, รายงานความก้าวหน้า) 🟡, publication registry (ThaiJO/TCI) ✅[S78] ใช้ร่วมกับตำแหน่งวิชาการและ QA
+ผลต่อระบบ: research project registry ที่ผูก NRIIS project ID 🟡, X-RES: EC/IRB (protocol, consent ของผู้เยาว์, อนุมัติ, รายงานความก้าวหน้า) 🟡, publication registry (ThaiJO/TCI) ✅[S78] ใช้ร่วมกับตำแหน่งวิชาการและ QA
 
 ### 4.13 เอกสาร จดหมายเหตุ
 

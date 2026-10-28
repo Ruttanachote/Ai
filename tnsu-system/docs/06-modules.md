@@ -1431,7 +1431,7 @@ flowchart TB
 | consistency TERM-03 | entity `Delegation` ชนศัพท์ delegated authority | **แก้:** `CompetitionDelegation` (8.1) — ส่งผู้ดูแลเล่ม 08 แก้ ER ให้ตรง |
 | consistency WF-05 | contract test อ้าง `output` | **แก้:** หัวข้อ 10.1 และหัวเล่มใช้ `events[]` |
 | consistency ID-03 | `I-nn` ชน integration ID | **แก้:** เติม `RF` ในเนื้อความนอกตาราง closure |
-| consistency WF-03 | รายการ Workflow ต่อโมดูลเป็น placeholder | **ส่งต่อ:** lead สร้างรายการ Workflow ใหม่จาก `data/workflows.json` (ไม่แก้ในรอบนี้ตามคำสั่ง) |
+| consistency WF-03 | รายการ Workflow ต่อโมดูลเป็น placeholder | **แก้ (รอบรวมเล่ม v1.1):** บรรทัด "Workflow" ของทุกโมดูลสร้างจาก `data/workflows.json` ด้วย generator แล้ว (162 workflow) |
 | D-04 / OWN-02, X-27 | ชื่อ vault, ที่เก็บ DEK, wellness อยู่ ATH | **แก้:** HLT ใช้ `hlt_vault` + `hlt_keys` (DEK ต่อบุคคล × record class); `WellnessEntry` ย้ายเข้า HLT; ATH เก็บ `ReadinessSummary` |
 | D-05 / functional_sports S-01, X-28 | โค้ชอาจไม่เห็นสถานะความพร้อม | **แก้:** HLT/ATH: สถานะ พร้อม/จำกัด/ไม่พร้อม + ข้อจำกัดเห็นเสมอ (ออกโดย `physician`/`physio`), รายละเอียดต้อง consent |
 | D-06 / functional_sports O-1..O-6, O-9, O-10 | over-engineering | **แก้:** ATH (session log แทน periodization, ไม่มี ACWR alert, meal provision แทน meal log, CSV กลางแทน adapter ยี่ห้อ, ตัด hosted-event accreditation, maturation เฉพาะ talent pathway), LAB เลื่อนทั้งโมดูล, ADM ไม่มี z-score normalisation และเลื่อน `ClearingRun` |
