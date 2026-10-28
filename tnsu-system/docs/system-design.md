@@ -119,7 +119,7 @@
 
 | กลุ่มความสามารถ | โมดูล (ดูหัวข้อ 4) |
 |---|---|
-| Platform | Identity & Access, Organisation & Campus, Communication & Notification, Document/e-Saraban integration, Privacy & Consent Center, Audit, Analytics/QA/ITA |
+| Platform | Identity & Access, Organisation & Campus, Communication & Notification, News/Announcements/Events & Engagement (4.27), Document/e-Saraban integration, Privacy & Consent Center, Audit, Analytics/QA/ITA |
 | Academic core | Admissions, Curriculum & Course Catalogue, Timetable & Course Registration, Assessment & Grading, Student Records & Academic Standing, Graduation & Credentials, LMS integration, Teaching Practicum & Licence |
 | Student services | Finance & Billing, Scholarships & Student Loans, Housing/Dormitory, Student Affairs, Alumni & Career |
 | Sports | Athlete Management, Sports Facilities Booking, Sports School (basic-ed profile) |
@@ -687,6 +687,7 @@ flowchart TB
     IAM["Identity & Access"]
     ORG["Organisation & Campus"]
     NOTI["Communication & Notification"]
+    ENG["News, Announcements & Events"]
     DOC["Document / e-Saraban"]
     PRIV["Privacy & Consent Center"]
     AUD["Audit"]
@@ -1048,6 +1049,70 @@ flowchart TB
 | X-13 | International students | **Build** | 6 | การรับสมัครผู้สมัครต่างชาติ (passport เป็น alt_id), วีซ่านักเรียน (non-ED) และหนังสือรับรอง, **การแจ้งที่พัก/รายงานตัว 90 วันกับ สตม.** (เตือนล่วงหน้า + ช่วยเตรียมเอกสาร; ระบบของ สตม. ใช้แบบ portal [ต้องตรวจสอบ]), ประกันสุขภาพ, ภาษาอังกฤษเต็มรูปแบบ; การโอนข้อมูลข้ามประเทศ (มหาวิทยาลัยต้นทาง) ตามเกณฑ์ cross-border ([HSF Kramer](https://www.hsfkramer.com/notes/data/2025-posts/pdpa-fines-and-firsts-a-6-year-timeline-of-thailands-data-privacy-enforcement)) | ADM, REC, PRIV |
 
 **หลักการของส่วนขยาย:** (1) ใช้ IAM, ORG, NOTI, DOC, Audit, Analytics ของแพลตฟอร์มเดียวกัน (2) โมดูลที่เป็น Adopt ต้องรองรับ OIDC/SAML กับ Keycloak, ส่ง audit/log ผ่าน OpenTelemetry และ deploy บน Kubernetes เดียวกัน (3) ทุกโมดูลที่ Build ใช้กติกา bounded context ใน 4.0 (4) ส่วน Integrate ใช้ ACL ในหัวข้อ 7
+
+### 4.27 News, Announcements, Events & Engagement (ENG) — ข่าวสาร ประกาศ กิจกรรม และการแจ้งเตือน
+
+> โมดูลนี้เป็น **ชั้นเนื้อหาและการมีส่วนร่วม** ที่อยู่เหนือ NOTI (4.19): ENG เป็นเจ้าของ "เนื้อหา ผู้รับ และการอนุมัติ" ส่วน NOTI เป็นเจ้าของ "การส่งออกแต่ละช่องทาง" ENG ทำงานคู่กับ AFF (4.12) สำหรับชั่วโมงกิจกรรม และกับ Campus CMS (X-10) สำหรับการเผยแพร่บนเว็บไซต์ เฟส: ข่าว/ประกาศ/notification center ใน Phase 1 (ต้องมีตั้งแต่ pilot), กิจกรรม/ชมรม/แบบสำรวจใน Phase 2, emergency broadcast ใน Phase 1
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ให้ทุกระดับ (มหาวิทยาลัย / วิทยาเขต / คณะ / ภาค / หลักสูตร / โรงเรียนกีฬา / หอพัก / ชมรม) สื่อสารถึงคนที่ใช่ ในเวลาที่ใช่ ผ่านช่องทางที่ใช่ พร้อมหลักฐานว่าผู้รับ "รับทราบ" แล้ว |
+| **ข่าวสาร (News)** | ข่าวประชาสัมพันธ์ไทย/อังกฤษ แยกหมวด (วิชาการ, รับสมัคร, ทุน, กีฬา/ผลการแข่งขัน, วิจัย, จัดซื้อจัดจ้าง/ITA, ศิษย์เก่า); รูป/วิดีโอ/แกลเลอรี; ตั้งเวลาเผยแพร่และวันหมดอายุ; ปักหมุด; เผยแพร่พร้อมกันไป app feed, portal และเว็บไซต์วิทยาเขต (ผ่าน CMS X-10); **ข่าวผลงานนักกีฬา** ดึงจาก `athlete.CompetitionResultRecorded` แต่เผยแพร่ได้เมื่อมี consent (ผู้เยาว์ต้องมี consent ผู้ปกครอง) |
+| **ประกาศทางการ (Official announcement)** | ประกาศมหาวิทยาลัย/วิทยาเขต/คณะ มีเลขที่ประกาศ ปี พ.ศ. ผู้ลงนาม และ **e-signature** (ETDA) แนบ PDF/A; เชื่อม e-Saraban (DOC) เป็นเลขทะเบียนหนังสือ; **ประกาศแก้ไข/ยกเลิก** อ้างถึงฉบับเดิม (version chain ห้ามแก้ทับ); เผยแพร่ในหน้า OIT ของ ITA อัตโนมัติเมื่อเป็นหมวดที่ต้องเปิดเผย (ดู [government-relations.md](./government-relations.md)) |
+| **ประกาศทั่วไป/ประกาศเฉพาะกลุ่ม** | เช่น "ปิดระบบลงทะเบียน 18:00", "นักกีฬาฟุตบอลรายงานตัว", "หอ 3 ปิดน้ำ" — มี **audience targeting** แบบ dynamic segment: OrgUnit, คณะ/หลักสูตร, ชั้นปี/รุ่น, สถานะ (ปกติ/โปร/ลาพัก), บทบาท, ชนิดกีฬา/ทีม, อาคารหอพัก/ห้อง, รายวิชา-section, ผู้ปกครองของผู้เยาว์, ศิษย์เก่ารุ่นปี, บุคลากรตามสายงาน; segment ประเมิน ณ เวลาส่ง และบันทึก snapshot ผู้รับไว้เป็นหลักฐาน |
+| **การรับทราบ (Acknowledgement)** | ประกาศที่ตั้ง `requires_ack` ผู้รับต้องกด "รับทราบ" (เช่น ระเบียบหอพัก, กฎการสอบ, ประกาศ PDPA); รายงานอัตรารับทราบรายกลุ่ม; ส่งเตือนซ้ำอัตโนมัติ (เช่น 24 ชม./72 ชม.) และแจ้งอาจารย์ที่ปรึกษา/ครูประจำชั้นสำหรับคนที่ยังไม่รับทราบ |
+| **การแจ้งเตือน (Notification center)** | กล่องแจ้งเตือนใน app/web รวมทุกเรื่อง พร้อมสถานะอ่าน/ยังไม่อ่าน แบ่ง 3 ประเภท: (1) **Transactional** จาก event ของโมดูล เช่น เกรดออก, ใบแจ้งหนี้ครบกำหนด, อนุมัติทุน/ลาแข่ง, ได้ห้องหอ, ถูกเลือกติดทีมชาติ (2) **Reminder** ตาม deadline ในปฏิทิน เช่น ลงทะเบียน, ยืนยัน กยศ., ส่งเอกสารผ่อนผันทหาร, ยื่นจบ (3) **Broadcast** จากประกาศ; ผู้ใช้ตั้งค่าช่องทางต่อหมวดได้ ยกเว้นหมวดบังคับ (การเงิน วิชาการ ฉุกเฉิน) |
+| **ระดับความเร่งด่วน** | **P0 ฉุกเฉิน** (ภัยพิบัติ, เหตุรุนแรง, ปิดวิทยาเขต, โรคระบาด): ข้าม quiet hours, ส่งทุกช่องทาง + SMS fallback, ต้องอนุมัติ 2 คน (4-eyes) หรือใช้ template ฉุกเฉินที่อนุมัติล่วงหน้า, มี **safety check-in "ฉันปลอดภัย"** สำหรับหอพักและโรงเรียนกีฬาแบบประจำ และ dashboard ติดตามคนที่ยังไม่ตอบ · **P1 สำคัญ** (การเงิน วิชาการ) · **P2 ทั่วไป** · **P3 สรุปรายวัน/รายสัปดาห์ (digest)** |
+| **ปฏิทินและกิจกรรม (Events)** | ปฏิทินรวม: ปฏิทินการศึกษา (พ.ศ.), กิจกรรมนักศึกษา, การแข่งขันกีฬา, พิธีการ (ปฐมนิเทศ, ไหว้ครู, รับปริญญา), ประชุมผู้ปกครอง; ส่งออก iCal; **ลงทะเบียนเข้าร่วม (RSVP)** มีจำนวนรับ, waitlist, เงื่อนไขสิทธิ์ (ชั้นปี/คณะ/ชนิดกีฬา), ค่าใช้จ่าย (เชื่อม FIN); **QR ticket / check-in** (QR หมุนเวลา หรือ geofence) → บันทึกชั่วโมงกิจกรรมใน AFF อัตโนมัติ; **หนังสือขออนุญาตผู้ปกครอง (e-permission slip)** สำหรับผู้เยาว์ที่ออกนอกสถานที่/ค้างคืน; e-certificate หลังเข้าร่วม; แบบประเมินหลังกิจกรรม |
+| **ชมรมและองค์การนักศึกษา** | ทะเบียนชมรม/สโมสรนักศึกษา, สมาชิก, ที่ปรึกษาชมรม, เสนอโครงการกิจกรรม → อนุมัติตามสายงานกิจการนักศึกษา (workflow) → ขอใช้งบ/สถานที่ (เชื่อม FAC) → รายงานผล; ชั่วโมงจิตอาสาส่งออกเป็นหลักฐานสำหรับ กยศ. [รูปแบบไฟล์ต้องตรวจสอบ] |
+| **แบบสำรวจ/โพล** | แบบประเมินการสอน, ความพึงพอใจผู้รับบริการ (ใช้ประกอบ ก.พ.ร./EIT ของ ITA), ภาวะการมีงานทำ (ร่วมกับ ALU), โพลด่วน; โหมดไม่ระบุตัวตน (เก็บเพียงว่าตอบแล้ว ไม่ผูกคำตอบกับตัวบุคคล); การเลือกตั้งองค์การนักศึกษาออนไลน์ **ไม่รวมใน scope เริ่มต้น** (ความเสี่ยงด้านความน่าเชื่อถือสูง ทำเป็นโครงการแยก) |
+| Entities | `NewsArticle`, `Announcement(no, year_be, type, signer, signature_ref, saraban_ref, supersedes_id, requires_ack, priority)`, `AudienceSegment(rule)`, `RecipientSnapshot`, `Acknowledgement`, `NotificationItem(read_at)`, `Event`, `EventSession`, `EventRegistration`, `Ticket`, `CheckIn`, `PermissionSlip(guardian_id, status)`, `Certificate`, `Club`, `ClubMembership`, `ActivityProposal`, `Survey`, `SurveyResponse`, `EmergencyIncident`, `SafetyCheckIn` |
+| Pub | `eng.AnnouncementPublished`, `eng.AnnouncementAcknowledged`, `eng.EventCheckedIn` (AFF ใช้นับชั่วโมง), `eng.EmergencyDeclared`, `eng.SurveyClosed` |
+| Sub | event ที่ notifiable จากทุกโมดูล, `athlete.CompetitionResultRecorded`, `org.AcademicCalendarPublished`, `records.StudentStatusChanged` (อัปเดต segment) |
+| Integrations | NOTI (ทุกช่องทาง), CMS X-10 (เว็บไซต์ + หน้า OIT), DOC/e-Saraban (เลขประกาศ), ETDA e-signature, FIN (ค่าลงทะเบียนกิจกรรม), FAC (สถานที่), AFF (ชั่วโมงกิจกรรม), PRIV (consent ภาพ/ข่าวผู้เยาว์) |
+| NFR | fan-out ประกาศถึงผู้รับ ~25,000 คน (นักศึกษา + นักเรียน + บุคลากร + ผู้ปกครองผู้เยาว์ — ตาม A-01..A-04) ผ่าน queue; **P0 ต้องออกจากระบบครบทุกช่องทางภายใน 60 วินาที** และ P1 ภายใน 5 นาที; feed/notification center p95 < 300 ms; เนื้อหาผ่าน WCAG 2.1 AA (บังคับใส่ alt text ก่อนเผยแพร่) |
+| PDPA & governance | ห้ามใส่ข้อมูลส่วนบุคคล/ข้อมูลอ่อนไหว (เกรด, สุขภาพ, วินัย) ในประกาศสาธารณะ — ระบบตรวจรูปแบบเลขบัตร/ชื่อ-ผลการเรียนก่อนเผยแพร่ (DLP check); ภาพผู้เยาว์ต้องมี consent ผู้ปกครอง; ข้อความไป LINE/SMS ส่งเพียงหัวข้อ + ลิงก์เปิดแอปถ้าเนื้อหาเป็น confidential; ประกาศทางการเก็บถาวรตามระเบียบงานสารบรรณ [ระยะเวลาต้องตรวจสอบ] ส่วนข่าวทั่วไปตาม retention policy |
+
+**สิทธิ์ (ขยายจาก permission matrix 3A):**
+
+| บทบาท | ข่าว | ประกาศทั่วไป/เฉพาะกลุ่ม | ประกาศทางการ | P0 ฉุกเฉิน | กิจกรรม | ขอบเขต |
+|---|---|---|---|---|---|---|
+| เจ้าหน้าที่ประชาสัมพันธ์ (มหาวิทยาลัย/วิทยาเขต) | เขียน+เผยแพร่ | เขียน | เขียนร่าง | – | สร้าง | OrgUnit ของตน |
+| อาจารย์ผู้สอน / อาจารย์ที่ปรึกษา | – | ส่งถึง section / advisee ของตน | – | – | สร้างใน section | section / advisee |
+| หัวหน้าภาค / ประธานหลักสูตร | – | ส่ง+อนุมัติในภาค/หลักสูตร | – | – | อนุมัติ | ภาค/หลักสูตร |
+| คณบดี / รองอธิการบดีประจำวิทยาเขต | อนุมัติ | อนุมัติ | **ลงนาม** | อนุมัติ (1 ใน 2) | อนุมัติ | คณะ / วิทยาเขต |
+| อธิการบดี / ผู้รับมอบอำนาจ | อนุมัติ | อนุมัติ | **ลงนาม** | อนุมัติ (1 ใน 2) | – | ทั้งมหาวิทยาลัย |
+| นายทะเบียน / การเงิน / หอพัก / กิจการนักศึกษา | – | ส่งในหมวดงานของตน | ร่าง | – | สร้าง (หอ/กิจการ) | งานของตน + OrgUnit |
+| โค้ช / ผู้จัดการทีม | ร่างข่าวผลงาน | ส่งถึงทีมของตน | – | – | สร้าง (ซ้อม/แข่ง) | ทีม/ชนิดกีฬา |
+| ครูประจำชั้น / ครูหอพัก (โรงเรียนกีฬา) | – | ส่งถึงห้อง/หอ + ผู้ปกครอง | – | เริ่ม safety check-in | สร้าง + ขอ permission slip | ห้อง/หอ |
+| ประธานชมรม / สโมสรนักศึกษา | ร่าง | ส่งถึงสมาชิกชมรม | – | – | เสนอ (ต้องอนุมัติ) | ชมรม |
+| ศูนย์ปฏิบัติการฉุกเฉิน / Security | – | – | – | **ประกาศ (1 ใน 2)** | – | ตามเหตุการณ์ |
+| Campus IT Admin | – | – | – | – | – | จัดการ template/ช่องทาง เท่านั้น ไม่เห็นเนื้อหาร่าง |
+
+**ตัวอย่าง flow: ประกาศเฉพาะกลุ่มที่ต้องรับทราบ**
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant AU as ผู้เขียน (เจ้าหน้าที่)
+  participant EN as ENG
+  participant WF as Workflow (Flowable)
+  participant AP as ผู้อนุมัติ (หัวหน้างาน/คณบดี)
+  participant NO as NOTI
+  participant ST as นักศึกษา/ผู้ปกครอง
+  AU->>EN: สร้างประกาศ + เลือก segment + requires_ack
+  EN->>EN: DLP check + ตรวจ alt text
+  EN->>WF: ส่งอนุมัติตามระดับ OrgUnit
+  WF->>AP: งานรออนุมัติ
+  AP-->>WF: อนุมัติ
+  WF-->>EN: approved
+  EN->>EN: ประเมิน segment + บันทึก RecipientSnapshot
+  EN->>NO: fan-out (in-app + push + LINE/email ตาม preference)
+  NO-->>ST: แจ้งเตือน
+  ST->>EN: กด "รับทราบ"
+  EN-->>AU: รายงานอัตรารับทราบ
+  EN->>NO: เตือนซ้ำผู้ที่ยังไม่รับทราบ (24/72 ชม.)
+```
 
 ---
 
