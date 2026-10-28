@@ -568,8 +568,8 @@ flowchart TB
   2. **Renderer** = service แยก (ไม่มีกุญแจ) ใช้ engine ที่ทำ shaping ด้วย **HarfBuzz**: ตัวเลือกหลัก WeasyPrint (Pango + HarfBuzz) ทางเลือก Chromium headless; **ตัดคำไทยทำฝั่ง core ด้วย ICU4J BreakIterator แล้วแทรก zero-width space (U+200B) ก่อนส่งเข้า renderer** เพื่อไม่พึ่งการตัดคำของ engine; ฟอนต์ไทยฝังทั้งหมด (OFL); **(v1.1, A-09)** ZWSP ใส่**เฉพาะชั้น render** ไม่ใส่ในข้อมูล, XML ขมธอ. 25 หรือ text layer ที่ใช้ค้น (ใช้ ActualText/ลบ ZWSP ใน text layer ถ้า engine รองรับ **[ต้องตรวจสอบใน bake-off]**), golden test รวม **text extraction** (copy/คัดข้อความต้องไม่มี U+200B) และ pin เวอร์ชัน Pango/HarfBuzz/ฟอนต์ใน image เพราะ Pango มีประวัติ regression การตัดบรรทัดไทย
   3. **ผลลัพธ์:** PDF/A-3b (transcript แนบ XML ตาม ขมธอ. 25-2563 ภายใน), PDF/A-2b สำหรับเอกสารอื่น; เอกสารสาธารณะต้องผ่าน PDF/UA; ตรวจด้วย veraPDF ใน CI และสุ่มใน production
   4. **ลงนาม (v1.1: เส้นทางเดียว)** = EU DSS ใน core → **PKCS#11 → HSM โดยตรง** (OpenBao **ไม่อยู่ใน path** ของการลงนาม; แก้ความไม่ตรงกันระหว่าง 07/08/10 ตาม review v1-review Top-9) มี HSM ทั้งไซต์ A และ B ที่ถือกุญแจลงนามชุดเดียวกัน (clone/backup ด้วยกลไกของผู้ผลิต HSM) เพื่อให้ออกเอกสารได้หลัง DR; **PAdES-B-LTA** เฉพาะเอกสารเก็บถาวรจริง (transcript, ปริญญา, คำสั่ง/ประกาศถาวร) ส่วนเอกสารอายุสั้นใช้ B-LT ตาม policy matrix ของเล่ม 10; job **re-timestamp** ก่อนใบรับรอง/อัลกอริทึมหมดอายุ; ทะเบียน algorithm sunset
-  5. **ระดับลายมือชื่อต่อประเภทเอกสาร** (ตาราง policy และฐานกฎหมายเป็นของเล่ม 10 §7.2) — **หลักของ v1.1 (D-09):** เอกสารที่ออก**จำนวนมากแบบ batch** (transcript หลังสภาอนุมัติ, หนังสือรับรอง, ใบเสร็จ, ประกาศ) ลงนามด้วย **ตราประทับอิเล็กทรอนิกส์ของหน่วยงาน (organisational e-seal)** ของ มกช./วิทยาเขต โดยระบุชื่อ/ตำแหน่งนายทะเบียนหรือผู้มีอำนาจในเนื้อเอกสาร เพราะลายมือชื่อรายบุคคลที่กุญแจอยู่ใน HSM ของสถาบันแล้วถูกใช้ลงนาม 3,000 ฉบับต่อครั้งเสี่ยงไม่ผ่านหลัก sole control (ม.26 🟡); **ลายมือชื่อรายบุคคล (S3)** ใช้เฉพาะเอกสารที่กฎหมาย/ข้อบังคับกำหนดให้บุคคลลงนาม และลงนามทีละฉบับหรือ remote signing ที่ผู้ลงนามอนุมัติ batch ด้วย 2FA ของตนเอง; นิติกรและ ETDA ยืนยันใน P0 (คำถามเล่ม 13)
-  5a. **TSA และ trust anchor (v1.1, review v1-review C-06):** TSA หลัก = **ETDA e-Timestamping** ✅ (มีบริการในประเทศ; ความเข้ากันได้กับ RFC 3161 🟡 ยืนยันใน P0) + TSA สำรองจาก CA ไทยภายใต้ NRCA **[ต้องตรวจสอบผู้ให้บริการ]**; ตั้ง **trusted certificate source ของ EU DSS = Thailand NRCA (G3 สำหรับ document signing)** เพราะไม่มี EU Trusted List ของไทย; NRCA อยู่ใน Adobe AATL ตั้งแต่ 2019 ✅ → ทดสอบ "green check" ใน Acrobat และ Foxit ใน P0; **เมื่อ TSA ล่ม:** ลงนาม PAdES-B-B ทันทีแล้วเข้าคิว augment เป็น B-T/B-LT เมื่อ TSA กลับมา (ไม่ block การออกใบเสร็จ), สลับไป TSA สำรองอัตโนมัติถ้าคิวค้าง > 1 ชม., แสดงสถานะ "รอประทับเวลา" ในหน้าตรวจสอบ
+  5. **ระดับลายมือชื่อต่อประเภทเอกสาร** (ตาราง policy และฐานกฎหมายเป็นของเล่ม 10 §7.2) — **หลักของ v1.1 (D-09):** เอกสารที่ออก**จำนวนมากแบบ batch** (transcript หลังสภาอนุมัติ, หนังสือรับรอง, ใบเสร็จ, ประกาศ) ลงนามด้วย **ตราประทับอิเล็กทรอนิกส์ของหน่วยงาน (organisational e-seal)** ของ มกช./วิทยาเขต โดยระบุชื่อ/ตำแหน่งนายทะเบียนหรือผู้มีอำนาจในเนื้อเอกสาร เพราะลายมือชื่อรายบุคคลที่กุญแจอยู่ใน HSM ของสถาบันแล้วถูกใช้ลงนาม 3,000 ฉบับต่อครั้งเสี่ยงไม่ผ่านหลัก sole control (ม.26 🟡); **ลายมือชื่อรายบุคคล (S3)** ใช้เฉพาะเอกสารที่กฎหมาย/ข้อบังคับกำหนดให้บุคคลลงนาม ผ่าน **remote signing ที่ผู้ลงนามยืนยันด้วย 2FA ของตนเองต่อ batch** (ตามเล่ม 10 v1.1); นิติกรและ ETDA ยืนยันใน P0 (คำถามเล่ม 13)
+  5a. **TSA และ trust anchor (v1.1, review v1-review C-06):** TSA หลัก = **ETDA e-Timestamping** ✅ (มีบริการในประเทศ; ความเข้ากันได้กับ RFC 3161 🟡 ยืนยันใน P0) + **TSA สำรองเชิงพาณิชย์** (CA ไทยภายใต้ NRCA **[ต้องตรวจสอบผู้ให้บริการ]**) ตามเล่ม 10/09 v1.1; ตั้ง **trusted certificate source ของ EU DSS = Thailand NRCA (G3 สำหรับ document signing)** เพราะไม่มี EU Trusted List ของไทย; NRCA อยู่ใน Adobe AATL ตั้งแต่ 2019 ✅ → ทดสอบ "green check" ใน Acrobat และ Foxit ใน P0; **เมื่อ TSA ทั้งหลักและสำรองล่ม:** ลงนาม PAdES-B-B ทันทีแล้วเข้าคิว augment เป็น B-T/B-LT เมื่อ TSA กลับมา (ไม่ block การออกใบเสร็จ), สลับไป TSA สำรองอัตโนมัติเมื่อ TSA หลักไม่ตอบ (circuit breaker), แสดงสถานะ "รอประทับเวลา" ในหน้าตรวจสอบ
   6. **เอกสารสำคัญสร้างจาก snapshot ที่ลงนาม** (เช่น GradeSubmission snapshot, DegreeConferred record) ไม่ใช่ live query
   7. **Batch signing** (เช่น transcript 3,000 ฉบับหลังสภาอนุมัติ) ใช้ e-seal ของหน่วยงาน (ข้อ 5) ต้องมี dual control (ผู้สั่ง ≠ ผู้อนุมัติ, ผู้อนุมัติยืนยันด้วย step-up) และบันทึก manifest รายการ hash ที่ผู้อนุมัติเห็นก่อนกดยืนยัน
   8. **Golden-file visual test**: ชุดเอกสารไทยที่ยากที่สุด (ชื่อมีสระซ้อน เช่น "ปุ้ม", "ฐิติพัฒน์", ชื่อยาวล้นบรรทัด, เลขไทย, จำนวนเงินเป็นตัวอักษร) เทียบ pixel diff ทุก release; bake-off ใน P0 ระหว่าง WeasyPrint กับ Chromium ด้วยเอกสารจริงของ มกช.
@@ -609,7 +609,7 @@ flowchart TB
 
 ### ADR-013: Cache, waiting room และ rate-limit store = Valkey
 
-- **การตัดสินใจ:** Valkey 3 nodes (primary + 2 replicas + Sentinel) ใช้สำหรับ (1) waiting room queue/token (2) cache ที่นั่งคงเหลือและ catalogue (3) rate-limit counter; **ไม่มีข้อมูลที่เป็น source of truth** ทุกการใช้งานต้องมี fallback เมื่อ Valkey ล่ม: cache → อ่านจาก PG, rate limit → local limiter ที่ APISIX, waiting room → โหมด fixed-rate ที่ออก signed token แบบ stateless
+- **การตัดสินใจ:** Valkey 3 nodes (primary + 2 replicas) + **Valkey Sentinel 3 processes** (นับเป็น component แยกใน v1.1) ใช้สำหรับ (1) ลำดับคิวของ waiting room (route ใน Next.js, ADR-028) (2) cache ที่นั่งคงเหลือและ catalogue (3) rate-limit counter; **ไม่มีข้อมูลที่เป็น source of truth** ทุกการใช้งานต้องมี fallback เมื่อ Valkey ล่ม: cache → อ่านจาก PG, rate limit → local limiter ที่ APISIX, waiting room → โหมด fixed-rate ที่ Next.js แต่ละ pod ออก admission JWT ตามโควตาของตน (stateless)
 - **ทางเลือก:** Redis 8 (AGPLv3/RSAL/SSPL), Memcached (ไม่มีโครงสร้างข้อมูลที่ต้องใช้)
 - **ทบทวนเมื่อ:** Valkey หยุดพัฒนา หรือ licence เปลี่ยน
 
@@ -627,22 +627,28 @@ flowchart TB
 
 ### ADR-016: API gateway = Apache APISIX + WAF ของผู้ให้บริการ
 
-- **การตัดสินใจ:** APISIX ทำ routing, ตรวจ JWT ในเครื่อง (JWKS cache), rate limit (per IP / per `sub` / per route), waiting room plugin (ADR-004), request size limit, CORS; config แบบ declarative ใน Git; WAF (OWASP CRS) ที่ CDN/edge ของผู้ให้บริการ; endpoint ของธนาคาร (payment callback) แยก route + mTLS + IP allow-list
+- **การตัดสินใจ:** APISIX ทำ routing, ตรวจ JWT ในเครื่อง (JWKS cache), **ตรวจ admission JWT ของ waiting room ด้วย plugin มาตรฐาน (v1.1 ไม่มี custom Lua plugin, ADR-028)**, rate limit (per IP / per `sub` / per route), request size limit, CORS; config แบบ declarative ใน Git; WAF (OWASP CRS) ที่ CDN/edge ของผู้ให้บริการ; endpoint ของธนาคาร (payment callback) แยก route + mTLS + IP allow-list
 - **ทางเลือก:** Envoy Gateway, Kong OSS, ingress-nginx
-- **ทบทวนเมื่อ:** plugin waiting room ไม่ผ่าน load test
+- **ทบทวนเมื่อ:** การตรวจ admission JWT ที่ 2,000 RPS ไม่ผ่าน load test
 
-### ADR-017: Analytics = PostgreSQL logical replica + dbt Core + Superset (ClickHouse/OpenSearch ภายหลัง)
+### ADR-017: Analytics = PostgreSQL physical replica + view `security_invoker` + dbt Core + Superset (ClickHouse/OpenSearch ภายหลัง) (แก้ v1.1)
 
 - **บริบท:** ข้อมูลวิชาการราว 200,000 แถว/ปี; v0.9 มี warehouse ที่เกินขนาดและอยู่นอก RLS (review ARCH-02, DATA-02, SEC-05)
-- **การตัดสินใจ:** instance `pg-analytics` แยก รับข้อมูลด้วย **logical replication แบบ column list** (ส่งเฉพาะคอลัมน์ที่ analytics ใช้ ไม่ส่ง PII ที่ไม่จำเป็น และไม่ส่ง health_vault); dbt Core สร้าง mart (pseudonymised โดยค่าเริ่มต้น) รายชั่วโมง; Superset ตัวเดียว (ตัด Metabase) พร้อม RLS filter ตาม OrgUnit + role ใน DB ที่จำกัด schema; **SQL Lab ปิด** ยกเว้น data team ผ่าน JIT; export ข้อมูลบุคคลเกิน N แถว (ค่าเริ่ม 500) ต้องระบุวัตถุประสงค์ + อนุมัติ + watermark (ชื่อผู้ดึง/เวลา); dbt docs เป็น data catalogue จนกว่าจะถึงเกณฑ์ OpenMetadata; RPT (snapshot ณ วันตัดยอด) อยู่ใน core ไม่ใช่ BI
-- **ทางเลือก:** ClickHouse, Iceberg + Trino, Debezium CDC
+- **การตัดสินใจ (v1.1, D-09 — แก้ความขัดกันระหว่าง 07 logical กับ 08 physical และช่องโหว่ RLS):**
+  1. **ต้นทาง ELT = physical streaming replica** ของ cluster core (สมาชิก Patroni แบบ `nofailover`, ไม่อยู่ใน synchronous set, `max_standby_streaming_delay` ≤ 30 s, query ถูก cancel ได้แทนการหน่วง replay) — **เลิกใช้ logical replication** เพราะการ replicate เข้าตารางที่เปิด RLS ต้องให้ subscription owner bypass RLS ✅ (PG15+)
+  2. role `elt_reader` อ่านผ่าน schema `elt_api` ซึ่งเป็น **view แบบ `security_invoker = true`** ที่มี column allow-list (ไม่มีชื่อ, เลขบัตร, ที่อยู่, ผู้ปกครอง, บัญชีธนาคาร) — view จึงไม่ข้าม RLS ของ base table; `elt_reader` ได้ scope ระดับมหาวิทยาลัยผ่าน scope token ของ service identity (ADR-005) **ไม่มี `BYPASSRLS`**; ไม่มีสิทธิ์ CONNECT `hlt_vault`/`hlt_keys` และ `pg_hba` ปฏิเสธ
+  3. **analytics DB** (cluster analytics+apps, ADR-026) ดึงข้อมูลด้วย `postgres_fdw` จาก `elt_api` แบบ incremental รายชั่วโมง แล้ว dbt Core สร้าง mart (pseudonymised โดยค่าเริ่มต้น) ที่มี `org_unit_id` + RLS แบบเดียวกับ core
+  4. Superset ตัวเดียว (ตัด Metabase) ใช้ **RLS filter ของ Superset** ผูกกับกลุ่มใน Keycloak (ไม่พึ่ง DB impersonation ซึ่งยังไม่ยืนยันว่ารองรับ PostgreSQL 🟡), DB role ของ Superset อ่านได้เฉพาะ curated view, CI ตรวจว่า dataset ทุกตัวมี filter; **SQL Lab ปิด** ยกเว้น data team ผ่าน JIT
+  5. **Export (ค่าเดียวทั้งชุดเอกสาร, v1.1):** (ก) **standard export ต่อบทบาท** ที่อนุมัติไว้ล่วงหน้า (เช่น รายชื่อในกลุ่มเรียน, รายชื่อสอบ, ลูกหนี้ของวิทยาเขต — catalogue เป็นของเล่ม 14/06) ไม่ต้องขออนุมัติรายครั้ง แต่มี audit + watermark (ข) **ad-hoc export ข้อมูลระดับบุคคล > 500 แถวต่อครั้ง หรือ > 2,000 แถวสะสมต่อผู้ใช้ต่อวัน** ต้องระบุ purpose + อนุมัติ + watermark (ค) export ที่มี attribute อ่อนไหวเชิงสถิติ (ความพิการ, วินัย, สุขภาพ aggregate) ต้องอนุมัติทุกขนาด — ค่า 500 นี้แทนค่า 100 ในเล่ม 08 v1.0 และใช้ใน UEBA ของเล่ม 11
+  6. dbt docs เป็น data catalogue จนกว่าจะถึงเกณฑ์ OpenMetadata; RPT (snapshot ณ วันตัดยอด) อยู่ใน core ไม่ใช่ BI; KPI ที่มาจาก observability (availability, p95, เวลารอคิว) ส่งเข้า ANA เป็น `fct_slo_daily` ด้วย job รายวันจาก Prometheus (review v1-review UXR-12)
+- **ทางเลือก:** ClickHouse, Iceberg + Trino, Debezium CDC, logical replication + row filter (ต้องมี role ที่ bypass RLS; ปฏิเสธใน v1.1)
 - **ทบทวนเมื่อ:** dashboard p95 > 3 s หลังทำ materialized view/partition หรือข้อมูล ATH time-series > 50 ล้านแถว/ปี
 
-### ADR-018: Observability = OpenTelemetry + Prometheus + Grafana/Loki/Tempo + RUM; runtime security แบบ tier
+### ADR-018: Observability = OpenTelemetry + Prometheus + Grafana/Loki + RUM; runtime security แบบ tier (แก้ v1.1)
 
-- **การตัดสินใจ:** OTel SDK ทุก service, trace id แสดงในหน้า error และ ticket; SLO ราย journey + burn-rate alert แบบ multi-window; synthetic checks จากนอกศูนย์ข้อมูล (รวมจุดในวิทยาเขต); **RUM** แยกตาม OrgUnit/ISP; log ไม่มี PII (masking ที่ logger); Grafana/Loki/Tempo เป็น AGPL ใช้ภายในโดยไม่แก้ไข ต้องผ่าน legal review; security tier **Must:** NetworkPolicy default-deny, image signed + scanned, Kyverno baseline, pgaudit; **Later:** service mesh, Falco
+- **การตัดสินใจ:** OTel SDK ทุก service, trace id แสดงในหน้า error และ ticket และเขียนลง log; **v1.1 ตัด Tempo** (ใช้ trace id ใน Loki + span สำคัญเป็น log event; เกณฑ์นำกลับหัวข้อ 5.4); **SLI หลักเป็น request-based จาก log ของ APISIX** ส่วน synthetic ทุก 1 นาทีเป็นสัญญาณเสริม (review v1-review N-06); SLO ราย journey + burn-rate alert แบบ multi-window; synthetic checks จากนอกศูนย์ข้อมูล (รวมจุดในวิทยาเขต); **RUM** แยกตาม OrgUnit/ISP; log ไม่มี PII (masking ที่ logger); Grafana/Loki เป็น AGPL ใช้ภายในโดยไม่แก้ไข ต้องผ่าน legal review และห้าม fork; security tier **Must:** NetworkPolicy default-deny, image signed + scanned, Kyverno baseline, pgaudit; **Later:** service mesh, Falco
 - **ทางเลือก:** Datadog/New Relic (SaaS ต่างประเทศ), OpenSearch stack
-- **ทบทวนเมื่อ:** legal ไม่รับ AGPL (เปลี่ยนเป็น Jaeger + OpenSearch Dashboards/VictoriaLogs [ต้องตรวจสอบ licence])
+- **ทบทวนเมื่อ:** legal ไม่รับ AGPL (เปลี่ยนเป็น Jaeger + OpenSearch Dashboards/VictoriaLogs [ต้องตรวจสอบ licence]) หรือถึงเกณฑ์นำ Tempo กลับ
 
 ### ADR-019: Licence allow-list + SBOM เป็นเงื่อนไขตรวจรับ
 
@@ -653,6 +659,7 @@ flowchart TB
 
 - **บริบท:** นโยบาย Cloud First ให้จัดหา cloud ผ่าน GDCC ตั้งแต่ 1 ต.ค. 2568 ([Bangkok Post](https://bangkokpost.com/business/general/2986926/cloud-first-policy-gets-underway-on-oct-1)) แต่ **ยังไม่ยืนยันว่าผูกพัน มกช.** (blueprint ข้อ 10) → **สมมติฐาน S7-01**
 - **การตัดสินใจ:** ออกแบบให้ cloud-portable (Kubernetes มาตรฐาน CNCF, S3 API, PostgreSQL ที่ดูแลเอง, ไม่ใช้ PaaS เฉพาะเจ้า); 2 sites คนละศูนย์ข้อมูล (site A primary, site B warm DR); ข้อมูลทั้งหมดรวม backup และ log อยู่ในไทย; **GDCC technical spike ใน P0 (เม.ย.–มิ.ย. 2570)**: สร้าง cluster จริง, ทดสอบ Object Lock compliance mode, latency ข้าม site, HSM/PKCS#11, egress ไป ThaID/ธนาคาร, SOC; decision tree: (1) managed K8s ของ GDCC → (2) K8s บน VM ของ GDCC ที่ vendor ดูแลตลอดสัญญา MA → (3) CSP ในไทยที่ผ่านเกณฑ์ (ถ้า มกช. ไม่ถูกบังคับ)
+- **(v1.1)** HSM ต้องมีที่ทั้ง 2 sites (ADR-012) และ Kubernetes ต้อง upgrade minor ≥ 3 ครั้ง/ปี ([11-operations](11-operations.md) หัวข้อ 5.1) จึงให้น้ำหนัก managed K8s และ HSM/KMS ในไทยของ GDCC เป็นพิเศษใน spike
 - **ทบทวนเมื่อ:** ผล spike หรือคำตอบทางกฎหมายเรื่อง Cloud First
 
 ### ADR-021: Search = PostgreSQL FTS + pg_trgm + การตัดคำไทยฝั่งแอป
@@ -667,7 +674,7 @@ flowchart TB
 
 ### ADR-023: Privileged access = JIT + PAM ที่ licence ชัด + break-glass 2 คน + data-fix 4-eyes
 
-- **การตัดสินใจ:** ไม่มี standing access ระดับ prod สำหรับมนุษย์; JIT ผ่าน PAM ของ GDCC/MSSP หรือ JumpServer (ไม่ใช้ Teleport CE); session recording ของ `kubectl`/`psql`; **DBA JIT บน schema `asm`, `rec`, `fin`, `grd` เป็น read-only โดยค่าเริ่มต้น** การเขียนต้องเป็น data-fix request แบบ 4-eyes ที่รันผ่าน pipeline; **break-glass ต้องอนุมัติ 2 คน** (blueprint ข้อ 10) ในกรณีฉุกเฉินทางการแพทย์ให้ self-activate ได้แล้วต้องมี 2-person review ภายใน 24 ชม. (นิยามสุดท้ายอยู่ในเล่ม 04); vendor access time-boxed ≤ 8 ชม.
+- **การตัดสินใจ:** ไม่มี standing access ระดับ prod สำหรับมนุษย์; JIT ผ่าน PAM ของ GDCC/MSSP หรือ JumpServer (ไม่ใช้ Teleport CE); session recording ของ `kubectl`/`psql`; **DBA JIT บน schema `asm`, `rec`, `fin`, `grd` เป็น read-only โดยค่าเริ่มต้น และไม่มี DML**; **ช่องทางแก้ข้อมูลมีช่องทางเดียว (v1.1, review v1-review S-08) = `DataFixRequest` แบบ 4-eyes ที่รันผ่าน pipeline** ด้วย role เฉพาะที่ถูก audit (ไม่ใช่ DBA); break-glass (2 คน) ใช้เฉพาะเมื่อ pipeline ใช้ไม่ได้และต้องตามด้วย DataFixRequest ย้อนหลัง; vendor ที่เข้าถึง prod/migration enclave ต้องผ่าน background check, JIT ≤ 8 ชม. ที่ผู้อนุมัติฝั่ง มกช. และ session recording ถูกสุ่มตรวจรายเดือน (S-07); **break-glass ต้องอนุมัติ 2 คน** (blueprint ข้อ 10) ในกรณีฉุกเฉินทางการแพทย์ให้ self-activate ได้แล้วต้องมี 2-person review ภายใน 24 ชม. (นิยามสุดท้ายอยู่ในเล่ม 04); vendor access time-boxed ≤ 8 ชม.
 - **ทบทวนเมื่อ:** ผล pen test หรือ audit พบช่องทาง bypass
 
 ### ADR-024: AI (early warning, chatbot) เลื่อน; เงื่อนไขก่อนเริ่ม
@@ -680,6 +687,56 @@ flowchart TB
 - **การตัดสินใจ:** โค้ดเดียว deploy ทุก OrgUnit แต่ **เปิดฟีเจอร์ตาม ring**: ring 0 (ทีมภายใน/test), ring 1 (วิทยาเขต pilot), ring 2 (wave 1), ring 3 (ทั้งหมด); flag ใช้ OpenFeature SDK + provider ที่อ่านจาก DB/Git (ไม่มี service เพิ่ม); **kill-switch ราย module × OrgUnit** สำหรับปิดฟังก์ชันที่มีปัญหาโดยไม่ rollback; rolling update + readiness gate แทน canary ตาม traffic (ไม่ให้ผู้ใช้คนเดียวเห็น 2 เวอร์ชัน); freeze ราย ring ตามปฏิทินใน [11-operations](11-operations.md) หัวข้อ 5
 - **ทบทวนเมื่อ:** ถึงเกณฑ์ Argo Rollouts/Unleash ในหัวข้อ 5.4
 
+### ADR-026: Patroni DCS = etcd 3 members ต่อไซต์; PostgreSQL เหลือ 2 cluster (ใหม่ v1.1)
+
+- **บริบท:** Patroni ต้องมี DCS (etcd/Consul/ZooKeeper/Kubernetes API) แต่ v1.0 ไม่ระบุเลยทั้งชุด ถ้าใช้ Kubernetes API เป็น DCS, HA ของ DB ที่อยู่บน VM แยกจะผูกกับ control plane ของ K8s (review v1-review A-01); v1.0 มี PostgreSQL 3 cluster (core, analytics, apps) แต่นับเป็นแถวเดียว (A-02)
+- **การตัดสินใจ:**
+  1. **etcd 3.5, 3 members ต่อไซต์**: ไซต์ A วางบน 3 node ของ data zone ของ cluster core (primary, sync standby, ELT replica) บน volume แยกจากข้อมูล PostgreSQL เพื่อไม่ให้ fsync แย่งกัน; ไซต์ B 3 members (node PG standby + VM เล็ก 2 ตัว 2 vCPU) สำหรับ **Patroni standby cluster** ที่ promote ด้วยมือ (ไม่ failover ข้ามไซต์อัตโนมัติ — ตรงกับ runbook [11-operations](11-operations.md) หัวข้อ 7.2)
+  2. cluster analytics+apps ใช้ etcd ของไซต์ A (namespace/scope แยก)
+  3. **PostgreSQL 2 cluster:** (ก) **core** = `core`, `hlt_vault`, `hlt_keys`, `keycloak` + ELT physical replica (ข) **analytics+apps** = marts, Moodle, Zammad, Superset metadata (primary + async replica) — ตัด cluster apps แยกออก
+  4. Failure mode ที่ยอมรับ: etcd เสีย quorum → Patroni ลด primary เป็น read-only (ไม่เกิด split-brain) จึงใส่ใน game day: ฆ่า etcd 1 member (ต้องไม่กระทบ) และ 2 members (ต้อง fail-safe ตามที่คาด) ([11-operations](11-operations.md) หัวข้อ 4.2)
+- **ทางเลือก:** Kubernetes API เป็น DCS (ผูก HA ของ DB กับ control plane), Consul (BSL ตั้งแต่ 1.17 — ห้ามตาม ADR-019 [ความรู้ผู้เขียน]), managed PostgreSQL ของ GDCC (ถ้ามีและรองรับ RLS/extension ที่ต้องใช้ — ประเมินใน GDCC spike)
+- **ผล:** + HA ของ DB เป็นอิสระจาก K8s, ลด cluster ที่ต้อง upgrade/backup จาก 3 เหลือ 2 − etcd เป็น component ที่ต้องดูแล (นับในหัวข้อ 5.3), Moodle อยู่ร่วม cluster กับ analytics (ติดตามใน capacity review)
+- **ทบทวนเมื่อ:** มี managed PostgreSQL ในไทยที่ผ่านเกณฑ์ หรือ Moodle/dbt แย่งทรัพยากรเกินเกณฑ์
+
+### ADR-027: PgBouncer แบบ sidecar และ SLO chain ที่นับ load balancer (ใหม่ v1.1)
+
+- **บริบท:** SLO ช่วงวิกฤต 99.95% ของ v1.0 นับ 4 ตัวอนุกรม แต่ PgBouncer (deployment แยก) และ cloud load balancer อยู่บน path จริง นับครบ 6 ตัวได้ 99.930% (review v1-review Top-6/N-01); v1.0 ยังมีตัวเลข client connection ไม่ตรงกันระหว่าง 07 และ 11 (N-03)
+- **การตัดสินใจ:** PgBouncer ≥ 1.21 รันเป็น **sidecar ใน pod ของ core ทุก profile** (transaction pooling, `default_pool_size` ต่อ pod: web 6, registration 8, worker 4; `max_prepared_statements` เปิด) → ล่มพร้อม pod ของตนซึ่งมี replica และ PDB อยู่แล้ว จึง**ไม่เป็น tier อนุกรมแยก**; server connection รวมช่วง peak = 10 × 6 + 6 × 8 + 4 × 4 = **124** (ต่ำกว่า `max_connections` 300 ของ core ที่สำรองให้ Keycloak, Patroni, ELT replica และ admin); load balancer ของผู้ให้บริการ**นับเข้า chain อย่างเปิดเผย** (หัวข้อ 10.7)
+- **ทางเลือก:** PgBouncer deployment แยก ≥ 2 instance + health check (ยังเป็นตัวอนุกรมที่ต้องนับ), ไม่ใช้ pooler (connection ต่อ pod สูงเกินไปช่วง peak)
+- **ผล:** + ลด serial dependency 1 ตัว, ไม่มีจุดรวม connection เดียว − pooling ต่อ pod มีประสิทธิภาพน้อยกว่าแบบรวม, ต้องคุมผลรวม pool ตามจำนวน pod (ใส่ใน capacity review)
+- **ทบทวนเมื่อ:** จำนวน pod ของ core ช่วง peak > 40 หรือ server connection เกิน 70% ของ `max_connections`
+
+### ADR-028: Waiting room = route ใน Next.js + Valkey + admission JWT ที่ APISIX ตรวจด้วย plugin มาตรฐาน (ใหม่ v1.1)
+
+- **บริบท:** v1.0 ใช้ custom APISIX plugin ภาษา Lua บน critical path วันพีค ซึ่งทั้งทีม มกช. และ vendor Java ไม่ถนัด (review v1-review A-03) และไม่ได้นับเป็น component
+- **การตัดสินใจ:** หน้าคิว static บน CDN; การเข้าคิว/ถามลำดับ/ออก token เป็น route ของ Next.js portal (TypeScript) ที่เก็บลำดับใน Valkey (sorted set) พร้อม pre-queue randomisation และอัตราปล่อยที่ปรับตาม p95/error rate ซึ่งอ่านจาก Prometheus; admission token เป็น **JWT อายุ 20 นาที ผูก `sub` และใช้ได้ 1 session** ลงนามด้วยกุญแจ K5 (หมุนรายเดือน, public key เผยแพร่เป็น JWKS ภายใน); APISIX ตรวจด้วย plugin มาตรฐานบน route ลงทะเบียน; Valkey ล่ม → Next.js แต่ละ pod ออก token แบบ fixed-rate ตามโควตาของตน (stateless); ภาระ poll 975 RPS คาด / 1,950 RPS ออกแบบ ตกที่ Next.js portal (peak 8 pods → ~250 RPS/pod ซึ่งเป็นการอ่าน Valkey อย่างเดียว **[ยืนยันใน load test]**)
+- **ทางเลือก:** custom APISIX plugin (เดิม), Queue-it SaaS (ข้อมูลออกนอกประเทศ; แผนสำรอง)
+- **ผล:** + ไม่มีภาษาที่สามบน critical path, ทดสอบด้วย tooling เดียวกับ frontend − Next.js portal ต้อง scale ตาม poll ช่วงพีค (รวมในตาราง sizing ของ [11-operations](11-operations.md) หัวข้อ 2.1)
+- **ทบทวนเมื่อ:** load test ที่ 2,000 RPS poll ไม่ผ่าน p95 ≤ 200 ms
+
+### ADR-029: Signing pipeline = organisational e-seal สำหรับ batch + ETDA TSA + NRCA trust anchor + fallback (ใหม่ v1.1)
+
+- **บริบท:** review v1-review Top-9/C-05/C-06: ลายมือชื่อรายบุคคลแบบ batch ขัดหลัก sole control, เส้นทางลงนามต่างกันใน 07/08/10, และไม่ได้เลือก TSA/trust anchor/fallback (D-09)
+- **การตัดสินใจ:** เส้นทางเดียว core (EU DSS) → PKCS#11 → HSM (ไม่ผ่าน OpenBao); e-seal ของหน่วยงานสำหรับเอกสารจำนวนมาก, S3 รายบุคคลผ่าน remote signing ที่ยืนยัน 2FA ต่อ batch เฉพาะที่กฎหมายกำหนด; TSA หลัก ETDA e-Timestamping + TSA สำรองเชิงพาณิชย์; trust anchor = Thailand NRCA ใน EU DSS; ถ้า TSA ทั้งสองล่มให้ลงนาม B-B แล้ว augment ภายหลัง (ไม่ block ใบเสร็จ); HSM ทั้ง 2 ไซต์มีกุญแจลงนาม (รายละเอียดใน ADR-010 ข้อ 4–7, policy matrix ในเล่ม 10 §7.2)
+- **ทางเลือก:** ลายมือชื่อรายบุคคลใน HSM ของสถาบันสำหรับทุกเอกสาร (เสี่ยงไม่ผ่าน sole control), ลงนามผ่าน OpenBao (เพิ่ม dependency บน path)
+- **ผล:** + ออกเอกสารได้แม้ TSA ล่ม, ตรวจสอบ green check ได้ในโปรแกรมทั่วไป − ต้องได้ใบรับรอง e-seal ของหน่วยงาน (และของวิทยาเขตถ้าออกใบเสร็จแยก) และสัญญา TSA 2 ราย (หมายเหตุต้นทุนให้เล่ม 12)
+- **ทบทวนเมื่อ:** นิติกร/ETDA ให้ความเห็นใน P0 ต่างจากนี้
+
+### ADR-030: Integrity ของเกรด = โมเดลเดียว (ใหม่ v1.1)
+
+- **บริบท:** v1.0 มีกลไก 2 แบบที่ไม่บอกว่าใช้ร่วมกันอย่างไร (hash chain append-only ต่อ section ในเล่ม 10 กับ GradeSubmission snapshot ลงนามในเล่มนี้) และนิยามช่องทาง data-fix ไม่ตรงกัน (review v1-review S-08)
+- **การตัดสินใจ:** **source of truth ของความถูกต้อง = GradeSubmission snapshot ที่ลงนาม** (e-seal ระบบ) ต่อ section ต่อรอบส่ง/แก้; ทุกการแก้เกรดหลังส่งสร้าง snapshot ใหม่ที่อ้าง snapshot ก่อนหน้า (จึงเป็น hash chain ต่อ section โดยธรรมชาติ); root hash รายวันของ snapshot ทั้งหมดประทับเวลาด้วย TSA และเก็บใน `audit-worm` เป็น evidence; job รายคืนเทียบ hash กับข้อมูลปัจจุบัน; ช่องทางแก้ข้อมูลเดียว = DataFixRequest 4-eyes (ADR-023)
+- **ผล:** + มีกลไกเดียวให้ทดสอบและตรวจรับ − ทุกการแก้เกรดต้องผ่าน workflow (ตั้งใจ)
+- **ทบทวนเมื่อ:** ผู้ตรวจสอบกำหนดรูปแบบหลักฐานอื่น
+
+### ADR-031: ความปลอดภัยของ CI/CD และ GitOps (ใหม่ v1.1)
+
+- **บริบท:** STRIDE v1.0 ไม่มี CI/CD/GitOps: ผู้ที่ merge env repo ได้ก็ deploy prod ได้ด้วย review 1 คน, runner มี secret, Argo CD admin (review v1-review S-01)
+- **การตัดสินใจ:** env repo ของ prod ต้องมี **branch protection + 2 reviewers (1 คนเป็นของ มกช.)** และ signed commits; Argo CD ใช้ SSO (Keycloak) + RBAC แยก project prod, ไม่มีบัญชี admin ภายในที่ใช้งานปกติ; **runner ของ prod แยก** และไม่มี secret ถาวร (OIDC → OpenBao ออก credential อายุสั้น); image ต้องลงนาม cosign และ Kyverno ตรวจ; การเปลี่ยน policy ของ Kyverno/Argo CD เองต้องผ่าน 2 reviewers
+- **ผล:** + ปิดเส้นทาง supply chain ที่ข้าม CAB − release ช้าลงเล็กน้อย
+- **ทบทวนเมื่อ:** ผล pen test หรือ audit
+
 ---
 
 ## 9. Sequence diagram หลัก
@@ -691,27 +748,28 @@ sequenceDiagram
   autonumber
   actor ST as นักศึกษา
   participant CDN as CDN หน้าคิว static
-  participant GW as APISIX waiting room
+  participant NX as Next.js waiting room route
+  participant GW as APISIX
   participant VK as Valkey
   participant CORE as Core registration
   participant PG as PostgreSQL schema reg
   participant WK as Core worker
   participant NO as NOTI
   Note over CORE,PG: T-24h สร้าง EligibilitySnapshot และ warm cache รายวิชา
-  ST->>GW: เปิดหน้าลงทะเบียน 08.50 น. (login ไว้ล่วงหน้า)
-  GW->>VK: บันทึกเข้า pre-queue
-  GW-->>ST: ส่งไปหน้าคิวบน CDN
-  Note over GW,VK: 09.00 น. สุ่มลำดับผู้ที่มาก่อนเวลา แล้วปล่อยตามอัตราที่ปรับตาม p95 และ error rate
-  ST->>GW: ถามลำดับคิวทุก 20 วินาที
-  GW-->>ST: admission token ผูกกับ sub อายุ 20 นาที
+  ST->>NX: เปิดหน้าลงทะเบียน 08.50 น. (login ไว้ล่วงหน้า)
+  NX->>VK: บันทึกเข้า pre-queue
+  NX-->>ST: ส่งไปหน้าคิวบน CDN
+  Note over NX,VK: 09.00 น. สุ่มลำดับผู้ที่มาก่อนเวลา แล้วปล่อยตามอัตราที่ปรับตาม p95 และ error rate
+  ST->>NX: ถามลำดับคิวทุก 20 วินาที
+  NX-->>ST: admission JWT ผูกกับ sub อายุ 20 นาที
   ST->>GW: GET กลุ่มเรียนและที่นั่งคงเหลือ
-  GW->>CORE: ตรวจ JWT ในเครื่อง และ rate limit ต่อผู้ใช้
+  GW->>CORE: ตรวจ JWT และ admission JWT ด้วย plugin มาตรฐาน และ rate limit ต่อผู้ใช้
   CORE->>VK: อ่านที่นั่งคงเหลือ cache 2 วินาที
   CORE-->>ST: รายการกลุ่มเรียน
   ST->>GW: POST registrations พร้อม Idempotency-Key
   GW->>CORE: ส่งต่อ
   CORE->>CORE: ตรวจ eligibility จาก snapshot และ PolicySet
-  CORE->>PG: BEGIN และ set_config org_scope แบบ local
+  CORE->>PG: BEGIN และ sec.begin_scope ด้วย scope token ที่ลงนาม ผ่าน PgBouncer sidecar
   CORE->>PG: UPDATE seat_pool เพิ่ม taken เมื่อยังน้อยกว่า capacity เรียงตาม section_id
   alt ได้ที่นั่งครบทุกกลุ่ม
     CORE->>PG: INSERT enrollment และ outbox EnrollmentConfirmed
@@ -738,7 +796,7 @@ sequenceDiagram
   participant AD as Bank adapter ใน worker
   participant DOC as DOC ใน core
   participant RD as PDF renderer
-  participant HSM as HSM ผ่าน OpenBao และ PKCS11
+  participant HSM as HSM ผ่าน PKCS11 โดยตรง ไม่ผ่าน OpenBao
   participant GF as GFMIS export
   actor FO as เจ้าหน้าที่การเงิน
   FIN->>FIN: สร้างใบแจ้งหนี้จาก FeeSchedule ของรุ่นและ OrgUnit หักทุนและ กยศ.
@@ -798,13 +856,16 @@ sequenceDiagram
   ADM->>ADM: moderation ตัดสูงสุดต่ำสุดหรือเฉลี่ย แจ้งคะแนนต่างกันเกินเกณฑ์
   CH->>ADM: ทบทวนรายการที่ผิดปกติ และอนุมัติผลรวม
   ADM->>ADM: จัดอันดับตามน้ำหนัก GPAX ข้อเขียน ทักษะ สัมภาษณ์ และ tie-break
-  ADM->>CDN: เผยแพร่ผลแบบ pre-computed shard ตาม hash ของเลขผู้สมัคร
+  ADM->>CDN: เผยแพร่ผลแบบ pre-computed shard key เป็น HMAC ของเลขผู้สมัครและวันเกิด ไม่มีชื่อเต็มหรือเลขบัตร
   ADM->>ENG: ประกาศรอบ
   ENG-->>CA: แจ้งให้ตรวจผล ส่งเฉพาะหัวข้อและลิงก์
   CA->>CDN: ตรวจผล
   CA->>ADM: ยืนยันสิทธิ์และชำระค่ายืนยันสิทธิ์ภายในกำหนด
-  ADM->>ADM: ที่นั่งว่างเข้าสู่ clearing ข้ามวิทยาเขต
+  ADM->>ADM: ตรวจซ้ำตอนยืนยันว่ายืนยันสิทธิ์ได้ที่เดียวทั้ง มกช. ด้วย HMAC เลขบัตร
+  ADM->>ADM: ที่นั่งว่างเลื่อนให้ผู้สำรองของรอบนั้น
 ```
+
+หมายเหตุ v1.1 (D-06): R1 ใช้ clearing แบบ "ยืนยันสิทธิ์ได้ที่เดียวทั้ง มกช." ที่ตรวจซ้ำตอนยืนยัน ส่วน `ClearingRun` ข้ามวิทยาเขตแบบอัตโนมัติเลื่อนไปจนกว่าจะมีนโยบาย (Q-12); กติกา clearing ชุดเดียวเป็นของเล่ม 02
 
 ### 9.4 สำเร็จการศึกษา → ลงนาม e-Transcript
 
@@ -819,7 +880,7 @@ sequenceDiagram
   participant DOC as DOC
   participant RD as PDF renderer
   participant SIG as HSM ผ่าน PKCS11
-  participant TSA as Timestamp authority
+  participant TSA as ETDA e-Timestamping หรือ TSA สำรอง
   participant DGA as DGA ETDA verification
   ST->>GRD: ยื่นคำร้องขอสำเร็จการศึกษา
   GRD->>REC: ดึงประวัติและ PolicySet ของรุ่น
@@ -835,8 +896,11 @@ sequenceDiagram
   DOC->>DOC: สร้าง XML ตาม ขมธอ. 25-2563
   DOC->>RD: render PDF/A-3 พร้อมแนบ XML
   RD-->>DOC: PDF/A-3
-  DOC->>SIG: ลงนาม PAdES ด้วยใบรับรองที่ได้รับมอบอำนาจ
+  DOC->>SIG: ลงนาม PAdES ด้วยตราประทับอิเล็กทรอนิกส์ของ มกช. แบบ batch
   DOC->>TSA: ประทับเวลาและเก็บข้อมูล revocation เป็น B-LTA
+  alt TSA ทั้งสองไม่ตอบ
+    DOC->>DOC: เก็บเป็น B-B แล้วเข้าคิว augment ภายหลัง
+  end
   DOC-->>GRD: เอกสารลงนามและ hash
   GRD->>DGA: ส่งหรือลงทะเบียนตามช่องทางที่ DGA กำหนด
   GRD-->>ST: ดาวน์โหลด e-Transcript และ QR ตรวจสอบ
@@ -870,7 +934,7 @@ sequenceDiagram
 | API ช่วงชั่วโมงสูงสุด | 360 × 40 request ต่อใบ ÷ 3,600 s × 5 (เผื่อการเปิดดูซ้ำ) | **≈ 20 RPS** |
 | Upload เอกสาร | 360 × 5 MB ÷ 3,600 s | 0.5 MB/s ≈ 4 Mbps |
 | Upload วิดีโอผลงานกีฬา (30% ของใบสมัคร, เฉลี่ย 150 MB, สูงสุด 200 MB) | 108 × 150 MB ÷ 3,600 s | 4.5 MB/s ≈ **36 Mbps** ขาเข้า → ออกแบบ 100 Mbps |
-| ประกาศผล (รอบใหญ่ที่สุด 12,000 คน, 60% เปิดใน 10 นาทีแรก) | 7,200 ÷ 600 s; burst ×10 | 12/s เฉลี่ย, **120/s burst** → ให้บริการจาก CDN (pre-computed shard) origin ≈ 0 |
+| ประกาศผล (v1.1 ใช้ A-34: ผู้เข้าดู 30,000 คนใน 30 นาที, 60% ใน 10 นาทีแรก) | 18,000 ÷ 600 s; burst ×10 | 30/s เฉลี่ย, **300/s burst** → ให้บริการจาก CDN (pre-computed shard; key = HMAC(เลขผู้สมัคร + วันเกิด) กัน scrape) origin ≈ 0 |
 | รายงานตัว + ชำระค่ายืนยันสิทธิ์ (รับ 40% = 4,800 คนใน 24 ชม., ชั่วโมงสูงสุด 15%) | 720 ÷ 3,600 s | 0.2 รายการ/s |
 | สอบทักษะ: 3,000 คน × 4 สถานี × 3 กรรมการ | 36,000 คะแนนใน 3 วัน; sync หลังปิดสถานี 50 เครื่อง × 200 รายการใน 5 นาที | ≈ 33 รายการ/s ช่วง sync |
 
@@ -895,9 +959,9 @@ sequenceDiagram
 | Registration command | 6,000 × 1.5 ÷ 900 s = 10/s; burst ×6 | **60 cmd/s** | **120 cmd/s** | ยืนยัน 300 cmd/s |
 | Row writes ต่อ command | 6 UPDATE seat + 6 INSERT enrollment + 1 header + 1 outbox + 1 audit | 15 | — | — |
 | Row writes/s | 60 × 15 / 120 × 15 / 300 × 15 | 900 | 1,800 | 4,500 (PG 16 vCPU/NVMe รับได้) |
-| Hot row (กลุ่มยอดนิยมอยู่ใน 20% ของ command, lock ≈ 5 ms) | 60 × 20% = 12 update/s × 5 ms | ใช้ lock 6% | 12% | 30% ที่ 300 cmd/s (ยอมรับได้; เกินนี้แยก seat pool เป็นหลาย bucket) |
-| Keycloak login (ผู้ที่ไม่ได้ login ล่วงหน้า) | 400 ÷ 60 | 6.7/s | 20/s | 50/s |
-| PgBouncer | 12 pod × 20 client conn = 240 client → server pool 60 ต่อ DB | — | — | ตรวจ wait time |
+| Hot row (กลุ่มยอดนิยมอยู่ใน 20% ของ command) — **v1.1: lock ค้างจนถึง COMMIT ที่รอ sync standby** | cmd/s × 20% × lock hold | 5 ms: 6% · 15 ms: 18% | 5 ms: 12% · 15 ms: 36% | 5 ms: 30% · 15 ms: **90%** · 25 ms: **150% (อิ่มตัว)** → ที่ 300 cmd/s ผ่านเฉพาะเมื่อ lock hold < ~10 ms; จึงเตรียม seat-pool bucketing ไว้ตั้งแต่ R2 (ADR-004 ข้อ 7) |
+| Keycloak login (ผู้ที่ไม่ได้ login ล่วงหน้า) | 400 ÷ 60 | 6.7/s | 20/s → **v1.1 เป้าออกแบบ 40/s** (3 pods × 2 vCPU × ~15 password login/s/vCPU ≈ 90/s ก่อนหัก headroom ตามคู่มือ sizing ของ Keycloak ✅; ผู้ใช้ ThaID ไม่มีการ hash) | 50/s |
+| PgBouncer (v1.1 sidecar, ADR-027) | peak: web 10 × 6 + registration 6 × 8 + worker 4 × 4 | — | server conn **124** | ตรวจ wait time ต่อ pod (แทนตัวเลข 240 client ของ v1.0 ที่ไม่ตรงกับ 11) |
 
 **Scenario A — นโยบาย staggered (ค่าเริ่มต้น):** แบ่ง 4 slot ตามชั้นปี → 3,750 คนต่อ slot → 1,500 คนใน 15 นาที → 100 คน/นาที → active 800 → origin ≈ 260 RPS, command burst ≈ 15/s ดังนั้นเป้าออกแบบมี headroom ราว **8×** เทียบภาระที่คาดภายใต้นโยบายจริง ซึ่งเพียงพอที่จะรับกรณีวิทยาเขตไม่ทำตาม slot โดยไม่ต้อง scale เพิ่ม
 
@@ -905,9 +969,9 @@ sequenceDiagram
 
 | ตัวชี้วัด | การคำนวณ | ผล |
 |---|---|---|
-| ผู้เปิดดูเกรด (แจ้งพร้อมกันทั้งหมด) | 15,000 × 60% ใน 15 นาที, 25% ของผู้เปิดอยู่ในนาทีแรก | 2,250 ในนาทีแรก = **37.5 session/s** |
+| ผู้เปิดดูเกรด (แจ้งพร้อมกันทั้งหมด; ไม่รวมผู้ปกครอง/โรงเรียนกีฬาซึ่งแจ้งแยกรอบตาม 03 §3.2 — ถ้ารวมฐาน 27,450 คน ค่าจะเป็น 68.6 session/s และยังอยู่ในขีด Keycloak ~90/s) | 15,000 × 60% ใน 15 นาที, 25% ของผู้เปิดอยู่ในนาทีแรก | 2,250 ในนาทีแรก = **37.5 session/s** |
 | Active sessions (session 2 นาที) | 37.5 × 120 s | 4,500 → 4,500 × 6 request ÷ 120 s = **225 RPS** |
-| Keycloak login burst | 37.5/s | **เกินเป้าออกแบบ 20/s** → ต้องทยอยแจ้ง |
+| Keycloak login burst | 37.5/s | **v1.1:** ไม่เกินเป้าออกแบบใหม่ 40/s (ความจุ ~90/s) — ยังทยอยแจ้งเพื่อลด burst ของ core แต่ไม่ใช่เพราะ Keycloak เป็นคอขวด (review v1-review A-12) |
 | แจ้งแบบ batch 2,000 คน/นาที (ADR NOTI) | 2,000 × 25% ÷ 60 s + ส่วนค้าง | ≈ 12 session/s → 1,440 active → 72 RPS, login 12/s |
 | แบบประเมินการสอนที่บังคับก่อนดูเกรด (ถ้า มกช. ใช้) | 9,000 คน × 6 แบบ ÷ 900 s | **60 form/s** — มากกว่า command ลงทะเบียน → เปิดประเมินก่อนสอบ และ gate ตรวจเพียงสถานะครบ |
 | ส่งเกรด (1,200 อาจารย์ × 5 กลุ่ม = 6,000 ใบ, 50% ใน 24 ชม. สุดท้าย, ชั่วโมงสูงสุด 15%) | 3,000 × 15% | 450 ใบ/ชม. + autosave จาก 300 คนทุก 30 s = 10 RPS |
