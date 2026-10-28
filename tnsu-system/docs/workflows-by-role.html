@@ -2,736 +2,219 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
 <style>
-/* Layout: เส้นลู่วิ่ง — แถบหัวเรียบ, ตัวกรองบทบาทแบบ chip, ตารางทะเบียน, แล้วตามด้วย diagram แบบ swimlane แยกหมวด */
+/* Layout: เลือกบทบาท → การ์ดงานของบทบาทนั้น → ขั้นตอนเรียงลงมาเป็นข้อ ไฮไลต์ขั้นที่เป็นหน้าที่ของคุณ */
 :root {
-  --bg: #f6f7f9;
+  --bg: #f5f6f8;
   --surface: #ffffff;
-  --ink: #18212f;
-  --muted: #5b6676;
-  --line: #d9dee6;
-  --accent: #1f5fa8;      /* น้ำเงินสนามกีฬา */
-  --accent-soft: #e4edf8;
-  --new: #b25e00;         /* ป้าย "ใหม่" */
-  --new-soft: #fbeedd;
-  --fix: #6b4fa3;         /* ป้าย "แก้" */
-  --fix-soft: #eee8f7;
+  --ink: #1a2230;
+  --muted: #5d6879;
+  --line: #dce1e8;
+  --accent: #1f5fa8;
+  --accent-soft: #e3ecf8;
+  --you: #fff4d6;
+  --you-line: #e0a400;
+  --new: #a85800;
+  --new-soft: #fbecd8;
   --font-display: "Chakra Petch", "IBM Plex Sans Thai", system-ui, sans-serif;
   --font-body: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #10151d; --surface: #171e29; --ink: #e6ebf2; --muted: #9aa6b6; --line: #2a3443;
-    --accent: #7fb2ec; --accent-soft: #1d2d44; --new: #f0a54a; --new-soft: #3a2a14; --fix: #b9a2e6; --fix-soft: #2b2340;
+    --bg: #11161e; --surface: #18202b; --ink: #e7ecf3; --muted: #9ba7b7; --line: #2b3545;
+    --accent: #82b4ee; --accent-soft: #1e2e46; --you: #3a3013; --you-line: #e9b93c; --new: #f2a955; --new-soft: #3b2b15;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #10151d; --surface: #171e29; --ink: #e6ebf2; --muted: #9aa6b6; --line: #2a3443;
-  --accent: #7fb2ec; --accent-soft: #1d2d44; --new: #f0a54a; --new-soft: #3a2a14; --fix: #b9a2e6; --fix-soft: #2b2340;
+  --bg: #11161e; --surface: #18202b; --ink: #e7ecf3; --muted: #9ba7b7; --line: #2b3545;
+  --accent: #82b4ee; --accent-soft: #1e2e46; --you: #3a3013; --you-line: #e9b93c; --new: #f2a955; --new-soft: #3b2b15;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body {
-  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 28px 64px;
+  padding-block: 24px 64px;
 }
-.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 40px; }
-header { display: grid; gap: 10px; border-bottom: 3px solid var(--accent); padding-bottom: 20px; }
-.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0; text-wrap: balance; }
-h2 { font-family: var(--font-display); font-weight: 600; font-size: 24px; margin: 0; text-wrap: balance; }
-h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin: 0; }
-p { margin: 0; max-width: 68ch; }
-.lede { color: var(--muted); }
-.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); }
-.tag { display: inline-block; font-family: var(--font-mono); font-size: 11px; padding: 1px 7px; border-radius: 4px; white-space: nowrap; }
-.tag.old { background: var(--accent-soft); color: var(--accent); }
-.tag.new { background: var(--new-soft); color: var(--new); }
-.tag.fix { background: var(--fix-soft); color: var(--fix); }
-section { display: grid; gap: 16px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-size: 13px; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 5vw, 38px); line-height: 1.2; margin: 0; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 21px; margin: 0; }
+p { margin: 0; max-width: 66ch; }
+.muted { color: var(--muted); }
 
-/* ตัวกรองบทบาท */
-.roles { display: flex; flex-wrap: wrap; gap: 8px; }
-.roles button {
-  font: 500 13px var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line);
-  border-radius: 999px; padding: 5px 12px; cursor: pointer;
+/* ขั้นที่ 1: เลือกบทบาท */
+.picker { display: grid; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+.group { display: grid; gap: 6px; }
+.group-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button {
+  font: 500 15px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 14px; cursor: pointer;
 }
-.roles button:hover { border-color: var(--accent); }
-.roles button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
-.roles button:focus-visible, .cats button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.summary { font-size: 14px; color: var(--muted); }
-.summary strong { color: var(--ink); }
+.chips button:hover { border-color: var(--accent); }
+.chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.table-box { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
-table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14px; }
-th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--bg); position: sticky; top: 0; }
-td.id { font-family: var(--font-mono); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-td.role-hit { font-weight: 600; }
-.chip-role { display: inline-block; font-size: 12px; padding: 0 6px; margin: 1px 2px 1px 0; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); }
-.chip-role.hit { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-tr[hidden] { display: none; }
+/* ผลลัพธ์ */
+.result-head { display: grid; gap: 4px; }
+.result-head strong { color: var(--accent); }
+.lists { display: grid; gap: 28px; }
+.list { display: grid; gap: 12px; }
+.cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.card-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.wid { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.card h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin: 0; flex: 1 1 auto; min-width: 0; }
+.badge-new { font-size: 12px; font-weight: 600; color: var(--new); background: var(--new-soft); border-radius: 4px; padding: 0 7px; }
+.sla { font-size: 13px; color: var(--muted); }
 
-/* diagram */
-.cats { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
-.cats button { font: 600 14px var(--font-display); background: none; border: 0; color: var(--muted); padding: 6px 10px; cursor: pointer; border-radius: 6px; }
-.cats button[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); }
-.diagram { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
-.diagram .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
-.diagram p { color: var(--muted); font-size: 14px; }
-.mermaid-box { overflow-x: auto; }
-pre.mermaid { margin: 0; background: transparent; font-family: var(--font-body); }
-.grid2 { display: grid; gap: 16px; }
-.rules { display: grid; gap: 8px; padding-left: 20px; margin: 0; max-width: 80ch; }
-footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+ol.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; position: relative; padding-bottom: 10px; }
+ol.steps li:last-child { padding-bottom: 0; }
+ol.steps li::before {
+  content: ""; position: absolute; left: 13px; top: 28px; bottom: 0; width: 2px; background: var(--line);
+}
+ol.steps li:last-child::before { display: none; }
+.num {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; font-weight: 600; background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.step { display: grid; gap: 1px; padding: 3px 8px; border-radius: 8px; min-width: 0; }
+.who { font-size: 13px; font-weight: 600; color: var(--muted); }
+.what { font-size: 15px; }
+li.mine .step { background: var(--you); box-shadow: inset 3px 0 0 var(--you-line); }
+li.mine .who { color: var(--ink); }
+li.mine .num { background: var(--you-line); color: var(--surface); }
+.empty { color: var(--muted); font-size: 15px; background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 16px; }
+
+.rules { display: grid; gap: 6px; padding-left: 22px; margin: 0; max-width: 78ch; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
 </style>
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">มหาวิทยาลัยการกีฬาแห่งชาติ · System design v1.0-draft · 28 ต.ค. 2569</div>
+    <div class="eyebrow">มหาวิทยาลัยการกีฬาแห่งชาติ · ระบบสารสนเทศ · ร่างแบบ 28 ต.ค. 2569</div>
     <h1>Workflow ตามบทบาท</h1>
-    <p class="lede">40 workflow ของระบบ ตั้งแต่สมัครเรียนจนเป็นศิษย์เก่า เลือกบทบาทเพื่อดูว่าบทบาทนั้นเริ่มหรืออนุมัติเรื่องไหน แล้วเลื่อนลงดู diagram แบบ swimlane ของแต่ละหมวด</p>
-    <div class="legend">
-      <span><span class="tag old">เดิม</span> มีใน v0.9</span>
-      <span><span class="tag fix">แก้</span> ปรับจากผลทบทวน</span>
-      <span><span class="tag new">ใหม่</span> เพิ่มจากผลทบทวน 4 ด้าน</span>
-    </div>
+    <p class="muted">เลือกบทบาทเพื่อดูงานที่บทบาทนั้นเป็นคนเริ่ม และงานที่ต้องอนุมัติหรือทำต่อ ขั้นตอนที่ไฮไลต์สีเหลืองคือหน้าที่ของบทบาทที่เลือก</p>
   </header>
 
-  <section aria-labelledby="h-roles">
-    <h2 id="h-roles">เลือกบทบาท</h2>
-    <div class="roles" id="roles" role="group" aria-label="บทบาท"></div>
-    <div class="summary" id="summary"></div>
-    <div class="table-box">
-      <table>
-        <thead><tr><th>ID</th><th>Workflow</th><th>หมวด</th><th>ผู้เริ่ม</th><th>สายอนุมัติ / ผู้ดำเนินการ</th><th>SLA</th><th>สถานะ</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
-  </section>
+  <div class="picker" id="picker"></div>
 
-  <section aria-labelledby="h-diag">
-    <h2 id="h-diag">Diagram แบบ swimlane</h2>
-    <div class="cats" id="cats" role="tablist" aria-label="หมวด diagram">
-      <button role="tab" aria-selected="true" data-cat="all">ทั้งหมด</button>
-      <button role="tab" aria-selected="false" data-cat="overview">ภาพรวม</button>
-      <button role="tab" aria-selected="false" data-cat="academic">วิชาการ</button>
-      <button role="tab" aria-selected="false" data-cat="status">สถานภาพ</button>
-      <button role="tab" aria-selected="false" data-cat="finance">การเงิน/หอพัก</button>
-      <button role="tab" aria-selected="false" data-cat="sport">กีฬา</button>
-      <button role="tab" aria-selected="false" data-cat="protect">คุ้มครองเด็ก/สิทธิ์</button>
-      <button role="tab" aria-selected="false" data-cat="service">ประกาศ/รายงาน</button>
-    </div>
+  <div class="result-head" id="resultHead" aria-live="polite"></div>
+  <div class="lists" id="lists"></div>
 
-    <div class="grid2" id="diagrams">
-
-      <article class="diagram" data-cat="overview">
-        <div class="meta"><h3>วงจรชีวิตนักศึกษา กับ 5 กลุ่มบทบาท</h3></div>
-        <p>เส้นทางหลักของนักศึกษาหนึ่งคน และจุดที่แต่ละกลุ่มบทบาทเข้ามาเกี่ยวข้อง</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph L1["นักศึกษา / ผู้ปกครอง"]
-    A1["สมัคร + สอบทักษะ"] --&gt; A2["ยืนยันสิทธิ์ + รายงานตัว"]
-    A2 --&gt; A3["ลงทะเบียนเรียน"]
-    A3 --&gt; A4["เรียน ฝึก แข่งขัน ฝึกสอน"]
-    A4 --&gt; A5["ยื่นจบ"]
-    A5 --&gt; A6["ศิษย์เก่า"]
-  end
-  subgraph L2["อาจารย์ / หัวหน้าภาค / คณบดี"]
-    B1["คัดเลือก + ทบทวนผล W-18"]
-    B2["อนุมัติลงทะเบียนพิเศษ W-03"]
-    B3["ส่งเกรด W-01 / อุทธรณ์ W-16"]
-    B4["รับรองจบระดับคณะ W-06"]
-  end
-  subgraph L3["นายทะเบียน / การเงิน / กิจการนักศึกษา"]
-    C1["ประกาศผล + ออกรหัสนักศึกษา"]
-    C2["ใบแจ้งหนี้ ผ่อนชำระ W-27 / กยศ."]
-    C3["ประกาศเกรด + จำแนกสถานภาพ W-11"]
-    C4["ตรวจจบ + e-Transcript"]
-  end
-  subgraph L4["โค้ช / ทีมกีฬา / แพทย์"]
-    D1["ทดสอบสมรรถภาพ"]
-    D2["ลาแข่ง W-04 / สิทธิ์ลงแข่ง W-30 / เดินทาง W-31"]
-  end
-  subgraph L5["อธิการบดี / สภามหาวิทยาลัย"]
-    E1["อนุมัติปริญญา W-06"]
-    E2["วินิจฉัยอุทธรณ์ W-17"]
-  end
-  A1 --&gt; B1 --&gt; C1 --&gt; A2
-  A2 --&gt; C2
-  A3 --&gt; B2
-  A4 --&gt; D1
-  A4 --&gt; D2
-  A4 --&gt; B3 --&gt; C3
-  A5 --&gt; C4 --&gt; B4 --&gt; E1 --&gt; A6
-  C3 -. "พ้นสภาพ" .-&gt; E2
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="academic">
-        <div class="meta"><h3>ส่งเกรด และอุทธรณ์ผลการเรียน</h3><span class="tag old">W-01</span><span class="tag old">W-02</span><span class="tag new">W-16</span></div>
-        <p>เกรดผ่านการทวนสอบก่อนเผยแพร่ ถ้านักศึกษาไม่เห็นด้วยยื่นอุทธรณ์ได้ และถ้าผลอุทธรณ์ให้แก้ จะเปิด W-02 แก้เกรด</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph T["อาจารย์ผู้สอน"]
-    t1["กรอกคะแนน + ส่งเกรด"]
-    t2["ทบทวนคะแนน"]
-  end
-  subgraph H["หัวหน้าภาค / ประธานหลักสูตร"]
-    h1["ทวนสอบผล"]
-    h2["ให้ความเห็นอุทธรณ์"]
-  end
-  subgraph F["คณบดี / กรรมการคณะ"]
-    f1["อนุมัติเกรด"]
-    f2["กรรมการอุทธรณ์ + คณบดีวินิจฉัย"]
-  end
-  subgraph R["นายทะเบียน"]
-    r1["เผยแพร่เกรด"]
-    r2["W-02 แก้เกรด + คำนวณ GPA ใหม่"]
-  end
-  subgraph S["นักศึกษา"]
-    s1["เห็นเกรด"]
-    s2["ยื่นอุทธรณ์ W-16"]
-    s3["รับผลพร้อมเหตุผล"]
-  end
-  t1 --&gt; h1 --&gt; f1 --&gt; r1 --&gt; s1
-  s1 -- "ไม่เห็นด้วย" --&gt; s2 --&gt; t2 --&gt; h2 --&gt; f2
-  f2 -- "แก้เกรด" --&gt; r2 --&gt; s3
-  f2 -- "ยืนผล" --&gt; s3
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="academic">
-        <div class="meta"><h3>สำเร็จการศึกษา</h3><span class="tag old">W-06</span></div>
-        <p>ระบบตรวจโครงสร้างหลักสูตรและ clearance ทุกฝ่ายก่อน จากนั้นผ่านคณะ สภาวิชาการ และสภามหาวิทยาลัย</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph S["นักศึกษา"]
-    s1["ยื่นขอจบ"]
-    s2["รับ e-Transcript + e-Degree"]
-  end
-  subgraph SYS["ระบบ"]
-    y1["Degree audit + clearance: การเงิน หอพัก ห้องสมุด กยศ."]
-  end
-  subgraph P["ประธานหลักสูตร / กรรมการคณะ"]
-    p1["รับรองผล"]
-  end
-  subgraph R["นายทะเบียน"]
-    r1["ตรวจ + เกียรตินิยม"]
-    r2["ออกเอกสารลงนามดิจิทัล"]
-  end
-  subgraph C["สภาวิชาการ / สภามหาวิทยาลัย"]
-    c1["เสนอ + อนุมัติปริญญา"]
-  end
-  s1 --&gt; y1 --&gt; p1 --&gt; r1 --&gt; c1 --&gt; r2 --&gt; s2
-  y1 -- "ค้างเงื่อนไข" --&gt; s1
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="academic">
-        <div class="meta"><h3>ฝึกประสบการณ์วิชาชีพครู</h3><span class="tag fix">W-32</span><span class="tag new">W-23</span></div>
-        <p>จับคู่โรงเรียนแล้วตรวจอัตราครูพี่เลี้ยงต่อนักศึกษา 1:3 อาจารย์นิเทศก์ 1:10 และเพดานรับของหลักสูตร ทุกคนที่ทำงานกับผู้เยาว์ต้องผ่านการตรวจประวัติ</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph CT["ศูนย์ฝึกประสบการณ์วิชาชีพ"]
-    c1["เปิดรอบ + จับคู่โรงเรียน"]
-    c2{"อัตรา 1:3 / 1:10 และเพดานรับ ผ่าน?"}
-  end
-  subgraph SC["ผู้บริหารโรงเรียนฝึก"]
-    b1["ตอบรับ"]
-  end
-  subgraph HR["HR / ผู้รับผิดชอบคุ้มครองเด็ก"]
-    h1["W-23 ตรวจประวัติ"]
-  end
-  subgraph ST["นักศึกษาฝึกสอน"]
-    s1["สอน + บันทึกชั่วโมง + แผนการสอน"]
-  end
-  subgraph MT["ครูพี่เลี้ยง"]
-    m1["ประเมินรายสัปดาห์"]
-  end
-  subgraph SV["อาจารย์นิเทศก์"]
-    v1["นิเทศ + log การเยี่ยม"]
-  end
-  subgraph FA["คณะ"]
-    f1["ประเมินร่วม + อนุมัติผล"]
-    f2["ข้อมูลประกอบใบอนุญาตคุรุสภา"]
-  end
-  c1 --&gt; c2
-  c2 -- "เกิน" --&gt; c1
-  c2 -- "ผ่าน" --&gt; b1 --&gt; h1 --&gt; s1
-  s1 --&gt; m1 --&gt; f1
-  s1 --&gt; v1 --&gt; f1
-  f1 --&gt; f2
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="status">
-        <div class="meta"><h3>พ้นสภาพ อุทธรณ์ และคืนสภาพ</h3><span class="tag fix">W-11</span><span class="tag new">W-17</span><span class="tag new">W-24</span></div>
-        <p>คำสั่งพ้นสภาพต้องแจ้งสิทธิ์อุทธรณ์เสมอ ผู้ปกครองของผู้เยาว์ได้รับแจ้งด้วย</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph SYS["ระบบ"]
-    y1["เสนอรายชื่อตาม PolicySet ของรุ่น"]
-  end
-  subgraph R["นายทะเบียน"]
-    r1["ตรวจรายชื่อ"]
-    r2["รับเรื่องอุทธรณ์"]
-    r3["cascade: การเงิน กยศ. หอพัก ทหาร บัญชีผู้ใช้"]
-    r4["W-24 คืนสภาพ"]
-  end
-  subgraph D["คณบดี"]
-    d1["รับทราบ"]
-  end
-  subgraph P["อธิการบดี"]
-    p1["ลงนามคำสั่ง + แจ้งสิทธิ์อุทธรณ์"]
-    p2["วินิจฉัยอุทธรณ์"]
-  end
-  subgraph CM["คณะกรรมการอุทธรณ์"]
-    k1["พิจารณา"]
-  end
-  subgraph S["นักศึกษา / ผู้ปกครอง"]
-    s1{"ยื่นอุทธรณ์ในกำหนด?"}
-  end
-  y1 --&gt; r1 --&gt; d1 --&gt; p1 --&gt; s1
-  s1 -- "ไม่" --&gt; r3
-  s1 -- "ใช่" --&gt; r2 --&gt; k1 --&gt; p2
-  p2 -- "ยืนคำสั่ง" --&gt; r3
-  p2 -- "เพิกถอน" --&gt; r4
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="status">
-        <div class="meta"><h3>กรณีนักศึกษาเสียชีวิต</h3><span class="tag new">W-26</span></div>
-        <p>เปลี่ยนสถานะครั้งเดียว แล้วทุกระบบที่เกี่ยวข้องทำงานต่อเองอัตโนมัติ ครอบครัวไม่ต้องเจอใบแจ้งหนี้หรือข้อความอัตโนมัติอีก</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph IN["ผู้แจ้ง"]
-    i1["ครอบครัว / คณะ / หอพัก"]
-  end
-  subgraph R["นายทะเบียน"]
-    r1["ตรวจมรณบัตร"]
-    r2["status = DECEASED"]
-  end
-  subgraph AUTO["ระบบดำเนินการต่อเอง"]
-    a1["การเงิน: หยุดใบแจ้งหนี้"]
-    a2["กยศ.: แจ้งสิ้นสุดการกู้"]
-    a3["หอพัก: คืนห้อง + คืนทรัพย์สิน"]
-    a4["กิจการ: ยุติผ่อนผันทหาร"]
-    a5["แจ้งเตือน/ประกาศ: หยุดทุกข้อความ"]
-    a6["บัญชีผู้ใช้: ระงับ เก็บตาม retention"]
-  end
-  subgraph FA["คณะ / สภามหาวิทยาลัย"]
-    f1["ทีมดูแลครอบครัว"]
-    f2["ประกาศนียบัตรระลึก (ทางเลือก)"]
-  end
-  i1 --&gt; r1 --&gt; r2
-  r2 --&gt; a1
-  r2 --&gt; a2
-  r2 --&gt; a3
-  r2 --&gt; a4
-  r2 --&gt; a5
-  r2 --&gt; a6
-  r2 --&gt; f1 --&gt; f2
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="finance">
-        <div class="meta"><h3>ทุนการศึกษา และผ่อนชำระระหว่างรอ กยศ.</h3><span class="tag fix">W-07</span><span class="tag new">W-27</span></div>
-        <p>ระหว่างรอเงิน กยศ. ระบบผ่อนผันให้อัตโนมัติ นักศึกษาลงทะเบียนเรียนได้ตามปกติ เมื่ออนุมัติทุนแล้ว การเงินวางบิลไปที่ผู้ให้ทุน</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph S["นักศึกษา"]
-    s1["ยื่นทุน / ยื่นกู้ กยศ."]
-  end
-  subgraph SYS["ระบบ"]
-    y1["ตรวจคุณสมบัติ (DMN)"]
-    y2["ผ่อนผันอัตโนมัติ ไม่ระงับการลงทะเบียน"]
-  end
-  subgraph AD["อาจารย์ที่ปรึกษา"]
-    a1["ให้ความเห็น"]
-  end
-  subgraph CM["กรรมการทุน"]
-    c1["ให้คะแนน"]
-  end
-  subgraph VP["ผอ.กองพัฒนานักศึกษา / รองอธิการวิทยาเขต"]
-    v1["อนุมัติทุน"]
-  end
-  subgraph FN["การเงิน / เจ้าหน้าที่ กยศ."]
-    f1["วางบิลผู้ให้ทุน"]
-    f2["รับเงิน กยศ. + ตัดยอด"]
-  end
-  s1 --&gt; y1 --&gt; a1 --&gt; c1 --&gt; v1 --&gt; f1
-  s1 -- "รอ กยศ." --&gt; y2 --&gt; f2
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="finance">
-        <div class="meta"><h3>คืนเงิน ยกเลิกใบเสร็จ และจ่ายเงิน</h3><span class="tag old">W-09</span><span class="tag new">W-28</span><span class="tag new">W-29</span></div>
-        <p>ทุกเรื่องที่เกี่ยวกับเงินใช้หลักคนทำกับคนตรวจเป็นคนละคน ใบเสร็จที่ยกเลิกยังคงอยู่ในระบบ ห้ามลบหรือนำเลขกลับมาใช้ซ้ำ</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph MK["เจ้าหน้าที่การเงิน (ผู้ทำ)"]
-    m1["คำขอคืนเงิน / ยกเลิกใบเสร็จ / จ่ายเงิน"]
-    m2["คำนวณภาษีหัก ณ ที่จ่าย"]
-  end
-  subgraph CK["หัวหน้างานการเงิน (ผู้ตรวจ)"]
-    k1["ตรวจ + อนุมัติ"]
-  end
-  subgraph VP["ผู้มีอำนาจตามวงเงิน / รองอธิการวิทยาเขต"]
-    v1["อนุมัติเกินวงเงิน"]
-  end
-  subgraph OUT["ผลลัพธ์"]
-    o1["โอนเงิน + หนังสือรับรองหักภาษี"]
-    o2["ใบเสร็จเดิม = VOID พร้อมเหตุผล"]
-  end
-  subgraph AU["ผู้ตรวจสอบภายใน / สตง."]
-    u1["รายงานตรวจสอบ อ่านอย่างเดียว"]
-  end
-  m1 --&gt; m2 --&gt; k1
-  k1 -- "ในวงเงิน" --&gt; o1
-  k1 -- "เกินวงเงิน" --&gt; v1 --&gt; o1
-  k1 -- "ยกเลิกใบเสร็จ" --&gt; o2
-  o1 --&gt; u1
-  o2 --&gt; u1
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="finance">
-        <div class="meta"><h3>ออกนอกหอ และแจ้งที่พักชาวต่างชาติ</h3><span class="tag fix">W-13</span><span class="tag new">W-38</span></div>
-        <p>นักเรียนผู้เยาว์ออกนอกหอได้เมื่อผู้ปกครองที่มีสิทธิ์รับตัวอนุญาต ระบบตรวจคำสั่งห้ามรับตัวก่อนทุกครั้ง ส่วนชาวต่างชาติที่เข้าพัก ต้องแจ้ง ตม.30 ภายใน 24 ชม.</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph ST["นักเรียน"]
-    s1["ขอออกนอกหอ"]
-  end
-  subgraph SYS["ระบบ"]
-    y1{"ผู้ปกครองมีสิทธิ์รับตัว? ไม่มีคำสั่งห้าม?"}
-    y2["สร้างรายการ ตม.30 + นับเวลา 24 ชม."]
-  end
-  subgraph GD["ผู้ปกครอง"]
-    g1["อนุญาต"]
-  end
-  subgraph DM["ครูหอพัก / เจ้าหน้าที่หอพัก"]
-    d1["ออก LeavePass + บันทึกเวลาออก-กลับ"]
-    d2["ยื่น ตม.30 + แนบหลักฐาน"]
-  end
-  subgraph FG["ผู้พักชาวต่างชาติ"]
-    f1["เข้าพัก"]
-  end
-  s1 --&gt; y1
-  y1 -- "ใช่" --&gt; g1 --&gt; d1
-  y1 -- "ไม่" --&gt; d1
-  f1 --&gt; y2 --&gt; d2
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="sport">
-        <div class="meta"><h3>ตรวจสิทธิ์ลงแข่ง เดินทาง ลาแข่ง และสอบชดเชย</h3><span class="tag new">W-30</span><span class="tag new">W-31</span><span class="tag fix">W-04</span><span class="tag old">W-05</span></div>
-        <p>ส่งรายชื่อครั้งเดียว แล้วระบบสร้างคำขอลาแข่งและนัดสอบชดเชยต่อให้ ผู้ปกครองของผู้เยาว์อนุญาตการเดินทางผ่านแอป</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph CO["โค้ช"]
-    c1["รายชื่อ + แผนเดินทาง"]
-    c2["หลังกลับ: ล้างหนี้เงินยืม + รายงานผล"]
-  end
-  subgraph TM["ผู้จัดการทีม"]
-    t1["ตรวจสิทธิ์ตามกฎรายการแข่ง"]
-  end
-  subgraph RG["นายทะเบียน"]
-    r1["รับรองรายชื่อ"]
-  end
-  subgraph SH["หัวหน้างานกีฬา"]
-    h1["อนุมัติเดินทาง"]
-  end
-  subgraph FN["การเงิน"]
-    f1["อนุมัติยืมเงินทดรอง"]
-  end
-  subgraph GD["ผู้ปกครอง (ผู้เยาว์)"]
-    g1["e-permission slip"]
-  end
-  subgraph AC["อาจารย์ที่ปรึกษา / ผู้สอน / คณะ"]
-    a1["W-04 ลาแข่ง: ไม่นับขาดเรียน"]
-    a2["W-05 นัดสอบชดเชย"]
-  end
-  c1 --&gt; t1 --&gt; r1 --&gt; h1 --&gt; f1
-  h1 --&gt; g1
-  h1 --&gt; a1 --&gt; a2
-  f1 --&gt; c2
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="sport">
-        <div class="meta"><h3>บันทึกการบาดเจ็บ และการเข้าถึงข้อมูลสุขภาพ</h3><span class="tag fix">W-39</span><span class="tag fix">W-14</span></div>
-        <p>หน้างานบันทึกได้ทันทีโดยไม่ต้องรอ consent consent ใช้เฉพาะตอนเปิดข้อมูลให้โค้ชหรือทีมเห็น ส่วนการเข้าถึงข้อมูลนอกความสัมพันธ์ดูแลต้องมีผู้อนุมัติ 2 คน</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph FS["แพทย์ / นักกายภาพ / โค้ชหน้างาน"]
-    m1["บันทึกการบาดเจ็บทันที (ฐานประโยชน์สำคัญต่อชีวิต)"]
-    m2["แผนกลับมาฝึก (RTP)"]
-  end
-  subgraph AT["นักกีฬา / ผู้ปกครองของผู้เยาว์"]
-    a1["ได้รับแจ้ง"]
-    a2{"ยินยอมให้โค้ชเห็นรายละเอียด?"}
-  end
-  subgraph CO["โค้ช"]
-    c1["เห็นรายละเอียดการรักษา"]
-    c2["เห็นเฉพาะสถานะความพร้อม"]
-  end
-  subgraph BG["บุคลากรอื่นที่ขอเข้าถึง"]
-    b1["ระบุเหตุผล"]
-  end
-  subgraph AP["แพทย์หัวหน้า + DPO"]
-    p1["อนุมัติ 2 คน / ฉุกเฉินตรวจย้อนหลังภายใน 24 ชม."]
-  end
-  m1 --&gt; m2
-  m1 --&gt; a1 --&gt; a2
-  a2 -- "ยินยอม" --&gt; c1
-  a2 -- "ไม่ยินยอม" --&gt; c2
-  b1 --&gt; p1
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="protect">
-        <div class="meta"><h3>แจ้งเหตุคุ้มครองเด็ก</h3><span class="tag new">W-22</span><span class="tag new">W-23</span></div>
-        <p>ผู้รับผิดชอบด้านคุ้มครองเด็กต้องรับเรื่องภายใน 24 ชม. ถ้าผู้ปกครองเกี่ยวข้องกับเหตุ ระบบจะไม่แจ้งผู้ปกครองรายนั้น เฉพาะทีมคุ้มครองเด็กเท่านั้นที่เปิดดูเคสได้</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph RP["ผู้พบเหตุ"]
-    r1["ครู ครูหอพัก โค้ช นักเรียน ผู้ปกครอง แจ้งผ่านแอปหรือสายด่วน"]
-  end
-  subgraph DSL["ผู้รับผิดชอบด้านคุ้มครองเด็ก"]
-    d1["รับเรื่องภายใน 24 ชม."]
-    d2{"อันตรายเร่งด่วน?"}
-    d3["มาตรการทันที: แยกผู้ถูกกล่าวหา ระงับสิทธิ์ในระบบ"]
-    d4["สอบข้อเท็จจริง"]
-    d5{"ผู้ปกครองเกี่ยวข้อง?"}
-  end
-  subgraph EXT["หน่วยงานภายนอก"]
-    e1["ส่งต่อตามกฎหมายคุ้มครองเด็ก"]
-  end
-  subgraph GD["ผู้ปกครอง"]
-    g1["ได้รับแจ้ง"]
-  end
-  subgraph DIR["ผอ.โรงเรียนกีฬา / รองอธิการ"]
-    x1["ตัดสินมาตรการ + ติดตามผล"]
-  end
-  r1 --&gt; d1 --&gt; d2
-  d2 -- "ใช่" --&gt; d3 --&gt; e1 --&gt; d4
-  d2 -- "ไม่" --&gt; d4
-  d4 --&gt; d5
-  d5 -- "ไม่" --&gt; g1 --&gt; x1
-  d5 -- "ใช่" --&gt; x1
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="protect">
-        <div class="meta"><h3>ประตูเดียว: ร้องเรียน ขอข้อมูลข่าวสาร สิทธิ์ PDPA อุทธรณ์</h3><span class="tag new">W-19</span><span class="tag new">W-20</span><span class="tag new">W-21</span></div>
-        <p>ผู้ยื่นไม่ต้องรู้ว่าเรื่องของตัวเองต้องไปหน่วยงานไหน ศูนย์รับเรื่องจะส่งต่อให้เอง และผู้ยื่นใช้รหัสติดตามได้ แม้จะไม่เปิดเผยตัวตน</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph U["ผู้ยื่น: นักศึกษา ผู้ปกครอง ประชาชน บุคลากร"]
-    u1["ยื่นเรื่อง (ไม่ระบุตัวตนได้สำหรับร้องเรียน)"]
-    u2["ติดตามด้วยรหัส + รับผล"]
-  end
-  subgraph G["ศูนย์รับเรื่อง"]
-    g1{"ประเภทเรื่อง"}
-  end
-  subgraph A["หน่วยงานรับผิดชอบ / ผู้ตรวจสอบภายใน"]
-    a1["W-19 ร้องเรียน / ทุจริต"]
-  end
-  subgraph I["ศูนย์ข้อมูลข่าวสาร + นิติกร"]
-    i1["W-20 ขอข้อมูลข่าวสารราชการ"]
-  end
-  subgraph P["DPO"]
-    p1["W-21 สิทธิ์ข้อมูลส่วนบุคคล"]
-  end
-  subgraph C["ทีมคุ้มครองเด็ก / คณะ"]
-    c1["W-22 เรื่องเกี่ยวกับเด็ก / W-16 W-17 อุทธรณ์"]
-  end
-  subgraph E["อธิการบดี / Reporting Hub"]
-    e1["วินิจฉัยเรื่องร้ายแรง + สถิติเข้า ITA"]
-  end
-  u1 --&gt; g1
-  g1 --&gt; a1
-  g1 --&gt; i1
-  g1 --&gt; p1
-  g1 --&gt; c1
-  a1 --&gt; e1
-  a1 --&gt; u2
-  i1 --&gt; u2
-  p1 --&gt; u2
-  c1 --&gt; u2
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="service">
-        <div class="meta"><h3>เผยแพร่ประกาศ และประกาศฉุกเฉิน</h3><span class="tag new">W-36</span></div>
-        <p>ประกาศทั่วไปให้ผู้มีอำนาจตามระดับหน่วยงานอนุมัติ ส่วนประกาศฉุกเฉิน P0 ต้องอนุมัติ 2 คน และระบบต้องส่งครบทุกช่องทางภายใน 60 วินาที</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph AU["ผู้เขียน: ประชาสัมพันธ์ / อาจารย์ / ครูหอพัก / โค้ช"]
-    a1["เขียนประกาศ + เลือกกลุ่มผู้รับ"]
-  end
-  subgraph SYS["ระบบ"]
-    y1["ตรวจข้อมูลส่วนบุคคล + alt text"]
-    y2["ส่งทุกช่องทาง + ติดตามการรับทราบ"]
-  end
-  subgraph AP["ผู้อนุมัติตามระดับ: หัวหน้าภาค / คณบดี / รองอธิการ"]
-    p1["อนุมัติ"]
-  end
-  subgraph EM["ศูนย์ปฏิบัติการฉุกเฉิน + ผู้บริหาร"]
-    e1["P0: อนุมัติ 2 คน"]
-  end
-  subgraph RC["ผู้รับ: นักศึกษา ผู้ปกครอง บุคลากร"]
-    r1["กด รับทราบ / ฉันปลอดภัย"]
-  end
-  a1 --&gt; y1
-  y1 -- "ทั่วไป" --&gt; p1 --&gt; y2
-  y1 -- "ฉุกเฉิน" --&gt; e1 --&gt; y2
-  y2 --&gt; r1
-  r1 -- "ยังไม่ตอบ" --&gt; y2
-</pre></div>
-      </article>
-
-      <article class="diagram" data-cat="service">
-        <div class="meta"><h3>ส่งรายงานต่อหน่วยงานกำกับ</h3><span class="tag new">W-35</span></div>
-        <p>ดึงข้อมูล ณ วันตัดยอด ตรวจคุณภาพ ให้ผู้บริหารอนุมัติ แล้วเก็บ snapshot ไว้เป็นหลักฐานว่าส่งตัวเลขอะไรออกไป</p>
-        <div class="mermaid-box"><pre class="mermaid">
-flowchart LR
-  subgraph DS["data steward"]
-    d1["ดึงข้อมูล ณ วันตัดยอด"]
-    d2["ตรวจคุณภาพ + แก้ข้อมูลผิด"]
-  end
-  subgraph PL["ผู้อำนวยการกองแผน"]
-    p1["ทบทวน"]
-  end
-  subgraph EX["อธิการบดี / ผู้รับมอบอำนาจ"]
-    e1["อนุมัติส่ง"]
-  end
-  subgraph AG["หน่วยงานกำกับ: อว. ป.ป.ช. (ITA) ก.พ.ร. สมศ. ฯลฯ"]
-    g1["รับรายงาน"]
-  end
-  subgraph AR["ระบบ"]
-    a1["เก็บ snapshot + หลักฐานการส่ง"]
-  end
-  d1 --&gt; d2 --&gt; p1 --&gt; e1 --&gt; g1
-  e1 --&gt; a1
-</pre></div>
-      </article>
-
-    </div>
-  </section>
-
-  <section aria-labelledby="h-rules">
-    <h2 id="h-rules">กฎร่วมของทุก workflow</h2>
+  <section style="display:grid;gap:10px">
+    <h2>กฎที่ใช้กับทุก workflow</h2>
     <ol class="rules">
-      <li>ระบบหาผู้อนุมัติจากตำแหน่ง ณ วันที่ขั้นตอนเริ่ม ถ้าตำแหน่งว่างหรือผู้อนุมัติลา จะส่งให้ผู้รักษาราชการแทนอัตโนมัติ</li>
-      <li>ห้ามอนุมัติเรื่องของตัวเอง เช่น หัวหน้าภาคที่สอนวิชานั้นเองอนุมัติเกรดวิชานั้นไม่ได้ ระบบจะส่งข้ามไปยังระดับถัดไป</li>
-      <li>เมื่อเกิน SLA ระบบเตือนผู้อนุมัติ ถ้าเกินถึง 2 เท่า จะแจ้งผู้บังคับบัญชาถัดไป</li>
-      <li>ทุกขั้นตอนเก็บ audit log ที่แก้ไขไม่ได้ และเมื่อปฏิเสธต้องระบุเหตุผล</li>
-      <li>คำสั่งที่กระทบสิทธิ์ เช่น พ้นสภาพ ลงโทษ หรือปฏิเสธทุน ต้องแสดงเหตุผลและแจ้งสิทธิ์อุทธรณ์ทุกครั้ง</li>
-      <li>เรื่องที่เกี่ยวกับผู้เยาว์ต้องแจ้งหรือขอความเห็นผู้ปกครองที่มีสิทธิ์ และตรวจคำสั่งจำกัดสิทธิ์ผู้ปกครองก่อนทุกครั้ง</li>
-      <li>ผู้ดูแลระบบไม่อยู่ในสายอนุมัติทางธุรกิจใดเลย การแก้ฟอร์มหรือสายอนุมัติต้องให้คน 2 คนยืนยัน</li>
+      <li>ถ้าผู้อนุมัติลาหรือตำแหน่งว่าง ระบบส่งให้ผู้รักษาราชการแทนอัตโนมัติ</li>
+      <li>ห้ามอนุมัติเรื่องของตัวเอง ระบบจะส่งข้ามไปยังระดับถัดไป</li>
+      <li>เกินเวลาที่กำหนด ระบบเตือน ถ้าเกินถึง 2 เท่า จะแจ้งหัวหน้าถัดไป</li>
+      <li>ทุกขั้นตอนมีบันทึกย้อนหลังที่แก้ไขไม่ได้ ถ้าปฏิเสธต้องระบุเหตุผล</li>
+      <li>คำสั่งที่กระทบสิทธิ์ เช่น พ้นสภาพ ลงโทษ หรือไม่ให้ทุน ต้องบอกเหตุผลและบอกว่าอุทธรณ์ได้อย่างไร</li>
+      <li>เรื่องของนักเรียนผู้เยาว์ต้องแจ้งผู้ปกครองที่มีสิทธิ์ และตรวจคำสั่งจำกัดสิทธิ์ผู้ปกครองก่อน</li>
+      <li>ผู้ดูแลระบบไม่ได้อยู่ในสายอนุมัติงานใดเลย</li>
     </ol>
   </section>
 
-  <footer>ที่มา: tnsu-system/docs/workflows-by-role.md · ระยะเวลาและเลขมาตราบางข้อยังต้องยืนยันกับต้นฉบับใน Phase 0 Discovery</footer>
+  <footer>รายละเอียดเต็มอยู่ในไฟล์ tnsu-system/docs/workflows-by-role.md · ระยะเวลาบางข้อยังต้องยืนยันกับ มกช.</footer>
 </div>
 
 <script>
-const ROLES = [
-  ["student","นักศึกษา"],["guardian","ผู้ปกครอง"],["lecturer","อาจารย์ผู้สอน"],["advisor","อาจารย์ที่ปรึกษา"],
-  ["head","หัวหน้าภาค/ประธานหลักสูตร"],["dean","คณบดี"],["campusvp","รองอธิการวิทยาเขต"],["rector","อธิการบดี"],
-  ["council","สภาวิชาการ/สภามหาวิทยาลัย"],["registrar","นายทะเบียน"],["finance","การเงิน"],["loan","เจ้าหน้าที่ กยศ."],
-  ["scholar","งานทุน/กรรมการทุน"],["dorm","หอพัก/ครูหอพัก"],["affairs","กิจการนักศึกษา"],["coach","โค้ช/ผู้จัดการทีม"],
-  ["sportshead","หัวหน้างานกีฬา"],["medical","แพทย์/นักกายภาพ"],["safeguard","ผู้รับผิดชอบคุ้มครองเด็ก"],
-  ["practicum","ศูนย์ฝึกสอน/นิเทศก์/ครูพี่เลี้ยง"],["complaint","ศูนย์รับเรื่อง/นิติกร"],["dpo","DPO"],["hr","HR"],
-  ["auditor","ผู้ตรวจสอบ/สตง."],["planner","กองแผน/data steward"],["records","สารบรรณ"],["pr","ประชาสัมพันธ์"],
-  ["applicant","ผู้สมัคร/บุคคลภายนอก"],["system","ระบบอัตโนมัติ"]
+const GROUPS = [
+  ["นักศึกษาและครอบครัว", [["student","นักศึกษา"],["guardian","ผู้ปกครอง"],["applicant","ผู้สมัคร / บุคคลภายนอก"]]],
+  ["อาจารย์และผู้บริหาร", [["lecturer","อาจารย์ผู้สอน"],["advisor","อาจารย์ที่ปรึกษา"],["head","หัวหน้าภาค / ประธานหลักสูตร"],["dean","คณบดี"],["campusvp","รองอธิการวิทยาเขต"],["rector","อธิการบดี"],["council","สภาวิชาการ / สภามหาวิทยาลัย"]]],
+  ["เจ้าหน้าที่", [["registrar","นายทะเบียน"],["finance","การเงิน"],["loan","เจ้าหน้าที่ กยศ."],["scholar","งานทุน"],["dorm","หอพัก / ครูหอพัก"],["affairs","กิจการนักศึกษา"],["hr","บุคลากร (HR)"],["planner","กองแผน"],["records","งานสารบรรณ"],["pr","ประชาสัมพันธ์"]]],
+  ["กีฬาและสุขภาพ", [["coach","โค้ช / ผู้จัดการทีม"],["sportshead","หัวหน้างานกีฬา"],["medical","แพทย์ / นักกายภาพ"]]],
+  ["กำกับดูแล", [["safeguard","ผู้ดูแลคุ้มครองเด็ก"],["practicum","ศูนย์ฝึกสอน / นิเทศก์"],["complaint","ศูนย์รับเรื่องร้องเรียน"],["dpo","DPO (ข้อมูลส่วนบุคคล)"],["auditor","ผู้ตรวจสอบ / สตง."]]]
 ];
-const NAME = Object.fromEntries(ROLES);
-const CAT = {academic:"วิชาการ",status:"สถานภาพ",finance:"การเงิน/หอพัก",sport:"กีฬา",protect:"คุ้มครองเด็ก/สิทธิ์",service:"ประกาศ/รายงาน"};
-// [id, ชื่อ, หมวด, ผู้เริ่ม[], ผู้อนุมัติ/ดำเนินการ[], SLA, สถานะ old|fix|new]
+const NAME = {system:"ระบบ (อัตโนมัติ)"};
+GROUPS.forEach(([, rs]) => rs.forEach(([k, v]) => NAME[k] = v));
+
+// [id, ชื่อ, เวลา, ใหม่?, ขั้นตอน [บทบาท, สิ่งที่ทำ]]
 const WF = [
- ["W-01","ส่งเกรด","academic",["lecturer"],["head","dean","registrar"],"3 วันทำการ","old"],
- ["W-02","แก้ไขเกรดหลังเผยแพร่","academic",["lecturer"],["head","dean","registrar"],"5 วันทำการ","old"],
- ["W-03","ถอนรายวิชา / ลงเกินหรือต่ำกว่าเกณฑ์","academic",["student"],["advisor","lecturer","dean","registrar"],"2 วันทำการ","old"],
- ["W-04","ลาไปแข่งขัน / เก็บตัว","sport",["student"],["coach","advisor","lecturer","dean"],"2 วันทำการ","fix"],
- ["W-05","สอบชดเชย / เลื่อนสอบ","academic",["student","system"],["lecturer","head","registrar"],"3 วันทำการ","old"],
- ["W-06","สำเร็จการศึกษา","academic",["student"],["system","head","dean","registrar","council"],"ตามรอบสภา","old"],
- ["W-07","ทุนการศึกษา","finance",["student"],["system","advisor","scholar","campusvp","finance"],"ตามรอบทุน","fix"],
- ["W-08","ปรับปรุงหลักสูตร / หลักสูตรใหม่","academic",["head"],["dean","council"],"ตามรอบประชุม","old"],
- ["W-09","คืนเงิน","finance",["student","finance"],["finance","campusvp","auditor"],"5 วันทำการ","old"],
- ["W-10","ลาพัก / รักษาสภาพ / ลาออก","status",["student","guardian"],["advisor","dean","registrar"],"3 วันทำการ","fix"],
- ["W-11","จำแนกสถานภาพ (พ้นสภาพ)","status",["system"],["registrar","dean","rector"],"5 วันทำการ","fix"],
- ["W-12","วินัยนักศึกษา","status",["affairs","applicant"],["affairs","dean","campusvp"],"ตามระเบียบ","old"],
- ["W-13","ขอออกนอกหอ (โรงเรียนกีฬา)","finance",["student"],["guardian","dorm"],"≤ 4 ชม.","fix"],
- ["W-14","เข้าถึงข้อมูลสุขภาพ (break-glass)","sport",["medical","coach"],["medical","dpo"],"ทันที","fix"],
- ["W-15","เปลี่ยนกฎวิชาการ (PolicySet)","academic",["registrar"],["council"],"ตามรอบประชุม","old"],
- ["W-16","อุทธรณ์ผลการเรียน","academic",["student"],["lecturer","head","dean","registrar"],"15 วันทำการ","new"],
- ["W-17","อุทธรณ์คำสั่งพ้นสภาพ","status",["student","guardian"],["registrar","rector"],"ตามกฎหมาย","new"],
- ["W-18","ทบทวนผลคัดเลือก (สอบทักษะ/ทุน)","finance",["applicant","student"],["scholar"],"7 วันทำการ","new"],
- ["W-19","ร้องเรียน / แจ้งเบาะแส","protect",["student","guardian","applicant"],["complaint","auditor","rector"],"15–30 วัน","new"],
- ["W-20","คำขอข้อมูลข่าวสารราชการ","protect",["applicant"],["complaint","dpo"],"ตามกฎหมาย","new"],
- ["W-21","คำขอใช้สิทธิ์ตาม PDPA","protect",["student","guardian","applicant"],["dpo"],"≤ 30 วัน","new"],
- ["W-22","แจ้งเหตุคุ้มครองเด็ก","protect",["dorm","coach","guardian","student","lecturer"],["safeguard","campusvp"],"24 ชม.","new"],
- ["W-23","ตรวจประวัติผู้ทำงานกับผู้เยาว์","protect",["hr"],["safeguard"],"15 วันทำการ","new"],
- ["W-24","คืนสภาพ / กลับเข้าศึกษาใหม่","status",["student"],["dean","registrar","finance"],"5 วันทำการ","new"],
- ["W-25","ย้าย / เทียบโอนหน่วยกิต","status",["student"],["head","dean","registrar"],"10 วันทำการ","new"],
- ["W-26","นักศึกษาเสียชีวิต","status",["guardian","dean","dorm"],["registrar","dean","council","system"],"1 วันทำการ","new"],
- ["W-27","ผ่อนชำระ / ผ่อนผันค่าธรรมเนียม","finance",["student","system"],["finance","campusvp","loan"],"3 วันทำการ","new"],
- ["W-28","ยกเลิกใบเสร็จ","finance",["finance"],["finance","auditor"],"วันเดียวกัน","new"],
- ["W-29","จ่ายเงิน (ค่าตอบแทน/เบี้ยเลี้ยง/นักศึกษาทำงาน)","finance",["coach","affairs","head"],["finance"],"7 วันทำการ","new"],
- ["W-30","ตรวจสิทธิ์ลงแข่ง","sport",["coach"],["system","registrar","sportshead"],"3 วันทำการ","new"],
- ["W-31","เดินทางไปแข่งขัน + เบี้ยเลี้ยง","sport",["coach"],["sportshead","finance","guardian"],"5 วันก่อนเดินทาง","new"],
- ["W-32","ฝึกประสบการณ์วิชาชีพครู","academic",["practicum"],["practicum","hr","dean"],"ตลอดภาค","fix"],
- ["W-33","ปรับวิธีเรียน/สอบสำหรับผู้พิการ","academic",["student"],["affairs","lecturer","registrar"],"5 วันทำการ","new"],
- ["W-34","คำร้องทั่วไป (e-Form)","service",["student"],["registrar","dean"],"ตามบริการ","new"],
- ["W-35","ส่งรายงานต่อหน่วยงานกำกับ","service",["planner"],["planner","rector"],"ตามปฏิทินรายงาน","new"],
- ["W-36","เผยแพร่ประกาศ / ฉุกเฉิน P0","service",["pr","lecturer","dorm","coach"],["head","dean","campusvp","rector"],"P0 ≤ 60 วินาที","new"],
- ["W-37","คอร์สระยะสั้น / ค่ายกีฬา (บุคคลภายนอก)","service",["applicant"],["sportshead","finance"],"ตามโครงการ","new"],
- ["W-38","แจ้งที่พักชาวต่างชาติ (ตม.30)","finance",["dorm"],["dorm"],"24 ชม.","new"],
- ["W-39","บันทึกการบาดเจ็บกรณีฉุกเฉิน","sport",["medical","coach"],["medical"],"ทันที","fix"],
- ["W-40","ทำลายเอกสาร / ส่งหอจดหมายเหตุ","service",["records"],["records","rector"],"ปีละครั้ง","new"]
+ ["W-01","ส่งเกรด","3 วันทำการ",0,[["lecturer","กรอกคะแนนและส่งเกรด"],["head","ทวนสอบผลการประเมิน"],["dean","อนุมัติเกรด"],["registrar","เผยแพร่เกรด"],["student","เห็นเกรดในแอป"]]],
+ ["W-02","แก้ไขเกรดหลังประกาศ","5 วันทำการ",0,[["lecturer","ขอแก้เกรด พร้อมเหตุผลและหลักฐาน"],["head","ตรวจคำขอ"],["dean","อนุมัติ"],["registrar","บันทึกเกรดใหม่"],["student","ได้รับแจ้ง"]]],
+ ["W-03","ถอนรายวิชา / ลงหน่วยกิตเกินหรือต่ำกว่าเกณฑ์","2 วันทำการ",0,[["student","ยื่นคำร้อง"],["advisor","เห็นชอบ"],["lecturer","รับทราบ"],["dean","อนุมัติ (กรณีเกินเกณฑ์)"],["registrar","บันทึก"]]],
+ ["W-04","ลาไปแข่งขัน / เก็บตัว","2 วันทำการ",0,[["student","ยื่นลาไปแข่ง"],["coach","รับรองว่าติดทีมจริง"],["advisor","เห็นชอบ"],["lecturer","รับทราบ และกำหนดงานชดเชย"],["dean","อนุมัติ"],["system","ไม่นับขาดเรียน และนัดสอบชดเชยให้"]]],
+ ["W-05","สอบชดเชย / เลื่อนสอบ","3 วันทำการ",0,[["student","ขอสอบชดเชย (หรือระบบสร้างให้จากการลาแข่ง)"],["lecturer","เห็นชอบ"],["head","อนุมัติ"],["registrar","จัดห้องและผู้คุมสอบ"]]],
+ ["W-06","สำเร็จการศึกษา","ตามรอบประชุมสภา",0,[["student","ยื่นขอจบ"],["system","ตรวจหน่วยกิตครบ และไม่ค้างหนี้ หอพัก ห้องสมุด"],["head","รับรองผล"],["dean","เสนอกรรมการคณะ"],["registrar","ตรวจ และคำนวณเกียรตินิยม"],["council","อนุมัติปริญญา"],["student","รับ e-Transcript และ e-Degree"]]],
+ ["W-07","ขอทุนการศึกษา","ตามรอบทุน",0,[["student","ยื่นขอทุน"],["system","ตรวจคุณสมบัติเบื้องต้น"],["advisor","ให้ความเห็น"],["scholar","กรรมการทุนให้คะแนน"],["campusvp","อนุมัติทุน"],["finance","วางบิลเก็บเงินจากผู้ให้ทุน"]]],
+ ["W-08","ปรับปรุงหลักสูตร","ตามรอบประชุม",0,[["head","เสนอหลักสูตร"],["dean","กรรมการคณะเห็นชอบ"],["council","สภาวิชาการและสภามหาวิทยาลัยอนุมัติ"],["registrar","ส่งข้อมูลเข้าระบบ CHECO ของ อว."]]],
+ ["W-09","คืนเงิน","5 วันทำการ",0,[["student","ขอคืนเงิน"],["finance","เจ้าหน้าที่ตรวจ"],["finance","หัวหน้างานการเงินอนุมัติ"],["campusvp","อนุมัติเพิ่ม (ถ้าเกินวงเงิน)"],["finance","โอนเงินคืน"]]],
+ ["W-10","ลาพัก / ลาออก","3 วันทำการ",0,[["student","ยื่นลาพักหรือลาออก"],["guardian","ลงนามร่วม (ถ้าเป็นผู้เยาว์)"],["advisor","เห็นชอบ"],["dean","อนุมัติ"],["registrar","เปลี่ยนสถานภาพ"],["system","แจ้งการเงิน กยศ. หอพัก และเรื่องผ่อนผันทหารให้อัตโนมัติ"]]],
+ ["W-11","พ้นสภาพนักศึกษา","5 วันทำการ",0,[["system","เสนอรายชื่อตามกฎของรุ่น"],["registrar","ตรวจรายชื่อ"],["dean","รับทราบ"],["rector","ลงนามคำสั่ง พร้อมบอกสิทธิ์อุทธรณ์"],["student","ได้รับคำสั่ง (ผู้ปกครองได้รับด้วยถ้าเป็นผู้เยาว์)"]]],
+ ["W-12","วินัยนักศึกษา","ตามระเบียบ",0,[["applicant","แจ้งเรื่อง"],["affairs","รับเรื่อง และตั้งกรรมการสอบข้อเท็จจริง"],["dean","พิจารณาโทษ"],["student","รับทราบผล และอุทธรณ์ได้"]]],
+ ["W-13","ขอออกนอกหอ (โรงเรียนกีฬา)","ไม่เกิน 4 ชม.",0,[["student","นักเรียนขอออกนอกหอ"],["system","ตรวจว่าผู้มารับมีสิทธิ์ และไม่มีคำสั่งห้าม"],["guardian","อนุญาตในแอป"],["dorm","ออกบัตรผ่าน และบันทึกเวลาออก-กลับ"]]],
+ ["W-14","ขอดูข้อมูลสุขภาพนักกีฬา (กรณีพิเศษ)","ทันที",0,[["medical","ขอเข้าถึง พร้อมระบุเหตุผล"],["medical","แพทย์หัวหน้าอนุมัติ"],["dpo","DPO อนุมัติ (ต้องครบ 2 คน)"],["system","บันทึกการเข้าดู และตรวจย้อนหลังภายใน 24 ชม."]]],
+ ["W-15","เปลี่ยนกฎวิชาการ","ตามรอบประชุม",0,[["registrar","เสนอแก้กฎ เช่น เกณฑ์พ้นสภาพ เกียรตินิยม"],["council","สภาวิชาการอนุมัติ"],["system","ใช้กฎใหม่กับรุ่นที่กำหนดเท่านั้น"]]],
+ ["W-16","อุทธรณ์ผลการเรียน","15 วันทำการ",1,[["student","ยื่นอุทธรณ์เกรด"],["lecturer","ทบทวนคะแนน"],["head","ให้ความเห็น"],["dean","กรรมการอุทธรณ์และคณบดีวินิจฉัย"],["registrar","แก้เกรด (ถ้าอุทธรณ์สำเร็จ)"],["student","รับผลพร้อมเหตุผล"]]],
+ ["W-17","อุทธรณ์คำสั่งพ้นสภาพ","ตามกฎหมาย",1,[["student","ยื่นอุทธรณ์"],["registrar","รับเรื่อง"],["rector","คณะกรรมการอุทธรณ์และอธิการบดีวินิจฉัย"],["registrar","คืนสภาพ หรือยืนคำสั่งเดิม"]]],
+ ["W-18","ขอทบทวนผลคัดเลือก (สอบทักษะ / ทุน)","7 วันทำการ",1,[["applicant","ขอทบทวนผล"],["scholar","คณะกรรมการคัดเลือกพิจารณาใหม่"],["applicant","รับผลพร้อมเหตุผล"]]],
+ ["W-19","ร้องเรียน / แจ้งเบาะแส","15–30 วัน",1,[["applicant","ร้องเรียน (ไม่ระบุชื่อก็ได้)"],["complaint","คัดแยกเรื่อง ส่งหน่วยงานที่รับผิดชอบ"],["auditor","สอบข้อเท็จจริง (กรณีทุจริต)"],["rector","วินิจฉัยเรื่องร้ายแรง"],["applicant","ติดตามด้วยรหัส และรับผล"]]],
+ ["W-20","ขอข้อมูลข่าวสารราชการ","ตามกฎหมาย",1,[["applicant","ประชาชนยื่นขอข้อมูล"],["complaint","ศูนย์ข้อมูลข่าวสารรับเรื่อง"],["dpo","ตรวจว่ามีข้อมูลส่วนบุคคลหรือไม่"],["complaint","เปิดเผย หรือปฏิเสธพร้อมบอกสิทธิ์อุทธรณ์"]]],
+ ["W-21","ขอดู แก้ หรือลบข้อมูลส่วนตัว (PDPA)","ไม่เกิน 30 วัน",1,[["student","ยื่นคำขอ (ผู้ปกครองยื่นแทนผู้เยาว์ได้)"],["system","ยืนยันตัวตนด้วย ThaID"],["dpo","ดำเนินการกับเจ้าของระบบ"],["student","รับผล"]]],
+ ["W-22","แจ้งเหตุคุ้มครองเด็ก","รับเรื่องใน 24 ชม.",1,[["dorm","ครู ครูหอพัก โค้ช หรือใครก็ได้ที่พบเหตุ แจ้งผ่านแอปหรือสายด่วน"],["safeguard","รับเรื่องภายใน 24 ชม."],["safeguard","ดูแลเด็กทันที และแยกผู้ถูกกล่าวหา"],["safeguard","ส่งต่อหน่วยงานภายนอกตามกฎหมาย"],["guardian","ได้รับแจ้ง (ยกเว้นผู้ปกครองเกี่ยวข้องกับเหตุ)"],["campusvp","ตัดสินมาตรการ และติดตามผล"]]],
+ ["W-23","ตรวจประวัติคนที่ทำงานกับเด็ก","15 วันทำการ",1,[["hr","ส่งตรวจประวัติ (ครู โค้ช นักศึกษาฝึกสอน)"],["safeguard","อนุมัติ"],["system","เปิดสิทธิ์ทำงานกับนักเรียนผู้เยาว์"]]],
+ ["W-24","ขอกลับเข้าเรียน / คืนสภาพ","5 วันทำการ",1,[["student","ยื่นคำขอ"],["dean","พิจารณาแผนการเรียน"],["registrar","คืนสถานภาพ"],["finance","เรียกเก็บค่าธรรมเนียม"]]],
+ ["W-25","ย้ายสาขา / เทียบโอนหน่วยกิต","10 วันทำการ",1,[["student","ยื่นคำขอ"],["head","หลักสูตรปลายทางเทียบโอนวิชา"],["dean","อนุมัติ"],["registrar","บันทึก"]]],
+ ["W-26","นักศึกษาเสียชีวิต","1 วันทำการ",1,[["guardian","ครอบครัวหรือคณะแจ้ง"],["registrar","ตรวจมรณบัตร และเปลี่ยนสถานะ"],["system","หยุดใบแจ้งหนี้และข้อความทั้งหมด แจ้ง กยศ. คืนห้องพัก ปิดบัญชี"],["dean","ทีมดูแลช่วยเหลือครอบครัว"],["council","พิจารณาประกาศนียบัตรระลึก (ถ้าต้องการ)"]]],
+ ["W-27","ผ่อนชำระค่าเทอม","3 วันทำการ",1,[["student","ขอผ่อนชำระ (ถ้ารอเงิน กยศ. ระบบตั้งให้เอง)"],["finance","อนุมัติ"],["campusvp","อนุมัติเพิ่ม (ถ้าเกินวงเงิน)"],["loan","ตัดยอดเมื่อเงินกู้เข้า"]]],
+ ["W-28","ยกเลิกใบเสร็จ","วันเดียวกัน",1,[["finance","เจ้าหน้าที่ขอยกเลิก พร้อมเหตุผล"],["finance","หัวหน้างานอนุมัติ (ต้องเป็นคนละคน)"],["system","เก็บใบเดิมไว้เป็น \"ยกเลิก\" ห้ามลบหรือใช้เลขซ้ำ"],["auditor","ตรวจรายงานย้อนหลังได้"]]],
+ ["W-29","จ่ายค่าตอบแทน / เบี้ยเลี้ยง","7 วันทำการ",1,[["head","หน่วยงานขอเบิกจ่าย"],["finance","คำนวณภาษีหัก ณ ที่จ่าย"],["finance","ผู้มีอำนาจอนุมัติจ่าย"],["system","ออกหนังสือรับรองการหักภาษี"]]],
+ ["W-30","ตรวจสิทธิ์ลงแข่ง","3 วันทำการ",1,[["coach","ส่งรายชื่อนักกีฬา"],["system","ตรวจหน่วยกิต เกรด และสถานภาพตามกฎการแข่ง"],["registrar","รับรองรายชื่อ"],["sportshead","ส่งรายชื่อให้ผู้จัดการแข่งขัน"]]],
+ ["W-31","เดินทางไปแข่งขัน","ก่อนเดินทาง 5 วัน",1,[["coach","เสนอแผนเดินทางและงบ"],["sportshead","อนุมัติ"],["finance","อนุมัติเงินยืม"],["guardian","อนุญาตในแอป (ถ้าเป็นผู้เยาว์)"],["coach","กลับมาส่งหลักฐานล้างเงินยืม"]]],
+ ["W-32","ฝึกสอน (วิชาชีพครู)","ตลอดภาคเรียน",0,[["practicum","จับคู่โรงเรียน และตรวจจำนวนต่อครูพี่เลี้ยง 1:3 / อาจารย์นิเทศก์ 1:10"],["hr","ตรวจประวัติ (เพราะสอนเด็ก)"],["student","ฝึกสอน และบันทึกชั่วโมง"],["practicum","ครูพี่เลี้ยงและอาจารย์นิเทศก์ประเมิน"],["dean","อนุมัติผล"]]],
+ ["W-33","ขอปรับวิธีเรียนหรือสอบ (ผู้พิการ)","5 วันทำการ",1,[["student","ยื่นคำขอ"],["affairs","หน่วยบริการนักศึกษาพิการตรวจหลักฐาน"],["lecturer","รับทราบ"],["registrar","จัดสอบตามแผน เช่น เพิ่มเวลา"]]],
+ ["W-34","คำร้องออนไลน์ทั่วไป","ตามประเภทคำร้อง",1,[["student","ยื่นคำร้องในแอป"],["registrar","ผู้รับผิดชอบตามประเภทคำร้องดำเนินการ"],["dean","อนุมัติ (ถ้าคำร้องนั้นต้องใช้)"],["student","ติดตามสถานะได้ตลอด"]]],
+ ["W-35","ส่งรายงานให้หน่วยงานรัฐ","ตามปฏิทินรายงาน",1,[["planner","ดึงข้อมูล ณ วันตัดยอด และตรวจความถูกต้อง"],["planner","ผู้อำนวยการกองแผนทบทวน"],["rector","อนุมัติส่ง"],["system","เก็บสำเนาข้อมูลที่ส่งไว้เป็นหลักฐาน"]]],
+ ["W-36","ประกาศ / ประกาศฉุกเฉิน","ฉุกเฉินส่งถึงใน 60 วินาที",1,[["pr","เขียนประกาศ และเลือกกลุ่มผู้รับ"],["system","ตรวจว่าไม่มีข้อมูลส่วนบุคคลหลุด"],["dean","อนุมัติ (ฉุกเฉินต้องอนุมัติ 2 คน)"],["system","ส่งทุกช่องทาง: แอป LINE อีเมล SMS"],["student","กดรับทราบ หรือกด \"ฉันปลอดภัย\""]]],
+ ["W-37","คอร์สระยะสั้น / ค่ายกีฬา สำหรับบุคคลภายนอก","ตามโครงการ",1,[["applicant","สมัครและชำระเงิน"],["sportshead","ผู้รับผิดชอบโครงการจัดอบรม"],["system","ออกใบประกาศนียบัตรดิจิทัล"]]],
+ ["W-38","แจ้งชาวต่างชาติเข้าพักหอ (ตม.30)","ภายใน 24 ชม.",1,[["dorm","บันทึกชาวต่างชาติเข้าพัก"],["system","นับเวลาและเตือนก่อนครบ 24 ชม."],["dorm","ยื่น ตม.30 และแนบหลักฐาน"]]],
+ ["W-39","บันทึกการบาดเจ็บนักกีฬา","ทันที",0,[["medical","บันทึกทันทีที่หน้างาน (ไม่ต้องรอความยินยอม)"],["student","นักกีฬาได้รับแจ้ง (ผู้ปกครองด้วยถ้าเป็นผู้เยาว์)"],["student","เลือกว่าจะให้โค้ชเห็นรายละเอียดหรือไม่"],["coach","เห็นรายละเอียด หรือเห็นแค่ \"พร้อม / ไม่พร้อม\""]]],
+ ["W-40","ทำลายเอกสาร / ส่งหอจดหมายเหตุ","ปีละครั้ง",1,[["records","เสนอรายการเอกสารที่ครบอายุ"],["records","คณะกรรมการตรวจ"],["rector","อนุมัติ"],["records","ส่งเอกสารถาวรให้หอจดหมายเหตุแห่งชาติ"]]]
 ];
-const STATUS = {old:["เดิม","old"],fix:["แก้","fix"],new:["ใหม่","new"]};
-let current = "";
-const rolesEl = document.getElementById("roles"), rowsEl = document.getElementById("rows"), sumEl = document.getElementById("summary");
 
-function chips(list){ return list.map(r => `<span class="chip-role${r===current?" hit":""}">${NAME[r]||r}</span>`).join(""); }
-function render(){
-  rowsEl.innerHTML = WF.map(w => {
-    const [id,name,cat,start,appr,sla,st] = w;
-    const show = !current || start.includes(current) || appr.includes(current);
-    return `<tr${show?"":" hidden"}><td class="id">${id}</td><td class="${current&&show?"role-hit":""}">${name}</td><td>${CAT[cat]}</td><td>${chips(start)}</td><td>${chips(appr)}</td><td>${sla}</td><td><span class="tag ${STATUS[st][1]}">${STATUS[st][0]}</span></td></tr>`;
-  }).join("");
-  if (!current) { sumEl.innerHTML = `แสดงทั้งหมด <strong>${WF.length}</strong> workflow · ใหม่ <strong>${WF.filter(w=>w[6]==="new").length}</strong> · แก้ <strong>${WF.filter(w=>w[6]==="fix").length}</strong>`; return; }
-  const s = WF.filter(w=>w[3].includes(current)).length, a = WF.filter(w=>w[4].includes(current)).length;
-  const extra = current==="system" ? "" : "";
-  sumEl.innerHTML = `<strong>${NAME[current]}</strong> เป็นผู้เริ่ม <strong>${s}</strong> workflow และอยู่ในสายอนุมัติหรือดำเนินการ <strong>${a}</strong> workflow${extra}`;
-}
-function buildRoles(){
-  const all = [["", "ทุกบทบาท"], ...ROLES];
-  rolesEl.innerHTML = all.map(([k,v]) => `<button type="button" id="role-${k||"all"}" data-role="${k}" aria-pressed="${k===current}">${v}</button>`).join("");
-  rolesEl.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
-    current = b.dataset.role;
-    rolesEl.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.role===current)));
-    try { localStorage.setItem("tnsu-wf-role", current); } catch(e) {}
-    render();
-  }));
-}
-try { const saved = localStorage.getItem("tnsu-wf-role"); if (saved !== null && (saved==="" || NAME[saved])) current = saved; } catch(e) {}
-buildRoles(); render();
+let current = "student";
+try { const s = localStorage.getItem("tnsu-wf-role2"); if (s && NAME[s]) current = s; } catch (e) {}
 
-// แท็บหมวด diagram
-const cats = document.getElementById("cats");
-cats.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
-  const c = b.dataset.cat;
-  cats.querySelectorAll("button").forEach(x => x.setAttribute("aria-selected", String(x===b)));
-  document.querySelectorAll("#diagrams .diagram").forEach(d => { d.hidden = !(c==="all" || d.dataset.cat===c); });
-}));
+const picker = document.getElementById("picker");
+picker.innerHTML = GROUPS.map(([label, rs]) =>
+  `<div class="group"><div class="group-label">${label}</div><div class="chips">${
+    rs.map(([k, v]) => `<button type="button" id="r-${k}" data-role="${k}" aria-pressed="${k === current}">${v}</button>`).join("")
+  }</div></div>`).join("");
+picker.addEventListener("click", e => {
+  const b = e.target.closest("button[data-role]"); if (!b) return;
+  current = b.dataset.role;
+  picker.querySelectorAll("button[data-role]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.role === current)));
+  try { localStorage.setItem("tnsu-wf-role2", current); } catch (e) {}
+  render();
+});
+
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function card(w) {
+  const [id, name, sla, isNew, steps] = w;
+  return `<article class="card">
+    <div class="card-top"><span class="wid">${id}</span><h3>${esc(name)}</h3>${isNew ? '<span class="badge-new">ใหม่</span>' : ""}</div>
+    <div class="sla">ระยะเวลา: ${esc(sla)}</div>
+    <ol class="steps">${steps.map(([r, t], i) =>
+      `<li class="${r === current ? "mine" : ""}"><span class="num">${i + 1}</span><div class="step"><span class="who">${NAME[r]}</span><span class="what">${esc(t)}</span></div></li>`
+    ).join("")}</ol>
+  </article>`;
+}
+function render() {
+  const starts = WF.filter(w => w[4][0][0] === current);
+  const involved = WF.filter(w => w[4][0][0] !== current && w[4].some(s => s[0] === current));
+  document.getElementById("resultHead").innerHTML =
+    `<h2>งานของ <strong>${NAME[current]}</strong></h2><p class="muted">เป็นคนเริ่ม ${starts.length} งาน · ต้องอนุมัติหรือทำต่อ ${involved.length} งาน</p>`;
+  const block = (title, list, emptyText) => `<div class="list"><h2>${title}</h2>${
+    list.length ? `<div class="cards">${list.map(card).join("")}</div>` : `<div class="empty">${emptyText}</div>`}</div>`;
+  document.getElementById("lists").innerHTML =
+    block("งานที่คุณเป็นคนเริ่ม", starts, "บทบาทนี้ไม่ได้เป็นคนเริ่มงานใด แต่มีส่วนอนุมัติหรือทำต่อด้านล่าง") +
+    block("งานที่คุณต้องอนุมัติหรือทำต่อ", involved, "บทบาทนี้ไม่มีงานที่ต้องอนุมัติ");
+}
+render();
 </script>
