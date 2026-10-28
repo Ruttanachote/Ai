@@ -14735,3 +14735,7122 @@ flowchart LR
 | AC C-04 (ส่วน GR) | ผู้ให้บริการเอกชนที่โอนข้อมูลข้ามประเทศไม่ครบ | **แก้**: ภาคผนวกข้อ 15 อ้าง 09 X-11..X-16 |
 | AC C-06 (ส่วน GR) | TSA ไม่ระบุ | **แก้**: ภาคผนวกข้อ 15 (ETDA e-Timestamping) |
 | (v0.9 leftover ที่พบระหว่างแก้) | §4.3 "dual consent (PDPA ม.20)" | **แก้ในเนื้อความ** + ภาคผนวกข้อ 14 |
+
+
+---
+
+<!-- ไฟล์ต้นฉบับ: docs/r1/README.md -->
+# R1 "รับสมัคร" — Detailed design (ดัชนี)
+
+> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · Release R1 go-live **1 ก.ย. 2571 (M18)**; ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือน (เล่ม 12 §1.3) · ภาษา: ไทย (ศัพท์เทคนิค/โค้ดเป็นภาษาอังกฤษ)
+> **ฐานที่ผูกพัน:** [00-blueprint](../00-blueprint.md), [00-fix-decisions-v1.1](../00-fix-decisions-v1.1.md) (โดยเฉพาะ D-03 ขอบเขต R1, D-06 clearing แบบยืนยันได้ที่เดียว, D-08, D-09), เล่ม [01](../01-overview.md)–[14](../14-ux-adoption.md) และ [data/workflows.json](../data/workflows.json)
+> **ขอบเขต:** รับสมัคร ป.ตรี ปีการศึกษา 2572 ที่วิทยาเขต pilot **ชลบุรี** และ **มหาสารคาม** (A-85, Q-59): รอบโควตา ต.ค.–พ.ย. 2571, รอบทั่วไป 1..n ก.พ.–มิ.ย. 2572, ยืนยันสิทธิ์ซ้ำ พ.ค. 2572
+
+เอกสารชุดนี้แปลงการออกแบบระดับสถาปัตยกรรม (เล่ม 01–14) ให้เป็น **detailed design ของ R1** ที่ทีมพัฒนา ทีม UX และทีมทดสอบใช้ได้โดยตรง รหัสทุกชนิดในชุดนี้สอดคล้องกัน (FR ↔ หน้าจอ ↔ API ↔ entity ↔ test) และอ้างรหัสของเล่มเจ้าของ (W-xx, A-xx, Q-xx, C-x, L-xx, SoD-xx, KPI-xx, J-xx, I-xx) โดยไม่สร้างความหมายใหม่
+
+## ไฟล์
+
+| ไฟล์ | เนื้อหา | จำนวน |
+|---|---|---|
+| [r1-requirements.md](r1-requirements.md) | ขอบเขต R1, **FR-R1-001..139** แยก 16 กลุ่มความสามารถ (ข้อความ "ระบบต้อง…", ที่มา, priority, บทบาท, เกณฑ์ยอมรับ Given/When/Then ภาษาไทย), **NFR-R1-001..033** ที่วัดได้, ช่องว่าง G-01..G-13 และข้อเสนอถึงเล่มอื่น | FR 139 (Must 108 / Should 26 / Could 5), NFR 33 |
+| [r1-traceability.md](r1-traceability.md) | matrix FR/NFR → โมดูล → workflow → entity → หน้าจอ → API → test → UAT → A/Q และ coverage check (workflow ↔ FR, FR ↔ test, หน้าจอ/API/entity ที่ไม่มี FR) | 32/32 workflow มี FR; 139/139 FR มี test |
+| [r1-screens.md](r1-screens.md) | screen inventory **S-R1-01..58** (ผู้สมัคร PWA, ผู้ปกครอง LIFF, กรรมการ tablet offline, พยาบาลหน้าสนาม, back-office, การเงิน, ผู้อนุมัติ, หน้าสาธารณะ, ADMIN) พร้อมวัตถุประสงค์ ทางเข้า ฟิลด์ สถานะ 4 แบบ validation ข้อความไทย FR และ KPI — input ของ UI mockup | 58 หน้าจอ (★ 27) |
+| [r1-api.yaml](r1-api.yaml) | OpenAPI **3.1.0** ของ API สาธารณะ/back-office ของ R1: OIDC scopes, mTLS callback ธนาคาร, `Idempotency-Key`, ETag/If-Match, RFC 9457 problem+json, cursor pagination, `x-fr` อ้าง FR | 146 operation / 136 path / 196 schema |
+| [r1-data-dictionary.md](r1-data-dictionary.md) | dictionary ระดับฟิลด์: ชนิด, null, ข้อจำกัด, ชั้น PII, retention, โมดูลเจ้าของ, กติกา `org_unit_id`, สถานะในเล่ม 08 | 127 entity (R1 ใหม่ 26) |
+| [r1-test-plan.md](r1-test-plan.md) | test case **TC-R1-001..341** (ฟังก์ชัน, กรณีผิดปกติ, peak load, ความปลอดภัยรวม RLS scope, accessibility, PDPA/consent, typography, resilience/DR) และ **UAT-R1-01..18** ที่ชลบุรี/มหาสารคาม พร้อม entry/exit ตาม MS-1 | 341 TC + 18 UAT |
+
+## อ่านจากตรงไหน
+
+- **Product owner / งานรับสมัคร pilot:** r1-requirements §1 (ขอบเขต) → §2 กลุ่ม RND, APP, CLR, APL → r1-test-plan §9 (UAT)
+- **UX/UI:** r1-screens §0 (กติกากลาง) → §1 (แผนผัง) → หน้าจอ ★
+- **Developer / architect:** r1-api.yaml + r1-data-dictionary → FR ที่อ้างใน `x-fr`
+- **QA:** r1-test-plan → r1-traceability §3
+- **DPO / ความปลอดภัย:** FR กลุ่ม GRD, MED, NFR-R1-011..023, r1-data-dictionary §0 (PII/retention), r1-test-plan §5–7
+
+## การตัดสินใจออกแบบหลักของ R1 (สรุป)
+
+1. **Clearing แบบ "ยืนยันได้ที่เดียวทั้ง มกช."** (C-3, D-06) บังคับด้วยตารางระดับมหาวิทยาลัย `ConfirmationLock` (unique บน HMAC ของ identifier × cycle × ระดับ) ใน transaction เดียวกับการสละ offer อื่น — ไม่มี `ClearingRun` อัตโนมัติ; เจ้าหน้าที่ต่างวิทยาเขตเห็นเพียง "ยืนยันที่อื่นแล้ว" (C-11); cascade ทุก 5 นาที คืนที่นั่ง ≤ 15 นาที หยุดที่ `cascade_cutoff`, เคารพ `appeal_hold` และ quiet hours (FR-R1-086..098)
+2. **อุทธรณ์ผลคัดเลือกแบบเร่งด่วน** ใน CASE พร้อม `appeal_hold` และ hard stop ที่ `AccreditedIntakeCap` (C-15; FR-R1-099..103)
+3. **ข้อมูลสุขภาพ/ความพิการอยู่ใน `hlt_vault` เท่านั้น**; ADM เห็นเพียงสถานะ `MedicalClearance(PRE_TEST)` ผ่าน `hlt.MedicalClearanceChanged` และเป็น gate ของการจอง slot/เช็คอิน (FR-R1-064..068)
+4. **Dual consent ตาม consent policy (อายุ × กิจกรรม)** ไม่ใช่ dual consent แบบเหมารวม; การคัดเลือกใช้ฐาน PT (L-01) ส่วนข้อมูลสุขภาพในการคัดเลือก (L-36) ใช้ dual consent สำหรับอายุ 10–<20 ปี (FR-R1-107..113)
+5. **Judge app offline-first** (IndexedDB เข้ารหัส + PIN, UUIDv7 ฝั่ง client, sync idempotent, conflict queue ไม่ใช้ last-writer-wins, ล็อกคะแนนเมื่อส่ง, moderation ≤ 1 วันทำการ, ล็อก session ด้วย hash, paper fallback 4-eyes) (FR-R1-069..077)
+6. **วันประกาศผลเสิร์ฟจาก CDN** (static shard key = HMAC ของเลขผู้สมัคร + วันเกิด) + waiting room; ประกาศได้ภายใน 24 ชม. หลังอนุมัติ (FR-R1-082..083, 130)
+7. **R1 ไม่ออกรหัสนักศึกษา** — สร้าง `ReportingHandoff` ให้ REC ใน R2 หรือส่งออกให้ระบบทะเบียนเดิมสำหรับรอบที่รายงานตัวก่อน R2 (FR-R1-114..118, G-03)
+8. ใช้ **event ที่มีอยู่แล้วในเล่ม 06 §10.2 เท่านั้น** (ไม่เพิ่ม event ใหม่); entity ใหม่ 26 รายการเสนอเพิ่มในเล่ม 08 (G-13)
+
+## ช่องว่างที่ต้องตัดสินก่อน MS-1a (31 มี.ค. 2571)
+
+| G | เรื่อง | อ้าง |
+|---|---|---|
+| G-01 | เจ้าของ accommodation ใน R1 (AFF อยู่ R2) | Q-18, Q-45 |
+| G-02 | คืนค่าสมัครใน R1 โดยไม่มี payout I-17 | Q-35 |
+| G-03 | การออกรหัส/รายงานตัวก่อน R2 go-live | Q-67, 06 §6.1 |
+| G-05 | ระดับลายมือชื่อประกาศผลคัดเลือก (S2 ตราหน่วยงาน vs S3 บุคคล) | 10 §7.2 vs 12 §2.1 |
+| G-06 | รูปแบบ mask รายชื่อสาธารณะ | Q-69 |
+| G-07 | เกณฑ์ WBGT ต้องได้ก่อนรอบทั่วไปฤดูร้อน (ไม่ใช่ "ก่อน R2") | Q-99 |
+| G-09 | นโยบายขยาย deadline เมื่อระบบล่ม | Q-12 |
+
+รายการเต็ม (G-01..G-13) และข้อเสนอถึงเล่มอื่นอยู่ใน [r1-requirements §4–5](r1-requirements.md#4-ช่องว่างและประเด็นที่ต้องตัดสิน-g-xx) · จำนวนจุด [ต้องตรวจสอบ] ในชุดนี้ ≈ 150 จุด ทุกจุดอ้าง A-xx/Q-xx หรือเล่มต้นทาง
+
+## การตรวจความถูกต้อง
+
+- `r1-api.yaml` ผ่าน `yaml.safe_load` และ `openapi-spec-validator` (OpenAPI 3.1) — ตรวจซ้ำได้ด้วย:
+  `python3 -c "import yaml; from openapi_spec_validator import validate; validate(yaml.safe_load(open('docs/r1/r1-api.yaml')))"`
+- ID ในทุกไฟล์มาจากชุดข้อมูลเดียวกัน: เมื่อแก้ FR/หน้าจอ/API/entity/test ให้แก้ r1-traceability และ r1-test-plan ให้ตรงกันในคราวเดียว และคงรหัสเดิม (เพิ่มรหัสใหม่ต่อท้าย ห้ามนำรหัสกลับมาใช้)
+
+
+---
+
+<!-- ไฟล์ต้นฉบับ: docs/r1/r1-data-dictionary.md -->
+# R1 "รับสมัคร" — Data dictionary ระดับฟิลด์
+
+> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · Release R1 "รับสมัคร" (go-live 1 ก.ย. 2571 = M18; ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือน — เล่ม 12 §1.3) · ภาษา: ไทย (ศัพท์เทคนิค/โค้ดเป็นภาษาอังกฤษ)
+> **ขอบเขต:** entity ทั้งหมดที่ R1 สร้าง/อ่าน/เขียน (เจ้าของตามเล่ม 06; ER ตามเล่ม 08)
+> **อ่านคู่กับ:** [README](README.md) · [00-blueprint](../00-blueprint.md) · [00-fix-decisions-v1.1](../00-fix-decisions-v1.1.md) (D-03, D-06, D-08) · [02 §2](../02-student-journey.md) · [05](../05-workflows.md) · [06](../06-modules.md) · [08](../08-data.md) · [10](../10-security-compliance.md) · [14](../14-ux-adoption.md) · [r1-api.yaml](r1-api.yaml)
+
+## 0. ข้อตกลง
+
+| หัวข้อ | กติกา |
+|---|---|
+| ชนิดข้อมูล | ชนิด PostgreSQL 16; `uuid` = UUIDv7 (PK ทุกตาราง; ตาราง offline ใช้ UUIDv7 ฝั่ง client — 08 §1 ข้อ 6); เวลา `timestamptz` (UTC); วันที่ `date` (ค.ศ.; แสดง พ.ศ. ที่ UI); ปี พ.ศ. ใช้ชื่อคอลัมน์ `_be`; เงิน `numeric(12,2)` บาท; ข้อความสองภาษา `_th`/`_en` |
+| คอลัมน์มาตรฐาน | ทุกตารางธุรกรรมมี `created_at`, `created_by`, `updated_at`, `updated_by`, `row_version` (optimistic lock/ETag) — ไม่แสดงซ้ำในแต่ละ entity |
+| Null | `N` = NOT NULL, `Y` = nullable |
+| PII | `—` ไม่ใช่ข้อมูลส่วนบุคคล · `PD` ข้อมูลส่วนบุคคล (Confidential) · `PD-ID` ตัวระบุตรง (เข้ารหัส + ค้นด้วย HMAC เท่านั้น) · `SPD` ข้อมูลอ่อนไหว ม.26 (อยู่ใน `hlt_vault` เท่านั้น) — ชั้นข้อมูลระดับตารางตาม 08 §7.1 |
+| `org_unit_id` | ทุกตารางธุรกรรม `NOT NULL` + `ENABLE/FORCE ROW LEVEL SECURITY`; scope ตั้งผ่าน `sec.begin_scope(token)` (08 §10.1, D-09); ความหมายของคอลัมน์ระบุต่อ entity: **OWN** owning unit, **ISSUER** หน่วยที่ออกเอกสาร/การเงิน, **RECV** หน่วยรับเรื่อง, **CARE** หน่วยให้การดูแล (`hlt_vault`), **UNI** OrgUnit ราก, **NONE** ข้อยกเว้น (Person/บัญชี) |
+| Retention | อ้างตาราง 08 §8 (ค่าที่เสนอ ต้องอนุมัติเป็น retention schedule); การลบจริงผ่าน `ErasureJob`/`DisposalBatch`/crypto-shred และเคารพ `LEGAL_HOLD` |
+| สถานะ | "08 §x" = มีในเล่ม 08/06 แล้ว · "R1 ใหม่" = เสนอเพิ่มในเล่ม 08 (G-13) |
+| ห้าม | เลขประจำตัวใน log/URL/event; ข้อมูลสุขภาพ/ความพิการใน core; JOIN ข้าม schema (logical reference เท่านั้น) |
+
+### 0.1 รหัส retention
+
+| รหัส | ความหมาย |
+|---|---|
+| APP | ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ] |
+| FIN | 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.] |
+| CONSENT | อายุ consent + 10 ปี (08 §8) [ต้องตรวจสอบอายุความ] |
+| CASE | ร้องเรียน 10 ปีหลังปิดเรื่อง; อุทธรณ์ผลคัดเลือกตาม retention ของใบสมัคร (ขยายถ้ามีคดี) [ต้องตรวจสอบ] |
+| ANN | ประกาศทางการ: ถาวร (ส่งหอจดหมายเหตุ) (08 §8) |
+| MSG | เนื้อหาข้อความ 1 ปี, metadata การส่ง 2 ปี (08 §8) |
+| AUD | 10 ปี WORM (08 §8) |
+| SELMED | `SELECTION_MEDICAL`: ผู้ไม่ได้รับเข้า crypto-shred เมื่อปิดรอบ + ระยะอุทธรณ์; ผู้ได้รับเข้า ส่วนที่จำเป็นย้ายเป็น `CLINICAL` (08 §8, §9.2) |
+| INJ | `INJURY_RTP`: ระยะศึกษา + 5 ปี; ผู้ไม่ได้รับเข้า [ต้องตรวจสอบ — เสนอ 5 ปีหลังเหตุ เพื่อการเรียกร้องสิทธิ์] |
+| DIS | `DISABILITY`: ผู้ไม่ได้รับเข้า ลบพร้อม SELECTION_MEDICAL; ผู้ได้รับเข้า ส่งต่อ AFF เมื่อยินยอม (W-33) [ต้องตรวจสอบ] |
+| CFG | ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ] |
+| PERSON | Person master: ถาวรเมื่อเป็นนักศึกษา; ผู้สมัครที่ไม่ได้รับเข้าและไม่มีบทบาทอื่น ลบ/ทำให้ไม่ระบุตัวตนพร้อมใบสมัคร (08 §1, §8) [ต้องตรวจสอบ] |
+| OPS | 1 ปี (metadata ปฏิบัติการ) [ต้องตรวจสอบ] |
+| OIT | snapshot ที่เป็นสถิติทางการ: ถาวร; อื่น 10 ปี (08 §8) |
+| IAM | ตลอดอายุบัญชี + 1 ปีหลังปิด; IdentityLink ของบัญชีที่ลบตาม Person [ต้องตรวจสอบ] |
+| TRAFFIC | ≥ 90 วัน online + 1 ปี archive (พ.ร.บ.คอมพิวเตอร์ ม.26) [ต้องตรวจสอบ] |
+
+### 0.2 รหัสกติกา `org_unit_id`
+
+| รหัส | ความหมาย |
+|---|---|
+| OWN | Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6) |
+| UNI | University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6) |
+| CARE | Care/serving unit — หน่วยที่ให้การดูแล (ตารางใน `hlt_vault`) (08 §6) |
+| NONE | ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship |
+| ISSUER | Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6) |
+| RECV | Owning unit — หน่วยที่รับเรื่อง (CASE) (08 §6) |
+
+## 1. ดัชนี entity
+
+| Entity | โมดูลเจ้าของ | ที่เก็บ / ตาราง | ชั้นข้อมูล | org_unit_id | Retention | สถานะ | FR |
+|---|---|---|---|---|---|---|---|
+| [AdmissionCycle](#admissioncycle) | ADM | core / `adm.admission_cycle` | Internal | UNI | CFG | 08 §2.2 | FR-R1-001 |
+| [AdmissionChannel](#admissionchannel) | ADM | core / `adm.admission_channel` | Internal | UNI | CFG | 08 §2.2 | FR-R1-001 |
+| [AdmissionRound](#admissionround) | ADM | core / `adm.admission_round` | Public (เมื่อเผยแพร่) | OWN | CFG | 08 §2.2 | FR-R1-001, FR-R1-003, FR-R1-005, FR-R1-006, FR-R1-007, FR-R1-008 … |
+| [AdmissionPlan](#admissionplan) | ADM | core / `adm.admission_plan` | Internal | OWN | CFG | 08 §2.2 | FR-R1-002 |
+| [SeatQuota](#seatquota) | ADM | core / `adm.seat_quota` | Public (จำนวนที่นั่ง) | OWN | CFG | 08 §2.2 | FR-R1-002, FR-R1-009, FR-R1-019, FR-R1-091, FR-R1-098, FR-R1-102 |
+| [EligibilityRuleSet](#eligibilityruleset) | ADM | core / `adm.eligibility_rule_set` | Public (เมื่อเผยแพร่) | OWN | CFG | R1 ใหม่ (รายละเอียดของ 'Eligibility rules' ใน 02 §2.1) | FR-R1-003, FR-R1-021 |
+| [ScoringScheme](#scoringscheme) | ADM | core / `adm.scoring_scheme` | Public (เมื่อเผยแพร่) | OWN | CFG | 08 §2.2 | FR-R1-004, FR-R1-075 |
+| [Rubric](#rubric) | ADM | core / `adm.rubric` | Public (เมื่อเผยแพร่) | OWN | CFG | 08 §2.2 | FR-R1-004 |
+| [RubricItem](#rubricitem) | ADM | core / `adm.rubric_item` | Public (เมื่อเผยแพร่) | OWN | CFG | 08 §2.2 | FR-R1-004, FR-R1-072 |
+| [Application](#application) | ADM | core / `adm.application` | Confidential | OWN | APP | 08 §2.2 | FR-R1-016, FR-R1-020, FR-R1-021, FR-R1-022, FR-R1-023, FR-R1-024 … |
+| [ApplicationChoice](#applicationchoice) | ADM | core / `adm.application_choice` | Confidential | OWN | APP | 08 §2.2 | FR-R1-020, FR-R1-034 |
+| [ApplicationDocument](#applicationdocument) | ADM | core + object storage / `adm.application_document` | Confidential | OWN | APP | 08 §2.2 | FR-R1-022, FR-R1-027, FR-R1-030, FR-R1-036, FR-R1-037, FR-R1-038 … |
+| [UploadSession](#uploadsession) | ADM | core / `adm.upload_session` | Internal | OWN | OPS | R1 ใหม่ | FR-R1-036 |
+| [DocumentRequest](#documentrequest) | ADM | core / `adm.document_request` | Confidential | OWN | APP | R1 ใหม่ (W-77) | FR-R1-039 |
+| [VerificationTask](#verificationtask) | ADM | core / `adm.verification_task` | Confidential | OWN | APP | 08 §2.2 | FR-R1-025, FR-R1-038, FR-R1-039, FR-R1-040, FR-R1-041 |
+| [SportAchievement](#sportachievement) | ADM | core / `adm.sport_achievement` | Confidential | OWN | APP | 08 §2.2 (ผูก PERSON) | FR-R1-024, FR-R1-025, FR-R1-041 |
+| [EligibleList](#eligiblelist) | ADM | core / `adm.eligible_list` | Public (ฉบับ mask) | OWN | APP | R1 ใหม่ (W-42 ขั้น 1) | FR-R1-043 |
+| [AccommodationRequest](#accommodationrequest) | ADM | core / `adm.accommodation_request` | Confidential (ไม่มีการวินิจฉัย) | OWN | APP | R1 ใหม่ (02 DA-2; 06 adm.AccommodationRequested) | FR-R1-028 |
+| [AccommodationPlan](#accommodationplan) | ADM (interim; เจ้าของถาวร AFF — gap G-01) | core / `adm.accommodation_plan` | Confidential | OWN | APP | 06 AFF (aff.AccommodationGranted) — R1 interim ใน ADM | FR-R1-028, FR-R1-106 |
+| [QualificationEquivalence](#qualificationequivalence) | ADM | core / `adm.qualification_equivalence` | Confidential | OWN | APP | 08 §2.2 | FR-R1-029 |
+| [TcasSyncRecord](#tcassyncrecord) | ADM | core / `adm.tcas_sync_record` | Confidential | OWN | APP | 08 §2.2 | FR-R1-032 |
+| [AdmissionTestSession](#admissiontestsession) | ADM | core / `adm.admission_test_session` | Internal | OWN | APP | 08 §2.2 | FR-R1-054, FR-R1-055, FR-R1-058, FR-R1-060, FR-R1-061, FR-R1-063 … |
+| [TestStation](#teststation) | ADM | core / `adm.test_station` | Internal | OWN | APP | 08 §2.2 | FR-R1-054, FR-R1-071 |
+| [TestSlot](#testslot) | ADM | core / `adm.test_slot` | Confidential | OWN | APP | R1 ใหม่ (slot ที่ 02 QS-7 อ้าง) | FR-R1-058, FR-R1-059, FR-R1-061, FR-R1-062, FR-R1-063, FR-R1-065 … |
+| [CheckIn](#checkin) | ADM | core / `adm.check_in` | Confidential | OWN | APP | R1 ใหม่ (W-76 ขั้น 1) | FR-R1-070 |
+| [JudgePanel](#judgepanel) | ADM | core / `adm.judge_panel` | Internal | OWN | APP | 08 §2.2 | FR-R1-056 |
+| [JudgeAssignment](#judgeassignment) | ADM | core / `adm.judge_assignment` | Internal | OWN | APP | 08 §2.2 | FR-R1-056, FR-R1-057, FR-R1-069, FR-R1-078 |
+| [ConflictDeclaration](#conflictdeclaration) | ADM | core / `adm.conflict_declaration` | Confidential | OWN | APP | 08 §2.2 | FR-R1-057 |
+| [JudgeScore](#judgescore) | ADM | core / `adm.judge_score` | Confidential | OWN | APP | 08 §2.2 | FR-R1-071, FR-R1-072, FR-R1-073, FR-R1-077, FR-R1-084 |
+| [ScoreSyncConflict](#scoresyncconflict) | ADM | core / `adm.score_sync_conflict` | Confidential | OWN | APP | R1 ใหม่ | FR-R1-073 |
+| [JudgeDevice](#judgedevice) | ADM (ทะเบียนร่วม IAM/MDM) | core / `adm.judge_device` | Internal | OWN | OPS | R1 ใหม่ (07 §11.8) | FR-R1-069, FR-R1-073 |
+| [ModerationFlag](#moderationflag) | ADM | core / `adm.moderation_flag` | Confidential | OWN | APP | R1 ใหม่ (W-76 ขั้น 3) | FR-R1-074 |
+| [ScoreModeration](#scoremoderation) | ADM | core / `adm.score_moderation` | Confidential | OWN | APP | 08 §2.2 | FR-R1-074 |
+| [ScoreLock](#scorelock) | ADM | core / `adm.score_lock` | Confidential | OWN | APP | R1 ใหม่ (SoD-14 / SEC-01) | FR-R1-076 |
+| [CompositeScore](#compositescore) | ADM | core / `adm.composite_score` | Confidential | OWN | APP | 08 §2.2 | FR-R1-075, FR-R1-076, FR-R1-079, FR-R1-084 |
+| [RankList](#ranklist) | ADM | core / `adm.rank_list` | Confidential | OWN | APP | 08 §2.2 | FR-R1-079, FR-R1-080, FR-R1-081 |
+| [ReserveListEntry](#reservelistentry) | ADM | core / `adm.reserve_list_entry` | Confidential | OWN | APP | 08 §2.2 | FR-R1-079, FR-R1-080, FR-R1-091 |
+| [ResultOverride](#resultoverride) | ADM | core / `adm.result_override` | Confidential | OWN | APP | R1 ใหม่ (SoD-14) | FR-R1-081 |
+| [ResultPublication](#resultpublication) | ADM | core + CDN / `adm.result_publication` | Confidential (shard = PD แบบจำกัด) | OWN | APP | R1 ใหม่ | FR-R1-082, FR-R1-083 |
+| [Offer](#offer) | ADM | core / `adm.offer` | Confidential | OWN | APP | 08 §2.2 | FR-R1-026, FR-R1-051, FR-R1-086, FR-R1-087, FR-R1-088, FR-R1-089 … |
+| [ConfirmationLock](#confirmationlock) | ADM | core / `adm.confirmation_lock` | Confidential | UNI | APP | R1 ใหม่ (บังคับ C-3 ข้ามวิทยาเขต แทน ClearingRun ที่เลื่อน — D-06) | FR-R1-088 |
+| [Reconfirmation](#reconfirmation) | ADM | core / `adm.reconfirmation` | Confidential | OWN | APP | R1 ใหม่ (W-163) | FR-R1-095 |
+| [NoShowNotice](#noshownotice) | ADM | core / `adm.no_show_notice` | Confidential | OWN | APP | R1 ใหม่ (C-10) | FR-R1-096 |
+| [AppealHold](#appealhold) | ADM | core / `adm.appeal_hold` | Confidential | OWN | APP | R1 ใหม่ (C-15) — เสนอเพิ่มใน 08 | FR-R1-091, FR-R1-100, FR-R1-102 |
+| [TestIncident](#testincident) | ADM | core / `adm.test_incident` | Confidential (ไม่มีการวินิจฉัย) | OWN | APP | 08 §2.2 | FR-R1-035, FR-R1-066, FR-R1-067, FR-R1-105 |
+| [RetestRequest](#retestrequest) | ADM | core / `adm.retest_request` | Confidential | OWN | APP | R1 ใหม่ (W-85) | FR-R1-105 |
+| [ReportingHandoff](#reportinghandoff) | ADM | core / `adm.reporting_handoff` | Confidential | OWN | APP | R1 ใหม่ — เสนอเพิ่มใน 08 (สะพาน W-78 ก่อน REC เต็ม) | FR-R1-042, FR-R1-114, FR-R1-115, FR-R1-116, FR-R1-117, FR-R1-118 |
+| [LegacyConfirmationFile](#legacyconfirmationfile) | ADM | core / `adm.legacy_confirmation_file` | Confidential | OWN | APP | R1 ใหม่ (BR-01) | FR-R1-097 |
+| [AssistedSession](#assistedsession) | ADM (ร่วม IAM) | core / `adm.assisted_session` | Confidential | OWN | AUD | R1 ใหม่ (D-08) | FR-R1-016 |
+| [StandardExport](#standardexport) | ANA/DOC (ใช้โดย ADM) | core / `ana.standard_export_run` | Confidential | OWN | AUD | 06 ANA StandardExportDefinition | FR-R1-115, FR-R1-132 |
+| [OrgUnit](#orgunit) | ORG | core / `org.org_unit` | Public | NONE | CFG | 08 §2.1 | FR-R1-124 |
+| [OrgSetting](#orgsetting) | ORG | core / `org.org_setting` | Internal | OWN | CFG | 08 §2.1 (effective-dated) | FR-R1-124 |
+| [CalendarEvent](#calendarevent) | ORG | core / `org.calendar_event` | Public | OWN | CFG | 08 §2.1 | FR-R1-005, FR-R1-008, FR-R1-131 |
+| [GateOverride](#gateoverride) | ORG | core / `org.gate_override` | Confidential | OWN | APP | 03 §(GateOverride) | FR-R1-094, FR-R1-100 |
+| [Room](#room) | ORG | core / `org.room` | Internal | OWN | CFG | 08 §2.1 | FR-R1-063 |
+| [ProgramOffering](#programoffering) | CUR | core / `cur.program_offering` | Public | OWN | CFG | 06 §6.2 (R1 ขั้นต่ำ) | FR-R1-002 |
+| [AccreditedIntakeCap](#accreditedintakecap) | CUR | core / `cur.accredited_intake_cap` | Public | OWN | CFG | 06 §6.2 | FR-R1-002, FR-R1-102 |
+| [UserAccount](#useraccount) | IAM | Keycloak + core mirror / `iam.user_account` | Confidential | NONE | IAM | 08 §2.1 | FR-R1-011, FR-R1-013, FR-R1-015 |
+| [IdentityLink](#identitylink) | IAM | Keycloak + core / `iam.identity_link` | Confidential | NONE | IAM | 08 §2.1 | FR-R1-011, FR-R1-013, FR-R1-108, FR-R1-117 |
+| [CredentialBinding](#credentialbinding) | IAM | Keycloak / `(Keycloak)` | Confidential | NONE | IAM | 06 §5.1 | FR-R1-015 |
+| [RoleAssignment](#roleassignment) | IAM | core / `iam.role_assignment` | Internal | OWN | IAM | 08 §2.1 | FR-R1-017, FR-R1-018 |
+| [ExternalPerson](#externalperson) | IAM | core / `iam.external_person` | Confidential | OWN | IAM | 08 §2.1 | FR-R1-018 |
+| [Person](#person) | REC | core / `rec.person` | Confidential | NONE | PERSON | 08 §2.1 (R1 ขั้นต่ำ) | FR-R1-011, FR-R1-012, FR-R1-014, FR-R1-114 |
+| [PersonIdentifier](#personidentifier) | REC | core / `rec.person_identifier` | Confidential | NONE | PERSON | 08 §2.1, §5 | FR-R1-012 |
+| [ContactPoint](#contactpoint) | REC | core / `rec.contact_point` | Confidential | NONE | PERSON | 08 §2.1 | FR-R1-014 |
+| [EmergencyContact](#emergencycontact) | REC | core / `rec.emergency_contact` | Confidential | NONE | PERSON | 08 §2.1 | FR-R1-014 |
+| [GuardianRelation](#guardianrelation) | REC | core / `rec.guardian_relation` | Confidential | OWN | PERSON | 08 §2.1 (โมเดลเดียว) | FR-R1-107, FR-R1-108, FR-R1-110, FR-R1-111, FR-R1-113 |
+| [GuardianInvitation](#guardianinvitation) | REC | core / `rec.guardian_invitation` | Confidential | OWN | APP | R1 ใหม่ | FR-R1-107, FR-R1-108 |
+| [PrivacyNotice](#privacynotice) | PRIV | core / `priv.privacy_notice` | Public | UNI | CONSENT | 06 §5.8 | FR-R1-109 |
+| [ConsentPolicyRule](#consentpolicyrule) | PRIV | core / `priv.consent_policy_rule` | Internal | UNI | CFG | 06 §5.8; 10 §2.4 | FR-R1-109 |
+| [ConsentRequest](#consentrequest) | PRIV | core / `priv.consent_request` | Confidential | OWN | CONSENT | R1 ใหม่ | FR-R1-109, FR-R1-112 |
+| [Consent](#consent) | PRIV | core / `priv.consent` | Confidential | OWN | CONSENT | 08 §2.11 | FR-R1-027, FR-R1-109, FR-R1-113, FR-R1-137 |
+| [GuardianConsent](#guardianconsent) | PRIV | core / `priv.guardian_consent` | Confidential | OWN | CONSENT | 06 §5.8 | FR-R1-109, FR-R1-112 |
+| [FeeSchedule](#feeschedule) | FIN | core / `fin.fee_schedule` | Internal | OWN | FIN | 06 §7.1 (effective-dated) | FR-R1-006, FR-R1-044 |
+| [Invoice](#invoice) | FIN | core / `fin.invoice` | Confidential | ISSUER | FIN | 08 §2.6 | FR-R1-044, FR-R1-045, FR-R1-046, FR-R1-050, FR-R1-051, FR-R1-089 … |
+| [InvoiceLine](#invoiceline) | FIN | core / `fin.invoice_line` | Confidential | ISSUER | FIN | 06 §7.1 | FR-R1-044 |
+| [PaymentIntent](#paymentintent) | FIN | core / `fin.payment_intent` | Confidential | ISSUER | FIN | 06 §7.1 | FR-R1-044, FR-R1-045 |
+| [PaymentCallback](#paymentcallback) | FIN | core / `fin.payment_callback` | Confidential | ISSUER | FIN | 09 §4.1 (inbox) | FR-R1-046, FR-R1-052 |
+| [Payment](#payment) | FIN | core / `fin.payment` | Confidential | ISSUER | FIN | 08 §2.6 | FR-R1-046, FR-R1-047, FR-R1-050, FR-R1-052, FR-R1-053, FR-R1-089 |
+| [BankStatementLine](#bankstatementline) | FIN | core / `fin.bank_statement_line` | Confidential | ISSUER | FIN | 06 §7.1 | FR-R1-047 |
+| [Reconciliation](#reconciliation) | FIN | core / `fin.reconciliation` | Internal | ISSUER | FIN | 06 §7.1 | FR-R1-047 |
+| [ReconciliationException](#reconciliationexception) | FIN | core / `fin.reconciliation_exception` | Confidential | ISSUER | FIN | R1 ใหม่ (09 §3.3 exception queue) | FR-R1-046 |
+| [Receipt](#receipt) | FIN | core / `fin.receipt` | Confidential | ISSUER | FIN | 08 §2.6 | FR-R1-048, FR-R1-053 |
+| [FeeWaiverRequest](#feewaiverrequest) | ADM/FIN | core / `adm.fee_waiver_request` | Confidential | OWN | FIN | 08 §2.2 | FR-R1-049 |
+| [Waiver](#waiver) | FIN | core / `fin.waiver` | Confidential | ISSUER | FIN | 06 §7.1 | FR-R1-049 |
+| [Refund](#refund) | FIN | core / `fin.refund` | Confidential | ISSUER | FIN | 06 §7.1 | FR-R1-050 |
+| [ImportBatch](#importbatch) | ADM/FIN | core / `adm.import_batch / fin.import_batch` | Confidential | OWN | APP | R1 ใหม่ (paper fallback) | FR-R1-053, FR-R1-077 |
+| [DocumentTemplate](#documenttemplate) | DOC | core / `doc.document_template` | Internal | OWN | CFG | 06 §5.7 | FR-R1-006, FR-R1-129 |
+| [GeneratedDocument](#generateddocument) | DOC | core + object storage / `doc.generated_document` | ตามเนื้อหา | ISSUER | ANN | 08 §2.11 | FR-R1-007, FR-R1-029, FR-R1-033, FR-R1-041, FR-R1-043, FR-R1-048 … |
+| [SignatureRecord](#signaturerecord) | DOC | core / `doc.signature_record` | Internal | ISSUER | ANN | 06 §5.7 | FR-R1-007, FR-R1-048 |
+| [RequestReceipt](#requestreceipt) | SVC/CASE | core / `svc.request_receipt` | Confidential | RECV | APP | 08 §5 (เลขรับ) | FR-R1-033, FR-R1-099, FR-R1-104 |
+| [ServiceRequest](#servicerequest) | SVC | core / `svc.service_request` | Confidential | OWN | APP | 06 §5.5 | FR-R1-049, FR-R1-090 |
+| [Appointment](#appointment) | SVC | core / `svc.appointment` | Confidential | OWN | APP | 06 §5.5 (booking R1) | FR-R1-116 |
+| [Announcement](#announcement) | ENG | core / `eng.announcement` | Public | ISSUER | ANN | 06 §5.4 | FR-R1-008, FR-R1-010, FR-R1-043, FR-R1-082, FR-R1-085, FR-R1-138 |
+| [AudienceSegment](#audiencesegment) | ENG | core / `eng.audience_segment` | Internal | OWN | MSG | 06 §5.4 | FR-R1-138 |
+| [RecipientSnapshot](#recipientsnapshot) | ENG | core / `eng.recipient_snapshot` | Confidential | OWN | MSG | 06 §5.4 | FR-R1-138 |
+| [NotificationRule](#notificationrule) | NOTI | core / `noti.notification_rule` | Internal | UNI | CFG | 06 §5.3 | FR-R1-133 |
+| [MessageTemplate](#messagetemplate) | NOTI | core / `noti.message_template` | Internal | OWN | CFG | 06 §5.3 | FR-R1-133, FR-R1-135 |
+| [Message](#message) | NOTI | core / `noti.message` | Confidential | OWN | MSG | 06 §5.3 | FR-R1-111, FR-R1-133, FR-R1-134, FR-R1-135, FR-R1-139 |
+| [Delivery](#delivery) | NOTI | core / `noti.delivery` | Confidential | OWN | MSG | 06 §5.3 | FR-R1-134 |
+| [InboxItem](#inboxitem) | NOTI | core / `noti.inbox_item` | Confidential | OWN | MSG | 06 §5.3 | FR-R1-136 |
+| [ChannelPreference](#channelpreference) | NOTI | core / `noti.channel_preference` | Confidential | NONE | IAM | 06 §5.3 | FR-R1-134, FR-R1-136 |
+| [ChannelBinding](#channelbinding) | NOTI | core / `noti.channel_binding` | Confidential | NONE | IAM | 08 §5 | FR-R1-137 |
+| [CaseFile](#casefile) | CASE | core / `case.case_file` | Confidential (+ ชั้นความลับตาม DOC) | RECV | CASE | 08 §2.10 | FR-R1-035, FR-R1-099, FR-R1-104 |
+| [Appeal](#appeal) | CASE | core / `case.appeal` | Confidential | RECV | CASE | 08 §2.10 | FR-R1-099, FR-R1-101, FR-R1-106 |
+| [ScoreRecheck](#scorerecheck) | CASE/ADM | core / `adm.score_recheck` | Confidential | OWN | CASE | R1 ใหม่ (W-18 ขั้น 4) | FR-R1-101 |
+| [CaseDecision](#casedecision) | CASE | core / `case.case_decision` | Confidential | RECV | CASE | 06 §5.6 | FR-R1-101, FR-R1-103 |
+| [HealthSubject](#healthsubject) | HLT | hlt_vault / `hlt.health_subject` | Sensitive | CARE | SELMED | 08 §2.9 | FR-R1-064, FR-R1-068 |
+| [ScreeningResult](#screeningresult) | HLT | hlt_vault / `hlt.screening_result` | Sensitive | CARE | SELMED | 08 §2.9 | FR-R1-064, FR-R1-066, FR-R1-068 |
+| [MedicalClearance](#medicalclearance) | HLT | hlt_vault / `hlt.medical_clearance` | Sensitive (สถานะส่งออกได้) | CARE | SELMED | 06 §7.6 | FR-R1-058, FR-R1-064, FR-R1-065, FR-R1-068 |
+| [InjuryRecord](#injuryrecord) | HLT | hlt_vault / `hlt.injury` | Sensitive | CARE | INJ | 06 §7.6 (Injury) | FR-R1-067 |
+| [DisabilityEvidence](#disabilityevidence) | HLT | hlt_vault / `hlt.disability_evidence` | Sensitive | CARE | DIS | 06 §7.6 (R2) — ใช้ขั้นต่ำใน R1 (gap G-01) | FR-R1-028 |
+| [Facility](#facility) | FAC | core / `fac.facility` | Internal | OWN | CFG | 06 §8.2 | FR-R1-054, FR-R1-055 |
+| [Booking](#booking) | FAC | core / `fac.booking` | Internal | OWN | OPS | 06 §8.2 | FR-R1-055 |
+| [VenueEmergencyPlan](#venueemergencyplan) | FAC | core / `fac.venue_emergency_plan` | Internal | OWN | CFG | W-153 (FAC) | FR-R1-060 |
+| [HeatReading](#heatreading) | FAC | core / `fac.heat_reading` | Internal | OWN | OPS | W-153 | FR-R1-061 |
+| [OitItem](#oititem) | RPT | core / `rpt.oit_item` | Public (เมื่อเผยแพร่) | OWN | OIT | 06 §5.11 | FR-R1-119, FR-R1-120, FR-R1-121, FR-R1-122 |
+| [OitSnapshot](#oitsnapshot) | RPT | object storage WORM / `rpt.oit_snapshot` | Public | OWN | OIT | 06 §5.11 | FR-R1-120, FR-R1-121 |
+| [AdminChangeRequest](#adminchangerequest) | ADMIN | core / `admin.change_request` | Internal | OWN | CFG | 06 §5.12 | FR-R1-007, FR-R1-123 |
+| [FeatureFlag](#featureflag) | ADMIN | Git/config / `admin.feature_flag` | Internal | OWN | CFG | 06 §5.12 | FR-R1-032 |
+| [ReleaseRing](#releasering) | ADMIN | core / `admin.release_ring` | Internal | UNI | CFG | 06 §5.12; ADR-025 | FR-R1-124, FR-R1-131 |
+| [JobRun](#jobrun) | ADMIN | core / `admin.job_run` | Internal | OWN | OPS | 06 §5.12 | FR-R1-125 |
+| [IntegrationRun](#integrationrun) | ADMIN | core / `admin.integration_run` | Internal | OWN | OPS | 06 §5.12 | FR-R1-125 |
+| [BreakGlassSession](#breakglasssession) | ADMIN | core + WORM / `admin.break_glass_session` | Internal | UNI | AUD | 06 §5.12 | FR-R1-126 |
+| [JitGrant](#jitgrant) | ADMIN | PAM / `admin.jit_grant` | Internal | UNI | AUD | 06 §5.12 | FR-R1-127 |
+| [WaitingRoomPolicy](#waitingroompolicy) | ADMIN | gateway config / `(APISIX/Valkey config)` | Internal | UNI | CFG | ADR-028 | FR-R1-130 |
+| [AuditEvent](#auditevent) | AUD | core partition + WORM / `aud.audit_event` | Confidential | OWN | AUD | 08 §2.11 | FR-R1-126, FR-R1-128 |
+
+## 2. รายละเอียดระดับฟิลด์
+
+### AdmissionCycle
+
+รอบปีการศึกษาที่เข้า × ระดับ (เช่น ป.ตรี เข้าปีการศึกษา 2572)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.admission_cycle` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-001
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `academic_year_be` | int | N | 2500–2700 | — | ปีการศึกษาที่เข้า (พ.ศ.) |
+| `level` | text | N | enum: BACHELOR, GRADUATE, BASIC_ED | — |  |
+| `policy_set_ref` | uuid | Y | logical ref REC PolicySet | — | ผูกตอน R2 |
+| `status` | text | N | enum: PLANNING, OPEN, CLOSED | — |  |
+
+### AdmissionChannel
+
+รายการช่องทางที่ส่วนกลางกำหนด วิทยาเขตเลือกใช้
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.admission_channel` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-001
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `code` | text | N | unique; enum: QUOTA_ACADEMIC, QUOTA_ATHLETE, GENERAL, SPORTS_SCHOOL_INTERNAL, TRANSFER, GRADUATE, INTERNATIONAL, TCAS_R1..R4 | — |  |
+| `name_th` | text | N |  | — |  |
+| `name_en` | text | N |  | — |  |
+| `enabled_in_r1` | boolean | N | default true | — | TRANSFER/GRADUATE/TCAS = feature flag |
+
+### AdmissionRound
+
+รอบรับสมัครที่วิทยาเขตตั้งเอง
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.admission_round` · **ชั้นข้อมูล:** Public (เมื่อเผยแพร่)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-001, FR-R1-003, FR-R1-005, FR-R1-006, FR-R1-007, FR-R1-008, FR-R1-009, FR-R1-010, FR-R1-019, FR-R1-023, FR-R1-031, FR-R1-037
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `cycle_id` | uuid | N | FK admission_cycle | — |  |
+| `channel_id` | uuid | N | FK admission_channel | — |  |
+| `round_no` | int | N | ≥ 1; unique (org_unit_id, cycle_id, channel_id, round_no) | — | ทั่วไปรอบ 1..n |
+| `name_th` | text | N |  | — |  |
+| `name_en` | text | Y |  | — |  |
+| `status` | text | N | enum: DRAFT, SUBMITTED, APPROVED, PUBLISHED, OPEN, CLOSED, CANCELLED | — |  |
+| `cloned_from_id` | uuid | Y | FK admission_round | — |  |
+| `eligibility_ruleset_id` | uuid | Y | FK eligibility_rule_set (เวอร์ชัน) | — |  |
+| `scoring_scheme_id` | uuid | Y | FK scoring_scheme | — |  |
+| `application_fee_item_ref` | uuid | Y | logical ref FIN FeeItem | — |  |
+| `confirmation_fee_item_ref` | uuid | Y | logical ref FIN FeeItem | — |  |
+| `max_choices_per_campus` | smallint | N | 1–10; default 3 (C-2) | — |  |
+| `confirm_window_hours` | int | N | > 0 (C-6) | — |  |
+| `cascade_offer_hours` | int | N | default 48; รอบท้าย 24 (C-9) | — |  |
+| `appeal_window_workdays` | smallint | N | default 3; ยืนยัน ≤ 72 ชม. → 1 | — |  |
+| `reconfirm_enabled` | boolean | N | default true (C-14) | — |  |
+| `requires_identity_verified_to_confirm` | boolean | N | default false | — |  |
+| `inherent_requirements_th` | text | Y | บังคับก่อนส่งอนุมัติ (DA-1) | — |  |
+| `announcement_id` | uuid | Y | logical ref ENG Announcement | — |  |
+| `tcas_enabled` | boolean | N | default false (A-50) | — | อ้าง FeatureFlag |
+| `published_at` | timestamptz | Y |  | — |  |
+
+### AdmissionPlan
+
+แผนรับที่กองแผนอนุมัติ (ที่นั่งต่อหลักสูตร × วิทยาเขต × cycle)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.admission_plan` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-002
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `cycle_id` | uuid | N | FK admission_cycle | — |  |
+| `program_offering_id` | uuid | N | logical ref CUR | — |  |
+| `planned_seats` | int | N | ≥ 0 | — |  |
+| `approved_by` | uuid | N | person_id ผู้อนุมัติ | PD |  |
+| `approved_at` | timestamptz | N |  | — |  |
+
+### SeatQuota
+
+ที่นั่งต่อรอบ × program offering × (ชนิดกีฬา × เพศ × sub-bucket)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.seat_quota` · **ชั้นข้อมูล:** Public (จำนวนที่นั่ง)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-002, FR-R1-009, FR-R1-019, FR-R1-091, FR-R1-098, FR-R1-102
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `round_id` | uuid | N | FK admission_round | — |  |
+| `program_offering_id` | uuid | N | logical ref CUR | — |  |
+| `study_mode` | text | N | enum: REGULAR, SPECIAL | — |  |
+| `sport_code` | text | Y | ref ชนิดกีฬา (reference data) | — |  |
+| `gender` | text | Y | enum: M, F, ANY | — |  |
+| `parent_quota_id` | uuid | Y | FK seat_quota (sub-bucket) | — |  |
+| `sub_bucket_type` | text | Y | enum: POSITION_GROUP, WEIGHT_CLASS | — |  |
+| `sub_bucket_value` | text | Y |  | — |  |
+| `seats` | int | N | ≥ 0; Σ ≤ AdmissionPlan และ ≤ AccreditedIntakeCap (hard stop) | — |  |
+| `spill_over_rule` | text | Y | enum: TO_PARENT_RANK, NONE | — |  |
+| `carried_over_from_round_id` | uuid | Y | FK admission_round | — | J-06 |
+
+### EligibilityRuleSet
+
+DMN เกณฑ์คุณสมบัติของรอบแบบมีเวอร์ชัน
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.eligibility_rule_set` · **ชั้นข้อมูล:** Public (เมื่อเผยแพร่)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (รายละเอียดของ 'Eligibility rules' ใน 02 §2.1) · **FR:** FR-R1-003, FR-R1-021
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `round_id` | uuid | N | FK admission_round | — |  |
+| `version` | int | N | unique (round_id, version) | — |  |
+| `dmn_xml` | text | N | DMN 1.3 ผ่าน validation | — |  |
+| `test_run_ref` | uuid | Y | ผลทดสอบล่าสุด | — |  |
+| `status` | text | N | enum: DRAFT, PUBLISHED, SUPERSEDED | — |  |
+
+### ScoringScheme
+
+องค์ประกอบคะแนน น้ำหนัก วิธีรวม tie-break
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.scoring_scheme` · **ชั้นข้อมูล:** Public (เมื่อเผยแพร่)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-004, FR-R1-075
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `round_id` | uuid | N | FK; 1:1 | — |  |
+| `components` | jsonb | N | [{code, weight}] Σweight = 100 | — |  |
+| `aggregation` | text | N | enum: MEAN, TRIMMED_MEAN (≥5 judges), MEDIAN | — |  |
+| `variance_threshold_pct` | numeric(5,2) | N | default 20.00 [ต้องตรวจสอบ] | — |  |
+| `tie_break_order` | jsonb | N | ลำดับเกณฑ์ | — |  |
+| `cross_panel_method` | text | Y | null = ไม่ normalisation (D-06) | — |  |
+| `version` | int | N |  | — |  |
+
+### Rubric
+
+rubric ต่อ station/ชนิดกีฬา (clone ข้ามวิทยาเขตได้)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.rubric` · **ชั้นข้อมูล:** Public (เมื่อเผยแพร่)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-004
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `scoring_scheme_id` | uuid | N | FK | — |  |
+| `station_type` | text | N | enum: OBJECTIVE, SUBJECTIVE | — |  |
+| `sport_code` | text | Y |  | — |  |
+| `name_th` | text | N |  | — |  |
+| `max_score` | numeric(6,2) | N | > 0 | — |  |
+| `safety_review_by` | uuid | Y | physician (ชนิดกีฬาใหม่) | PD | 02 §2.5.3 |
+
+### RubricItem
+
+หัวข้อให้คะแนน/รายการวัด
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.rubric_item` · **ชั้นข้อมูล:** Public (เมื่อเผยแพร่)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-004, FR-R1-072
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `rubric_id` | uuid | N | FK | — |  |
+| `seq` | smallint | N |  | — |  |
+| `label_th` | text | N |  | — |  |
+| `min_score` | numeric(6,2) | N |  | — |  |
+| `max_score` | numeric(6,2) | N | > min | — |  |
+| `unit` | text | Y | s, m, count (OBJECTIVE) | — |  |
+| `trials` | smallint | Y | ≥ 1 (OBJECTIVE) | — |  |
+| `plausible_min` | numeric | Y | validation | — |  |
+| `plausible_max` | numeric | Y |  | — |  |
+| `norm_table_ref` | uuid | Y | ตารางเกณฑ์เพศ/อายุ | — |  |
+
+### Application
+
+ใบสมัคร 1 ใบต่อผู้สมัครต่อรอบ
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.application` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-016, FR-R1-020, FR-R1-021, FR-R1-022, FR-R1-023, FR-R1-024, FR-R1-025, FR-R1-026, FR-R1-027, FR-R1-029, FR-R1-030, FR-R1-031, FR-R1-032, FR-R1-033, FR-R1-034, FR-R1-035, FR-R1-080, FR-R1-092, FR-R1-110
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | วิทยาเขตที่เปิดรอบ; RLS | — |  |
+| `person_id` | uuid | N | logical ref REC Person | PD |  |
+| `round_id` | uuid | N | FK admission_round; unique (person_id, round_id) | — |  |
+| `application_no` | text | N | unique; `{cycle}{campus}{channel}{running}` | PD | Ref1 ค่าสมัคร |
+| `status` | text | N | enum: draft, submitted, paid, verified, eligible, provisionally_eligible, ineligible, tested, scored, passed, reserve, failed, withdrawn, suspended | — | สถานะ offer อยู่ใน Offer |
+| `is_minor` | boolean | N | คำนวณ ณ วันยื่น | PD |  |
+| `gpax` | numeric(3,2) | Y | 0.00–4.00 | PD |  |
+| `gpax_semesters` | smallint | Y |  | PD |  |
+| `gpax_ocr` | numeric(3,2) | Y |  | PD | FR-R1-022 |
+| `study_plan` | text | Y |  | PD |  |
+| `previous_school_code` | text | Y | ref reference data โรงเรียน | PD |  |
+| `sport_profile` | jsonb | Y | สโมสร สมาคม โค้ช ปีที่เล่น (ใช้ COI) | PD |  |
+| `weight_class` | text | Y | ล็อกหลัง submitted | PD | ข้อมูลร่างกาย (L-36) — เก็บเฉพาะรุ่นที่สมัคร |
+| `eligibility_ruleset_version` | int | Y |  | — |  |
+| `guardian_consent_ref` | uuid | Y | logical ref PRIV | — |  |
+| `submitted_at` | timestamptz | Y |  | — |  |
+| `assisted_session_id` | uuid | Y | FK assisted_session | — |  |
+| `tcas_external_ref` | text | Y |  | PD | ถ้า adapter เปิด |
+
+### ApplicationChoice
+
+อันดับ (campus × program × sport) ในใบสมัคร
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.application_choice` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-020, FR-R1-034
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_id` | uuid | N | FK | — |  |
+| `seat_quota_id` | uuid | N | FK | — |  |
+| `rank_pref` | smallint | N | 1..max_choices | — |  |
+| `eligibility_result` | text | Y | enum: PASS, FAIL, PENDING | PD |  |
+| `eligibility_reasons` | jsonb | Y | ข้อความ TH/EN | PD |  |
+| `status` | text | N | enum เดียวกับ Application + withdrawn | — |  |
+
+### ApplicationDocument
+
+เอกสารแนบของใบสมัคร (ไม่รวมเอกสารสุขภาพ/ความพิการ ซึ่งอยู่ใน hlt_vault)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core + object storage · **ตาราง:** `adm.application_document` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-022, FR-R1-027, FR-R1-030, FR-R1-036, FR-R1-037, FR-R1-038, FR-R1-042
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_id` | uuid | N | FK | — |  |
+| `doc_type` | text | N | enum ตาม checklist | — |  |
+| `object_key` | text | N | bucket clean (random key) | PD |  |
+| `sha256` | char(64) | N | index สำหรับตรวจซ้ำ | — |  |
+| `mime_type` | text | N | allow-list | — |  |
+| `size_bytes` | bigint | N | ≤ 10 MB (วิดีโอ ≤ 200 MB) | — |  |
+| `scan_status` | text | N | enum: PENDING, CLEAN, REJECTED | — |  |
+| `verification_status` | text | N | enum: PENDING, VERIFIED, REJECTED, MORE_REQUESTED | — |  |
+
+### UploadSession
+
+session ของ multipart upload (presigned) ใช้ resume
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.upload_session` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** OPS — 1 ปี (metadata ปฏิบัติการ) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ · **FR:** FR-R1-036
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_id` | uuid | N | FK | — |  |
+| `upload_id` | text | N | S3 multipart id | — |  |
+| `declared_type` | text | N |  | — |  |
+| `declared_size` | bigint | N |  | — |  |
+| `expires_at` | timestamptz | N | ≤ 24 ชม. | — |  |
+
+### DocumentRequest
+
+คำขอเอกสารเพิ่มพร้อม deadline
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.document_request` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (W-77) · **FR:** FR-R1-039
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_id` | uuid | N | FK | — |  |
+| `items` | jsonb | N | รายการ + เหตุผลที่ผู้สมัครเห็น | PD |  |
+| `deadline` | timestamptz | N |  | — |  |
+| `status` | text | N | enum: OPEN, FULFILLED, EXPIRED | — |  |
+| `requested_by` | uuid | N |  | PD |  |
+
+### VerificationTask
+
+งานตรวจเอกสาร/ผลงาน (ผู้ตรวจคนที่ 1/2, สมาคม)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.verification_task` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-025, FR-R1-038, FR-R1-039, FR-R1-040, FR-R1-041
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `subject_type` | text | N | enum: DOCUMENT, SPORT_ACHIEVEMENT, APPLICATION | — |  |
+| `subject_id` | uuid | N |  | — |  |
+| `stage` | text | N | enum: FIRST, SECOND, FEDERATION | — |  |
+| `assignee_id` | uuid | Y |  | PD |  |
+| `decision` | text | Y | enum: VERIFIED, REJECTED, MORE_REQUESTED, CONFIRMED_BY_FEDERATION, NOT_CONFIRMED | — |  |
+| `reason_th` | text | Y | บังคับเมื่อ reject/ขอเพิ่ม | PD |  |
+| `flags` | jsonb | Y | GPAX_MISMATCH, DUP_HASH, … | — |  |
+| `sla_due_at` | timestamptz | N | ≤ 3 วันทำการ | — |  |
+| `decided_at` | timestamptz | Y |  | — |  |
+
+### SportAchievement
+
+ผลงานกีฬาที่ผู้สมัครแจ้ง
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.sport_achievement` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 (ผูก PERSON) · **FR:** FR-R1-024, FR-R1-025, FR-R1-041
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `application_id` | uuid | N | FK | — |  |
+| `competition_ref` | text | Y | competition master | — |  |
+| `competition_name` | text | N |  | PD |  |
+| `level` | text | N | enum: L1..L5 (ระบบคำนวณ) | PD |  |
+| `placing` | text | Y |  | PD |  |
+| `event_date` | date | N |  | PD |  |
+| `evidence_document_id` | uuid | N | FK application_document | — |  |
+| `counted` | boolean | N | false ถ้านอกช่วงวันที่ | — |  |
+| `verification_status` | text | N | enum: PENDING, VERIFIED, NOT_CONFIRMED | — |  |
+
+### EligibleList
+
+ประกาศผู้มีสิทธิ์สอบของรอบ
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.eligible_list` · **ชั้นข้อมูล:** Public (ฉบับ mask)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (W-42 ขั้น 1) · **FR:** FR-R1-043
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `round_id` | uuid | N | FK | — |  |
+| `announcement_id` | uuid | Y | ENG | — |  |
+| `document_id` | uuid | Y | DOC GeneratedDocument (PDF mask) | — |  |
+| `counts` | jsonb | N | eligible/ineligible | — |  |
+| `published_at` | timestamptz | Y |  | — |  |
+
+### AccommodationRequest
+
+คำขอ accommodation (เฉพาะประเภทที่ขอ; หลักฐานอยู่ใน hlt_vault)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.accommodation_request` · **ชั้นข้อมูล:** Confidential (ไม่มีการวินิจฉัย)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (02 DA-2; 06 adm.AccommodationRequested) · **FR:** FR-R1-028
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_id` | uuid | N | FK | — |  |
+| `need_categories` | text[] | N | EXTRA_TIME, LARGE_PRINT, BRAILLE, READER, SCRIBE, SIGN_LANGUAGE, GROUND_FLOOR, ADAPTED_SKILL_TEST, PARA_GROUPING | PD | ไม่ใช่การวินิจฉัย |
+| `evidence_ref` | uuid | Y | logical ref HLT DisabilityEvidence | — |  |
+| `submitted_at` | timestamptz | N |  | — |  |
+| `provisional` | boolean | N | true ถ้ายื่น < 10 วันทำการก่อนสอบ | — |  |
+| `status` | text | N | enum: SUBMITTED, APPROVED, REJECTED, PROVISIONAL | — |  |
+| `forward_to_studies_consent` | boolean | Y | ยินยอมส่งต่อหลังรายงานตัว (DA-6) | PD |  |
+
+### AccommodationPlan
+
+แผนการปรับที่อนุมัติ (รายการปรับเท่านั้น) ที่ส่งให้ slot/กรรมการ
+
+- **โมดูลเจ้าของ:** ADM (interim; เจ้าของถาวร AFF — gap G-01) · **ที่เก็บ:** core · **ตาราง:** `adm.accommodation_plan` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 AFF (aff.AccommodationGranted) — R1 interim ใน ADM · **FR:** FR-R1-028, FR-R1-106
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `request_id` | uuid | N | FK accommodation_request | — |  |
+| `items` | jsonb | N | [{type: EXTRA_TIME, value: 50%}, …] | PD |  |
+| `approved_by` | uuid | N | dss | PD |  |
+| `head_assessment` | text | Y | ยังวัดสมรรถนะหลักได้ | PD |  |
+| `valid_for_round_id` | uuid | N |  | — |  |
+
+### QualificationEquivalence
+
+งานเทียบวุฒิผู้สมัครต่างชาติ
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.qualification_equivalence` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-029
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_id` | uuid | N | FK | — |  |
+| `country` | char(3) | N | ISO 3166 alpha-3 | PD |  |
+| `qualification` | text | N |  | PD |  |
+| `equivalence_doc_id` | uuid | Y |  | — |  |
+| `result` | text | Y | enum: EQUIVALENT, NOT_EQUIVALENT, PENDING | PD |  |
+
+### TcasSyncRecord
+
+รายการแลกเปลี่ยนกับ myTCAS (adapter ปิดโดยค่าเริ่มต้น)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.tcas_sync_record` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-032
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_id` | uuid | Y |  | — |  |
+| `batch_id` | uuid | N |  | — |  |
+| `direction` | text | N | IN, OUT | — |  |
+| `external_status` | text | Y | สถานะ myTCAS | PD |  |
+| `file_hash` | char(64) | Y | unique กันนำเข้าซ้ำ | — |  |
+
+### AdmissionTestSession
+
+session สอบทักษะ/สัมภาษณ์/ข้อเขียนของการคัดเลือก
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.admission_test_session` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-054, FR-R1-055, FR-R1-058, FR-R1-060, FR-R1-061, FR-R1-063, FR-R1-069
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `round_id` | uuid | N | FK | — |  |
+| `kind` | text | N | enum: SKILL, INTERVIEW, WRITTEN, ONLINE_INTERVIEW | — |  |
+| `sport_code` | text | Y |  | — |  |
+| `gender` | text | Y |  | — |  |
+| `starts_at` | timestamptz | N |  | — |  |
+| `ends_at` | timestamptz | N | > starts_at | — |  |
+| `facility_booking_ref` | uuid | Y | logical ref FAC Booking | — |  |
+| `room_ref` | uuid | Y | ORG Room | — |  |
+| `venue_emergency_plan_ref` | uuid | Y | FAC; บังคับสำหรับ SKILL | — |  |
+| `medical_staff` | jsonb | Y | nurse/physician ที่ประจำ | PD |  |
+| `status` | text | N | enum: PLANNED, PUBLISHED, IN_PROGRESS, LOCKED | — |  |
+| `lock_hash` | char(64) | Y | SHA-256 ของชุดผล (ScoreLock) | — |  |
+
+### TestStation
+
+สถานีทดสอบใน session
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.test_station` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-054, FR-R1-071
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `session_id` | uuid | N | FK | — |  |
+| `rubric_id` | uuid | N | FK | — |  |
+| `station_type` | text | N | OBJECTIVE, SUBJECTIVE | — |  |
+| `capacity_per_hour` | int | N | > 0 | — |  |
+| `changeover_min` | int | N | ≥ 0 | — |  |
+| `outdoor` | boolean | N | ใช้ WBGT gate | — |  |
+| `suspended_reason` | text | Y | HEAT, WEATHER, EQUIPMENT | — |  |
+
+### TestSlot
+
+slot ของผู้สอบใน session
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.test_slot` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (slot ที่ 02 QS-7 อ้าง) · **FR:** FR-R1-058, FR-R1-059, FR-R1-061, FR-R1-062, FR-R1-063, FR-R1-065, FR-R1-066, FR-R1-070, FR-R1-105
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `session_id` | uuid | N | FK | — |  |
+| `application_choice_id` | uuid | N | FK | — |  |
+| `starts_at` | timestamptz | N |  | — |  |
+| `duration_min` | int | N | ปรับตาม accommodation | — |  |
+| `status` | text | N | enum: ALLOCATED, CONFIRMED, CHECKED_IN, NO_SHOW, DEFERRED, COMPLETED | — |  |
+| `qr_token_hash` | char(64) | N | token ลงนาม; ไม่มี PII | — |  |
+| `accommodation_flags` | text[] | Y | รายการปรับเท่านั้น | PD |  |
+| `video_link` | text | Y | สัมภาษณ์ออนไลน์ | PD |  |
+
+### CheckIn
+
+การเช็คอินผู้สอบ (offline sync)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.check_in` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (W-76 ขั้น 1) · **FR:** FR-R1-070
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 สร้างฝั่ง client | — | idempotent |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `slot_id` | uuid | N | FK test_slot | — |  |
+| `station_id` | uuid | Y |  | — |  |
+| `checked_in_at` | timestamptz | N |  | — |  |
+| `device_id` | uuid | N | FK judge_device | — |  |
+| `method` | text | N | QR, MANUAL_ID | — |  |
+
+### JudgePanel
+
+ชุดกรรมการต่อ station
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.judge_panel` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-056
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `station_id` | uuid | N | FK | — |  |
+| `min_judges` | smallint | N | default 3 | — |  |
+| `chair_assignment_id` | uuid | Y |  | — |  |
+
+### JudgeAssignment
+
+การแต่งตั้งกรรมการรายคนต่อ panel (สร้าง relationship judge-of-session สำหรับ RLS)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.judge_assignment` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-056, FR-R1-057, FR-R1-069, FR-R1-078
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `panel_id` | uuid | N | FK | — |  |
+| `person_id` | uuid | N | staff หรือ ExternalPerson | PD |  |
+| `role` | text | N | JUDGE, CHAIR, MEASURER, CHECKER | — |  |
+| `appointment_document_id` | uuid | Y | คำสั่งแต่งตั้ง (DOC) | — |  |
+| `valid_to` | timestamptz | N | สิ้นสุด session + ระยะอุทธรณ์ | — |  |
+
+### ConflictDeclaration
+
+การประกาศ/ตรวจพบ COI
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.conflict_declaration` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-057
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `judge_assignment_id` | uuid | N | FK | — |  |
+| `applicant_person_id` | uuid | N |  | PD |  |
+| `relation` | text | N | COACH, SCHOOL, RELATIVE, OTHER | PD |  |
+| `source` | text | N | DECLARED, AUTO_DETECTED | — |  |
+| `recused` | boolean | N |  | — |  |
+
+### JudgeScore
+
+คะแนน/ผลวัดรายกรรมการ × ผู้สอบ × rubric item
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.judge_score` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-071, FR-R1-072, FR-R1-073, FR-R1-077, FR-R1-084
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 ฝั่ง client | — | idempotent sync |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `judge_assignment_id` | uuid | N | FK | — |  |
+| `application_choice_id` | uuid | N | FK | — |  |
+| `rubric_item_id` | uuid | N | FK | — |  |
+| `trial_no` | smallint | Y | OBJECTIVE | — |  |
+| `raw_value` | numeric | N | ภายใน plausible range | PD |  |
+| `score` | numeric(6,2) | Y | หลังแปลงตามตาราง | PD |  |
+| `captured_at` | timestamptz | N |  | — |  |
+| `locked_at` | timestamptz | Y | ตั้งเมื่อส่ง | — |  |
+| `device_id` | uuid | N |  | — |  |
+| `source` | text | N | TABLET, PAPER_IMPORT | — |  |
+| `reopened_reason` | text | Y |  | PD |  |
+| _(table constraint)_ | | | unique (judge_assignment_id, application_choice_id, rubric_item_id, trial_no) | | ซ้ำ → conflict queue |
+
+### ScoreSyncConflict
+
+รายการขัดแย้งจากการ sync หลายเครื่อง
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.score_sync_conflict` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ · **FR:** FR-R1-073
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `score_key` | text | N | คีย์ธรรมชาติของ JudgeScore | — |  |
+| `values` | jsonb | N | ค่าจากแต่ละเครื่อง | PD |  |
+| `resolved_value` | numeric | Y |  | PD |  |
+| `resolved_by` | uuid | Y | ประธาน | PD |  |
+| `reason` | text | Y | บังคับเมื่อ resolve | PD |  |
+
+### JudgeDevice
+
+tablet ที่ลงทะเบียนสำหรับ offline scoring
+
+- **โมดูลเจ้าของ:** ADM (ทะเบียนร่วม IAM/MDM) · **ที่เก็บ:** core · **ตาราง:** `adm.judge_device` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** OPS — 1 ปี (metadata ปฏิบัติการ) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (07 §11.8) · **FR:** FR-R1-069, FR-R1-073
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `mdm_device_id` | text | N | unique | — |  |
+| `status` | text | N | ACTIVE, REVOKED | — |  |
+| `revoked_at` | timestamptz | Y |  | — |  |
+| `last_sync_at` | timestamptz | Y |  | — |  |
+
+### ModerationFlag
+
+flag ความต่างของคะแนนกรรมการ
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.moderation_flag` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (W-76 ขั้น 3) · **FR:** FR-R1-074
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `station_id` | uuid | N |  | — |  |
+| `application_choice_id` | uuid | N |  | — |  |
+| `range_pct` | numeric(5,2) | N |  | PD |  |
+| `raised_at` | timestamptz | N |  | — |  |
+| `due_at` | timestamptz | N | ≤ 1 วันทำการ | — |  |
+| `status` | text | N | OPEN, RESOLVED | — |  |
+
+### ScoreModeration
+
+ผล moderation โดยประธาน
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.score_moderation` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-074
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `flag_id` | uuid | N | FK moderation_flag | — |  |
+| `action` | text | N | RESCORED, KEPT | — |  |
+| `reason_th` | text | N |  | PD |  |
+| `moderated_by` | uuid | N |  | PD |  |
+
+### ScoreLock
+
+บันทึกการล็อกผล session พร้อม hash (ใช้ใน integrity job)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.score_lock` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (SoD-14 / SEC-01) · **FR:** FR-R1-076
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `session_id` | uuid | N | FK; unique (session_id, version) | — |  |
+| `version` | int | N |  | — |  |
+| `hash` | char(64) | N | SHA-256 | — |  |
+| `confirmed_by` | uuid | N | head | PD |  |
+| `confirmed_at` | timestamptz | N |  | — |  |
+
+### CompositeScore
+
+คะแนนรวมต่ออันดับ (choice)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.composite_score` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-075, FR-R1-076, FR-R1-079, FR-R1-084
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_choice_id` | uuid | N | FK; 1:1 | — |  |
+| `components` | jsonb | N | ค่าต่อองค์ประกอบ | PD |  |
+| `total` | numeric(7,3) | N |  | PD |  |
+| `scheme_version` | int | N |  | — |  |
+| `input_hash` | char(64) | N |  | — |  |
+
+### RankList
+
+อันดับต่อ seat quota
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.rank_list` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-079, FR-R1-080, FR-R1-081
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `round_id` | uuid | N | FK | — |  |
+| `version` | int | N |  | — |  |
+| `status` | text | N | COMPUTED, CHAIR_CONFIRMED, DEAN_ENDORSED, APPROVED, PUBLISHED | — |  |
+| `entries` | jsonb | N | [{choice_id, rank, result, tie_break_used}] | PD |  |
+| `hash` | char(64) | N |  | — |  |
+
+### ReserveListEntry
+
+ลำดับสำรองสำหรับ cascade
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.reserve_list_entry` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-079, FR-R1-080, FR-R1-091
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `seat_quota_id` | uuid | N |  | — |  |
+| `application_choice_id` | uuid | N |  | — |  |
+| `reserve_rank` | int | N | unique (seat_quota_id, reserve_rank) | PD |  |
+| `status` | text | N | WAITING, OFFERED, SKIPPED, EXHAUSTED | — |  |
+
+### ResultOverride
+
+การแก้ผล/คะแนนหลังล็อก (2 คน)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.result_override` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (SoD-14) · **FR:** FR-R1-081
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `rank_list_id` | uuid | N |  | — |  |
+| `application_choice_id` | uuid | N |  | — |  |
+| `change` | jsonb | N | before/after | PD |  |
+| `reason_th` | text | N |  | PD |  |
+| `proposed_by` | uuid | N |  | PD |  |
+| `approved_by` | uuid | Y | ≠ proposed_by | PD |  |
+| `appeal_id` | uuid | Y | CASE | — |  |
+
+### ResultPublication
+
+การประกาศผลและ shard บน CDN
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core + CDN · **ตาราง:** `adm.result_publication` · **ชั้นข้อมูล:** Confidential (shard = PD แบบจำกัด)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ · **FR:** FR-R1-082, FR-R1-083
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `round_id` | uuid | N |  | — |  |
+| `rank_list_version` | int | N |  | — |  |
+| `announcement_id` | uuid | Y |  | — |  |
+| `shard_manifest_key` | text | N |  | — | key ของ shard = HMAC(application_no + birth_date) |
+| `published_at` | timestamptz | N |  | — |  |
+| `hold_until` | timestamptz | N | +10 นาที | — |  |
+
+### Offer
+
+ข้อเสนอที่นั่ง
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.offer` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-026, FR-R1-051, FR-R1-086, FR-R1-087, FR-R1-088, FR-R1-089, FR-R1-090, FR-R1-091, FR-R1-092, FR-R1-093, FR-R1-094, FR-R1-095, FR-R1-096, FR-R1-097, FR-R1-098, FR-R1-100, FR-R1-102, FR-R1-110, FR-R1-114, FR-R1-117
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `offer_id` | uuid | N | PK | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_choice_id` | uuid | N | FK | — |  |
+| `program_offering_id` | uuid | N |  | — |  |
+| `status` | text | N | made, confirmed, reconfirmed, reported, declined, expired, released, waived, no_show | — |  |
+| `confirm_deadline` | timestamptz | N | ไม่นับ quiet hours (C-6) | — |  |
+| `from_reserve` | boolean | N |  | — |  |
+| `confirmed_at` | timestamptz | Y |  | — |  |
+| `waive_reason` | text | Y | DECLINED, LAPSED, CONFIRMED_ELSEWHERE, NOT_RECONFIRMED, NO_SHOW, WAIVED_AFTER_CONFIRM | — |  |
+| `counts_toward_c5` | boolean | N | true เฉพาะสละหลังยืนยัน | — |  |
+| `invoice_ref` | uuid | Y | FIN | — |  |
+| `reporting_mode` | text | Y | ONLINE, COUNTER | — |  |
+
+### ConfirmationLock
+
+ตารางระดับมหาวิทยาลัยที่บังคับ ≤ 1 สิทธิ์ต่อคนต่อ cycle ต่อระดับ ด้วย unique constraint (เห็นได้เฉพาะ service ADM; เจ้าหน้าที่เห็นเพียงธงตาม C-11)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.confirmation_lock` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (บังคับ C-3 ข้ามวิทยาเขต แทน ClearingRun ที่เลื่อน — D-06) · **FR:** FR-R1-088
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | OrgUnit ราก (university) | — |  |
+| `person_hmac` | char(64) | N | HMAC ของ identifier (core context) | PD | ไม่ใช่เลขบัตร |
+| `cycle_id` | uuid | N |  | — |  |
+| `level` | text | N |  | — |  |
+| `offer_id` | uuid | N | FK offer | — |  |
+| _(table constraint)_ | | | UNIQUE (person_hmac, cycle_id, level) | | ลบแถวเมื่อสละ/หมดเวลา |
+
+### Reconfirmation
+
+การยืนยันซ้ำก่อนเปิดภาค
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.reconfirmation` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (W-163) · **FR:** FR-R1-095
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `offer_id` | uuid | N |  | — |  |
+| `window_end` | timestamptz | N |  | — |  |
+| `reminders_sent` | smallint | N | 0–2 | — |  |
+| `call_task_status` | text | Y | PENDING, CALLED, UNREACHABLE | PD |  |
+| `result` | text | Y | RECONFIRMED, WAIVED | — |  |
+
+### NoShowNotice
+
+การแจ้งเหตุไม่มารายงานตัว
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.no_show_notice` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (C-10) · **FR:** FR-R1-096
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `offer_id` | uuid | N |  | — |  |
+| `filed_at` | timestamptz | N | ≤ 7 วัน | — |  |
+| `reason_th` | text | N |  | PD |  |
+| `decision` | text | Y | ACCEPTED, REJECTED | — |  |
+
+### AppealHold
+
+การกันที่นั่งสุดท้ายของ sub-bucket ระหว่างอุทธรณ์
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.appeal_hold` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (C-15) — เสนอเพิ่มใน 08 · **FR:** FR-R1-091, FR-R1-100, FR-R1-102
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `seat_quota_id` | uuid | N | unique ต่อ appeal ที่ active | — |  |
+| `appeal_id` | uuid | N | CASE | — |  |
+| `placed_at` | timestamptz | N |  | — |  |
+| `released_at` | timestamptz | Y |  | — |  |
+| `release_outcome` | text | Y | USED_BY_WINNER, TO_CASCADE | — |  |
+
+### TestIncident
+
+เหตุการณ์วันสอบ (ขาดสอบ, เลื่อนด้วยเหตุสุขภาพ, บาดเจ็บ, อุปกรณ์ขัดข้อง, ทุจริต)
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.test_incident` · **ชั้นข้อมูล:** Confidential (ไม่มีการวินิจฉัย)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-035, FR-R1-066, FR-R1-067, FR-R1-105
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `slot_id` | uuid | Y |  | — |  |
+| `application_id` | uuid | N |  | — |  |
+| `type` | text | N | NO_SHOW, HEALTH_DEFERRAL, INJURY, EQUIPMENT, MISCONDUCT, WEATHER | PD | ไม่มีรายละเอียดทางการแพทย์ |
+| `health_record_ref` | uuid | Y | logical ref hlt_vault (InjuryRecord) | — |  |
+| `case_ref` | uuid | Y | CASE (ทุจริต) | — |  |
+| `recorded_by` | uuid | N |  | PD |  |
+
+### RetestRequest
+
+คำขอสอบใหม่/เลื่อน
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.retest_request` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (W-85) · **FR:** FR-R1-105
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `incident_id` | uuid | Y |  | — |  |
+| `application_id` | uuid | N |  | — |  |
+| `filed_at` | timestamptz | N | ≤ 48 ชม. | — |  |
+| `decision` | text | Y | APPROVED, REJECTED | — |  |
+| `new_slot_id` | uuid | Y |  | — |  |
+
+### ReportingHandoff
+
+ข้อมูลส่งต่อผู้ยืนยันสิทธิ์ให้ REC (R2) หรือระบบทะเบียนเดิม
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.reporting_handoff` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ — เสนอเพิ่มใน 08 (สะพาน W-78 ก่อน REC เต็ม) · **FR:** FR-R1-042, FR-R1-114, FR-R1-115, FR-R1-116, FR-R1-117, FR-R1-118
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `offer_id` | uuid | N | unique | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `program_offering_id` | uuid | N |  | — |  |
+| `documents` | jsonb | N | [{doc_type, sha256, verified_by}] | PD |  |
+| `identity_assurance` | text | N | THAID, OTP_ONLY, IN_PERSON, … | PD |  |
+| `accommodation_plan_ref` | uuid | Y | เฉพาะเมื่อยินยอม | — |  |
+| `late_admit` | boolean | N |  | — |  |
+| `status` | text | N | READY, REPORTED, EXPORTED_TO_LEGACY, CONSUMED_BY_REC, NO_SHOW | — |  |
+| `exported_at` | timestamptz | Y |  | — |  |
+
+### LegacyConfirmationFile
+
+ไฟล์รายชื่อผู้ยืนยันสิทธิ์จากวิทยาเขตที่ยังใช้ระบบเดิม
+
+- **โมดูลเจ้าของ:** ADM · **ที่เก็บ:** core · **ตาราง:** `adm.legacy_confirmation_file` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (BR-01) · **FR:** FR-R1-097
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `source_org_unit_id` | uuid | N |  | — |  |
+| `file_hash` | char(64) | N | unique | — |  |
+| `row_count` | int | N |  | — |  |
+| `matches` | int | N |  | — |  |
+
+### AssistedSession
+
+session ที่เจ้าหน้าที่ทำแทนผู้สมัคร/ผู้ปกครอง
+
+- **โมดูลเจ้าของ:** ADM (ร่วม IAM) · **ที่เก็บ:** core · **ตาราง:** `adm.assisted_session` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** AUD — 10 ปี WORM (08 §8)
+- **สถานะในเล่ม 08:** R1 ใหม่ (D-08) · **FR:** FR-R1-016
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `staff_id` | uuid | N |  | PD |  |
+| `subject_person_id` | uuid | N |  | PD |  |
+| `otp_verified_at` | timestamptz | Y |  | — |  |
+| `expires_at` | timestamptz | N | ≤ 30 นาที | — |  |
+
+### StandardExport
+
+การดึง export มาตรฐาน/ad-hoc
+
+- **โมดูลเจ้าของ:** ANA/DOC (ใช้โดย ADM) · **ที่เก็บ:** core · **ตาราง:** `ana.standard_export_run` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** AUD — 10 ปี WORM (08 §8)
+- **สถานะในเล่ม 08:** 06 ANA StandardExportDefinition · **FR:** FR-R1-115, FR-R1-132
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `definition_code` | text | N |  | — |  |
+| `requested_by` | uuid | N |  | PD |  |
+| `purpose` | text | Y | บังคับ ad-hoc | — |  |
+| `row_count` | int | N |  | — |  |
+| `watermark` | text | N |  | PD |  |
+| `file_hash` | char(64) | N |  | — |  |
+
+### OrgUnit
+
+หน่วยงานในลำดับชั้น (ตารางนี้คือที่มาของ org_unit_id)
+
+- **โมดูลเจ้าของ:** ORG · **ที่เก็บ:** core · **ตาราง:** `org.org_unit` · **ชั้นข้อมูล:** Public
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-124
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `org_unit_id` | uuid | N | PK | — |  |
+| `parent_id` | uuid | Y | FK | — |  |
+| `type` | text | N | UNIVERSITY, HQ, CAMPUS, SPORTS_SCHOOL, GRAD_SCHOOL, FACULTY, DEPT, PROGRAM_OFFICE | — |  |
+| `code` | text | N | unique | — |  |
+| `path` | ltree | N |  | — |  |
+| `name_th` | text | N |  | — |  |
+| `name_en` | text | N |  | — |  |
+| `go_live_r1` | boolean | N | release ring | — |  |
+
+### OrgSetting
+
+ค่าตั้งราย OrgUnit (สืบทอด/override) เช่น ผู้ลงนาม scheme เลข
+
+- **โมดูลเจ้าของ:** ORG · **ที่เก็บ:** core · **ตาราง:** `org.org_setting` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 (effective-dated) · **FR:** FR-R1-124
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `key` | text | N |  | — |  |
+| `value` | jsonb | N |  | — |  |
+| `valid_from` | date | N |  | — |  |
+| `valid_to` | date | Y |  | — |  |
+| `change_request_id` | uuid | Y | 4-eyes | — |  |
+
+### CalendarEvent
+
+milestone ของรอบ (ADM_*) เป็น window
+
+- **โมดูลเจ้าของ:** ORG · **ที่เก็บ:** core · **ตาราง:** `org.calendar_event` · **ชั้นข้อมูล:** Public
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-005, FR-R1-008, FR-R1-131
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `calendar_id` | uuid | N |  | — |  |
+| `type` | text | N | ADM_ROUND_APPLY, ADM_RESULT_PUBLISH, ADM_APPEAL_WINDOW, ADM_CONFIRM, ADM_REPORTING, ADM_RECONFIRM_WINDOW, ADM_CASCADE_CUTOFF, … | — |  |
+| `subject_ref` | uuid | Y | round_id | — |  |
+| `start_at` | timestamptz | N |  | — |  |
+| `end_at` | timestamptz | Y |  | — |  |
+| `notify` | boolean | N |  | — |  |
+| `linter_results` | jsonb | Y |  | — |  |
+
+### GateOverride
+
+ข้อยกเว้นรายบุคคล/กลุ่มของ window (ขยาย deadline offer, appeal)
+
+- **โมดูลเจ้าของ:** ORG · **ที่เก็บ:** core · **ตาราง:** `org.gate_override` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 03 §(GateOverride) · **FR:** FR-R1-094, FR-R1-100
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `subject_person_id` | uuid | N |  | PD |  |
+| `gate` | text | N | ADM_CONFIRM, … | — |  |
+| `new_close` | timestamptz | N |  | — |  |
+| `reason` | text | N |  | PD |  |
+| `requested_by` | uuid | N |  | PD |  |
+| `approved_by` | uuid | Y | ≠ requested_by | PD |  |
+| `expires_on` | timestamptz | N |  | — |  |
+
+### Room
+
+ห้อง/อาคาร (ใช้เป็นห้องสอบข้อเขียน/สัมภาษณ์)
+
+- **โมดูลเจ้าของ:** ORG · **ที่เก็บ:** core · **ตาราง:** `org.room` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-063
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `building_id` | uuid | N |  | — |  |
+| `code` | text | N |  | — |  |
+| `capacity` | int | N |  | — |  |
+| `accessible` | boolean | N | ทางลาด/ชั้นล่าง | — |  |
+
+### ProgramOffering
+
+หลักสูตร × วิทยาเขต × study mode ที่รับสมัคร
+
+- **โมดูลเจ้าของ:** CUR · **ที่เก็บ:** core · **ตาราง:** `cur.program_offering` · **ชั้นข้อมูล:** Public
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §6.2 (R1 ขั้นต่ำ) · **FR:** FR-R1-002
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `program_id` | uuid | N |  | — |  |
+| `study_mode` | text | N | REGULAR, SPECIAL | — |  |
+| `checo_code` | text | Y | [ต้องตรวจสอบรูปแบบ] | — |  |
+| `name_th` | text | N |  | — |  |
+| `status` | text | N | OPEN, CLOSED | — |  |
+
+### AccreditedIntakeCap
+
+เพดานรับที่คุรุสภาอนุญาตต่อปี
+
+- **โมดูลเจ้าของ:** CUR · **ที่เก็บ:** core · **ตาราง:** `cur.accredited_intake_cap` · **ชั้นข้อมูล:** Public
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §6.2 · **FR:** FR-R1-002, FR-R1-102
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `program_offering_id` | uuid | N |  | — |  |
+| `academic_year_be` | int | N |  | — |  |
+| `cap` | int | N | ≥ 0 | — |  |
+| `source_ref` | text | N | หนังสือคุรุสภา | — |  |
+
+### UserAccount
+
+บัญชีผู้ใช้
+
+- **โมดูลเจ้าของ:** IAM · **ที่เก็บ:** Keycloak + core mirror · **ตาราง:** `iam.user_account` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** IAM — ตลอดอายุบัญชี + 1 ปีหลังปิด; IdentityLink ของบัญชีที่ลบตาม Person [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-011, FR-R1-013, FR-R1-015
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `account_id` | uuid | N | PK | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `type` | text | N | APPLICANT, GUARDIAN, STAFF, EXTERNAL | — |  |
+| `status` | text | N | ACTIVE, SUSPENDED, CLOSED | — |  |
+| `identity_assurance` | text | N | THAID, OTP_ONLY, DOCUMENT_REVIEW, VIDEO_CALL, IN_PERSON | PD |  |
+
+### IdentityLink
+
+การผูกบัญชีกับ IdP (ThaID/อีเมล)
+
+- **โมดูลเจ้าของ:** IAM · **ที่เก็บ:** Keycloak + core · **ตาราง:** `iam.identity_link` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** IAM — ตลอดอายุบัญชี + 1 ปีหลังปิด; IdentityLink ของบัญชีที่ลบตาม Person [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-011, FR-R1-013, FR-R1-108, FR-R1-117
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `account_id` | uuid | N |  | — |  |
+| `provider` | text | N | THAID, EMAIL_OTP, PHONE_OTP, PASSKEY | — |  |
+| `subject_hmac` | char(64) | N | HMAC ของ pid/subject | PD |  |
+| `ial` | text | Y |  | PD |  |
+| `linked_at` | timestamptz | N |  | — |  |
+
+### CredentialBinding
+
+passkey/TOTP ของผู้ใช้ (เก็บใน Keycloak)
+
+- **โมดูลเจ้าของ:** IAM · **ที่เก็บ:** Keycloak · **ตาราง:** `(Keycloak)` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** IAM — ตลอดอายุบัญชี + 1 ปีหลังปิด; IdentityLink ของบัญชีที่ลบตาม Person [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.1 · **FR:** FR-R1-015
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `account_id` | uuid | N |  | — |  |
+| `type` | text | N | WEBAUTHN, TOTP | — |  |
+| `created_at` | timestamptz | N |  | — |  |
+
+### RoleAssignment
+
+บทบาทตามเล่ม 04 พร้อม scope
+
+- **โมดูลเจ้าของ:** IAM · **ที่เก็บ:** core · **ตาราง:** `iam.role_assignment` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** IAM — ตลอดอายุบัญชี + 1 ปีหลังปิด; IdentityLink ของบัญชีที่ลบตาม Person [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-017, FR-R1-018
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `role_code` | text | N | ตาม 04 | — |  |
+| `qualifier` | text | Y | เช่น head.selection_chair | — |  |
+| `scope_type` | text | N |  | — |  |
+| `valid_from` | date | N |  | — |  |
+| `valid_to` | date | Y |  | — |  |
+
+### ExternalPerson
+
+บุคคลภายนอกแบบมีผู้รับรอง (กรรมการ)
+
+- **โมดูลเจ้าของ:** IAM · **ที่เก็บ:** core · **ตาราง:** `iam.external_person` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** IAM — ตลอดอายุบัญชี + 1 ปีหลังปิด; IdentityLink ของบัญชีที่ลบตาม Person [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-018
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `sponsor_id` | uuid | N |  | PD |  |
+| `valid_to` | date | N |  | — |  |
+| `agreement_accepted_at` | timestamptz | Y |  | — |  |
+| `staff_clearance_ref` | uuid | Y | SAFE (ถ้าทำงานกับผู้เยาว์) | — |  |
+
+### Person
+
+Person master (ADM สร้างผ่าน API ของ REC)
+
+- **โมดูลเจ้าของ:** REC · **ที่เก็บ:** core · **ตาราง:** `rec.person` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** PERSON — Person master: ถาวรเมื่อเป็นนักศึกษา; ผู้สมัครที่ไม่ได้รับเข้าและไม่มีบทบาทอื่น ลบ/ทำให้ไม่ระบุตัวตนพร้อมใบสมัคร (08 §1, §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 (R1 ขั้นต่ำ) · **FR:** FR-R1-011, FR-R1-012, FR-R1-014, FR-R1-114
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `person_id` | uuid | N | PK | — |  |
+| `name_th` | text | N |  | PD |  |
+| `name_en` | text | Y |  | PD |  |
+| `birth_date` | date | N |  | PD |  |
+| `sex` | text | Y |  | PD |  |
+| `nationality` | char(2) | Y | ISO 3166 | PD |  |
+| `deceased_flag` | boolean | N | default false | PD |  |
+
+### PersonIdentifier
+
+เลขประจำตัว (เข้ารหัส + HMAC)
+
+- **โมดูลเจ้าของ:** REC · **ที่เก็บ:** core · **ตาราง:** `rec.person_identifier` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** PERSON — Person master: ถาวรเมื่อเป็นนักศึกษา; ผู้สมัครที่ไม่ได้รับเข้าและไม่มีบทบาทอื่น ลบ/ทำให้ไม่ระบุตัวตนพร้อมใบสมัคร (08 §1, §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1, §5 · **FR:** FR-R1-012
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `id_type` | text | N | NATIONAL_ID, G_CODE, PASSPORT, ALIEN_ID, TCAS_ID | — |  |
+| `value_enc` | bytea | N | envelope encryption | PD-ID |  |
+| `value_hmac` | char(64) | N | unique (id_type, value_hmac) | PD | ค้นหาด้วยค่านี้เท่านั้น |
+| `issuing_country` | char(3) | Y |  | PD |  |
+| `valid_to` | date | Y |  | PD |  |
+| `superseded_by` | uuid | Y |  | — |  |
+
+### ContactPoint
+
+ช่องทางติดต่อ
+
+- **โมดูลเจ้าของ:** REC · **ที่เก็บ:** core · **ตาราง:** `rec.contact_point` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** PERSON — Person master: ถาวรเมื่อเป็นนักศึกษา; ผู้สมัครที่ไม่ได้รับเข้าและไม่มีบทบาทอื่น ลบ/ทำให้ไม่ระบุตัวตนพร้อมใบสมัคร (08 §1, §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-014
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `type` | text | N | EMAIL, MOBILE, ADDRESS | — |  |
+| `value` | text | N |  | PD |  |
+| `verified_at` | timestamptz | Y |  | — |  |
+
+### EmergencyContact
+
+ผู้ติดต่อฉุกเฉิน
+
+- **โมดูลเจ้าของ:** REC · **ที่เก็บ:** core · **ตาราง:** `rec.emergency_contact` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** PERSON — Person master: ถาวรเมื่อเป็นนักศึกษา; ผู้สมัครที่ไม่ได้รับเข้าและไม่มีบทบาทอื่น ลบ/ทำให้ไม่ระบุตัวตนพร้อมใบสมัคร (08 §1, §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 · **FR:** FR-R1-014
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `name` | text | N |  | PD |  |
+| `relation` | text | N |  | PD |  |
+| `phone` | text | N |  | PD |  |
+
+### GuardianRelation
+
+ความสัมพันธ์ผู้ปกครอง–ผู้สมัคร
+
+- **โมดูลเจ้าของ:** REC · **ที่เก็บ:** core · **ตาราง:** `rec.guardian_relation` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** PERSON — Person master: ถาวรเมื่อเป็นนักศึกษา; ผู้สมัครที่ไม่ได้รับเข้าและไม่มีบทบาทอื่น ลบ/ทำให้ไม่ระบุตัวตนพร้อมใบสมัคร (08 §1, §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.1 (โมเดลเดียว) · **FR:** FR-R1-107, FR-R1-108, FR-R1-110, FR-R1-111, FR-R1-113
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | OrgUnit ของใบสมัครที่ผูก (R1) [ต้องตรวจสอบ] | — |  |
+| `guardian_person_id` | uuid | N |  | PD |  |
+| `ward_person_id` | uuid | N |  | PD |  |
+| `relation_type` | text | N | FATHER, MOTHER, LEGAL_GUARDIAN, CAREGIVER | PD |  |
+| `legal_authority` | boolean | N |  | PD |  |
+| `binding_method` | text | N | PROVISIONAL_OTP, THAID, ASSISTED_IN_PERSON | — |  |
+| `verification_level` | smallint | N | 0 (provisional), 1, 2 | — |  |
+| `valid_from` | date | N |  | — |  |
+| `valid_to` | date | Y |  | — |  |
+
+### GuardianInvitation
+
+คำเชิญผู้ปกครอง
+
+- **โมดูลเจ้าของ:** REC · **ที่เก็บ:** core · **ตาราง:** `rec.guardian_invitation` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ · **FR:** FR-R1-107, FR-R1-108
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `ward_person_id` | uuid | N |  | PD |  |
+| `declared_relation` | text | N |  | PD |  |
+| `declared_guardian_id_hmac` | char(64) | Y |  | PD |  |
+| `channel` | text | N | SMS, LINE, EMAIL | — |  |
+| `token_hash` | char(64) | N |  | — |  |
+| `expires_at` | timestamptz | N | ≤ 7 วัน | — |  |
+| `attempts` | smallint | N | ≤ 5 | — |  |
+| `status` | text | N | SENT, ACCEPTED, EXPIRED, REJECTED | — |  |
+
+### PrivacyNotice
+
+ประกาศความเป็นส่วนตัวมีเวอร์ชัน
+
+- **โมดูลเจ้าของ:** PRIV · **ที่เก็บ:** core · **ตาราง:** `priv.privacy_notice` · **ชั้นข้อมูล:** Public
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** CONSENT — อายุ consent + 10 ปี (08 §8) [ต้องตรวจสอบอายุความ]
+- **สถานะในเล่ม 08:** 06 §5.8 · **FR:** FR-R1-109
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `purpose_codes` | text[] | N |  | — |  |
+| `version` | text | N |  | — |  |
+| `body_th` | text | N |  | — |  |
+| `body_en` | text | Y |  | — |  |
+| `effective_from` | date | N |  | — |  |
+
+### ConsentPolicyRule
+
+กติกาอายุ × กิจกรรม → ผู้ต้องให้ความยินยอม
+
+- **โมดูลเจ้าของ:** PRIV · **ที่เก็บ:** core · **ตาราง:** `priv.consent_policy_rule` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.8; 10 §2.4 · **FR:** FR-R1-109
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `purpose_code` | text | N |  | — |  |
+| `age_min` | smallint | N |  | — |  |
+| `age_max` | smallint | Y |  | — |  |
+| `required_parties` | text[] | N | SELF, GUARDIAN | — |  |
+| `version` | int | N |  | — |  |
+
+### ConsentRequest
+
+คำขอความยินยอมที่รอฝ่ายต่าง ๆ
+
+- **โมดูลเจ้าของ:** PRIV · **ที่เก็บ:** core · **ตาราง:** `priv.consent_request` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CONSENT — อายุ consent + 10 ปี (08 §8) [ต้องตรวจสอบอายุความ]
+- **สถานะในเล่ม 08:** R1 ใหม่ · **FR:** FR-R1-109, FR-R1-112
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `subject_person_id` | uuid | N |  | PD |  |
+| `purpose_code` | text | N |  | — |  |
+| `required_parties` | text[] | N |  | — |  |
+| `status` | text | N | PENDING, COMPLETE, DECLINED, EXPIRED | — |  |
+| `context_ref` | uuid | Y | application_id/slot | — |  |
+
+### Consent
+
+หลักฐานความยินยอม
+
+- **โมดูลเจ้าของ:** PRIV · **ที่เก็บ:** core · **ตาราง:** `priv.consent` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CONSENT — อายุ consent + 10 ปี (08 §8) [ต้องตรวจสอบอายุความ]
+- **สถานะในเล่ม 08:** 08 §2.11 · **FR:** FR-R1-027, FR-R1-109, FR-R1-113, FR-R1-137
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `consent_id` | uuid | N | PK | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `purpose_code` | text | N |  | — |  |
+| `notice_version` | text | N |  | — |  |
+| `state` | text | N | GRANTED, WITHDRAWN, EXPIRED | — |  |
+| `given_by` | text | N | SELF, GUARDIAN, ASSISTED_OTP, ASSISTED_CALL | — |  |
+| `granted_at` | timestamptz | N |  | — |  |
+| `withdrawn_at` | timestamptz | Y |  | — |  |
+| `evidence` | jsonb | N | ช่องทาง, IP, ผู้บันทึก (assisted) | PD |  |
+
+### GuardianConsent
+
+ความยินยอมที่ผู้ปกครองให้ (ผูก GuardianRelation)
+
+- **โมดูลเจ้าของ:** PRIV · **ที่เก็บ:** core · **ตาราง:** `priv.guardian_consent` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CONSENT — อายุ consent + 10 ปี (08 §8) [ต้องตรวจสอบอายุความ]
+- **สถานะในเล่ม 08:** 06 §5.8 · **FR:** FR-R1-109, FR-R1-112
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `consent_id` | uuid | N | FK consent | — |  |
+| `guardian_relation_id` | uuid | N |  | — |  |
+| `guardian_person_id` | uuid | N |  | PD |  |
+| `decision` | text | N | GRANTED, DECLINED | — |  |
+
+### FeeSchedule
+
+อัตราค่าสมัคร/ค่ายืนยันสิทธิ์ราย OrgUnit (4-eyes)
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.fee_schedule` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 06 §7.1 (effective-dated) · **FR:** FR-R1-006, FR-R1-044
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `item_code` | text | N | APPLICATION_FEE, CONFIRMATION_FEE, … | — |  |
+| `amount_thb` | numeric(12,2) | N | ≥ 0 | — |  |
+| `valid_from` | date | N |  | — |  |
+| `valid_to` | date | Y |  | — |  |
+| `change_request_id` | uuid | N |  | — |  |
+
+### Invoice
+
+ใบแจ้งหนี้
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.invoice` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 08 §2.6 · **FR:** FR-R1-044, FR-R1-045, FR-R1-046, FR-R1-050, FR-R1-051, FR-R1-089, FR-R1-110
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `invoice_id` | uuid | N | PK | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `party_account_id` | uuid | N |  | PD |  |
+| `invoice_no` | text | N | `{OrgCode}-{FY}-{running}` unique | PD |  |
+| `fiscal_year_be` | int | N |  | — |  |
+| `academic_year_be` | int | N |  | — |  |
+| `amount_thb` | numeric(12,2) | N |  | PD |  |
+| `ref1` | text | N |  | PD |  |
+| `ref2` | text | N |  | — |  |
+| `due_at` | timestamptz | N |  | — |  |
+| `subject_ref` | uuid | N | application_id/offer_id | — | idempotency (subject, item) |
+| `status` | text | N | OPEN, PAID, PARTIAL, CANCELLED, EXPIRED | — |  |
+
+### InvoiceLine
+
+รายการในใบแจ้งหนี้
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.invoice_line` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 06 §7.1 · **FR:** FR-R1-044
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `invoice_id` | uuid | N |  | — |  |
+| `item_code` | text | N |  | — |  |
+| `amount_thb` | numeric(12,2) | N |  | PD |  |
+| `fund_code` | text | Y |  | — |  |
+
+### PaymentIntent
+
+QR ที่สร้างให้ใบแจ้งหนี้
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.payment_intent` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 06 §7.1 · **FR:** FR-R1-044, FR-R1-045
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `invoice_id` | uuid | N |  | — |  |
+| `biller_id` | text | N | 15 หลัก | — |  |
+| `qr_payload` | text | N | EMVCo tag 30 | PD |  |
+| `expires_at` | timestamptz | N |  | — |  |
+| `share_token_hash` | char(64) | Y | ลิงก์ชำระแทน | — |  |
+
+### PaymentCallback
+
+inbox ของ callback ธนาคาร/PSP
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.payment_callback` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 09 §4.1 (inbox) · **FR:** FR-R1-046, FR-R1-052
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `partner` | text | N |  | — |  |
+| `external_ref` | text | N | UNIQUE (partner, external_ref) | — |  |
+| `payload` | jsonb | N |  | PD |  |
+| `signature_valid` | boolean | N |  | — |  |
+| `received_at` | timestamptz | N |  | — |  |
+| `processed_at` | timestamptz | Y |  | — |  |
+
+### Payment
+
+รายการรับเงิน
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.payment` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 08 §2.6 · **FR:** FR-R1-046, FR-R1-047, FR-R1-050, FR-R1-052, FR-R1-053, FR-R1-089
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `payment_id` | uuid | N | PK | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `bank_txn_ref` | text | N | unique | — |  |
+| `channel` | text | N | QR, BILLPAY, COUNTER, CARD | — |  |
+| `amount_thb` | numeric(12,2) | N |  | PD |  |
+| `paid_at` | timestamptz | N |  | — |  |
+| `source` | text | N | CALLBACK, STATEMENT, PAPER_IMPORT | — |  |
+
+### BankStatementLine
+
+บรรทัด statement รายวัน
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.bank_statement_line` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 06 §7.1 · **FR:** FR-R1-047
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `statement_date` | date | N |  | — |  |
+| `bank_txn_ref` | text | N |  | — |  |
+| `amount_thb` | numeric(12,2) | N |  | PD |  |
+| `ref1` | text | Y |  | PD |  |
+| `file_hash` | char(64) | N |  | — |  |
+
+### Reconciliation
+
+ผลจับคู่ invoice–callback–statement
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.reconciliation` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 06 §7.1 · **FR:** FR-R1-047
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `run_date` | date | N |  | — |  |
+| `matched` | int | N |  | — |  |
+| `unmatched` | int | N |  | — |  |
+| `auto_match_pct` | numeric(5,2) | N |  | — | KPI-21 |
+
+### ReconciliationException
+
+รายการไม่ตรงที่ต้องแก้
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.reconciliation_exception` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** R1 ใหม่ (09 §3.3 exception queue) · **FR:** FR-R1-046
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `type` | text | N | UNDERPAID, OVERPAID, DUPLICATE, AFTER_CANCEL, AFTER_EXPIRY, STATEMENT_ONLY | — |  |
+| `payment_id` | uuid | Y |  | — |  |
+| `invoice_id` | uuid | Y |  | — |  |
+| `sla_due_at` | timestamptz | N | 2 วันทำการ | — |  |
+| `resolution` | text | Y |  | PD |  |
+
+### Receipt
+
+ใบเสร็จอิเล็กทรอนิกส์
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.receipt` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 08 §2.6 · **FR:** FR-R1-048, FR-R1-053
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `receipt_id` | uuid | N | PK | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `receipt_no` | text | N | gapless ต่อ OrgUnit × ปีงบ | PD |  |
+| `fiscal_year_be` | int | N |  | — |  |
+| `payment_id` | uuid | N |  | — |  |
+| `document_id` | uuid | N | DOC | — |  |
+| `status` | text | N | issued, voided | — |  |
+| `replaces_receipt_id` | uuid | Y |  | — |  |
+
+### FeeWaiverRequest
+
+คำขอยกเว้นค่าสมัคร
+
+- **โมดูลเจ้าของ:** ADM/FIN · **ที่เก็บ:** core · **ตาราง:** `adm.fee_waiver_request` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 08 §2.2 · **FR:** FR-R1-049
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `application_id` | uuid | N |  | — |  |
+| `reason_code` | text | N |  | PD |  |
+| `evidence_document_ids` | uuid[] | N |  | — |  |
+| `checked_by` | uuid | Y | admission | PD |  |
+| `decided_by` | uuid | Y | finance ≠ checked_by | PD |  |
+| `decision` | text | Y | APPROVED, REJECTED | — |  |
+| `service_request_id` | uuid | Y | SVC | — |  |
+
+### Waiver
+
+การยกเว้นที่มีผลต่อใบแจ้งหนี้
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.waiver` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 06 §7.1 · **FR:** FR-R1-049
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `invoice_id` | uuid | N |  | — |  |
+| `amount_thb` | numeric(12,2) | N |  | PD |  |
+| `approved_by` | uuid | N |  | PD |  |
+| `limit_thb` | numeric(12,2) | N | วงเงินผู้อนุมัติ | — |  |
+
+### Refund
+
+คืนเงิน
+
+- **โมดูลเจ้าของ:** FIN · **ที่เก็บ:** core · **ตาราง:** `fin.refund` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** FIN — 10 ปีหลังสิ้นปีงบประมาณ (08 §8) [ต้องตรวจสอบ ระเบียบการเงิน/สตง.]
+- **สถานะในเล่ม 08:** 06 §7.1 · **FR:** FR-R1-050
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `payment_id` | uuid | N |  | — |  |
+| `reason` | text | N | ROUND_CANCELLED, DUPLICATE, WAIVER_AFTER_PAYMENT, PROGRAM_NOT_OPENED | — |  |
+| `amount_thb` | numeric(12,2) | N |  | PD |  |
+| `destination` | text | N | ORIGINAL_CHANNEL, VERIFIED_ACCOUNT | PD |  |
+| `prepared_by` | uuid | N |  | PD |  |
+| `approved_by` | uuid | Y | ≠ prepared_by | PD |  |
+| `status` | text | N | REQUESTED, APPROVED, PAID, REJECTED | — |  |
+
+### ImportBatch
+
+การนำเข้าไฟล์แบบ dry-run + 4-eyes
+
+- **โมดูลเจ้าของ:** ADM/FIN · **ที่เก็บ:** core · **ตาราง:** `adm.import_batch / fin.import_batch` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (paper fallback) · **FR:** FR-R1-053, FR-R1-077
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `kind` | text | N | PAPER_SCORES, PAPER_RECEIPTS | — |  |
+| `file_hash` | char(64) | N | unique | — |  |
+| `dry_run_report` | jsonb | N |  | PD |  |
+| `imported_by` | uuid | N |  | PD |  |
+| `approved_by` | uuid | Y | ≠ imported_by | PD |  |
+
+### DocumentTemplate
+
+แม่แบบเอกสาร (effective-dated, maker-checker)
+
+- **โมดูลเจ้าของ:** DOC · **ที่เก็บ:** core · **ตาราง:** `doc.document_template` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.7 · **FR:** FR-R1-006, FR-R1-129
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `code` | text | N | ADM_ANNOUNCEMENT, ADM_ELIGIBLE_LIST, ADM_RESULT_LIST, ADM_CARD, ADM_RECEIPT_NOTICE, FIN_RECEIPT, ADM_JUDGE_ORDER, ADM_FED_LETTER, ADM_APPEAL_DECISION, ADM_ACCEPTANCE_LETTER | — |  |
+| `version` | int | N |  | — |  |
+| `signature_level` | text | N | S1, S2, S3 | — |  |
+| `golden_file_hash` | char(64) | Y |  | — |  |
+| `valid_from` | date | N |  | — |  |
+
+### GeneratedDocument
+
+เอกสาร PDF/A ที่สร้าง (retention ตามประเภท: ประกาศถาวร, ใบเสร็จตาม FIN, บัตรผู้สอบตาม APP)
+
+- **โมดูลเจ้าของ:** DOC · **ที่เก็บ:** core + object storage · **ตาราง:** `doc.generated_document` · **ชั้นข้อมูล:** ตามเนื้อหา
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** ANN — ประกาศทางการ: ถาวร (ส่งหอจดหมายเหตุ) (08 §8)
+- **สถานะในเล่ม 08:** 08 §2.11 · **FR:** FR-R1-007, FR-R1-029, FR-R1-033, FR-R1-041, FR-R1-043, FR-R1-048, FR-R1-056, FR-R1-059, FR-R1-082, FR-R1-085, FR-R1-103, FR-R1-129
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `document_id` | uuid | N | PK | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `template_version_id` | uuid | N |  | — |  |
+| `sha256` | char(64) | N |  | — |  |
+| `pdfa_level` | text | N | PDF/A-2u/3 | — |  |
+| `signature_level` | text | N |  | — |  |
+| `retention_class` | text | N |  | — |  |
+| `valid_until` | date | Y |  | — |  |
+
+### SignatureRecord
+
+บันทึกการลงนาม/ประทับตรา
+
+- **โมดูลเจ้าของ:** DOC · **ที่เก็บ:** core · **ตาราง:** `doc.signature_record` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** ANN — ประกาศทางการ: ถาวร (ส่งหอจดหมายเหตุ) (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.7 · **FR:** FR-R1-007, FR-R1-048
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `document_id` | uuid | N |  | — |  |
+| `signer_type` | text | N | ORG_SEAL, PERSONAL | — |  |
+| `signer_person_id` | uuid | Y |  | PD |  |
+| `pades_level` | text | N | B-T, B-LT, B-LTA | — |  |
+| `tsa_token_ref` | text | Y |  | — |  |
+
+### RequestReceipt
+
+ใบรับอิเล็กทรอนิกส์ (ใบสมัคร คำขอ อุทธรณ์ ร้องเรียน)
+
+- **โมดูลเจ้าของ:** SVC/CASE · **ที่เก็บ:** core · **ตาราง:** `svc.request_receipt` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** RECV — Owning unit — หน่วยที่รับเรื่อง (CASE) (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §5 (เลขรับ) · **FR:** FR-R1-033, FR-R1-099, FR-R1-104
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `receipt_no` | text | N | `{type}-{OrgCode}-{พ.ศ.}-{running}` unique | — |  |
+| `subject_type` | text | N |  | — |  |
+| `subject_id` | uuid | N |  | — |  |
+| `issued_at` | timestamptz | N |  | — |  |
+| `document_id` | uuid | N | PAdES-B-T | — |  |
+
+### ServiceRequest
+
+instance ของ e-Form (ขอยกเว้นค่าสมัคร, สละสิทธิ์)
+
+- **โมดูลเจ้าของ:** SVC · **ที่เก็บ:** core · **ตาราง:** `svc.service_request` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.5 · **FR:** FR-R1-049, FR-R1-090
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `form_code` | text | N |  | — |  |
+| `requester_person_id` | uuid | N |  | PD |  |
+| `payload` | jsonb | N |  | PD |  |
+| `status` | text | N |  | — |  |
+| `sla_due_at` | timestamptz | Y |  | — |  |
+
+### Appointment
+
+นัดรายงานตัวที่จุดบริการ
+
+- **โมดูลเจ้าของ:** SVC · **ที่เก็บ:** core · **ตาราง:** `svc.appointment` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** APP — ผู้ไม่ได้รับเข้า: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน; ผู้ได้รับเข้า: ส่วนที่จำเป็นรวมเข้าแฟ้มนักศึกษา เอกสารประกอบ 5 ปีหลังพ้นสภาพ/จบ (08 §8) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.5 (booking R1) · **FR:** FR-R1-116
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `service_point_id` | uuid | N |  | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `starts_at` | timestamptz | N |  | — |  |
+| `status` | text | N | BOOKED, ATTENDED, NO_SHOW, CANCELLED | — |  |
+
+### Announcement
+
+ประกาศทางการ (ห่วงโซ่ฉบับแก้ไข)
+
+- **โมดูลเจ้าของ:** ENG · **ที่เก็บ:** core · **ตาราง:** `eng.announcement` · **ชั้นข้อมูล:** Public
+- **`org_unit_id`:** ISSUER — Owning unit — หน่วยที่ออกเอกสาร/ใบแจ้งหนี้/ใบเสร็จ (08 §6)
+- **Retention:** ANN — ประกาศทางการ: ถาวร (ส่งหอจดหมายเหตุ) (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.4 · **FR:** FR-R1-008, FR-R1-010, FR-R1-043, FR-R1-082, FR-R1-085, FR-R1-138
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `no` | text | N |  | — |  |
+| `year_be` | int | N |  | — |  |
+| `type` | text | N | ADM_ROUND, ADM_ELIGIBLE, ADM_RESULT, GENERAL, EMERGENCY | — |  |
+| `priority` | text | N | P0, P1, P2 | — |  |
+| `supersedes_id` | uuid | Y |  | — |  |
+| `document_id` | uuid | Y |  | — |  |
+| `oit_category` | text | Y |  | — |  |
+| `approved_by` | uuid[] | N | P0 ≥ 2 | PD |  |
+| `dlp_passed` | boolean | N |  | — |  |
+
+### AudienceSegment
+
+นิยามกลุ่มผู้รับ (เช่น ผู้สมัครรอบ X, ผู้สอบ session Y)
+
+- **โมดูลเจ้าของ:** ENG · **ที่เก็บ:** core · **ตาราง:** `eng.audience_segment` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** MSG — เนื้อหาข้อความ 1 ปี, metadata การส่ง 2 ปี (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.4 · **FR:** FR-R1-138
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `definition` | jsonb | N |  | — |  |
+| `estimated_count` | int | Y |  | — |  |
+
+### RecipientSnapshot
+
+หลักฐานรายชื่อผู้รับ ณ เวลาส่ง
+
+- **โมดูลเจ้าของ:** ENG · **ที่เก็บ:** core · **ตาราง:** `eng.recipient_snapshot` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** MSG — เนื้อหาข้อความ 1 ปี, metadata การส่ง 2 ปี (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.4 · **FR:** FR-R1-138
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `announcement_id` | uuid | N |  | — |  |
+| `recipient_count` | int | N |  | — |  |
+| `recipients_ref` | text | N | object (เข้ารหัส) | PD |  |
+
+### NotificationRule
+
+event → template → ผู้รับ
+
+- **โมดูลเจ้าของ:** NOTI · **ที่เก็บ:** core · **ตาราง:** `noti.notification_rule` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.3 · **FR:** FR-R1-133
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `event_name` | text | N | ต้องอยู่ใน 06 §10.2 | — |  |
+| `template_code` | text | N |  | — |  |
+| `priority` | text | N |  | — |  |
+| `include_guardian` | boolean | N |  | — |  |
+
+### MessageTemplate
+
+แม่แบบข้อความ TH/EN ราย OrgUnit
+
+- **โมดูลเจ้าของ:** NOTI · **ที่เก็บ:** core · **ตาราง:** `noti.message_template` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.3 · **FR:** FR-R1-133, FR-R1-135
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `code` | text | N |  | — |  |
+| `version` | int | N |  | — |  |
+| `channel` | text | N | INAPP, PUSH, LINE, EMAIL, SMS | — |  |
+| `body_th` | text | N | ไม่มี PII ในช่องทางภายนอก (lint) | — |  |
+| `body_en` | text | Y |  | — |  |
+
+### Message
+
+ข้อความต่อผู้รับ
+
+- **โมดูลเจ้าของ:** NOTI · **ที่เก็บ:** core · **ตาราง:** `noti.message` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** MSG — เนื้อหาข้อความ 1 ปี, metadata การส่ง 2 ปี (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.3 · **FR:** FR-R1-111, FR-R1-133, FR-R1-134, FR-R1-135, FR-R1-139
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `recipient_person_id` | uuid | N |  | PD |  |
+| `template_version_id` | uuid | N |  | — |  |
+| `priority` | text | N |  | — |  |
+| `release_at` | timestamptz | N | quiet hours/hold window | — |  |
+| `acknowledged_at` | timestamptz | Y |  | — |  |
+
+### Delivery
+
+ผลส่งต่อช่องทาง
+
+- **โมดูลเจ้าของ:** NOTI · **ที่เก็บ:** core · **ตาราง:** `noti.delivery` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** MSG — เนื้อหาข้อความ 1 ปี, metadata การส่ง 2 ปี (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.3 · **FR:** FR-R1-134
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `message_id` | uuid | N |  | — |  |
+| `channel` | text | N |  | — |  |
+| `status` | text | N | SENT, FAILED, CLICKED | — |  |
+| `provider_ref` | text | Y |  | — |  |
+
+### InboxItem
+
+ข้อความในกล่องแอป
+
+- **โมดูลเจ้าของ:** NOTI · **ที่เก็บ:** core · **ตาราง:** `noti.inbox_item` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** MSG — เนื้อหาข้อความ 1 ปี, metadata การส่ง 2 ปี (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.3 · **FR:** FR-R1-136
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `message_id` | uuid | N |  | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `read_at` | timestamptz | Y |  | — |  |
+
+### ChannelPreference
+
+การตั้งค่าช่องทางต่อหมวด
+
+- **โมดูลเจ้าของ:** NOTI · **ที่เก็บ:** core · **ตาราง:** `noti.channel_preference` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** IAM — ตลอดอายุบัญชี + 1 ปีหลังปิด; IdentityLink ของบัญชีที่ลบตาม Person [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.3 · **FR:** FR-R1-134, FR-R1-136
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `category` | text | N |  | — |  |
+| `channels` | text[] | N | หมวดบังคับ ≥ 1 | — |  |
+
+### ChannelBinding
+
+LINE userId / push subscription
+
+- **โมดูลเจ้าของ:** NOTI · **ที่เก็บ:** core · **ตาราง:** `noti.channel_binding` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** NONE — ไม่มี `org_unit_id` — ข้อยกเว้นตาม 08 §6 (Person/reference); มองเห็นผ่าน `person_in_scope`/relationship
+- **Retention:** IAM — ตลอดอายุบัญชี + 1 ปีหลังปิด; IdentityLink ของบัญชีที่ลบตาม Person [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §5 · **FR:** FR-R1-137
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `person_id` | uuid | N |  | PD |  |
+| `channel` | text | N | LINE, WEBPUSH | — |  |
+| `external_id_enc` | bytea | N |  | PD | ลบเมื่อยกเลิกผูก |
+| `consent_id` | uuid | Y | L-26 | — |  |
+
+### CaseFile
+
+แฟ้มเรื่อง (อุทธรณ์/ร้องเรียน)
+
+- **โมดูลเจ้าของ:** CASE · **ที่เก็บ:** core · **ตาราง:** `case.case_file` · **ชั้นข้อมูล:** Confidential (+ ชั้นความลับตาม DOC)
+- **`org_unit_id`:** RECV — Owning unit — หน่วยที่รับเรื่อง (CASE) (08 §6)
+- **Retention:** CASE — ร้องเรียน 10 ปีหลังปิดเรื่อง; อุทธรณ์ผลคัดเลือกตาม retention ของใบสมัคร (ขยายถ้ามีคดี) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.10 · **FR:** FR-R1-035, FR-R1-099, FR-R1-104
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `case_id` | uuid | N | PK | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `case_type` | text | N | APPEAL, COMPLAINT, WHISTLEBLOW | — |  |
+| `category` | text | N |  | — |  |
+| `channel` | text | N | PORTAL, COUNTER, EMAIL | — |  |
+| `anonymous_token_hash` | char(64) | Y |  | — |  |
+| `receipt_no` | text | N |  | — |  |
+| `secrecy_level` | text | N | NORMAL, LAB, LAB_MAK | — |  |
+| `excluded_person_ids` | uuid[] | Y | ผู้ถูกร้อง/สายบังคับบัญชา | PD |  |
+
+### Appeal
+
+อุทธรณ์ (subject_type = ADMISSION / ACCOMMODATION)
+
+- **โมดูลเจ้าของ:** CASE · **ที่เก็บ:** core · **ตาราง:** `case.appeal` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** RECV — Owning unit — หน่วยที่รับเรื่อง (CASE) (08 §6)
+- **Retention:** CASE — ร้องเรียน 10 ปีหลังปิดเรื่อง; อุทธรณ์ผลคัดเลือกตาม retention ของใบสมัคร (ขยายถ้ามีคดี) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 08 §2.10 · **FR:** FR-R1-099, FR-R1-101, FR-R1-106
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `appeal_id` | uuid | N | PK | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `case_id` | uuid | N |  | — |  |
+| `subject_type` | text | N | ADMISSION, … | — |  |
+| `subject_id` | uuid | N | application_choice_id | — |  |
+| `grounds` | text | N |  | PD |  |
+| `filed_at` | timestamptz | N |  | — |  |
+| `deadline` | timestamptz | N | SLA ตัดสิน | — |  |
+| `stay_of_effect` | boolean | N |  | — |  |
+| `expedited` | boolean | N | true สำหรับ W-18 | — |  |
+
+### ScoreRecheck
+
+ผลตรวจซ้ำการบันทึกและการคำนวณโดยกรรมการชุดเดิม
+
+- **โมดูลเจ้าของ:** CASE/ADM · **ที่เก็บ:** core · **ตาราง:** `adm.score_recheck` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CASE — ร้องเรียน 10 ปีหลังปิดเรื่อง; อุทธรณ์ผลคัดเลือกตาม retention ของใบสมัคร (ขยายถ้ามีคดี) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** R1 ใหม่ (W-18 ขั้น 4) · **FR:** FR-R1-101
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `appeal_id` | uuid | N |  | — |  |
+| `findings` | jsonb | N |  | PD |  |
+| `proposed_override_id` | uuid | Y |  | — |  |
+| `recorded_by` | uuid | N |  | PD |  |
+
+### CaseDecision
+
+คำตัดสิน
+
+- **โมดูลเจ้าของ:** CASE · **ที่เก็บ:** core · **ตาราง:** `case.case_decision` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** RECV — Owning unit — หน่วยที่รับเรื่อง (CASE) (08 §6)
+- **Retention:** CASE — ร้องเรียน 10 ปีหลังปิดเรื่อง; อุทธรณ์ผลคัดเลือกตาม retention ของใบสมัคร (ขยายถ้ามีคดี) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.6 · **FR:** FR-R1-101, FR-R1-103
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `case_id` | uuid | N |  | — |  |
+| `outcome` | text | N | UPHELD, AMENDED, REJECTED_OUT_OF_TIME | — |  |
+| `reasons_th` | text | N |  | PD |  |
+| `decided_by` | uuid | N |  | PD |  |
+| `approved_by` | uuid | Y | campusvp เมื่อเปลี่ยนผล | PD |  |
+| `served_at` | timestamptz | Y |  | — |  |
+| `document_id` | uuid | Y |  | — |  |
+
+### HealthSubject
+
+subject แบบ pseudonymous
+
+- **โมดูลเจ้าของ:** HLT · **ที่เก็บ:** hlt_vault · **ตาราง:** `hlt.health_subject` · **ชั้นข้อมูล:** Sensitive
+- **`org_unit_id`:** CARE — Care/serving unit — หน่วยที่ให้การดูแล (ตารางใน `hlt_vault`) (08 §6)
+- **Retention:** SELMED — `SELECTION_MEDICAL`: ผู้ไม่ได้รับเข้า crypto-shred เมื่อปิดรอบ + ระยะอุทธรณ์; ผู้ได้รับเข้า ส่วนที่จำเป็นย้ายเป็น `CLINICAL` (08 §8, §9.2)
+- **สถานะในเล่ม 08:** 08 §2.9 · **FR:** FR-R1-064, FR-R1-068
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `subject_id` | uuid | N | PK | — |  |
+| `person_token` | char(64) | N | HMAC(vault_key, person_id) | PD |  |
+| `org_unit_id` | uuid | N | care unit; RLS | — |  |
+| `shredded_at` | timestamptz | Y |  | — |  |
+
+### ScreeningResult
+
+แบบคัดกรองก่อนออกกำลังกาย/คัดกรองหน้าสนาม (record class SELECTION_MEDICAL)
+
+- **โมดูลเจ้าของ:** HLT · **ที่เก็บ:** hlt_vault · **ตาราง:** `hlt.screening_result` · **ชั้นข้อมูล:** Sensitive
+- **`org_unit_id`:** CARE — Care/serving unit — หน่วยที่ให้การดูแล (ตารางใน `hlt_vault`) (08 §6)
+- **Retention:** SELMED — `SELECTION_MEDICAL`: ผู้ไม่ได้รับเข้า crypto-shred เมื่อปิดรอบ + ระยะอุทธรณ์; ผู้ได้รับเข้า ส่วนที่จำเป็นย้ายเป็น `CLINICAL` (08 §8, §9.2)
+- **สถานะในเล่ม 08:** 08 §2.9 · **FR:** FR-R1-064, FR-R1-066, FR-R1-068
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | care unit | — |  |
+| `subject_id` | uuid | N |  | — |  |
+| `record_class` | text | N | SELECTION_MEDICAL | — |  |
+| `kind` | text | N | SELF_PARQ, CHILD_FORM, PRE_TEST_VITALS | — |  |
+| `answers_enc` | bytea | N | DEK (subject × class) | SPD |  |
+| `certificate_object_key` | text | Y | เข้ารหัส | SPD |  |
+| `certificate_issued_on` | date | Y |  | SPD |  |
+| `physician_licence_no_enc` | bytea | Y |  | PD |  |
+| `outcome` | text | N | PASS, NEEDS_SPECIALIST, FAIL | SPD |  |
+| `recorded_by` | uuid | N |  | PD |  |
+
+### MedicalClearance
+
+clearance PRE_TEST (ส่งออกเฉพาะ status/valid_to)
+
+- **โมดูลเจ้าของ:** HLT · **ที่เก็บ:** hlt_vault · **ตาราง:** `hlt.medical_clearance` · **ชั้นข้อมูล:** Sensitive (สถานะส่งออกได้)
+- **`org_unit_id`:** CARE — Care/serving unit — หน่วยที่ให้การดูแล (ตารางใน `hlt_vault`) (08 §6)
+- **Retention:** SELMED — `SELECTION_MEDICAL`: ผู้ไม่ได้รับเข้า crypto-shred เมื่อปิดรอบ + ระยะอุทธรณ์; ผู้ได้รับเข้า ส่วนที่จำเป็นย้ายเป็น `CLINICAL` (08 §8, §9.2)
+- **สถานะในเล่ม 08:** 06 §7.6 · **FR:** FR-R1-058, FR-R1-064, FR-R1-065, FR-R1-068
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | care unit | — |  |
+| `subject_id` | uuid | N |  | — |  |
+| `type` | text | N | PRE_TEST | — |  |
+| `status` | text | N | CLEARED, CLEARED_WITH_CONDITIONS, NOT_CLEARED, PENDING | PD | ส่งออกได้ |
+| `conditions_enc` | bytea | Y |  | SPD |  |
+| `valid_to` | date | Y |  | PD |  |
+| `issued_by` | uuid | N | nurse/physician | PD |  |
+
+### InjuryRecord
+
+บันทึกบาดเจ็บวันสอบ (record class INJURY_RTP)
+
+- **โมดูลเจ้าของ:** HLT · **ที่เก็บ:** hlt_vault · **ตาราง:** `hlt.injury` · **ชั้นข้อมูล:** Sensitive
+- **`org_unit_id`:** CARE — Care/serving unit — หน่วยที่ให้การดูแล (ตารางใน `hlt_vault`) (08 §6)
+- **Retention:** INJ — `INJURY_RTP`: ระยะศึกษา + 5 ปี; ผู้ไม่ได้รับเข้า [ต้องตรวจสอบ — เสนอ 5 ปีหลังเหตุ เพื่อการเรียกร้องสิทธิ์]
+- **สถานะในเล่ม 08:** 06 §7.6 (Injury) · **FR:** FR-R1-067
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | care unit | — |  |
+| `subject_id` | uuid | N |  | — |  |
+| `occurred_at` | timestamptz | N |  | SPD |  |
+| `details_enc` | bytea | N |  | SPD |  |
+| `suspected_concussion` | boolean | N |  | SPD |  |
+| `lawful_basis` | text | N | S26_5A_MEDICAL, VITAL_INTEREST_EMERGENCY | — |  |
+| `guardian_call_log` | jsonb | Y | เวลาโทร/ผล (ผู้เยาว์) | PD |  |
+| `severity_band` | text | N | ส่งออกได้ | PD |  |
+
+### DisabilityEvidence
+
+หลักฐานความพิการประกอบ accommodation (record class DISABILITY)
+
+- **โมดูลเจ้าของ:** HLT · **ที่เก็บ:** hlt_vault · **ตาราง:** `hlt.disability_evidence` · **ชั้นข้อมูล:** Sensitive
+- **`org_unit_id`:** CARE — Care/serving unit — หน่วยที่ให้การดูแล (ตารางใน `hlt_vault`) (08 §6)
+- **Retention:** DIS — `DISABILITY`: ผู้ไม่ได้รับเข้า ลบพร้อม SELECTION_MEDICAL; ผู้ได้รับเข้า ส่งต่อ AFF เมื่อยินยอม (W-33) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §7.6 (R2) — ใช้ขั้นต่ำใน R1 (gap G-01) · **FR:** FR-R1-028
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | care unit | — |  |
+| `subject_id` | uuid | N |  | — |  |
+| `document_object_key` | text | N | เข้ารหัส | SPD |  |
+| `reviewed_by` | uuid | Y | dss | PD |  |
+
+### Facility
+
+ทะเบียนสนาม (อ้าง Room/Building ของ ORG)
+
+- **โมดูลเจ้าของ:** FAC · **ที่เก็บ:** core · **ตาราง:** `fac.facility` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §8.2 · **FR:** FR-R1-054, FR-R1-055
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `room_id` | uuid | Y |  | — |  |
+| `type` | text | N |  | — |  |
+| `capacity` | int | N |  | — |  |
+| `outdoor` | boolean | N |  | — |  |
+| `accessible` | boolean | N |  | — |  |
+
+### Booking
+
+การจองสนามสำหรับสอบทักษะ
+
+- **โมดูลเจ้าของ:** FAC · **ที่เก็บ:** core · **ตาราง:** `fac.booking` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** OPS — 1 ปี (metadata ปฏิบัติการ) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §8.2 · **FR:** FR-R1-055
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `facility_id` | uuid | N |  | — |  |
+| `slot` | tstzrange | N | EXCLUDE ชน (ตาม priority) | — |  |
+| `requester_module` | text | N | ADM | — |  |
+| `subject_ref` | uuid | N | session_id | — |  |
+| `status` | text | N | REQUESTED, CONFIRMED, CANCELLED, CONFLICT | — |  |
+
+### VenueEmergencyPlan
+
+แผนฉุกเฉินต่อสนาม
+
+- **โมดูลเจ้าของ:** FAC · **ที่เก็บ:** core · **ตาราง:** `fac.venue_emergency_plan` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** W-153 (FAC) · **FR:** FR-R1-060
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `facility_id` | uuid | N |  | — |  |
+| `aed_location` | text | N |  | — |  |
+| `ambulance_point` | text | N |  | — |  |
+| `responsible_person_id` | uuid | N |  | PD |  |
+| `cooling_equipment` | boolean | N |  | — |  |
+
+### HeatReading
+
+ค่า WBGT
+
+- **โมดูลเจ้าของ:** FAC · **ที่เก็บ:** core · **ตาราง:** `fac.heat_reading` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** OPS — 1 ปี (metadata ปฏิบัติการ) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** W-153 · **FR:** FR-R1-061
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `facility_id` | uuid | N |  | — |  |
+| `measured_at` | timestamptz | N |  | — |  |
+| `wbgt_c` | numeric(4,1) | N |  | — |  |
+| `level` | text | N | NORMAL, ADJUST, STOP [เกณฑ์ ต้องตรวจสอบ Q-99] | — |  |
+| `recorded_by` | uuid | N |  | PD |  |
+
+### OitItem
+
+ข้อ OIT ต่อปีงบ
+
+- **โมดูลเจ้าของ:** RPT · **ที่เก็บ:** core · **ตาราง:** `rpt.oit_item` · **ชั้นข้อมูล:** Public (เมื่อเผยแพร่)
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** OIT — snapshot ที่เป็นสถิติทางการ: ถาวร; อื่น 10 ปี (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.11 · **FR:** FR-R1-119, FR-R1-120, FR-R1-121, FR-R1-122
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `fiscal_year_be` | int | N |  | — |  |
+| `code` | text | N |  | — |  |
+| `owner_person_id` | uuid | N |  | PD |  |
+| `due_at` | date | N | ≤ 30 มิ.ย. | — |  |
+| `status` | text | N | OPEN, READY, APPROVED, PUBLISHED | — |  |
+| `approved_by` | uuid | Y | rector/ผู้ได้รับมอบอำนาจ | PD |  |
+
+### OitSnapshot
+
+snapshot ข้อมูลที่เผยแพร่
+
+- **โมดูลเจ้าของ:** RPT · **ที่เก็บ:** object storage WORM · **ตาราง:** `rpt.oit_snapshot` · **ชั้นข้อมูล:** Public
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** OIT — snapshot ที่เป็นสถิติทางการ: ถาวร; อื่น 10 ปี (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.11 · **FR:** FR-R1-120, FR-R1-121
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `oit_item_id` | uuid | N |  | — |  |
+| `object_key` | text | N | Object Lock | — |  |
+| `sha256` | char(64) | N |  | — |  |
+| `published_at` | timestamptz | N |  | — |  |
+
+### AdminChangeRequest
+
+คำขอเปลี่ยน config แบบ 4-eyes
+
+- **โมดูลเจ้าของ:** ADMIN · **ที่เก็บ:** core · **ตาราง:** `admin.change_request` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.12 · **FR:** FR-R1-007, FR-R1-123
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `type` | text | N | FEE_SCHEDULE, BILLER, NOTICE, CONSENT_POLICY, ROLE_CATALOGUE, RETENTION, SIGNATURE_POLICY, TEMPLATE, FEATURE_FLAG, ROUND_AMENDMENT | — |  |
+| `diff` | jsonb | N |  | — |  |
+| `effective_from` | timestamptz | N |  | — |  |
+| `maker_id` | uuid | N |  | PD |  |
+| `checker_id` | uuid | Y | ≠ maker_id | PD |  |
+| `state` | text | N | PENDING, APPROVED, REJECTED | — |  |
+
+### FeatureFlag
+
+flag (เช่น TCAS ต่อ OrgUnit × program × round)
+
+- **โมดูลเจ้าของ:** ADMIN · **ที่เก็บ:** Git/config · **ตาราง:** `admin.feature_flag` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.12 · **FR:** FR-R1-032
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `key` | text | N |  | — |  |
+| `scope` | jsonb | N |  | — |  |
+| `enabled` | boolean | N |  | — |  |
+
+### ReleaseRing
+
+ring ของ OrgUnit สำหรับ go-live/freeze
+
+- **โมดูลเจ้าของ:** ADMIN · **ที่เก็บ:** core · **ตาราง:** `admin.release_ring` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.12; ADR-025 · **FR:** FR-R1-124, FR-R1-131
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `ring` | text | N | PILOT, WAVE1, … | — |  |
+| `org_unit_ids` | uuid[] | N |  | — |  |
+| `freeze_windows` | jsonb | Y | จากปฏิทิน | — |  |
+
+### JobRun
+
+ประวัติการรัน job
+
+- **โมดูลเจ้าของ:** ADMIN · **ที่เก็บ:** core · **ตาราง:** `admin.job_run` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** OPS — 1 ปี (metadata ปฏิบัติการ) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.12 · **FR:** FR-R1-125
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `job_code` | text | N | J-03, J-04, … | — |  |
+| `started_at` | timestamptz | N |  | — |  |
+| `ended_at` | timestamptz | Y |  | — |  |
+| `status` | text | N | OK, FAILED | — |  |
+| `metrics` | jsonb | Y | ไม่มี PII | — |  |
+
+### IntegrationRun
+
+สถานะ integration
+
+- **โมดูลเจ้าของ:** ADMIN · **ที่เก็บ:** core · **ตาราง:** `admin.integration_run` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** OPS — 1 ปี (metadata ปฏิบัติการ) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** 06 §5.12 · **FR:** FR-R1-125
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `integration_code` | text | N | I-01, I-15, I-16, … | — |  |
+| `status` | text | N |  | — |  |
+| `dlq_count` | int | N |  | — |  |
+
+### BreakGlassSession
+
+การใช้บัญชี break-glass
+
+- **โมดูลเจ้าของ:** ADMIN · **ที่เก็บ:** core + WORM · **ตาราง:** `admin.break_glass_session` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** AUD — 10 ปี WORM (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.12 · **FR:** FR-R1-126
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `requested_by` | uuid | N |  | PD |  |
+| `approver_1` | uuid | Y |  | PD |  |
+| `approver_2` | uuid | Y | ≠ approver_1 | PD |  |
+| `started_at` | timestamptz | Y |  | — |  |
+| `review_due_at` | timestamptz | Y | +24 ชม. | — |  |
+
+### JitGrant
+
+สิทธิ์ privileged ชั่วคราว
+
+- **โมดูลเจ้าของ:** ADMIN · **ที่เก็บ:** PAM · **ตาราง:** `admin.jit_grant` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** AUD — 10 ปี WORM (08 §8)
+- **สถานะในเล่ม 08:** 06 §5.12 · **FR:** FR-R1-127
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `grantee_id` | uuid | N |  | PD |  |
+| `ticket_ref` | text | N |  | — |  |
+| `scope` | text | N |  | — |  |
+| `expires_at` | timestamptz | N | ≤ 8 ชม. | — |  |
+| `approved_by` | uuid | N | ≠ grantee | PD |  |
+
+### WaitingRoomPolicy
+
+เกณฑ์เปิด waiting room ต่อ route
+
+- **โมดูลเจ้าของ:** ADMIN · **ที่เก็บ:** gateway config · **ตาราง:** `(APISIX/Valkey config)` · **ชั้นข้อมูล:** Internal
+- **`org_unit_id`:** UNI — University level — OrgUnit ราก (ใช้ได้เฉพาะ config/ตารางกลาง) (08 §6)
+- **Retention:** CFG — ตลอดอายุการใช้งาน + ประวัติทุกเวอร์ชัน (config ที่มีผลทางกฎหมาย/การเงินเก็บตาม FIN) [ต้องตรวจสอบ]
+- **สถานะในเล่ม 08:** ADR-028 · **FR:** FR-R1-130
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `route` | text | N |  | — |  |
+| `threshold_active_users` | int | N |  | — |  |
+| `release_rate_per_min` | int | N | 100–1,000 | — |  |
+| `extended_timeout_for_accommodation` | boolean | N |  | — |  |
+
+### AuditEvent
+
+เหตุการณ์ audit (append-only, hash chain)
+
+- **โมดูลเจ้าของ:** AUD · **ที่เก็บ:** core partition + WORM · **ตาราง:** `aud.audit_event` · **ชั้นข้อมูล:** Confidential
+- **`org_unit_id`:** OWN — Owning unit — วิทยาเขตที่เปิดรอบ/เป็นเจ้าของ record (08 §6)
+- **Retention:** AUD — 10 ปี WORM (08 §8)
+- **สถานะในเล่ม 08:** 08 §2.11 · **FR:** FR-R1-126, FR-R1-128
+
+| ฟิลด์ | ชนิด | Null | ข้อจำกัด | PII | หมายเหตุ |
+|---|---|---|---|---|---|
+| `id` | uuid | N | PK, UUIDv7 | — |  |
+| `org_unit_id` | uuid | N | FK ORG_UNIT; RLS | — |  |
+| `actor_id` | uuid | N |  | PD |  |
+| `on_behalf_of` | uuid | Y |  | PD |  |
+| `active_role` | text | N | role × OrgUnit | — |  |
+| `action` | text | N |  | — |  |
+| `resource` | text | N |  | — |  |
+| `purpose` | text | Y |  | — |  |
+| `decision` | text | N | ALLOW, DENY | — |  |
+| `ip` | inet | N |  | PD |  |
+| `trace_id` | text | N |  | — |  |
+| `prev_hash` | char(64) | N |  | — |  |
+
+
+
+---
+
+<!-- ไฟล์ต้นฉบับ: docs/r1/r1-requirements.md -->
+# R1 "รับสมัคร" — ข้อกำหนดเชิงหน้าที่และไม่ใช่หน้าที่ (FR-R1 / NFR-R1)
+
+> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · Release R1 "รับสมัคร" (go-live 1 ก.ย. 2571 = M18; ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือน — เล่ม 12 §1.3) · ภาษา: ไทย (ศัพท์เทคนิค/โค้ดเป็นภาษาอังกฤษ)
+> **ขอบเขต:** Release R1 สำหรับ 2 วิทยาเขต pilot (ชลบุรี, มหาสารคาม — A-85, Q-59) ตาม D-03
+> **อ่านคู่กับ:** [README](README.md) · [00-blueprint](../00-blueprint.md) · [00-fix-decisions-v1.1](../00-fix-decisions-v1.1.md) (D-03, D-06, D-08) · [02 §2](../02-student-journey.md) · [05](../05-workflows.md) · [06](../06-modules.md) · [08](../08-data.md) · [10](../10-security-compliance.md) · [14](../14-ux-adoption.md) · [r1-traceability](r1-traceability.md) · [r1-test-plan](r1-test-plan.md)
+
+## 0. วิธีอ่าน
+
+| หัวข้อ | กติกา |
+|---|---|
+| รหัส | `FR-R1-xxx` ข้อกำหนดเชิงหน้าที่, `NFR-R1-xxx` ข้อกำหนดที่ไม่ใช่หน้าที่, `S-R1-xx` หน้าจอ ([r1-screens](r1-screens.md)), `TC-R1-xxx` test case ([r1-test-plan](r1-test-plan.md)), `UAT-R1-xx` สถานการณ์ UAT, `G-xx` ช่องว่างของเอกสารนี้ — รหัสอื่น (W-xx, A-xx, Q-xx, C-x, L-xx, SoD-xx, KPI-xx, J-xx, I-xx) ใช้ตามเล่มเจ้าของ ไม่สร้างใหม่ |
+| ข้อความ | ทุก FR ขึ้นต้น "ระบบต้อง…" (Must) / "ระบบควร…" (Should) / "ระบบอาจ…" (Could) |
+| Priority (MoSCoW) | **Must** = ต้องมีเพื่อ go-live R1 (MS-1); **Should** = ควรมี ถ้าตัดต้องมีทางสำรองที่ Steering อนุมัติ (scope cut list เล่ม 12 §1.2); **Could** = เปิดด้วย feature flag เมื่อนโยบาย/ความพร้อมยืนยัน |
+| ที่มา | `เล่ม §หัวข้อ` (เช่น 02 §2.8.1 = เล่ม 02 หัวข้อ 2.8.1), รหัส workflow/สมมติฐาน |
+| เกณฑ์ยอมรับ | รูปแบบ Given/When/Then เขียนเป็นภาษาไทย: **กำหนดให้** (Given) · **เมื่อ** (When) · **ผลที่ต้องได้** (Then); ป้ายประเภท [ฟังก์ชัน]/[กรณีผิดปกติ]/[ความปลอดภัย]/[PDPA]/[การเข้าถึง]; ทุกข้อเป็น test case ใน r1-test-plan |
+| บทบาท | รหัสบทบาทตามเล่ม 04 (`candidate`, `guardian`, `admission`, `judge`, `head` (qualifier `selection_chair`), `campusvp`, `registrar`, `finance`, `nurse`, `physician`, `dss`, `pr`, `planner`, `dpo` ฯลฯ); `applicant` = ประชาชน/ผู้ใช้ที่ไม่ login; `system` = งานอัตโนมัติ |
+| ความน่าเชื่อถือ | ค่าที่ยังไม่ยืนยันติด **[ต้องตรวจสอบ]** พร้อม A-xx/Q-xx; ค่าตัวเลขเชิงนโยบายของ มกช. เป็น configuration ไม่ hard-code (06 §1 ข้อ 10) |
+
+## 1. ขอบเขต R1
+
+### 1.1 เป้าหมายและเวลา
+
+- **Go-live 1 ก.ย. 2571 (M18)** feature-freeze 1 มิ.ย. 2571, go/no-go 15 ส.ค. 2571 (เล่ม 12 §1.2) เพื่อทันประกาศโควตาปลาย ก.ย. และรับสมัครโควตา ต.ค.–พ.ย. 2571 ของปีการศึกษา 2572 แล้วใช้ต่อกับรอบทั่วไป 1..n (ราว ก.พ.–มิ.ย. 2572) และการยืนยันสิทธิ์ซ้ำ พ.ค. 2572 (blueprint §7; เล่ม 03 CAL-A6)
+- **วิทยาเขต pilot:** ชลบุรี + มหาสารคาม (A-85, ยืนยันใน Q-59) — วิทยาเขตอื่นยังใช้ระบบเดิม และ dedupe ผ่าน BR-01 (เล่ม 12 §2.3)
+- นักศึกษาปัจจุบันยังอยู่ระบบเดิมทั้งหมด (R1 ไม่แตะงานทะเบียนของนักศึกษาปัจจุบัน)
+
+### 1.2 โมดูลใน R1 (ตาม D-03 และ 06 §11)
+
+| โมดูล | ส่วนที่อยู่ใน R1 | กลุ่ม FR |
+|---|---|---|
+| ADM | ✓ ทุกช่องทางของ ป.ตรี 2 วิทยาเขต pilot, clearing แบบ "ยืนยันได้ที่เดียว", สอบทักษะหลายกรรมการ, TCAS adapter (ปิด) | RND, APP, DOC, SCH, SCR, RES, CLR, HND |
+| IAM | ✓ ผู้สมัคร ผู้ปกครองผู้สมัครผู้เยาว์ บุคลากรรับเข้า ThaID MFA บุคคลภายนอก (กรรมการ) role switcher | ACC |
+| ORG | ✓ OrgUnit ทุกแห่ง ปฏิทินรอบรับสมัคร window engine GateOverride | RND, CLR |
+| NOTI / ENG | ✓ in-app, อีเมล, LINE, SMS OTP; ประกาศ ประกาศผล ฉุกเฉิน P0 journey ผู้สมัคร | NTF |
+| SVC | ◐ e-Form ของผู้สมัคร (ขอยกเว้นค่าสมัคร, สละสิทธิ์), ใบรับ, นัดรายงานตัว | FEE, CLR, HND |
+| CASE | ◐ อุทธรณ์ผลคัดเลือก (W-18), ร้องเรียน/แจ้งเบาะแส (W-19) | APL |
+| DOC | ◐ e-Receipt, บัตรประจำตัวผู้สอบ, ประกาศ/รายชื่อ PDF, ใบรับ, คำสั่งแต่งตั้งกรรมการ (G-05) | RND, FEE, SCH, RES, CFG |
+| PRIV | ✓ notice, consent ผู้สมัครผู้เยาว์ (consent policy อายุ × กิจกรรม), ROPA/DPIA/cross-border register | GRD |
+| AUD | ✓ | CFG |
+| FIN | ◐ ค่าสมัคร ค่ายืนยันสิทธิ์ ใบเสร็จ reconcile waiver คืนเงินเมื่อยกเลิกรอบ (G-02) | FEE |
+| REC | ◐ Person master + GuardianRelation; **ยังไม่ออกรหัสนักศึกษา** (G-03) | ACC, GRD, HND |
+| CUR | ◐ ProgramOffering + AccreditedIntakeCap ของ pilot | RND |
+| HLT | ◐ `hlt_vault`/`hlt_keys`, MedicalClearance ก่อนสอบทักษะ, บาดเจ็บวันสอบ (ADM เห็นเฉพาะสถานะ) | MED |
+| FAC | ◐ ทะเบียน facility + จองสนามสอบทักษะ + WBGT ของ station | SCH |
+| RPT / X-CMS | ◐ OIT registry (W-136) ทั้งมหาวิทยาลัย + หน้า ITA/OIT | OIT |
+| ADMIN | ◐ 4-eyes config, job monitor, break-glass, JIT, onboarding 2 pilot | CFG |
+| X-HELP | ✓ helpdesk/FAQ (NFR-R1-031) | — |
+
+### 1.3 นอกขอบเขต R1 (และที่ไป)
+
+| เรื่อง | ไปที่ | เหตุผล/อ้างอิง |
+|---|---|---|
+| รับนักเรียนโรงเรียนกีฬา ม.1/ม.4 (W-83) | SS1-ADM ธ.ค. 2572 / Wave 1 | เล่ม 12 §2.1 |
+| `ClearingRun` อัตโนมัติข้ามวิทยาเขต, "upgrade" (confirmed_conditional) | หลังมีนโยบาย (Q-12), ไม่เร็วกว่า Wave 2 | D-06, 02 C-4 |
+| ออกรหัสนักศึกษา, onboarding (W-44), late-admit fast-track (W-148) | R2 | เล่ม 12 §2.1, G-03 |
+| DSR execution, OIR (W-20, W-21), อุทธรณ์ประเภทอื่น | R2 | 06 §5.6, §5.8 |
+| AFF disability services เต็ม (W-33) | R2 | G-01 |
+| payout ธนาคาร (I-17), GFMIS (I-18), WHT | R2 | 09 §8, G-02 |
+| ค่าตอบแทนกรรมการ (W-29) | R2 (R1 ส่งออกรายชื่อ — FR-R1-078) | 06 §7.1 |
+| ANA dashboard/marts (KPI แสดงผล) | R2 (R1 เก็บข้อมูลให้คำนวณ KPI-01/02/18–22 ได้) | 06 §11 |
+
+### 1.4 สมมติฐานหลักที่ R1 พึ่งพา
+
+A-17 (consent ผู้เยาว์), A-23 (30,000 ใบสมัคร/ปี), A-34 (ภาระวันประกาศผล), A-48 (เพดานคุรุสภา), A-49 (รอบรายวิทยาเขต), A-50 (TCAS ปิด), A-51 (ยืนยันได้ที่เดียว), A-52 (กรรมการ 3 คน), A-53 (ประกาศ→รายงานตัว ≤ 24 ชม.), A-56, A-57, A-58 (ธนาคาร/Thai QR), A-69, A-71 (ThaID RP ทัน R1), A-85 (pilot), A-93 (quiet hours), A-110 (cascade cutoff), A-119 (video call), A-121 (helpdesk) — รายการเต็มและผลกระทบอยู่ใน [01 หัวข้อ 7](../01-overview.md) และคำถามใน [13](../13-open-questions.md)
+
+## 2. ข้อกำหนดเชิงหน้าที่ (FR)
+
+| กลุ่ม | ชื่อ | FR | Must | Should | Could |
+|---|---|---|---|---|---|
+| RND | ตั้งค่ารอบรับสมัครรายวิทยาเขต | FR-R1-001–FR-R1-010 | 9 | 1 | 0 |
+| ACC | บัญชีผู้สมัครและตัวตน | FR-R1-011–FR-R1-018 | 6 | 2 | 0 |
+| APP | ใบสมัครตามช่องทาง | FR-R1-019–FR-R1-035 | 9 | 5 | 3 |
+| DOC | เอกสารและการตรวจสอบ | FR-R1-036–FR-R1-043 | 6 | 2 | 0 |
+| FEE | ค่าธรรมเนียม การชำระเงิน และใบเสร็จ | FR-R1-044–FR-R1-053 | 8 | 1 | 1 |
+| SCH | ตารางสอบทักษะ/สัมภาษณ์และการจองสนาม | FR-R1-054–FR-R1-063 | 6 | 4 | 0 |
+| MED | Medical clearance และความปลอดภัยวันสอบ | FR-R1-064–FR-R1-068 | 5 | 0 | 0 |
+| SCR | ให้คะแนนหลายกรรมการและ moderation | FR-R1-069–FR-R1-078 | 8 | 1 | 1 |
+| RES | ผลคัดเลือกและการประกาศ | FR-R1-079–FR-R1-085 | 7 | 0 | 0 |
+| CLR | Clearing และการยืนยันสิทธิ์ | FR-R1-086–FR-R1-098 | 12 | 1 | 0 |
+| APL | อุทธรณ์ผลคัดเลือก ร้องเรียน และเหตุวันสอบ | FR-R1-099–FR-R1-106 | 7 | 1 | 0 |
+| GRD | ผู้ปกครองและความยินยอมของผู้สมัครผู้เยาว์ | FR-R1-107–FR-R1-113 | 5 | 2 | 0 |
+| HND | ส่งต่อรายงานตัวเข้า REC | FR-R1-114–FR-R1-118 | 3 | 2 | 0 |
+| OIT | เปิดเผยข้อมูล ITA/OIT | FR-R1-119–FR-R1-122 | 3 | 1 | 0 |
+| CFG | Admin, 4-eyes, audit และการปฏิบัติการ | FR-R1-123–FR-R1-132 | 8 | 2 | 0 |
+| NTF | การแจ้งเตือนและประกาศ | FR-R1-133–FR-R1-139 | 6 | 1 | 0 |
+| **รวม** | | **139** | **108** | **26** | **5** |
+
+### 2.1 ตั้งค่ารอบรับสมัครรายวิทยาเขต (RND)
+
+_รอบ ที่นั่ง เกณฑ์ คะแนน กำหนดการ การอนุมัติ และการเผยแพร่ (W-69, W-72, W-117)_
+
+#### FR-R1-001 สร้างรอบจาก template/clone
+
+ระบบต้องให้ `admission` ของวิทยาเขตสร้าง `AdmissionRound` ภายใต้ `AdmissionCycle` และ `AdmissionChannel` ที่ส่วนกลางเปิดใช้ โดยสร้างใหม่ หรือ clone จากรอบปีก่อน/รอบก่อนหน้าได้ ทุกรอบผูก `org_unit_id` ของวิทยาเขตเจ้าของและเริ่มที่สถานะ `draft`
+
+- **Priority:** Must · **บทบาท:** `admission`, `module_admin` · **โมดูล:** ADM, ORG · **Workflow:** W-69
+- **ที่มา:** 02 §2.1, CM-1; 06 §6.1 Round wizard; W-69; A-49 · **ขึ้นกับ:** A-49, A-85, Q-13
+- **หน้าจอ:** S-R1-33 · **API:** `createRound`, `listRounds`, `getRound`, `updateRound`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** `admission` วิทยาเขตชลบุรี (scope campus) และมีรอบ "โควตานักกีฬา 2571" ที่ปิดแล้ว **เมื่อ** สร้างรอบ "โควตานักกีฬา 2572" โดยเลือก clone จากรอบ 2571 **ผลที่ต้องได้** ได้รอบสถานะ `draft` ที่ `org_unit_id` = ชลบุรี คัดลอก seat matrix, rule, scoring scheme, ค่าสมัคร และกำหนดการครบ โดยวันที่ทุก milestone เลื่อน +1 ปีและติดป้าย "ต้องตรวจวันที่" (TC-R1-001)
+  2. [ความปลอดภัย] **กำหนดให้** `admission` วิทยาเขตมหาสารคาม **เมื่อ** เรียก `GET /rounds/{roundId}` หรือ `PATCH` รอบของวิทยาเขตชลบุรี **ผลที่ต้องได้** ได้ 404 (ไม่เปิดเผยว่ามีรอบนั้น) และมี `AuditEvent` ผลการตัดสินสิทธิ์ = deny (TC-R1-002)
+
+#### FR-R1-002 Seat matrix และเพดานรับ
+
+ระบบต้องให้กำหนด `SeatQuota` ต่อ `ProgramOffering` × study mode และสำหรับโควตานักกีฬา × ชนิดกีฬา × เพศ พร้อม sub-bucket (`position_group`/`weight_class`) และกติกา spill-over ที่ประกาศ โดยผลรวมที่นั่งทุกรอบของ cycle ต้องไม่เกิน `AdmissionPlan` ที่อนุมัติ และไม่เกิน `AccreditedIntakeCap` ของหลักสูตรครู (hard stop)
+
+- **Priority:** Must · **บทบาท:** `admission`, `planner` · **โมดูล:** ADM, CUR · **Workflow:** W-69
+- **ที่มา:** 02 §2.1 (Seat Bucket), C-15; 06 §6.1; G-12; W-69 ขั้น 1–2 · **ขึ้นกับ:** A-48, Q-22
+- **หน้าจอ:** S-R1-34 · **API:** `putSeatMatrix`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** หลักสูตร ศษ.บ. พลศึกษา ชลบุรี มี `AccreditedIntakeCap` = 120 และรอบก่อนหน้าใช้ไป (confirmed + appeal_hold) 100 ที่ **เมื่อ** ตั้งที่นั่งรอบใหม่ 30 ที่ **ผลที่ต้องได้** บันทึกไม่ได้ (422 `ADM-SEAT-CAP-EXCEEDED`) พร้อมข้อความ "เกินเพดานรับที่คุรุสภาอนุญาต เหลือ 20 ที่" (TC-R1-003)
+  2. [ฟังก์ชัน] **กำหนดให้** bucket ฟุตบอลชาย 8 ที่ แบ่ง sub-bucket ผู้รักษาประตู 1 และผู้เล่นทั่วไป 7 พร้อมกติกา spill-over "ที่ว่างใน sub-bucket ไปยังลำดับรวมของ bucket" **เมื่อ** บันทึก seat matrix **ผลที่ต้องได้** ระบบตรวจว่าผลรวม sub-bucket = bucket และบันทึกกติกา spill-over เป็นส่วนหนึ่งของประกาศที่จะเผยแพร่ (TC-R1-004)
+
+#### FR-R1-003 เกณฑ์คุณสมบัติแบบ DMN มีเวอร์ชัน
+
+ระบบต้องให้กำหนดเกณฑ์คุณสมบัติของรอบเป็น DMN ที่มีเวอร์ชัน (GPAX ขั้นต่ำและจำนวนภาคเรียน, แผนการเรียน, อายุ, ชนิดกีฬา, ระดับผลงานขั้นต่ำและช่วงวันที่ของผลงาน) พร้อมทดสอบกับชุดผู้สมัครตัวอย่างก่อนเผยแพร่ และใบสมัครทุกใบอ้างเวอร์ชันที่ใช้ประเมิน
+
+- **Priority:** Must · **บทบาท:** `admission`, `module_admin` · **โมดูล:** ADM · **Workflow:** W-69, W-70, W-71
+- **ที่มา:** 02 QA-1, QS-1, QS-3; 06 §6.1; ADR-006 · **ขึ้นกับ:** Q-13
+- **หน้าจอ:** S-R1-33 · **API:** `putEligibilityRules`, `testEligibilityRules`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** rule โควตาเรียนดี GPAX ≥ 2.75 จาก 5 ภาคเรียน และชุดทดสอบ 20 ราย **เมื่อ** กด "ทดสอบกฎ" **ผลที่ต้องได้** ระบบแสดงผลผ่าน/ไม่ผ่านรายคนพร้อมเหตุผลภาษาไทยที่จะแสดงให้ผู้สมัคร และบันทึกผลทดสอบเป็นหลักฐานประกอบการอนุมัติ (TC-R1-005)
+  2. [กรณีผิดปกติ] **กำหนดให้** rule เวอร์ชัน 1 เผยแพร่แล้วและมีใบสมัครที่ประเมินแล้ว 50 ใบ **เมื่อ** เจ้าหน้าที่แก้ GPAX ขั้นต่ำ **ผลที่ต้องได้** ระบบบังคับสร้างเวอร์ชัน 2 ผ่าน amendment (FR-R1-010) ใบสมัครเดิมคงอ้างเวอร์ชัน 1 และไม่มีการประเมินใหม่เงียบ ๆ (TC-R1-006)
+
+#### FR-R1-004 Scoring scheme และ rubric สาธารณะ
+
+ระบบต้องให้กำหนด scoring scheme ต่อรอบ (องค์ประกอบ, น้ำหนักรวม 100, ชนิด station OBJECTIVE/SUBJECTIVE, วิธีรวมคะแนนกรรมการ, tie-break เรียงลำดับ, การจัดอันดับภายใน sub-bucket และ spill-over) และต้องเผยแพร่ rubric ก่อนเปิดรับสมัคร
+
+- **Priority:** Must · **บทบาท:** `admission`, `head` · **โมดูล:** ADM · **Workflow:** W-69, W-76
+- **ที่มา:** 02 §2.5.3–2.5.5, QA-7, QS-12; 06 §6.1 (C-35); W-69 ขั้น 2–3, W-76 · **ขึ้นกับ:** A-52, Q-14
+- **หน้าจอ:** S-R1-33, S-R1-46 · **API:** `putScoringScheme`, `getPublicRound`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** scheme มีน้ำหนัก GPAX 30 + ทักษะ 50 + สัมภาษณ์ 30 **เมื่อ** บันทึก **ผลที่ต้องได้** ปฏิเสธ (422 `ADM-WEIGHT-SUM`) "น้ำหนักรวมต้องเท่ากับ 100 (ปัจจุบัน 110)" (TC-R1-007)
+  2. [กรณีผิดปกติ] **กำหนดให้** scheme ตั้ง aggregation = ตัดสูงสุด-ต่ำสุด แต่ station มีกรรมการ 3 คน **เมื่อ** บันทึก **ผลที่ต้องได้** ปฏิเสธพร้อมเหตุผล "ตัดสูงสุด-ต่ำสุดใช้ได้เมื่อมีกรรมการ ≥ 5 คน" (TC-R1-008)
+  3. [ฟังก์ชัน] **กำหนดให้** รอบอนุมัติแล้ว **เมื่อ** ผู้ใช้ทั่วไปเปิดหน้าประกาศของรอบ **ผลที่ต้องได้** เห็น rubric รายสถานี น้ำหนัก และ tie-break ครบก่อนวันเปิดรับ (TC-R1-009)
+
+#### FR-R1-005 กำหนดการรอบเป็นปฏิทิน + linter
+
+ระบบต้องบันทึก milestone ของรอบเป็น `CalendarEvent` ของ ORG (`ADM_ROUND_APPLY`, วันสอบ, `ADM_RESULT_PUBLISH`, `ADM_APPEAL_WINDOW`, `ADM_CONFIRM`, `ADM_REPORTING`, `ADM_RECONFIRM_WINDOW`, `ADM_CASCADE_CUTOFF`) และตรวจ linter L-9, L-13, L-14, L-15, L-18 ก่อนส่งอนุมัติ โดย error ห้ามส่ง และ warning ต้องบันทึกเหตุผล
+
+- **Priority:** Must · **บทบาท:** `admission`, `registrar` · **โมดูล:** ADM, ORG · **Workflow:** W-69, W-117
+- **ที่มา:** 03 §window table, L-9..L-18, K-20; 06 §5.2; W-69 ขั้น 6, W-117 · **ขึ้นกับ:** A-36, Q-25, Q-96
+- **หน้าจอ:** S-R1-33 · **API:** `putRoundSchedule`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** รอบโควตาตั้ง `ADM_CONFIRM.start` ก่อน `ADM_RESULT_PUBLISH` + `ADM_APPEAL_WINDOW` + SLA ตัดสินอุทธรณ์ + 1 วันทำการ และไม่ได้เปิด appeal_hold **เมื่อ** กดส่งอนุมัติ **ผลที่ต้องได้** ระบบไม่ให้ส่ง (linter L-15 = error) และชี้วันที่ที่ต้องแก้ (TC-R1-010)
+  2. [ฟังก์ชัน] **กำหนดให้** วันสอบทักษะของรอบทับช่วง `FINAL_EXAM` ของวิทยาเขต (L-9 = warning) **เมื่อ** เจ้าหน้าที่กรอกเหตุผล "ใช้สนามนอกอาคารเรียน" แล้วส่ง **ผลที่ต้องได้** ส่งได้ และเหตุผลแสดงต่อผู้อนุมัติในหน้าอนุมัติ (TC-R1-011)
+
+#### FR-R1-006 ค่าธรรมเนียม เอกสาร และข้อกำหนดทางกายในรอบ
+
+ระบบต้องให้กำหนดค่าสมัคร/ค่ายืนยันสิทธิ์ (อ้าง `FeeSchedule` ของ FIN ราย OrgUnit), checklist เอกสารต่อช่องทาง และหัวข้อบังคับในแม่แบบประกาศ ได้แก่ ข้อกำหนดทางกายที่จำเป็นของหลักสูตร (inherent requirements) และช่องทางขอ accommodation
+
+- **Priority:** Must · **บทบาท:** `admission`, `finance` · **โมดูล:** ADM, FIN, DOC · **Workflow:** W-69, W-79
+- **ที่มา:** 02 CM-1, CM-6, DA-1; 06 §6.1; W-69 · **ขึ้นกับ:** A-57, Q-34
+- **หน้าจอ:** S-R1-33 · **API:** `updateRound`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** แม่แบบประกาศรอบโควตานักกีฬายังไม่ได้กรอกหัวข้อ "ข้อกำหนดทางกายและการขอความช่วยเหลือในการสอบ" **เมื่อ** ส่งอนุมัติ **ผลที่ต้องได้** ระบบไม่ให้ส่งและเน้นหัวข้อที่ขาด (TC-R1-012)
+  2. [ฟังก์ชัน] **กำหนดให้** วิทยาเขตมหาสารคาม override ค่าสมัครจากค่าเริ่มต้นส่วนกลาง **เมื่อ** ตั้งค่าในรอบ **ผลที่ต้องได้** รอบอ้าง `FeeSchedule` ที่ผ่าน 4-eyes แล้วเท่านั้น (FR-R1-123) และแสดงยอดในประกาศ (TC-R1-013)
+
+#### FR-R1-007 สายอนุมัติรอบและลงนามประกาศ
+
+ระบบต้องบังคับสายอนุมัติ `admission` (ส่ง) → `head` (ตรวจเกณฑ์/rubric) → `dean` (เห็นชอบ) → `campusvp` (อนุมัติและลงนามประกาศผ่าน DOC) โดยอนุมัติ ≥ 30 วันและเผยแพร่ ≥ 7 วันก่อนเปิดรับ และผู้ส่งต้องไม่ใช่ผู้อนุมัติ
+
+- **Priority:** Must · **บทบาท:** `admission`, `head`, `dean`, `campusvp` · **โมดูล:** ADM, DOC, IAM · **Workflow:** W-69
+- **ที่มา:** W-69 ขั้น 3–5 (SLA); 02 CM-1; 04 SoD-23; 10 §7.2 · **ขึ้นกับ:** Q-13
+- **หน้าจอ:** S-R1-33, S-R1-45 · **API:** `submitRoundForApproval`, `decideRoundApproval`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้ใช้คนเดียวมีบทบาท `admission` และ `head` (role switcher) **เมื่อ** พยายามอนุมัติขั้น `head` ของรอบที่ตนส่ง **ผลที่ต้องได้** ระบบปฏิเสธ (403 `SOD-MAKER-CHECKER`) และบันทึก audit (TC-R1-014)
+  2. [ฟังก์ชัน] **กำหนดให้** `campusvp` อนุมัติรอบในวันที่ 35 วันก่อนเปิดรับ **เมื่อ** กดอนุมัติพร้อม step-up MFA **ผลที่ต้องได้** สถานะรอบเป็น `approved` และ DOC สร้างประกาศ PDF/A ภาษาไทยที่ลงนามตามระดับใน signature policy [ต้องตรวจสอบ ระดับ S2/S3 ของประกาศผลคัดเลือก — เล่ม 10 §7.2] (TC-R1-015)
+  3. [กรณีผิดปกติ] **กำหนดให้** เหลือ 20 วันก่อนวันเปิดรับ **เมื่อ** ส่งอนุมัติ **ผลที่ต้องได้** ระบบเตือน SLA ไม่ถึง 30 วัน ต้องบันทึกเหตุผลและแสดงต่อ `campusvp` (TC-R1-016)
+
+#### FR-R1-008 เผยแพร่รอบ
+
+ระบบต้องเผยแพร่รอบที่อนุมัติแล้วโดย publish `adm.RoundPublished` ให้ ENG (ประกาศ), X-CMS/OIT, FIN (ค่าธรรมเนียม) และ ORG (window) และแสดงรอบในหน้าสาธารณะ ส่วนการรับสมัครเปิดอัตโนมัติตาม window (J-01/J-03) เท่านั้น
+
+- **Priority:** Must · **บทบาท:** `admission`, `pr`, `system` · **โมดูล:** ADM, ENG, ORG, FIN · **Workflow:** W-69, W-36
+- **ที่มา:** W-69 ขั้น 7; 06 §10.2 #57; 03 J-01, J-03
+- **หน้าจอ:** S-R1-46, S-R1-56 · **API:** `publishRound`, `listPublicRounds`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** รอบอนุมัติแล้วและ `ADM_ROUND_APPLY.start` = 1 ต.ค. 2571 08:30 **เมื่อ** `pr` เผยแพร่เมื่อ 20 ก.ย. 2571 **ผลที่ต้องได้** หน้าสาธารณะแสดงรอบพร้อมสถานะ "เปิดรับ 1 ต.ค. 2571 08:30" และปุ่มสมัครใช้ไม่ได้จนถึงเวลาเปิด (TC-R1-017)
+  2. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครเรียก `POST /applications` สำหรับรอบนี้ก่อนเวลาเปิด **เมื่อ** ส่งคำขอ **ผลที่ต้องได้** ได้ 409 `ADM-WINDOW-CLOSED` พร้อมเวลาที่จะเปิด (TC-R1-018)
+
+#### FR-R1-009 ยกที่นั่งคงเหลือสู่รอบทั่วไปถัดไป
+
+ระบบต้องคำนวณที่นั่งคงเหลือต่อ seat bucket เมื่อปิดยืนยันสิทธิ์ของรอบ (J-06: แผนรับ − confirmed − appeal_hold) เสนอเปิดรอบ n+1 จาก template ของรอบ n ให้ `admission` ปรับเพิ่ม/ลด และให้ `campusvp` อนุมัติแบบย่อ
+
+- **Priority:** Must · **บทบาท:** `admission`, `campusvp`, `system` · **โมดูล:** ADM, ORG · **Workflow:** W-72
+- **ที่มา:** W-72 ขั้น 1–3; 02 GN-1; 03 J-06 · **ขึ้นกับ:** A-49
+- **หน้าจอ:** S-R1-34, S-R1-45 · **API:** `proposeCarryOverRound`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ทั่วไปรอบ 2 ปิดยืนยันสิทธิ์ เหลือที่นั่งคงเหลือ 12 ที่ และมี appeal_hold 1 ที่ **เมื่อ** J-06 ทำงาน **ผลที่ต้องได้** ระบบสร้างข้อเสนอรอบ 3 ที่นั่ง 11 ที่ (ไม่รวมที่ hold) พร้อม clone กำหนดการ และส่งเข้าคิวอนุมัติแบบย่อของ `campusvp` (TC-R1-019)
+
+#### FR-R1-010 แก้ไขประกาศหลังเผยแพร่แบบมีห่วงโซ่ฉบับ
+
+ระบบควรให้แก้ไขรอบที่เผยแพร่แล้วผ่าน amendment ที่ผ่านสายอนุมัติเดิม สร้างประกาศฉบับแก้ไขที่อ้างฉบับเดิม (ห้ามแก้ทับ) และแจ้งผู้สมัครที่ได้รับผลกระทบ; การเปลี่ยนที่ลดสิทธิ์ผู้สมัครหลังเปิดรับต้องถูกเตือนและต้องระบุฐานอำนาจ [ต้องตรวจสอบ ระเบียบ มกช.]
+
+- **Priority:** Should · **บทบาท:** `admission`, `campusvp`, `pr` · **โมดูล:** ADM, ENG, DOC · **Workflow:** W-69, W-36
+- **ที่มา:** 06 §5.4 (ห่วงโซ่ฉบับแก้ไข); W-69; W-36 · **ขึ้นกับ:** Q-13
+- **หน้าจอ:** S-R1-33, S-R1-56 · **API:** `amendRound`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ประกาศโควตานักกีฬาเผยแพร่แล้วและมีผู้สมัคร 300 ราย **เมื่อ** แก้ไขวันสอบทักษะผ่าน amendment ที่อนุมัติแล้ว **ผลที่ต้องได้** ประกาศฉบับแก้ไขมี `supersedes_id` ชี้ฉบับเดิม และผู้สมัคร 300 รายได้รับแจ้ง P1 พร้อมสรุปสิ่งที่เปลี่ยน (TC-R1-020)
+
+### 2.2 บัญชีผู้สมัครและตัวตน (ACC)
+
+_บัญชีเดียวทั้ง มกช., ThaID, applicant master, ความปลอดภัยบัญชี, บุคคลภายนอก (W-41, W-139)_
+
+#### FR-R1-011 สร้างบัญชีด้วย ThaID หรือ OTP
+
+ระบบต้องให้ผู้สมัครสร้างบัญชีระดับมหาวิทยาลัยหนึ่งบัญชีด้วย ThaID (OIDC ผ่าน Keycloak identity brokering, scope ขั้นต่ำ `openid pid name birthdate`) หรือด้วยอีเมล/เบอร์มือถือ + OTP ร่วมกับเลขประจำตัวประชาชน/passport/รหัส G และใช้บัญชีเดียวสมัครได้ทุกวิทยาเขตทุกรอบ
+
+- **Priority:** Must · **บทบาท:** `candidate` · **โมดูล:** IAM, ADM · **Workflow:** W-41
+- **ที่มา:** W-41 ขั้น 1; 02 CM-2; 09 §3.1 I-01; 06 §5.1 · **ขึ้นกับ:** A-71, Q-65
+- **หน้าจอ:** S-R1-02 · **API:** `getMyApplicantProfile`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครอายุ 17 ปีมี ThaID **เมื่อ** เลือก "เข้าสู่ระบบด้วย ThaID" และยินยอมส่ง pid ชื่อ วันเกิด **ผลที่ต้องได้** ได้บัญชีที่ `IdentityLink.ial` ตามที่ ThaID ส่ง ชื่อและวันเกิดถูกเติมอัตโนมัติ และไม่มีการขอ scope `address` (TC-R1-021)
+  2. [ฟังก์ชัน] **กำหนดให้** ThaID ใช้ไม่ได้ (RP ยังไม่อนุมัติหรือระบบล่ม) **เมื่อ** ผู้สมัครเลือกสมัครด้วยอีเมล + OTP และกรอกเลขบัตร **ผลที่ต้องได้** ได้บัญชีสถานะตัวตน "ยังไม่ยืนยัน" ที่สมัครได้ แต่ต้องยืนยันตัวตนก่อนยืนยันสิทธิ์หรือที่จุดรายงานตัว (FR-R1-013) (TC-R1-022)
+
+#### FR-R1-012 Applicant master และการกันซ้ำ
+
+ระบบต้องสร้าง/ค้นหา `Person` ผ่าน API ของ REC โดยใช้ HMAC ของ identifier (เลขประจำตัวประชาชนที่ผ่าน check digit, รหัส G, passport + ประเทศ) ร่วมกับวันเกิด และต้องไม่สร้าง Person ซ้ำ; เมื่อผู้มีรหัส G ได้เลข 13 หลักภายหลังให้เพิ่ม identifier และตั้ง `superseded_by`
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** REC, ADM, IAM · **Workflow:** W-41, W-74
+- **ที่มา:** 02 §0.4 ข้อ 2, C-1; 08 §5; 06 §6.1, §6.7; W-41 ขั้น 1 · **ขึ้นกับ:** A-56, KPI-20
+- **หน้าจอ:** S-R1-02, S-R1-03 · **API:** `updateMyApplicantProfile`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครกรอกเลขประจำตัวประชาชนที่ check digit ไม่ถูกต้อง **เมื่อ** กดบันทึก **ผลที่ต้องได้** ระบบแจ้ง "เลขประจำตัวประชาชนไม่ถูกต้อง กรุณาตรวจหลักสุดท้าย" และไม่บันทึก (TC-R1-023)
+  2. [ฟังก์ชัน] **กำหนดให้** มี Person ที่ผูกเลขบัตร X อยู่แล้วจากการสมัครปีก่อน **เมื่อ** ผู้ใช้สร้างบัญชีใหม่ด้วยเลขบัตร X และวันเกิดเดียวกัน **ผลที่ต้องได้** ระบบไม่สร้าง Person ใหม่ แต่พาไปขั้นกู้คืน/ผูกบัญชีเดิมด้วย OTP ไปยังช่องทางที่ลงทะเบียนไว้ (แสดงแบบ mask) (TC-R1-024)
+  3. [ความปลอดภัย] **กำหนดให้** ฐานข้อมูล core **เมื่อ** ตรวจ schema และ log **ผลที่ต้องได้** เลขบัตรเก็บเป็น `value_enc` + `value_hmac` เท่านั้น ไม่ปรากฏเป็น plaintext ใน log, event payload หรือ URL (TC-R1-025)
+
+#### FR-R1-013 ระดับความน่าเชื่อถือของตัวตน
+
+ระบบต้องบันทึก `ial` และวิธียืนยันตัวตน (`THAID`, `OTP_ONLY`, `DOCUMENT_REVIEW`, `VIDEO_CALL`, `IN_PERSON`) ต่อบัญชี และบังคับว่าบัญชีที่ยังไม่ยืนยันต้องยืนยันก่อนยืนยันสิทธิ์ (เว้นแต่รอบกำหนดให้ยืนยันที่จุดรายงานตัว) ส่วนผู้ไม่มีเลข 13 หลักใช้การตรวจเอกสาร + video call (I-53)
+
+- **Priority:** Must · **บทบาท:** `candidate`, `admission`, `registrar` · **โมดูล:** IAM, ADM · **Workflow:** W-41, W-78, W-80
+- **ที่มา:** 09 §3.1; A-71; W-41; W-80 ขั้น 1 · **ขึ้นกับ:** A-71, A-119, Q-65
+- **หน้าจอ:** S-R1-02, S-R1-42 · **API:** `startIdentityVerification`, `verifyReportingIdentity`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** บัญชี `OTP_ONLY` ได้ offer และรอบตั้งค่า "ต้องยืนยันตัวตนก่อนยืนยันสิทธิ์" **เมื่อ** กดยืนยันสิทธิ์ **ผลที่ต้องได้** ระบบพาไปยืนยันด้วย ThaID ก่อน และไม่ล็อกสถานะ `confirmed` จนกว่าจะผ่าน (TC-R1-026)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครต่างชาติไม่มี ThaID **เมื่อ** ยื่นขอยืนยันตัวตนด้วย passport และนัด video call **ผลที่ต้องได้** เจ้าหน้าที่บันทึกผลเป็น `VIDEO_CALL` พร้อมผู้ตรวจและเวลา โดยไม่บันทึกวิดีโอ (A-119) (TC-R1-027)
+
+#### FR-R1-014 โปรไฟล์ผู้สมัครและการตรวจผู้เยาว์
+
+ระบบต้องเก็บโปรไฟล์ผู้สมัคร (ชื่อ-สกุลไทย/อังกฤษ, วันเกิด, เพศ, สัญชาติ, ช่องทางติดต่อ, ผู้ติดต่อฉุกเฉิน, โรงเรียนเดิมจาก reference dataset) ใน Person master ของ REC พร้อมประวัติการแก้ไข และคำนวณสถานะผู้เยาว์ (อายุ < 20 ปีและไม่ได้บันทึกการสมรส) ณ วันยื่นและ ณ วันที่ของแต่ละกิจกรรม
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** REC, ADM, PRIV · **Workflow:** W-41
+- **ที่มา:** 02 CM-3; 08 §2.1, §4; 10 §2.4 · **ขึ้นกับ:** A-17
+- **หน้าจอ:** S-R1-03 · **API:** `getMyApplicantProfile`, `updateMyApplicantProfile`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครวันเกิด 3 ก.พ. 2554 ยื่นใบสมัครวันที่ 15 ต.ค. 2571 **เมื่อ** ระบบคำนวณสถานะ **ผลที่ต้องได้** `is_minor = true` และระบบแจ้งให้เชิญผู้ปกครองก่อนขั้นที่ต้องใช้ความยินยอม (FR-R1-107) (TC-R1-028)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครพิมพ์ชื่อโรงเรียนเดิมบางส่วน "สาธิต" **เมื่อ** ค้นหา **ผลที่ต้องได้** ระบบเสนอรายชื่อจาก reference dataset โรงเรียน (สพฐ./สังกัดอื่น) เรียงตาม collation ภาษาไทย และเลือกได้ (TC-R1-029)
+
+#### FR-R1-015 ความปลอดภัยของบัญชีผู้สมัคร
+
+ระบบต้องรองรับ passkey/TOTP แบบเลือกได้, ส่ง OTP ทางอีเมล/LINE ก่อน SMS, จำกัดอัตรา OTP ต่อเบอร์/IP/prefix (กัน SMS pumping), ใช้ bot challenge แบบ self-hosted proof-of-work บน endpoint สมัคร/login/ลืมรหัส และตรวจรหัสผ่านที่รั่ว
+
+- **Priority:** Must · **บทบาท:** `candidate`, `guardian` · **โมดูล:** IAM · **Workflow:** W-41
+- **ที่มา:** 07 §11.2; 09 I-55, I-56; 10 §9.3
+- **หน้าจอ:** S-R1-02 · **API:** —
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** IP เดียวขอ OTP ไปยังเบอร์ต่างกัน 30 เบอร์ใน 10 นาที **เมื่อ** คำขอที่ 11 เป็นต้นไป **ผลที่ต้องได้** ถูกปฏิเสธ 429 พร้อม `Retry-After` และข้อความไทย และเกิด alert เมื่อยอด SMS รายวันเกินงบ (TC-R1-030)
+  2. [การเข้าถึง] **กำหนดให้** ผู้ใช้ screen reader สมัครบัญชี **เมื่อ** ผ่านขั้น bot challenge **ผลที่ต้องได้** ไม่มี CAPTCHA รูปภาพ (WCAG 3.3.8) และทำงานได้ด้วยคีย์บอร์ด (TC-R1-031)
+
+#### FR-R1-016 โหมดเจ้าหน้าที่ช่วยกรอก (assisted)
+
+ระบบควรให้ `admission`/`helpdesk` ช่วยผู้สมัคร walk-in สร้างบัญชีและกรอกใบสมัครแทนในระบบเดียวกัน โดยบันทึก `on_behalf_of`, ให้ผู้สมัครยืนยันด้วย OTP ไปยังมือถือของตนก่อนยื่น และไม่ให้เจ้าหน้าที่เห็นข้อมูลอื่นของผู้สมัครนอก session
+
+- **Priority:** Should · **บทบาท:** `admission`, `helpdesk`, `candidate` · **โมดูล:** ADM, IAM, AUD · **Workflow:** W-41
+- **ที่มา:** D-08 (ช่องทางสมัครแบบมีเจ้าหน้าที่ช่วย); 02 SS-2, GN-8; 14 §7
+- **หน้าจอ:** S-R1-55 · **API:** `createAssistedSession`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครไม่มีสมาร์ตโฟนมาที่จุดบริการวิทยาเขตมหาสารคาม **เมื่อ** เจ้าหน้าที่เปิด assisted session และกรอกใบสมัครแทน แล้วผู้สมัครอ่านรหัส OTP ที่ได้ทาง SMS ให้เจ้าหน้าที่ **ผลที่ต้องได้** ใบสมัครถูกยื่นในชื่อผู้สมัคร โดย audit แสดง actor = เจ้าหน้าที่ และ on_behalf_of = ผู้สมัคร (TC-R1-032)
+  2. [ความปลอดภัย] **กำหนดให้** assisted session หมดอายุ (30 นาที) หรือถูกปิด **เมื่อ** เจ้าหน้าที่เปิดใบสมัครเดิม **ผลที่ต้องได้** ได้ 403 และต้องเปิด session ใหม่พร้อม OTP ใหม่ (TC-R1-033)
+
+#### FR-R1-017 Role switcher สำหรับบุคลากร
+
+ระบบควรให้บุคลากรที่มีหลายบทบาท (เช่น `head` + `judge`, `admission` หลายวิทยาเขต) เลือก "บทบาท × OrgUnit" ที่ใช้อยู่ใน shell เดียว แสดงบทบาทนั้นทุกครั้งที่อนุมัติ และส่งไปกับคำขอเพื่อตรวจ SoD และ audit
+
+- **Priority:** Should · **บทบาท:** `head`, `dean`, `campusvp`, `admission`, `judge` · **โมดูล:** IAM · **Workflow:** W-69, W-76
+- **ที่มา:** D-08; 06 §5.1 Role switcher; 14 S-40, §9.3
+- **หน้าจอ:** S-R1-45 · **API:** —
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** อาจารย์มีบทบาท `judge` (ROUND) และ `head.selection_chair` **เมื่อ** สลับไปบทบาท `head` **ผลที่ต้องได้** เมนูและ inbox เปลี่ยนตามบทบาท และหน้าอนุมัติแสดง "กำลังอนุมัติในฐานะ ประธานคณะกรรมการคัดเลือก วิทยาเขตชลบุรี" (TC-R1-034)
+
+#### FR-R1-018 บัญชีกรรมการภายนอก (sponsor-based)
+
+ระบบต้องเปิดบัญชี `ExternalPerson` สำหรับกรรมการสอบทักษะจากสมาคม/บุคคลภายนอกตาม W-139: ผู้รับรอง (`head`) ขอ ระบุบทบาท `judge` scope ROUND และ `valid_to`, ยืนยันตัวตน, ยอมรับข้อตกลงรักษาความลับ/PDPA และหมดอายุอัตโนมัติ (`iam.ExternalAccessExpired`)
+
+- **Priority:** Must · **บทบาท:** `head`, `campus_itadmin`, `judge`, `system` · **โมดูล:** IAM, ADM · **Workflow:** W-139, W-75
+- **ที่มา:** W-139; 06 §5.1; 02 §2.5.5 ข้อ 8; 04 §10
+- **หน้าจอ:** S-R1-57 · **API:** `createExternalPerson`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** `head` ขอเปิดบัญชีกรรมการจากสมาคมวอลเลย์บอลสำหรับรอบโควตา valid_to = 31 ธ.ค. 2571 **เมื่อ** กรรมการยืนยันตัวตนด้วย ThaID และยอมรับข้อตกลง **ผลที่ต้องได้** บัญชีใช้งานได้เฉพาะ session ที่ได้รับมอบหมาย และหมดสิทธิ์อัตโนมัติ 1 ม.ค. 2572 (TC-R1-035)
+  2. [กรณีผิดปกติ] **กำหนดให้** กรรมการภายนอกยังไม่ยอมรับข้อตกลงรักษาความลับ **เมื่อ** ดาวน์โหลด offline pack **ผลที่ต้องได้** ได้ 403 `IAM-AGREEMENT-REQUIRED` (TC-R1-036)
+
+### 2.3 ใบสมัครตามช่องทาง (APP)
+
+_โควตาเรียนดี โควตานักกีฬา ทั่วไปรายรอบ โควตาภายในโรงเรียนกีฬา และช่องทางพิเศษ (W-41, W-70..W-73, W-79, W-80, W-82, W-84, W-144)_
+
+#### FR-R1-019 ค้นหารอบที่เปิดและมีสิทธิ์
+
+ระบบต้องแสดงรอบที่เปิดอยู่ทุกวิทยาเขต pilot กรองตามช่องทาง วิทยาเขต หลักสูตร ชนิดกีฬา และเตือนทันทีเมื่อผู้สมัครมีสิทธิ์ `confirmed` ที่อื่นใน cycle เดียวกัน (C-4)
+
+- **Priority:** Must · **บทบาท:** `candidate`, `applicant` · **โมดูล:** ADM · **Workflow:** W-41
+- **ที่มา:** 02 CM-4; 14 S-01; C-4 · **ขึ้นกับ:** A-49, A-51
+- **หน้าจอ:** S-R1-01, S-R1-46 · **API:** `listPublicRounds`, `getPublicRound`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ใช้ไม่ login เปิดหน้าแรก **เมื่อ** กรองช่องทาง "โควตานักกีฬา" วิทยาเขต "ชลบุรี" **ผลที่ต้องได้** เห็นรอบ หลักสูตร ชนิดกีฬา ที่นั่ง ค่าสมัคร และกำหนดการ (ปี พ.ศ.) โดยไม่ต้อง login (TC-R1-037)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครยืนยันสิทธิ์โควตาชลบุรีแล้ว **เมื่อ** เปิดรอบทั่วไป 1 กรุงเทพ **ผลที่ต้องได้** เห็นแถบเตือน "คุณยืนยันสิทธิ์แล้ว 1 ที่ หากต้องการสมัครรอบนี้ต้องสละสิทธิ์เดิมก่อน (เหลือสิทธิ์สละ 1 ครั้ง)" (TC-R1-038)
+
+#### FR-R1-020 ใบสมัครหลายขั้นแบบบันทึกร่างและหลายอันดับ
+
+ระบบต้องให้กรอกใบสมัครแบบหลายขั้น บันทึกร่างอัตโนมัติ กลับมาทำต่อได้ ไม่ต้องกรอกข้อมูลที่เคยให้ซ้ำ และเลือกอันดับ (campus × program × sport) ได้ไม่เกิน N ต่อรอบต่อวิทยาเขต (C-2)
+
+- **Priority:** Must · **บทบาท:** `candidate` · **โมดูล:** ADM · **Workflow:** W-41
+- **ที่มา:** 02 CM-4..CM-6, C-2; 14 S-02, P1, §7; WCAG 3.3.7
+- **หน้าจอ:** S-R1-04, S-R1-05, S-R1-06, S-R1-07, S-R1-09 · **API:** `createApplication`, `updateApplication`, `putApplicationChoices`, `getApplication`, `listApplications`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครกรอกใบสมัครถึงขั้นที่ 3 แล้วสัญญาณหลุด **เมื่อ** เปิดใหม่ในอีก 2 วันบนอุปกรณ์อื่น **ผลที่ต้องได้** ข้อมูลขั้น 1–3 ยังอยู่ และระบบพาไปขั้นที่ค้าง (TC-R1-039)
+  2. [กรณีผิดปกติ] **กำหนดให้** รอบตั้ง N = 3 **เมื่อ** เพิ่มอันดับที่ 4 ของวิทยาเขตเดียวกัน **ผลที่ต้องได้** ระบบไม่ให้เพิ่มและแจ้ง "เลือกได้สูงสุด 3 หลักสูตรต่อรอบต่อวิทยาเขต" (TC-R1-040)
+
+#### FR-R1-021 ตรวจคุณสมบัติทันทีก่อนชำระเงิน
+
+ระบบต้องประเมินเกณฑ์คุณสมบัติ (DMN ของรอบ) ทันทีจากข้อมูลที่กรอกและแสดงผล "ผ่าน/ไม่ผ่านเกณฑ์ขั้นต่ำ" พร้อมเหตุผลภาษาไทยและสิ่งที่ทำต่อได้ก่อนขั้นชำระเงิน และไม่ออกใบแจ้งชำระให้อันดับที่ไม่ผ่าน
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** ADM · **Workflow:** W-41, W-70
+- **ที่มา:** 02 QA-2, CM-5; 14 P3, P15; W-41 ขั้น 5 · **ขึ้นกับ:** Q-13
+- **หน้าจอ:** S-R1-05 · **API:** `previewEligibility`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** รอบโควตาเรียนดีกำหนด GPAX ≥ 2.75 จาก 5 ภาคเรียน และผู้สมัครกรอก 2.50 **เมื่อ** ไปขั้นถัดไป **ผลที่ต้องได้** ระบบแสดง "GPAX 2.50 ต่ำกว่าเกณฑ์ 2.75 ของรอบนี้ — ดูรอบทั่วไปที่เปิดอยู่" และไม่สร้างใบแจ้งชำระ (TC-R1-041)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครผ่านเกณฑ์ 2 จาก 3 อันดับ **เมื่อ** ไปขั้นชำระเงิน **ผลที่ต้องได้** ระบบออกใบแจ้งชำระเฉพาะอันดับที่ผ่าน และแสดงอันดับที่ไม่ผ่านพร้อมเหตุผล (TC-R1-042)
+
+#### FR-R1-022 ช่วยกรอก GPAX จาก ปพ.1
+
+ระบบควรอ่าน GPAX/ผลการเรียนจากไฟล์ ปพ.1 ด้วย OCR แล้วให้ผู้สมัครยืนยัน และ flag ให้เจ้าหน้าที่เมื่อค่าที่กรอกต่างจากค่าที่อ่านได้
+
+- **Priority:** Should · **บทบาท:** `candidate`, `admission`, `system` · **โมดูล:** ADM · **Workflow:** W-41, W-70, W-77
+- **ที่มา:** 02 CM-5, QA-3; 06 §6.1
+- **หน้าจอ:** S-R1-05, S-R1-35 · **API:** `completeDocumentUpload`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครอัปโหลด ปพ.1 ที่อ่าน GPAX ได้ 3.12 แต่กรอก 3.21 **เมื่อ** ยื่นใบสมัคร **ผลที่ต้องได้** คิวตรวจเอกสารแสดงธง "GPAX ไม่ตรงกับเอกสาร (กรอก 3.21 / อ่านได้ 3.12)" ให้ `admission` ตัดสิน (TC-R1-043)
+
+#### FR-R1-023 ช่องทางโควตาเรียนดี
+
+ระบบต้องรองรับช่องทาง `QUOTA_ACADEMIC`: GPAX ตามจำนวนภาคเรียนที่ประกาศ, แผนการเรียนที่รับ, GPA กลุ่มสาระ (ถ้ากำหนด), ประกาศผู้มีสิทธิ์สัมภาษณ์ และการสัมภาษณ์ตาม rubric
+
+- **Priority:** Must · **บทบาท:** `candidate`, `admission`, `judge`, `head` · **โมดูล:** ADM · **Workflow:** W-70, W-42
+- **ที่มา:** W-70; 02 §2.4 QA-1..QA-12 · **ขึ้นกับ:** Q-13
+- **หน้าจอ:** S-R1-04, S-R1-05 · **API:** `createApplication`, `submitApplication`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** รอบโควตาเรียนดีวิทยาเขตชลบุรีเปิด **เมื่อ** ผู้สมัครเลือกช่องทางนี้ **ผลที่ต้องได้** ฟอร์มแสดงเฉพาะฟิลด์ GPAX/แผนการเรียน/เอกสารตาม checklist ของช่องทาง และไม่แสดงส่วนผลงานกีฬา (TC-R1-044)
+
+#### FR-R1-024 ช่องทางโควตานักกีฬา: sport profile และผลงาน
+
+ระบบต้องรองรับช่องทาง `QUOTA_ATHLETE`: เลือกชนิดกีฬา/ตำแหน่ง/รุ่นน้ำหนัก (รุ่นน้ำหนักเปลี่ยนไม่ได้หลังยื่น), ประวัติกีฬา (สโมสร สมาคม โค้ช ปีที่เล่น — ใช้ตรวจ COI), รายการผลงาน (ชื่อรายการ ระดับ อันดับ วันที่ หลักฐาน) โดยระดับรายการคำนวณจาก competition master และวิดีโอผลงาน ≤ 200 MB (ถ้ารอบกำหนด)
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** ADM · **Workflow:** W-71
+- **ที่มา:** W-71; 02 QS-2, QS-3, §2.5.2; 07 §11.4 · **ขึ้นกับ:** Q-14
+- **หน้าจอ:** S-R1-06 · **API:** `addSportAchievement`, `listSportAchievements`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครยื่นใบสมัครรุ่นน้ำหนัก ≤ 57 กก. แล้ว **เมื่อ** แก้เป็นรุ่น ≤ 60 กก. **ผลที่ต้องได้** ระบบไม่ให้แก้และแจ้ง "รุ่นน้ำหนักเปลี่ยนไม่ได้หลังยื่นใบสมัคร" (TC-R1-045)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครเพิ่มผลงาน "กีฬาเยาวชนแห่งชาติ เหรียญเงิน 2570" **เมื่อ** บันทึก **ผลที่ต้องได้** ระบบจับคู่รายการกับ competition master เป็นระดับ L2 คะแนนตามตาราง config และตรวจว่าวันที่อยู่ในช่วงที่ประกาศ (TC-R1-046)
+  3. [กรณีผิดปกติ] **กำหนดให้** ผลงานลงวันที่ก่อนช่วงที่ประกาศ (เช่น ย้อนหลังเกิน 5 ปี) **เมื่อ** บันทึก **ผลที่ต้องได้** ระบบรับไว้แต่ทำเครื่องหมาย "ไม่นับคะแนน — นอกช่วงวันที่" (TC-R1-047)
+
+#### FR-R1-025 สถานะ provisionally_eligible ระหว่างรอสมาคมยืนยัน
+
+ระบบต้องให้ผู้สมัครที่ผลงานอยู่ระหว่างรอ `federation` ยืนยันมีสถานะ `provisionally_eligible` ซึ่งเข้าสอบได้ แต่ประกาศผลได้เมื่อยืนยันครบภายใน deadline เท่านั้น และใช้ผลงานที่ยืนยันแล้วในระบบ (ถ้ามี) แทนได้
+
+- **Priority:** Must · **บทบาท:** `admission`, `federation`, `system` · **โมดูล:** ADM · **Workflow:** W-71
+- **ที่มา:** W-71 ขั้น 3; 02 QS-4 · **ขึ้นกับ:** Q-50
+- **หน้าจอ:** S-R1-36 · **API:** `decideVerificationTask`, `recordFederationResponse`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผลงาน L1 ของผู้สมัครรอหนังสือตอบจากสมาคม **เมื่อ** ถึงวันจัดตารางสอบ **ผลที่ต้องได้** ผู้สมัครได้ slot สอบตามปกติและ tracker แสดง "มีสิทธิ์สอบแบบมีเงื่อนไข — รอยืนยันผลงาน" (TC-R1-048)
+  2. [กรณีผิดปกติ] **กำหนดให้** ถึง deadline ยืนยันผลงานแต่สมาคมยังไม่ตอบ **เมื่อ** `admission` สั่งคำนวณผล **ผลที่ต้องได้** ระบบไม่นับคะแนนผลงานรายการนั้น (หรือตามกติกาที่ประกาศ) และบันทึกเหตุผลให้ผู้สมัครเห็น (TC-R1-049)
+
+#### FR-R1-026 ช่องทางทั่วไปรายรอบ
+
+ระบบต้องรองรับช่องทาง `GENERAL` รอบ 1..N ที่แต่ละวิทยาเขตตั้งเอง ห้ามผู้ที่ `confirmed` ที่ใดใน cycle สมัคร (C-4, C-13) และรองรับรอบท้ายที่ต้องยืนยัน ชำระ และแจ้งรายงานตัวภายใน 24 ชม. ต่อเนื่องในหน้าเดียว
+
+- **Priority:** Must · **บทบาท:** `candidate`, `admission`, `system` · **โมดูล:** ADM, FIN · **Workflow:** W-72, W-43, W-78
+- **ที่มา:** W-72; 02 §2.6 GN-1..GN-9; A-53 · **ขึ้นกับ:** A-53
+- **หน้าจอ:** S-R1-04, S-R1-17 · **API:** `createApplication`, `confirmOffer`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัคร `confirmed` โควตานักกีฬาชลบุรี **เมื่อ** เรียก `POST /applications` รอบทั่วไป 1 มหาสารคาม **ผลที่ต้องได้** ได้ 409 `ADM-CONFIRMED-ELSEWHERE` พร้อม link ไปหน้าสละสิทธิ์ (ไม่บอกวิทยาเขตต่อเจ้าหน้าที่อื่นตาม C-11) (TC-R1-050)
+  2. [ฟังก์ชัน] **กำหนดให้** รอบ 5 ประกาศผล 8 มิ.ย. 2572 และกำหนดรายงานตัว 9 มิ.ย. **เมื่อ** ผู้ผ่านกดยืนยันสิทธิ์ **ผลที่ต้องได้** หน้าเดียวพาไปชำระ QR และเลือกรายงานตัวออนไลน์/ที่จุดบริการต่อทันที (TC-R1-051)
+
+#### FR-R1-027 ช่องทางโควตาภายในจากโรงเรียนกีฬา
+
+ระบบควรรองรับช่องทาง feeder จากโรงเรียนกีฬาในสังกัด มกช. (W-144): นักเรียน ม.6 แสดงความประสงค์, ผู้ปกครองยินยอมให้ส่งข้อมูลผลการเรียน/นักกีฬาไปวิทยาเขตปลายทาง (ถ้ายังไม่ถึง 20 ปี), `sschool_dir` รับรองผลการเรียนและความประพฤติ, `coach` ให้ความเห็น — ใน R1 ข้อมูลมาจากไฟล์ที่โรงเรียนรับรอง (SSC/ATH ยังไม่ go-live) [ต้องตรวจสอบ Q-17]
+
+- **Priority:** Should · **บทบาท:** `student`, `guardian`, `sschool_dir`, `coach`, `admission` · **โมดูล:** ADM, PRIV · **Workflow:** W-144
+- **ที่มา:** W-144; 02 §10.5; 06 §6.1 (feeder); D-03 · **ขึ้นกับ:** Q-17
+- **หน้าจอ:** S-R1-04, S-R1-25 · **API:** `createApplication`, `grantConsent`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** นักเรียน ม.6 โรงเรียนกีฬาสุพรรณบุรีอายุ 17 ปีเลือกช่องทางโควตาภายใน **เมื่อ** ผู้ปกครองให้ความยินยอม `TALENT_PATHWAY_TRANSFER` และ `sschool_dir` อัปโหลดเอกสารรับรองที่ลงนาม **ผลที่ต้องได้** ใบสมัครเข้าคิวตรวจคุณสมบัติตามโควตาภายในโดยไม่ต้องให้นักเรียนอัปโหลด ปพ.1 ซ้ำ (TC-R1-052)
+  2. [PDPA] **กำหนดให้** ผู้ปกครองไม่ยินยอมให้ส่งข้อมูล **เมื่อ** นักเรียนยื่นใบสมัคร **ผลที่ต้องได้** ระบบไม่ส่งข้อมูลจากโรงเรียน และแจ้งให้สมัครช่องทางปกติด้วยเอกสารของตนเองแทน (TC-R1-053)
+
+#### FR-R1-028 คำขอ accommodation ในการสอบ
+
+ระบบต้องให้ผู้สมัครขอความช่วยเหลือในการสอบโดยสมัครใจผ่านฟอร์มแยก (เวลาเพิ่ม, ข้อสอบตัวใหญ่/เบรลล์, ผู้อ่าน/ผู้เขียนแทน, ล่ามภาษามือ, ห้องชั้นล่าง/ทางลาด, ทดสอบทักษะแบบปรับ) เก็บหลักฐานใน `hlt_vault` record class `DISABILITY` ที่กรรมการคัดเลือกมองไม่เห็น บังคับกรอบเวลา (ยื่น ≥ 10 วันทำการก่อนสอบ; ช้ากว่านั้นได้ provisional) และส่งให้ `judge`/ห้องสอบเห็นเฉพาะรายการปรับที่อนุมัติ [ต้องตรวจสอบ: AFF อยู่ R2 — gap G-01]
+
+- **Priority:** Must · **บทบาท:** `candidate`, `dss`, `head`, `admission`, `judge` · **โมดูล:** ADM, HLT · **Workflow:** W-79
+- **ที่มา:** W-79; 02 §2.12 DA-1..DA-7; 04 §5 (ความพิการ); 10 L-01 · **ขึ้นกับ:** A-31, Q-18, Q-45
+- **หน้าจอ:** S-R1-08, S-R1-41 · **API:** `createAccommodationRequest`, `decideAccommodationRequest`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครใช้รถเข็นยื่นคำขอ 15 วันทำการก่อนสอบ **เมื่อ** `dss` อนุมัติ "ห้องสอบชั้น 1 + เวลาเพิ่ม 50%" **ผลที่ต้องได้** slot และห้องสอบถูกจัดใหม่อัตโนมัติ และกรรมการเห็นเพียงธง "+50% เวลา, ห้องชั้น 1" (TC-R1-054)
+  2. [PDPA] **กำหนดให้** `admission` และ `judge` เปิดใบสมัครของผู้สมัครนี้ **เมื่อ** ดูรายละเอียด **ผลที่ต้องได้** ไม่เห็นประเภทความพิการหรือหลักฐาน เห็นเฉพาะแผนการปรับที่อนุมัติ (TC-R1-055)
+  3. [ฟังก์ชัน] **กำหนดให้** ยื่นคำขอ 4 วันทำการก่อนสอบ **เมื่อ** ส่งคำขอ **ผลที่ต้องได้** ระบบรับเป็น provisional accommodation วันสอบ และแจ้ง `dss`/`admission` ให้เตรียมหน้างาน (TC-R1-056)
+
+#### FR-R1-029 ผู้สมัครต่างชาติ (ขั้นต่ำ)
+
+ระบบควรรองรับผู้สมัครที่ใช้ passport: UI ภาษาอังกฤษครบ, งาน `QualificationEquivalence` ให้ `intl`/`admission`, การชำระด้วยบัตร/โอนต่างประเทศผ่าน hosted page เมื่อเปิดใช้ (FR-R1-052) และหนังสือตอบรับสองภาษาลงนามดิจิทัลสำหรับขอวีซ่า
+
+- **Priority:** Should · **บทบาท:** `candidate`, `intl`, `admission`, `campusvp` · **โมดูล:** ADM, DOC, FIN · **Workflow:** W-80
+- **ที่มา:** W-80; 02 §2.13 FA-1..FA-7; A-30 · **ขึ้นกับ:** A-30, Q-18, Q-46, Q-108
+- **หน้าจอ:** S-R1-04, S-R1-09 · **API:** `createApplication`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครเลือกภาษาอังกฤษ **เมื่อ** กรอกใบสมัครทุกขั้น **ผลที่ต้องได้** ทุก label ข้อความ error และอีเมลเป็นภาษาอังกฤษ และวันที่แสดงเป็น ค.ศ. (TC-R1-057)
+
+#### FR-R1-030 ช่องทางรับโอน/เทียบโอน (intake)
+
+ระบบอาจรองรับ application type `TRANSFER` (แนบทรานสคริปต์และคำอธิบายรายวิชา) เพื่อรับเรื่องใน R1 โดยการเทียบโอนรายวิชา (CUR) เกิดใน R2 และเปิดใช้เมื่อ มกช. มีนโยบาย
+
+- **Priority:** Could · **บทบาท:** `candidate`, `admission`, `head` · **โมดูล:** ADM, CUR · **Workflow:** W-82
+- **ที่มา:** W-82; 02 §2.11 TR-1..TR-2 · **ขึ้นกับ:** Q-18
+- **หน้าจอ:** S-R1-04, S-R1-07 · **API:** `createApplication`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ช่องทาง TRANSFER เปิดด้วย feature flag สำหรับหลักสูตรหนึ่ง **เมื่อ** ผู้สมัครยื่นพร้อมทรานสคริปต์ **ผลที่ต้องได้** ใบสมัครอยู่สถานะ `submitted` พร้อมงานรอเทียบโอนที่จะส่งต่อ CUR เมื่อ R2 พร้อม (TC-R1-058)
+
+#### FR-R1-031 ช่องทางบัณฑิตศึกษา (ถ้าผ่าน go/no-go)
+
+ระบบอาจรองรับช่องทาง `GRADUATE` แบบ rolling หลายรอบ ภาคปกติ/ภาคพิเศษ เกณฑ์ภาษา และกติกาจำนวนขั้นต่ำการเปิดหลักสูตร (ไม่ถึงขั้นต่ำ → เสนอทางเลือกก่อนคืนเงิน)
+
+- **Priority:** Could · **บทบาท:** `candidate`, `gradschool`, `admission` · **โมดูล:** ADM, FIN · **Workflow:** W-84
+- **ที่มา:** W-84; 02 §2.10 GS-1..GS-6; 12 §2.1 (R1 ADM: บัณฑิตศึกษาถ้าผ่าน go/no-go) · **ขึ้นกับ:** A-29, A-55, Q-21
+- **หน้าจอ:** S-R1-04, S-R1-33 · **API:** `createRound`, `createApplication`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** หลักสูตร ศษ.ม. ตั้งขั้นต่ำการเปิด 10 คนแต่มีผู้ผ่าน 6 คน **เมื่อ** `gradschool` บันทึกตัดสินไม่เปิด **ผลที่ต้องได้** ระบบเสนอทางเลือก (ภาคพิเศษ/รอบถัดไป/วิทยาเขตอื่น) ให้ผู้ผ่านก่อน แล้วสร้างคำขอคืนเงินให้ผู้ไม่รับข้อเสนอ (TC-R1-059)
+
+#### FR-R1-032 TCAS adapter (ปิดโดยค่าเริ่มต้น)
+
+ระบบอาจเปิด TCAS adapter ด้วย feature flag ต่อ OrgUnit × Program × Round (ค่าเริ่มต้นปิด): ส่งออกเกณฑ์/รายชื่อผู้ผ่านตาม template ทปอ., นำเข้าผู้ยืนยันสิทธิ์และ dedupe กับ applicant master, ตรวจสถานะรายชั่วโมง (J-05), แสดงสถานะ ADM คู่กับ myTCAS และปิดสิทธิ์ยืนยันใน มกช. เมื่อพบยืนยันที่อื่นใน myTCAS (C-12)
+
+- **Priority:** Could · **บทบาท:** `admission`, `system` · **โมดูล:** ADM, ADMIN · **Workflow:** W-73
+- **ที่มา:** W-73; 02 §2.7, C-12; 09 §3.2 I-03; A-50 · **ขึ้นกับ:** A-50, Q-11
+- **หน้าจอ:** S-R1-51 · **API:** `listJobRuns`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** flag TCAS ปิด (ค่าเริ่มต้น) **เมื่อ** ถึงเวลา J-05 **ผลที่ต้องได้** job ไม่ทำงานและไม่มีการเรียก API ภายนอก (TC-R1-060)
+  2. [ฟังก์ชัน] **กำหนดให้** flag เปิดสำหรับหลักสูตรหนึ่งและไฟล์นำเข้าพบผู้ยืนยันสิทธิ์ที่อื่นใน myTCAS **เมื่อ** นำเข้าไฟล์ **ผลที่ต้องได้** ผู้สมัครคนนั้นถูกปิดสิทธิ์ยืนยันใน มกช. และหน้าเจ้าหน้าที่แสดงสถานะทั้งสองระบบ (TC-R1-061)
+
+#### FR-R1-033 ยื่นใบสมัครและใบรับอิเล็กทรอนิกส์
+
+ระบบต้องตรวจความครบถ้วนก่อนยื่น ออกเลขใบสมัครรูปแบบ `{cycle}{campus}{channel}{running}` และออกใบรับอิเล็กทรอนิกส์ (เลขรับ + timestamp + รายการเอกสาร) ที่ประทับตราระบบ (PAdES-B-T) และ publish `adm.ApplicationSubmitted`
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** ADM, DOC, SVC · **Workflow:** W-41
+- **ที่มา:** W-41; 08 §5; 10 §6.4 (พ.ร.บ.การปฏิบัติราชการทางอิเล็กทรอนิกส์ 2565), §7.2; 06 #58
+- **หน้าจอ:** S-R1-09 · **API:** `submitApplication`, `getApplicationReceipt`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ใบสมัครครบทุกขั้น **เมื่อ** กดยื่น (ส่ง `Idempotency-Key`) **ผลที่ต้องได้** ได้เลขใบสมัคร เช่น `2572CB-QA-00123`, ใบรับ PDF ที่มีเลขรับและเวลา และ event `adm.ApplicationSubmitted` 1 ครั้ง (TC-R1-062)
+  2. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครกดยื่นซ้ำด้วย `Idempotency-Key` เดิมเพราะเน็ตหลุด **เมื่อ** ส่งคำขอซ้ำ **ผลที่ต้องได้** ได้ผลลัพธ์เดิม (200) ไม่มีใบสมัครหรือ event ซ้ำ (TC-R1-063)
+  3. [กรณีผิดปกติ] **กำหนดให้** ยังไม่อัปโหลดเอกสารบังคับ 1 รายการ **เมื่อ** กดยื่น **ผลที่ต้องได้** ระบบแสดงรายการที่ขาดพร้อมลิงก์ไปขั้นนั้น และไม่ยื่น (TC-R1-064)
+
+#### FR-R1-034 ถอนใบสมัคร
+
+ระบบควรให้ผู้สมัครถอนใบสมัครหรืออันดับก่อนประกาศผู้มีสิทธิ์สอบ โดยแจ้งผลต่อค่าสมัครตามประกาศ (โดยทั่วไปไม่คืน เว้นแต่เข้ากรณี W-81)
+
+- **Priority:** Should · **บทบาท:** `candidate` · **โมดูล:** ADM, FIN · **Workflow:** W-41, W-81
+- **ที่มา:** W-41; W-81
+- **หน้าจอ:** S-R1-12 · **API:** `withdrawApplication`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ใบสมัครชำระแล้วและยังไม่ประกาศผู้มีสิทธิ์สอบ **เมื่อ** ผู้สมัครถอนอันดับหนึ่ง **ผลที่ต้องได้** อันดับนั้นเป็น `withdrawn` ระบบแสดงข้อความเรื่องค่าสมัครตามประกาศของรอบ และ tracker อัปเดต (TC-R1-065)
+
+#### FR-R1-035 บันทึกทุจริตในการคัดเลือก
+
+ระบบควรให้ `admission`/`judge`/`proctor` บันทึกเหตุทุจริต (ปลอมเอกสาร สวมรอย) ระงับใบสมัคร และส่งเรื่องเข้า CASE โดยผู้สมัครได้รับแจ้งพร้อมสิทธิ์ชี้แจง
+
+- **Priority:** Should · **บทบาท:** `admission`, `judge`, `proctor`, `complaint` · **โมดูล:** ADM, CASE · **Workflow:** W-41, W-42
+- **ที่มา:** 02 EX-3; 06 §5.6
+- **หน้าจอ:** S-R1-35, S-R1-28 · **API:** `recordTestIncident`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** เจ้าหน้าที่ตรวจพบเกียรติบัตรที่ hash ซ้ำกับผู้สมัครอีกคนและยืนยันว่าปลอม **เมื่อ** บันทึกเหตุทุจริต **ผลที่ต้องได้** ใบสมัครเป็น `suspended`, มี CaseFile อ้างอิง และผู้สมัครได้รับหนังสือแจ้งพร้อมช่องทางชี้แจง (TC-R1-066)
+
+### 2.4 เอกสารและการตรวจสอบ (DOC)
+
+_อัปโหลด ตรวจอัตโนมัติ คิวตรวจ ขอเอกสารเพิ่ม ตรวจผลงานกีฬา และประกาศผู้มีสิทธิ์สอบ (W-77, W-71, W-42)_
+
+#### FR-R1-036 อัปโหลดแบบ resumable และสแกนความปลอดภัย
+
+ระบบต้องให้อัปโหลดเอกสารแบบ S3 multipart resumable ผ่าน presigned URL จำกัดชนิด/ขนาด (เอกสาร 10 MB, วิดีโอ 200 MB) แล้วตรวจขนาดจริง magic bytes สแกนไวรัส ตรวจ PDF ที่มี JavaScript และลบ EXIF/GPS ก่อนย้ายจาก quarantine ไป clean; ไฟล์ที่ยังไม่ผ่านการสแกนเปิดไม่ได้
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system`, `security_admin` · **โมดูล:** ADM, DOC · **Workflow:** W-41, W-77
+- **ที่มา:** 07 §11.4; 02 CM-6; 14 §7
+- **หน้าจอ:** S-R1-07, S-R1-13 · **API:** `createUploadSession`, `completeDocumentUpload`, `listApplicationDocuments`, `deleteApplicationDocument`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครอัปโหลดวิดีโอ 150 MB บนเครือข่าย 4G แล้วสัญญาณหลุดที่ 60% **เมื่อ** กลับมาเปิดหน้าเดิม **ผลที่ต้องได้** การอัปโหลดต่อจาก 60% ได้ ไม่ต้องเริ่มใหม่ (TC-R1-067)
+  2. [ความปลอดภัย] **กำหนดให้** ไฟล์นามสกุล .pdf แต่ magic bytes เป็น executable **เมื่อ** อัปโหลดเสร็จ **ผลที่ต้องได้** ไฟล์ถูกกักใน quarantine 30 วัน ผู้สมัครได้ข้อความกลาง "ไฟล์นี้ใช้ไม่ได้ กรุณาอัปโหลดใหม่" และ `security_admin` ได้ alert (TC-R1-068)
+  3. [PDPA] **กำหนดให้** รูปถ่ายของผู้สมัครผู้เยาว์มีพิกัด GPS ใน EXIF **เมื่อ** ไฟล์ผ่านการสแกน **ผลที่ต้องได้** ไฟล์ใน bucket clean ไม่มี EXIF/GPS (TC-R1-069)
+
+#### FR-R1-037 Checklist เอกสารและการตรวจอัตโนมัติ
+
+ระบบต้องแสดง checklist เอกสารตามช่องทางของรอบ ตรวจอัตโนมัติ (ไฟล์ครบ ชนิด ขนาด ความชัดเจนขั้นต่ำของรูป) และแจ้งเอกสารที่ขาดก่อนกดยื่น
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** ADM · **Workflow:** W-77, W-41
+- **ที่มา:** W-77 ขั้น 1; 02 CM-6
+- **หน้าจอ:** S-R1-07 · **API:** `listApplicationDocuments`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** รอบโควตานักกีฬากำหนด 5 เอกสาร และผู้สมัครอัปโหลด 4 **เมื่อ** เปิดขั้นตรวจทาน **ผลที่ต้องได้** checklist แสดง 4 ✓ และ 1 รายการขาดเป็นข้อความ (ไม่ใช้สีอย่างเดียว) พร้อมปุ่มอัปโหลด (TC-R1-070)
+
+#### FR-R1-038 คิวตรวจเอกสารของเจ้าหน้าที่
+
+ระบบต้องมีคิวตรวจเอกสารที่กระจายงานตามเจ้าหน้าที่ ให้ตัดสิน verify / reject / request-more พร้อมเหตุผล บันทึกผู้ตรวจและเวลา ตาม SLA ≤ 3 วันทำการต่อใบสมัคร และ escalate เมื่อใกล้ครบ
+
+- **Priority:** Must · **บทบาท:** `admission` · **โมดูล:** ADM · **Workflow:** W-77
+- **ที่มา:** W-77 ขั้น 2; 02 CM-8; 14 S-08, §9 · **ขึ้นกับ:** KPI-19
+- **หน้าจอ:** S-R1-35 · **API:** `listVerificationTasks`, `decideVerificationTask`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** คิวมีใบสมัคร 400 ใบและเจ้าหน้าที่ 4 คน **เมื่อ** หัวหน้างานกด "กระจายงาน" **ผลที่ต้องได้** งานถูกแบ่งเท่า ๆ กัน และแต่ละคนเห็นเฉพาะงานของตน (ยกเว้นหัวหน้า) พร้อมนับ SLA (TC-R1-071)
+  2. [กรณีผิดปกติ] **กำหนดให้** เจ้าหน้าที่เลือก reject โดยไม่กรอกเหตุผล **เมื่อ** บันทึก **ผลที่ต้องได้** ระบบไม่บันทึกและแจ้ง "กรุณาระบุเหตุผลที่ผู้สมัครจะเห็น" (TC-R1-072)
+
+#### FR-R1-039 ขอเอกสารเพิ่มพร้อมกำหนดเวลา
+
+ระบบต้องให้ขอเอกสารเพิ่มโดยแจ้งผู้สมัคร (P1) พร้อมรายการและ deadline ให้ผู้สมัครส่งเพิ่มแล้วกลับเข้าคิว และเมื่อพ้น deadline ให้อันดับเป็น `ineligible` พร้อมเหตุผลและช่องทางขอทบทวน
+
+- **Priority:** Must · **บทบาท:** `admission`, `candidate`, `system` · **โมดูล:** ADM, NOTI · **Workflow:** W-77
+- **ที่มา:** W-77 ขั้น 2–3; 02 CM-8
+- **หน้าจอ:** S-R1-13, S-R1-35 · **API:** `requestMoreDocuments`, `completeDocumentUpload`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** เจ้าหน้าที่ขอ "หนังสือรับรองผลการเรียนฉบับลงนาม" deadline 3 วัน **เมื่อ** ผู้สมัครอัปโหลดในวันที่ 2 **ผลที่ต้องได้** งานกลับเข้าคิวของเจ้าหน้าที่เดิมพร้อมป้าย "ส่งเพิ่มแล้ว" (TC-R1-073)
+  2. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครไม่ส่งเอกสารภายใน deadline **เมื่อ** พ้น deadline **ผลที่ต้องได้** อันดับเป็น `ineligible` ผู้สมัครได้รับแจ้งเหตุผลและลิงก์ขอทบทวน (W-18) (TC-R1-074)
+
+#### FR-R1-040 ผู้ตรวจคนที่ 2 สุ่มตรวจ
+
+ระบบควรสุ่มใบสมัครที่ verify แล้วตามร้อยละที่ตั้งค่า ให้ผู้ตรวจคนที่ 2 (คนละคนกับผู้ตรวจแรก) ตรวจก่อนประกาศผู้มีสิทธิ์สอบ
+
+- **Priority:** Should · **บทบาท:** `admission` · **โมดูล:** ADM · **Workflow:** W-77
+- **ที่มา:** W-77 ขั้น 4
+- **หน้าจอ:** S-R1-35 · **API:** `listVerificationTasks`, `decideVerificationTask`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** ผู้ตรวจ A verify ใบสมัคร X และถูกสุ่มเข้าคิวผู้ตรวจคนที่ 2 **เมื่อ** ผู้ตรวจ A เปิดงานผู้ตรวจคนที่ 2 ของ X **ผลที่ต้องได้** ระบบไม่ให้ตัดสิน (SoD) และกระจายให้ผู้ตรวจคนอื่น (TC-R1-075)
+
+#### FR-R1-041 ตรวจหลักฐานผลงานกีฬาและหนังสือถึงสมาคม
+
+ระบบต้องสร้าง `VerificationTask` สำหรับผลงานกีฬา ตรวจหลักฐานซ้ำข้ามผู้สมัครด้วย hash ออกหนังสือขอยืนยันถึงสมาคม/กกท. จากแม่แบบ DOC และบันทึกผลตอบกลับพร้อม deadline
+
+- **Priority:** Must · **บทบาท:** `admission`, `sportshead`, `federation` · **โมดูล:** ADM, DOC · **Workflow:** W-71
+- **ที่มา:** W-71 ขั้น 2–3; 02 QS-4; 09 I-50 · **ขึ้นกับ:** Q-50
+- **หน้าจอ:** S-R1-36, S-R1-54 · **API:** `listVerificationTasks`, `recordFederationResponse`, `decideVerificationTask`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัคร 2 คนแนบไฟล์เกียรติบัตรที่ hash เดียวกัน **เมื่อ** ระบบตรวจหลังยื่น **ผลที่ต้องได้** สร้างธง "หลักฐานซ้ำข้ามผู้สมัคร" ในงานตรวจของทั้งสองใบ (TC-R1-076)
+  2. [ฟังก์ชัน] **กำหนดให้** `admission` เลือกผลงาน 25 รายการของสมาคมเดียวกัน **เมื่อ** สร้างหนังสือขอยืนยัน **ผลที่ต้องได้** DOC สร้างหนังสือ 1 ฉบับพร้อมรายการแนบ (ไม่มีเลขบัตรเต็ม) และระบบนับ deadline ตอบกลับ (TC-R1-077)
+
+#### FR-R1-042 เก็บ hash เอกสารเพื่อใช้ซ้ำตอนรายงานตัว
+
+ระบบควรบันทึก hash ของเอกสารและผลตรวจไว้ใน handoff เพื่อให้ขั้นรายงานตัวไม่ต้องให้อัปโหลดซ้ำและตรวจได้ว่าเอกสารตัวจริงตรงกับที่ยื่น
+
+- **Priority:** Should · **บทบาท:** `system`, `registrar` · **โมดูล:** ADM, REC · **Workflow:** W-77, W-78
+- **ที่มา:** W-77 ขั้น 5; W-78
+- **หน้าจอ:** S-R1-42 · **API:** `listReportingHandoffs`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ผ่านยืนยันสิทธิ์และชำระแล้ว **เมื่อ** ระบบสร้าง handoff **ผลที่ต้องได้** handoff มีรายการเอกสาร hash ผลตรวจ และผู้ตรวจ โดย registrar เห็นโดยไม่ต้องให้ผู้สมัครอัปโหลดใหม่ (TC-R1-078)
+
+#### FR-R1-043 ประกาศผู้มีสิทธิ์สอบ
+
+ระบบต้องคำนวณผู้มีสิทธิ์/ไม่มีสิทธิ์สอบเมื่อตรวจคุณสมบัติเสร็จ แจ้งผู้ไม่มีสิทธิ์พร้อมเหตุผลและช่องทางขอทบทวน และเผยแพร่รายชื่อผู้มีสิทธิ์แบบ mask ผ่าน DOC/ENG
+
+- **Priority:** Must · **บทบาท:** `admission`, `campusvp`, `pr`, `system` · **โมดูล:** ADM, ENG, DOC, NOTI · **Workflow:** W-42, W-70, W-71, W-72
+- **ที่มา:** W-42 ขั้น 1; 02 CM-9, GN-3
+- **หน้าจอ:** S-R1-35, S-R1-46 · **API:** `publishEligibleList`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ตรวจคุณสมบัติครบ 1,200 ใบ ผู้มีสิทธิ์ 1,050 **เมื่อ** `admission` เผยแพร่รายชื่อหลังอนุมัติ **ผลที่ต้องได้** PDF รายชื่อ (เลขผู้สมัคร + ชื่อแบบ mask ตามกติกา DPO) ถูกเผยแพร่ ผู้มีสิทธิ์ 1,050 คนได้แจ้งเตือนพร้อมลิงก์บัตรผู้สอบ และ 150 คนได้เหตุผล (TC-R1-079)
+  2. [PDPA] **กำหนดให้** ร่างรายชื่อมีคอลัมน์เลขประจำตัวประชาชน **เมื่อ** กดเผยแพร่ **ผลที่ต้องได้** DLP check ของ ENG บล็อกการเผยแพร่และแจ้งคอลัมน์ที่ผิดกติกา (TC-R1-080)
+
+### 2.5 ค่าธรรมเนียม การชำระเงิน และใบเสร็จ (FEE)
+
+_ใบแจ้งหนี้ Thai QR, callback, reconcile, e-Receipt, ยกเว้น/คืนค่าสมัคร (W-41, W-43, W-81)_
+
+#### FR-R1-044 ใบแจ้งชำระค่าสมัคร Thai QR
+
+ระบบต้องสร้างใบแจ้งหนี้ค่าสมัครต่อใบสมัครจาก `FeeSchedule` ของวิทยาเขต (effective-dated) เป็น Thai QR (bill payment tag 30: Biller ID, Ref1 = เลขใบแจ้งหนี้/ใบสมัคร, Ref2 = วิทยาเขต + รอบ) และลิงก์ชำระที่ส่งต่อให้ผู้อื่นจ่ายแทนได้โดยไม่เปิดข้อมูลอื่น
+
+- **Priority:** Must · **บทบาท:** `candidate`, `guardian`, `system` · **โมดูล:** FIN, ADM · **Workflow:** W-41
+- **ที่มา:** W-41 ขั้น 6; 02 CM-7; 06 §7.1; 09 I-15; 04 G10 · **ขึ้นกับ:** A-58, Q-35
+- **หน้าจอ:** S-R1-10, S-R1-26 · **API:** `getOrCreateApplicationInvoice`, `getInvoice`, `getInvoiceQrImage`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ใบสมัครผ่านเกณฑ์และค่าสมัครวิทยาเขตชลบุรี 400 บาท [ตัวอย่าง] **เมื่อ** ผู้สมัครไปขั้นชำระ **ผลที่ต้องได้** ได้ใบแจ้งหนี้ 1 ใบ QR มี Ref1 = เลขใบแจ้งหนี้ Ref2 = รหัสวิทยาเขต+รอบ และยอด 400.00 บาท (TC-R1-081)
+  2. [ความปลอดภัย] **กำหนดให้** ผู้รับลิงก์ชำระแทน (เช่น ญาติ) เปิดลิงก์ **เมื่อ** ดูหน้า **ผลที่ต้องได้** เห็นเพียงชื่อแบบ mask ยอดเงิน และ QR ไม่เห็นข้อมูลใบสมัครอื่น (TC-R1-082)
+
+#### FR-R1-045 ชำระบนมือถือเครื่องเดียวกับแอปธนาคาร
+
+ระบบต้องมีปุ่ม "บันทึกรูป QR" (PNG มียอด เลขอ้างอิง วันหมดอายุ), เลขอ้างอิง/Biller ID/ยอดที่กดคัดลอกได้, deep link เฉพาะเมื่อธนาคารรองรับ, หน้าสถานะที่กด "ตรวจสถานะอีกครั้ง" ได้และแสดง "รอยืนยันจากธนาคาร" ระหว่างรอ callback และต้องไม่สร้างใบแจ้งหนี้ซ้ำเมื่อกดหลายครั้ง
+
+- **Priority:** Must · **บทบาท:** `candidate`, `guardian` · **โมดูล:** FIN · **Workflow:** W-41, W-43
+- **ที่มา:** D-08; 14 §4.7 (UXR-30); 06 §7.1 · **ขึ้นกับ:** Q-114
+- **หน้าจอ:** S-R1-10 · **API:** `getInvoiceQrImage`, `getPaymentStatus`, `getOrCreateApplicationInvoice`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครใช้มือถือเครื่องเดียว **เมื่อ** กด "บันทึกรูป QR" **ผลที่ต้องได้** ได้ไฟล์ PNG ที่มียอดเงิน Ref1/Ref2 และวันหมดอายุอยู่ในรูป พร้อมคำแนะนำ "เปิดแอปธนาคาร > สแกน > เลือกรูปจากอัลบั้ม" (TC-R1-083)
+  2. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครกดปุ่มชำระ 5 ครั้งเพราะหน้าโหลดช้า **เมื่อ** ระบบได้รับ 5 คำขอ **ผลที่ต้องได้** มีใบแจ้งหนี้เดียว (idempotent ต่อใบสมัคร × รายการ) และ QR เดิม (TC-R1-084)
+  3. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครกลับจากแอปธนาคารก่อน callback มาถึง **เมื่อ** เปิดหน้าสถานะ **ผลที่ต้องได้** แสดง "รอยืนยันจากธนาคาร" ไม่ใช่ "ยังไม่ชำระ" และปุ่มตรวจสถานะอีกครั้ง (TC-R1-085)
+
+#### FR-R1-046 รับ payment notification จากธนาคาร
+
+ระบบต้องรับ payment notification ผ่าน mTLS + ลายเซ็นตามสัญญาธนาคาร บันทึกเข้า inbox ที่ `unique(partner, bank_txn_ref)` ตอบ 200 เมื่อบันทึก inbox แล้ว จับคู่ Ref1 ตัดหนี้ และส่งรายการชำระขาด/เกิน/ซ้ำ/หลังใบแจ้งหนี้ยกเลิกเข้าคิว exception ของ `finance` (SLA 2 วันทำการ)
+
+- **Priority:** Must · **บทบาท:** `system`, `finance` · **โมดูล:** FIN · **Workflow:** W-41, W-43
+- **ที่มา:** 09 §3.3, I-15; 07 §9.2; 06 §7.1 · **ขึ้นกับ:** A-58, Q-35
+- **หน้าจอ:** S-R1-43 · **API:** `receiveBankPaymentNotification`, `listReconciliationExceptions`, `resolveReconciliationException`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** callback ที่ลายเซ็นไม่ถูกต้องหรือไม่มี client certificate **เมื่อ** ส่งมาที่ endpoint **ผลที่ต้องได้** ถูกปฏิเสธ (401/403) ไม่มีการตัดหนี้ และมี security alert (TC-R1-086)
+  2. [กรณีผิดปกติ] **กำหนดให้** ธนาคารส่ง callback `bank_txn_ref` เดิมซ้ำ 3 ครั้ง **เมื่อ** ระบบรับ **ผลที่ต้องได้** ตัดหนี้ 1 ครั้ง ตอบ 200 ทุกครั้ง และไม่มีใบเสร็จซ้ำ (TC-R1-087)
+  3. [กรณีผิดปกติ] **กำหนดให้** ยอดที่ชำระ 300 บาท แต่ใบแจ้งหนี้ 400 บาท **เมื่อ** callback มาถึง **ผลที่ต้องได้** ใบแจ้งหนี้ยังไม่ชำระครบ มีรายการ exception "ชำระขาด" ในคิว `finance` และผู้สมัครเห็นข้อความแนะนำ (TC-R1-088)
+
+#### FR-R1-047 Reconcile 3 ทางรายวัน
+
+ระบบต้องนำเข้า statement ธนาคารรายวัน (SFTP + PGP) และ reconcile ใบแจ้งหนี้–callback–statement โดยรายการที่มีใน statement แต่ไม่มี callback ให้สร้างรายการรับเงินอัตโนมัติพร้อม flag และรายงานรายการไม่ตรง
+
+- **Priority:** Must · **บทบาท:** `finance`, `system` · **โมดูล:** FIN · **Workflow:** W-41, W-43
+- **ที่มา:** 09 §3.3, I-16; 03 J-16; 07 §9.2 · **ขึ้นกับ:** KPI-21, KPI-22
+- **หน้าจอ:** S-R1-43 · **API:** `listReconciliationExceptions`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** callback ของรายการหนึ่งหายแต่ statement T+1 มีรายการนั้น **เมื่อ** J-16 ทำงาน 06:00 **ผลที่ต้องได้** ระบบสร้าง Payment จาก statement จับคู่ใบแจ้งหนี้ ออกใบเสร็จ และ flag "จาก statement" ให้ `finance` ทบทวน (TC-R1-089)
+  2. [ฟังก์ชัน] **กำหนดให้** rehearsal ค่าสมัคร 1,000 รายการ **เมื่อ** reconcile **ผลที่ต้องได้** จับคู่อัตโนมัติ ≥ 99% (KPI-21) และรายการเหลือเข้าคิว exception ทั้งหมด (TC-R1-090)
+
+#### FR-R1-048 ใบเสร็จอิเล็กทรอนิกส์
+
+ระบบต้องออก e-Receipt เลขต่อเนื่องไม่ขาดช่วงต่อ OrgUnit × ปีงบประมาณ ลงนามด้วยตราประทับอิเล็กทรอนิกส์ของวิทยาเขต (S2, PAdES-B-LT) ผ่าน DOC ส่งเข้า inbox/อีเมลและลิงก์ทาง LINE และขึ้นชุดเลขใหม่ 1 ต.ค.; การยกเลิกใบเสร็จต้องมีผู้อนุมัติ (SoD-11) และไม่ลบ/ใช้เลขซ้ำ
+
+- **Priority:** Must · **บทบาท:** `finance`, `system` · **โมดูล:** FIN, DOC · **Workflow:** W-41, W-43
+- **ที่มา:** 06 §7.1; 10 §7.2; 03 J-31; 04 SoD-11; W-28 · **ขึ้นกับ:** A-79
+- **หน้าจอ:** S-R1-10, S-R1-12 · **API:** `getReceiptDocument`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** callback ชำระครบเวลา 30 ก.ย. 2571 23:58 และอีกรายการ 1 ต.ค. 2571 00:02 **เมื่อ** ระบบออกใบเสร็จ **ผลที่ต้องได้** ใบแรกอยู่ชุดปีงบ 2571 ใบที่สองอยู่ชุดปีงบ 2572 เลขต่อเนื่องในชุดของตน (ตัดตาม timestamp การรับเงิน) (TC-R1-091)
+  2. [ฟังก์ชัน] **กำหนดให้** ใบเสร็จออกแล้ว **เมื่อ** ผู้สมัครเปิดไฟล์ใน Acrobat/Foxit **ผลที่ต้องได้** ลายเซ็นตรวจผ่าน (green check) และข้อความไทยคัดลอกได้ถูกต้อง (TC-R1-092)
+
+#### FR-R1-049 ขอยกเว้นค่าสมัคร
+
+ระบบต้องให้ผู้สมัครยื่นคำขอยกเว้นค่าสมัครพร้อมหลักฐานผ่าน e-Form (SVC) ให้ `admission` ตรวจคุณสมบัติตามประกาศ และ `finance` ผู้อนุมัติตามวงเงินตัดสิน (ผู้ตรวจ ≠ ผู้อนุมัติ, SoD-10) ภายใน 5 วันทำการ ถ้าอนุมัติให้ปลดสถานะชำระ และ publish `adm.ApplicationFeeWaived`
+
+- **Priority:** Must · **บทบาท:** `candidate`, `admission`, `finance` · **โมดูล:** FIN, ADM, SVC · **Workflow:** W-81
+- **ที่มา:** W-81; 02 CM-7; 04 SoD-10; 06 #59
+- **หน้าจอ:** S-R1-11, S-R1-44 · **API:** `createFeeWaiverRequest`, `decideFeeWaiverRequest`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครยื่นคำขอยกเว้นพร้อมหนังสือรับรองรายได้ **เมื่อ** `admission` ตรวจผ่าน และ `finance` อนุมัติ **ผลที่ต้องได้** ใบสมัครเป็นสถานะ `paid` (waived) โดยไม่มีใบแจ้งหนี้ค้าง และมีใบรับคำขอ (TC-R1-093)
+  2. [ความปลอดภัย] **กำหนดให้** `finance` คนเดียวกับผู้ตรวจคุณสมบัติ (มีสองบทบาท) **เมื่อ** อนุมัติคำขอ **ผลที่ต้องได้** ปฏิเสธ 403 `SOD-MAKER-CHECKER` (TC-R1-094)
+
+#### FR-R1-050 คืนค่าสมัครเมื่อยกเลิกรอบ/ชำระซ้ำ
+
+ระบบต้องสร้างคำขอคืนเงินอัตโนมัติเมื่อรอบถูกยกเลิกหรือมีการชำระซ้ำ คืนช่องทางเดิม (หรือบัญชีที่ตรวจชื่อแล้ว) ผ่านผู้อนุมัติคนละคนกับผู้เตรียม และรายงาน exception รายเดือนให้ `auditor` [ต้องตรวจสอบ: payout I-17 อยู่ R2 — R1 ใช้การคืนผ่านธนาคาร/โอนด้วยมือแบบ maker-checker, gap G-02]
+
+- **Priority:** Must · **บทบาท:** `finance`, `auditor`, `system` · **โมดูล:** FIN · **Workflow:** W-81
+- **ที่มา:** W-81; 06 §7.1 Release R1; 09 I-17; 04 SoD-03 · **ขึ้นกับ:** Q-35
+- **หน้าจอ:** S-R1-44 · **API:** `createRefund`, `approveRefund`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ปกครองชำระค่าสมัครซ้ำ 2 ครั้ง **เมื่อ** callback ที่ 2 มาถึง **ผลที่ต้องได้** ระบบสร้างคำขอคืนเงิน 1 รายการอ้าง `bank_txn_ref` ที่ 2 และแจ้งผู้ชำระว่ากำลังดำเนินการคืน (TC-R1-095)
+  2. [ความปลอดภัย] **กำหนดให้** ผู้เตรียมคืนเงินคนเดียวกับผู้อนุมัติ **เมื่อ** อนุมัติ **ผลที่ต้องได้** ระบบปฏิเสธ (SoD-03) (TC-R1-096)
+
+#### FR-R1-051 ใบแจ้งชำระค่ายืนยันสิทธิ์ผูกกับ offer
+
+ระบบต้องออกใบแจ้งชำระค่ายืนยันสิทธิ์/ค่าแรกเข้าตาม fee schedule ของรุ่น × วิทยาเขต × หลักสูตร ที่ผูกกับ offer และหมดอายุพร้อม deadline ของ offer (C-7) ส่งลิงก์ให้ผู้ปกครองชำระแทนได้
+
+- **Priority:** Must · **บทบาท:** `candidate`, `guardian`, `system` · **โมดูล:** FIN, ADM · **Workflow:** W-43
+- **ที่มา:** W-43 ขั้น 3; 02 CL-4, CF-2, C-7 · **ขึ้นกับ:** A-57, Q-34
+- **หน้าจอ:** S-R1-17, S-R1-10, S-R1-26 · **API:** `confirmOffer`, `getInvoice`, `getPaymentStatus`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครยืนยันสิทธิ์ offer ที่ deadline 12 ม.ค. 2572 16:30 **เมื่อ** ระบบออกใบแจ้งชำระ **ผลที่ต้องได้** QR หมดอายุ 12 ม.ค. 2572 16:30 ตรงกับ offer และผู้ปกครองที่ผูกบัญชีได้ลิงก์ชำระ (TC-R1-097)
+  2. [กรณีผิดปกติ] **กำหนดให้** QR หมดอายุแล้ว **เมื่อ** ผู้ชำระสแกนจ่าย **ผลที่ต้องได้** ธนาคารปฏิเสธตาม expiry (ถ้ารองรับ) หรือถ้าเงินเข้า ระบบส่งเข้า exception "ชำระหลังหมดอายุ" และไม่คืนสิทธิ์อัตโนมัติ (TC-R1-098)
+
+#### FR-R1-052 ชำระด้วยบัตร/โอนจากต่างประเทศ
+
+ระบบอาจรับชำระด้วยบัตรต่างประเทศผ่าน hosted payment page ของ PSP (ข้อมูลบัตรไม่ผ่านระบบ) และ webhook ที่ลงลายเซ็นเข้า inbox เดียวกัน เมื่อ มกช. เปิดรับผู้สมัครต่างชาติ
+
+- **Priority:** Could · **บทบาท:** `candidate`, `finance` · **โมดูล:** FIN · **Workflow:** W-80
+- **ที่มา:** W-80; 09 I-54; 02 FA-3 · **ขึ้นกับ:** Q-108
+- **หน้าจอ:** S-R1-10 · **API:** `receivePspWebhook`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** webhook PSP ที่ลายเซ็นไม่ตรง **เมื่อ** ส่งมา **ผลที่ต้องได้** ถูกปฏิเสธ ไม่มีการตัดหนี้ (TC-R1-099)
+
+#### FR-R1-053 รับชำระแบบ paper fallback ที่จุดบริการ
+
+ระบบควรรองรับการรับชำระที่จุดบริการช่วงระบบ/เครือข่ายล่มด้วยใบรับเงินชั่วคราวที่มีเลขคุม แล้วคีย์ย้อนหลังภายใน T+1 วันทำการผ่าน import แบบ dry-run + 4-eyes จากนั้น FIN/DOC ออกใบเสร็จจริง
+
+- **Priority:** Should · **บทบาท:** `finance`, `admission` · **โมดูล:** FIN · **Workflow:** W-43
+- **ที่มา:** 14 §7.1 (UXR-40); 07 §11.8
+- **หน้าจอ:** S-R1-43 · **API:** —
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ระบบล่ม 40 นาทีวันรายงานตัวรอบ 5 และรับเงินสด 12 ราย **เมื่อ** หัวหน้าการเงินนำเข้าไฟล์ในวันถัดไป **ผลที่ต้องได้** dry-run แสดงผลรายแถว ผู้อนุมัติคนที่ 2 อนุมัติ และใบเสร็จจริงอ้างเลขใบรับชั่วคราวครบ 12 ราย (TC-R1-100)
+
+### 2.6 ตารางสอบทักษะ/สัมภาษณ์และการจองสนาม (SCH)
+
+_session, station, slot, กรรมการ, COI, บัตรผู้สอบ, จองสนาม FAC, ความร้อน (W-75, W-42, W-153)_
+
+#### FR-R1-054 Session และ station ของการสอบ
+
+ระบบต้องให้กำหนด `AdmissionTestSession` ต่อชนิดกีฬา × เพศ (หรือห้องสอบข้อเขียน/สัมภาษณ์) และ `TestStation` (ชนิด OBJECTIVE/SUBJECTIVE, จำนวน trial, ความจุต่อชั่วโมง, เวลาเปลี่ยนสถานี) อ้างสนามจาก FAC/ห้องจาก ORG และประกาศตาราง ≥ 7 วันก่อนสอบ
+
+- **Priority:** Must · **บทบาท:** `admission`, `sportshead` · **โมดูล:** ADM, FAC, ORG · **Workflow:** W-75, W-42
+- **ที่มา:** W-75 ขั้น 1, SLA; 02 QS-7, §2.5.3–2.5.4; 06 §6.1 · **ขึ้นกับ:** Q-14
+- **หน้าจอ:** S-R1-37 · **API:** `createTestSession`, `listTestSessions`, `putTestStations`, `publishTestSchedule`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** รอบโควตานักกีฬามีผู้มีสิทธิ์สอบวอลเลย์บอลหญิง 120 คน **เมื่อ** `admission` สร้าง session 2 วัน 4 station **ผลที่ต้องได้** ระบบคำนวณความจุและแนะนำจำนวน slot ที่พอดี พร้อมเตือนถ้าไม่พอ (TC-R1-101)
+  2. [กรณีผิดปกติ] **กำหนดให้** เหลือ 5 วันก่อนวันสอบ **เมื่อ** กดประกาศตาราง **ผลที่ต้องได้** ระบบเตือนว่าไม่ถึง 7 วันตาม SLA ต้องบันทึกเหตุผลและแจ้งผู้สมัครแบบ P1 (TC-R1-102)
+
+#### FR-R1-055 จองสนามสอบทักษะผ่าน FAC
+
+ระบบต้องจองสนามสอบทักษะผ่าน FAC เมื่อ session ถูกวางแผน (`adm.SkillTestSessionPlanned` → FAC) ตามลำดับความสำคัญของ FAC แจ้งการชนกับตารางเรียน/ซ้อมของทีม และยืนยันด้วย `fac.BookingConfirmed` ก่อนประกาศตาราง
+
+- **Priority:** Must · **บทบาท:** `admission`, `facility`, `system` · **โมดูล:** ADM, FAC · **Workflow:** W-75
+- **ที่มา:** D-03 (FAC ขั้นต่ำ); 06 §8.2; W-75 ขั้น 1; 02 QS-7
+- **หน้าจอ:** S-R1-37 · **API:** `requestVenueBooking`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** สนามวอลเลย์บอลในร่มว่างวันที่ 23–24 พ.ย. 2571 **เมื่อ** `admission` ขอจองจาก session **ผลที่ต้องได้** FAC สร้าง Booking สถานะ confirmed และ session แสดงสนามที่ยืนยันแล้ว (TC-R1-103)
+  2. [กรณีผิดปกติ] **กำหนดให้** สนามมีการซ้อมทีมมหาวิทยาลัยแบบ recurring ช่วงเวลาเดียวกัน **เมื่อ** ขอจอง **ผลที่ต้องได้** FAC แจ้งชนพร้อมเจ้าของการจองและทางเลือกช่วงเวลา/สนามอื่น ไม่ยืนยันอัตโนมัติ (TC-R1-104)
+
+#### FR-R1-056 แต่งตั้งกรรมการต่อ station
+
+ระบบต้องให้จัด `JudgePanel` ต่อ station (ค่าเริ่มต้น ≥ 3 คนสำหรับ station SUBJECTIVE, ผู้วัด + ผู้ตรวจสำหรับ OBJECTIVE), กำหนดประธาน station, รวมกรรมการภายนอก (W-139), ออกร่างคำสั่งแต่งตั้งจากแม่แบบ DOC และเตือน linter L-14 (กรรมการที่เป็นโค้ชในรายการแข่งขันระดับชาติภายใน 14 วัน)
+
+- **Priority:** Must · **บทบาท:** `admission`, `head`, `judge` · **โมดูล:** ADM, IAM, DOC · **Workflow:** W-75, W-139
+- **ที่มา:** W-75 ขั้น 2; 02 QS-9, §2.5.5 ข้อ 8, 10; 03 L-14; A-52 · **ขึ้นกับ:** A-52, Q-14
+- **หน้าจอ:** S-R1-37 · **API:** `assignJudges`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** station SUBJECTIVE มีกรรมการ 2 คน **เมื่อ** บันทึกการแต่งตั้ง **ผลที่ต้องได้** ระบบเตือนว่าต่ำกว่าค่าตั้งของรอบ (3 คน) และไม่ให้ล็อกตารางจนกว่าจะครบหรือ `head` อนุมัติข้อยกเว้น (TC-R1-105)
+  2. [ฟังก์ชัน] **กำหนดให้** กรรมการ 1 คนอยู่ใน delegation แข่งระดับชาติที่เริ่มอีก 10 วัน **เมื่อ** บันทึกการแต่งตั้ง **ผลที่ต้องได้** ระบบแสดง warning L-14 ให้พิจารณาเปลี่ยนตัว (TC-R1-106)
+
+#### FR-R1-057 ประกาศ COI และสลับกรรมการอัตโนมัติ
+
+ระบบต้องให้กรรมการประกาศความสัมพันธ์ (COACH, SCHOOL, RELATIVE, OTHER) กับรายชื่อผู้สอบก่อนเริ่ม session ตรวจ COI อัตโนมัติจากสโมสร/โรงเรียน/โค้ชที่ผู้สมัครกรอก ไม่ให้กรรมการที่มี COI ให้คะแนนผู้สมัครคนนั้น และสลับ station/แจ้งประธานให้จัดคนแทน
+
+- **Priority:** Must · **บทบาท:** `judge`, `head`, `system` · **โมดูล:** ADM · **Workflow:** W-75, W-76
+- **ที่มา:** W-75 ขั้น 3; W-76 ขั้น 1; 04 SoD-08; 02 §2.5.5 ข้อ 2
+- **หน้าจอ:** S-R1-27, S-R1-37 · **API:** `declareConflicts`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** กรรมการเป็นโค้ชสโมสรที่ผู้สมัคร A ระบุในประวัติ **เมื่อ** ระบบตรวจ COI ตอนสร้าง offline pack **ผลที่ต้องได้** ผู้สมัคร A ถูกตั้ง `recused` สำหรับกรรมการคนนั้น และประธาน station ได้แจ้งให้จัดคนแทน (TC-R1-107)
+  2. [ความปลอดภัย] **กำหนดให้** กรรมการที่ถูก recused พยายามส่งคะแนนให้ผู้สมัคร A (เช่น แก้ไขข้อมูลบนเครื่อง) **เมื่อ** sync **ผลที่ต้องได้** server ปฏิเสธรายการนั้น (`ADM-COI-RECUSED`) และบันทึก audit (TC-R1-108)
+
+#### FR-R1-058 จัด slot ผู้สอบ
+
+ระบบต้องจัด slot ให้ผู้สอบอัตโนมัติโดยคำนึงถึงความจุ station, sub-bucket, แผน accommodation ที่อนุมัติ และสถานะ medical clearance (ไม่มี clearance = จอง slot สอบทักษะไม่ได้) ให้ผู้สมัครยืนยันหรือเลือก slot อื่นที่ว่างภายในกำหนด
+
+- **Priority:** Must · **บทบาท:** `admission`, `candidate`, `system` · **โมดูล:** ADM, HLT · **Workflow:** W-75, W-42
+- **ที่มา:** W-75 ขั้น 4–5; W-42 ขั้น 3; 02 QS-5..QS-7
+- **หน้าจอ:** S-R1-15, S-R1-37 · **API:** `allocateSlots`, `listMyTestSlots`, `confirmTestSlot`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครยังไม่มี `MedicalClearance(PRE_TEST)` สถานะ valid **เมื่อ** กดยืนยัน slot สอบทักษะ **ผลที่ต้องได้** ระบบไม่ให้ยืนยันและพาไปหน้าคัดกรองสุขภาพพร้อมบอกว่าขาดอะไร (TC-R1-109)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครที่ได้ accommodation "+50% เวลา" **เมื่อ** ระบบจัด slot **ผลที่ต้องได้** slot ของผู้สมัครยาวขึ้นตามแผนและไม่ชนกับ slot ถัดไปของ station (TC-R1-110)
+
+#### FR-R1-059 บัตรประจำตัวผู้สอบ QR
+
+ระบบต้องออกบัตรประจำตัวผู้สอบ (PDF/A ผ่าน DOC และหน้าในแอป) ที่มี QR แบบลงนามซึ่งมีเพียง token อ้าง slot (ไม่มีเลขบัตรประชาชน) วัน เวลา สถานที่ แผนที่ ข้อปฏิบัติการแต่งกาย และเตือน T-3/T-1 วัน
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** ADM, DOC, NOTI · **Workflow:** W-42, W-75
+- **ที่มา:** W-42 ขั้น 2; W-75 ขั้น 5; 02 CM-9, CM-10; 06 §5.7
+- **หน้าจอ:** S-R1-15 · **API:** `getAdmissionCard`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครยืนยัน slot แล้ว **เมื่อ** ดาวน์โหลดบัตร **ผลที่ต้องได้** ได้ PDF ภาษาไทยที่ข้อความไม่ทับกัน (corpus T1–T8) และ QR ที่ judge app ตรวจลายเซ็นได้แบบ offline (TC-R1-111)
+  2. [ความปลอดภัย] **กำหนดให้** มีผู้แก้ไข QR (เปลี่ยน slot token) **เมื่อ** สแกนที่หน้างาน **ผลที่ต้องได้** judge app แสดง "QR ไม่ถูกต้อง" และให้ตรวจด้วยบัตรประชาชน + ค้นรายชื่อแทน (TC-R1-112)
+
+#### FR-R1-060 แผนฉุกเฉินสนามและหน่วยปฐมพยาบาล
+
+ระบบควรบังคับว่า session สอบทักษะต้องอ้าง `VenueEmergencyPlan` ของสนาม (AED จุดรับรถพยาบาล ผู้รับผิดชอบ อุปกรณ์ลดอุณหภูมิ) และมี `nurse` ประจำตามสัดส่วนผู้สอบ (และ `physician` สำหรับกีฬาต่อสู้) ก่อนประกาศตาราง
+
+- **Priority:** Should · **บทบาท:** `admission`, `nurse`, `physician`, `facility` · **โมดูล:** ADM, FAC, HLT · **Workflow:** W-75, W-153
+- **ที่มา:** W-75 ขั้น 6; W-42 ขั้น 5; W-153; 02 QS-8
+- **หน้าจอ:** S-R1-37 · **API:** `publishTestSchedule`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** session มวยไทยยังไม่มี `physician` ในรายชื่อเจ้าหน้าที่ **เมื่อ** กดประกาศตาราง **ผลที่ต้องได้** ระบบไม่ให้ประกาศและแจ้ง "กีฬาต่อสู้ต้องมีแพทย์ประจำข้างเวที" (TC-R1-113)
+
+#### FR-R1-061 ค่าความร้อน WBGT และการระงับ station
+
+ระบบควรบังคับบันทึกค่า WBGT ก่อนเริ่มและทุกชั่วโมงสำหรับ station กลางแจ้ง เทียบเกณฑ์ที่ตั้งค่า (ระดับปรับกิจกรรม = soft, ระดับสูงสุด = หยุด station) และเมื่อหยุด station ให้เลื่อน slot โดยไม่ตัดสิทธิ์ผู้สอบ [ต้องตรวจสอบเกณฑ์ Q-99]
+
+- **Priority:** Should · **บทบาท:** `nurse`, `judge`, `facility`, `system` · **โมดูล:** FAC, ADM · **Workflow:** W-153, W-42
+- **ที่มา:** W-153; 02 QS-8a; 03 J-51, L-18 · **ขึ้นกับ:** Q-99
+- **หน้าจอ:** S-R1-32 · **API:** `recordHeatReading`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** WBGT วัดได้เกินระดับสูงสุดที่ตั้งค่า เวลา 13:00 **เมื่อ** nurse บันทึกค่า **ผลที่ต้องได้** station วิ่ง 800 ม. ถูกระงับ ผู้สอบใน slot ที่เหลือได้ slot สำรองพร้อมแจ้งเตือน และไม่มีใครถูกบันทึกขาดสอบ (TC-R1-114)
+
+#### FR-R1-062 สัมภาษณ์ออนไลน์
+
+ระบบควรสร้างนัดสัมภาษณ์ออนไลน์พร้อมลิงก์ video call ของบริการที่ มกช. มีสัญญา ระบุเขตเวลาผู้สมัคร และไม่บันทึกวิดีโอโดยค่าเริ่มต้น
+
+- **Priority:** Should · **บทบาท:** `admission`, `judge`, `candidate` · **โมดูล:** ADM · **Workflow:** W-42, W-80
+- **ที่มา:** 09 I-53; 02 FA-5; A-119 · **ขึ้นกับ:** A-119, Q-75
+- **หน้าจอ:** S-R1-15, S-R1-37 · **API:** `allocateSlots`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครต่างจังหวัดได้รับอนุมัติสัมภาษณ์ออนไลน์ **เมื่อ** จัด slot **ผลที่ต้องได้** บัตรผู้สอบแสดงลิงก์ประชุมและคำชี้แจงว่าไม่มีการบันทึกวิดีโอ (TC-R1-115)
+
+#### FR-R1-063 ห้องสอบข้อเขียนและผังที่นั่ง
+
+ระบบควรจัดห้องสอบข้อเขียนของการคัดเลือก (ADM `AdmissionTestSession` ที่ใช้ห้องจาก ORG) พร้อมผังที่นั่ง ใบเซ็นชื่อ QR และธง accommodation ที่ที่นั่ง โดยแยกจากตารางสอบรายวิชาของ EXM
+
+- **Priority:** Should · **บทบาท:** `admission`, `proctor` · **โมดูล:** ADM, ORG, DOC · **Workflow:** W-42, W-72
+- **ที่มา:** 02 GN-4, DA-4; 06 §6.1 (วันสอบ)
+- **หน้าจอ:** S-R1-37 · **API:** `createTestSession`, `allocateSlots`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** รอบทั่วไป 3 มีผู้สอบข้อเขียน 640 คน ห้องละ 40 **เมื่อ** จัดผังที่นั่ง **ผลที่ต้องได้** ได้ 16 ห้อง ผังที่นั่งพิมพ์ได้ และผู้ที่มี accommodation ห้องชั้น 1 ถูกจัดในห้องที่มีคุณลักษณะเข้าถึงได้ (TC-R1-116)
+
+### 2.7 Medical clearance และความปลอดภัยวันสอบ (MED)
+
+_แบบคัดกรอง ใบรับรองแพทย์ใน hlt_vault, gate ก่อนสอบทักษะ, คัดกรองหน้าสนาม, เหตุบาดเจ็บ (W-42, W-71, W-85, W-39, W-152)_
+
+#### FR-R1-064 แบบคัดกรองสุขภาพและใบรับรองแพทย์ใน health vault
+
+ระบบต้องให้ผู้สมัครตอบแบบคัดกรองก่อนออกกำลังกาย (ผู้ใหญ่: PAR-Q+ หรือเทียบเท่า; ผู้เยาว์ต่ำกว่า 15 ปี: แบบคัดกรองเด็ก) และอัปโหลดใบรับรองแพทย์ (มีเลขใบอนุญาตแพทย์ อายุไม่เกิน 30 วัน ณ วันทดสอบ [ต้องตรวจสอบ]) โดยเก็บใน `hlt_vault` record class `SELECTION_MEDICAL` เท่านั้น; ถ้าตอบ "ใช่" ในข้อเสี่ยงต้องแนบใบรับรองแพทย์เฉพาะทาง
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** HLT, ADM, PRIV · **Workflow:** W-42, W-71
+- **ที่มา:** 02 QS-5; 06 §7.6, D-03; 08 §7.1, §9; 10 L-36 · **ขึ้นกับ:** Q-23, Q-103
+- **หน้าจอ:** S-R1-14 · **API:** `submitHealthScreening`, `getMyClearanceStatus`
+- **เกณฑ์ยอมรับ:**
+  1. [PDPA] **กำหนดให้** ผู้สมัครส่งแบบคัดกรองและใบรับรองแพทย์ **เมื่อ** ตรวจฐานข้อมูล core (schema `adm`) และ event ที่ publish **ผลที่ต้องได้** ไม่มีคำตอบแบบคัดกรองหรือไฟล์ใบรับรองใน core; ADM ได้เพียง `hlt.MedicalClearanceChanged` (status, valid_to) (TC-R1-117)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครตอบ "ใช่" ข้อ "เคยหมดสติขณะออกกำลังกาย" **เมื่อ** ส่งแบบคัดกรอง **ผลที่ต้องได้** ระบบบังคับแนบใบรับรองแพทย์เฉพาะทางก่อนออก clearance และอธิบายเหตุผลด้วยภาษาไม่ตำหนิ (TC-R1-118)
+  3. [กรณีผิดปกติ] **กำหนดให้** ใบรับรองแพทย์ลงวันที่ 45 วันก่อนวันสอบ **เมื่อ** ระบบประเมิน **ผลที่ต้องได้** clearance ไม่ผ่าน เหตุผล "ใบรับรองแพทย์ต้องออกไม่เกิน 30 วันก่อนวันทดสอบ" (TC-R1-119)
+
+#### FR-R1-065 สถานะ MedicalClearance(PRE_TEST) เป็น gate
+
+ระบบต้องออก `MedicalClearance(PRE_TEST)` ที่มี `valid_to` และส่งให้ ADM เฉพาะสถานะ (CLEARED, CLEARED_WITH_CONDITIONS, NOT_CLEARED, PENDING) ผ่าน `hlt.MedicalClearanceChanged` และ ADM ต้องใช้สถานะนี้เป็น gate ของการยืนยัน slot และการเช็คอินสอบทักษะ
+
+- **Priority:** Must · **บทบาท:** `nurse`, `physician`, `system` · **โมดูล:** HLT, ADM · **Workflow:** W-42, W-71
+- **ที่มา:** 06 §6.1 (gate), §7.6; G-07; W-42 ขั้น 3
+- **หน้าจอ:** S-R1-14, S-R1-15, S-R1-28 · **API:** `getMyClearanceStatus`, `getClearanceRoster`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** clearance ของผู้สอบหมดอายุก่อนวันสอบ 1 วัน **เมื่อ** judge สแกน QR เช็คอิน **ผลที่ต้องได้** judge app แสดง "ยังไม่มีใบรับรองสุขภาพที่ใช้ได้ — ส่งไปจุดพยาบาล" และไม่เปิดให้ให้คะแนน (TC-R1-120)
+  2. [PDPA] **กำหนดให้** `admission` เปิด roster ของ session **เมื่อ** ดูคอลัมน์สุขภาพ **ผลที่ต้องได้** เห็นเพียงสถานะ ✓/รอ/ไม่ผ่าน ไม่เห็นคำตอบหรือการวินิจฉัย (TC-R1-121)
+
+#### FR-R1-066 คัดกรองหน้าสนามโดยพยาบาล
+
+ระบบต้องให้ `nurse` ประจำ session ใช้ tablet บันทึกการคัดกรองหน้าสนาม (ชีพจร ความดัน อาการ) ลง `hlt_vault` ผล pass/fail ต่อผู้สอบ โดยเห็นเฉพาะ roster ของ session ที่ได้รับมอบหมาย (care relationship) และเมื่อไม่ผ่านให้สร้าง `TestIncident` + เสนอ slot สำรอง
+
+- **Priority:** Must · **บทบาท:** `nurse`, `system` · **โมดูล:** HLT, ADM · **Workflow:** W-42, W-71, W-85
+- **ที่มา:** 02 QS-8; W-42 ขั้น 5; W-71 ขั้น 4; 08 §9.3
+- **หน้าจอ:** S-R1-32 · **API:** `recordPretestCheck`, `recordTestIncident`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ความดันของผู้สอบสูงเกินเกณฑ์ที่ทีมแพทย์ตั้ง **เมื่อ** nurse บันทึกไม่ผ่าน **ผลที่ต้องได้** ผู้สอบได้สถานะ "เลื่อนสอบ (สุขภาพ)" พร้อม slot สำรอง และ ADM ได้เพียงเหตุ "HEALTH_DEFERRAL" (TC-R1-122)
+  2. [ความปลอดภัย] **กำหนดให้** nurse ของ session A **เมื่อ** เปิดข้อมูลคัดกรองของผู้สอบใน session B **ผลที่ต้องได้** ได้ 0 แถว/403 และ UEBA บันทึก "อ่าน vault โดยไม่มี care relationship" (TC-R1-123)
+
+#### FR-R1-067 เหตุบาดเจ็บวันสอบและ concussion
+
+ระบบต้องให้ `nurse`/`physician` (หรือ `judge` ในฐานะผู้กำกับกิจกรรม) บันทึกการบาดเจ็บวันสอบลง `hlt_vault` ทันทีโดยไม่รอ consent (ฐาน ม.26(5)(ก) [ต้องตรวจสอบถ้อยคำ]) เมื่อสงสัย concussion ต้องถอดออกจากการทดสอบทันทีและห้ามกลับเข้าทดสอบในวันเดียวกัน; ผู้สมัครผู้เยาว์ให้เจ้าหน้าที่โทรแจ้งผู้ปกครองก่อน และถ้าโทรไม่ติดใน 15 นาทีระบบส่งแจ้งเตือนเร่งด่วน
+
+- **Priority:** Must · **บทบาท:** `nurse`, `physician`, `judge`, `system` · **โมดูล:** HLT, ADM, NOTI · **Workflow:** W-85, W-39, W-152
+- **ที่มา:** W-85; W-39; W-152; 02 EX-2; 04 G14; 10 L-10 · **ขึ้นกับ:** Q-103
+- **หน้าจอ:** S-R1-32, S-R1-28 · **API:** `recordTestIncident`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สอบกีฬาเทควันโดถูกกระแทกศีรษะและมีอาการมึน **เมื่อ** judge กด "สงสัยกระทบกระเทือนสมอง" **ผลที่ต้องได้** ผู้สอบถูกล็อกไม่ให้เช็คอิน station ใดในวันนั้น, nurse ได้แจ้งเตือน และสร้าง TestIncident ที่ ADM เห็นเพียง "ยุติการทดสอบด้วยเหตุสุขภาพ" (TC-R1-124)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สอบอายุ 17 ปีบาดเจ็บ และเจ้าหน้าที่โทรหาผู้ปกครองไม่ติด **เมื่อ** ครบ 15 นาทีหลังบันทึกเหตุ **ผลที่ต้องได้** ระบบส่งข้อความเร่งด่วนถึงผู้ปกครองทุกช่องทางที่ผูกไว้ พร้อมเบอร์ติดต่อจุดพยาบาล (ไม่มีรายละเอียดการวินิจฉัย) (TC-R1-125)
+
+#### FR-R1-068 Retention ของข้อมูลสุขภาพการคัดเลือก
+
+ระบบต้องทำ crypto-shredding ของ record class `SELECTION_MEDICAL` ของผู้ไม่ได้รับเข้าเมื่อปิดรอบ + ระยะอุทธรณ์ (และไม่มี legal hold) และสำหรับผู้ได้รับเข้าให้คงเฉพาะส่วนที่จำเป็นต่อการดูแลเพื่อย้ายเป็น `CLINICAL` ใน R2 [ต้องตรวจสอบ]
+
+- **Priority:** Must · **บทบาท:** `system`, `dpo` · **โมดูล:** HLT, PRIV · **Workflow:** W-42
+- **ที่มา:** 08 §8 (SELECTION_MEDICAL), §9.2; D-04 · **ขึ้นกับ:** A-118
+- **หน้าจอ:** — · **API:** —
+- **เกณฑ์ยอมรับ:**
+  1. [PDPA] **กำหนดให้** รอบโควตาปิดอุทธรณ์แล้ว 30 วันและผู้สมัคร X ไม่ได้รับเข้า ไม่มี legal hold **เมื่อ** job retention ทำงาน **ผลที่ต้องได้** DEK (X × SELECTION_MEDICAL) ถูกลบ มีรายการใน erasure ledger และการอ่านข้อมูลนั้นได้ ciphertext ที่ถอดไม่ได้ (TC-R1-126)
+  2. [PDPA] **กำหนดให้** ผู้สมัคร Y มีอุทธรณ์ค้าง (legal hold) **เมื่อ** job retention ทำงาน **ผลที่ต้องได้** ไม่ลบข้อมูลของ Y และบันทึกเหตุผล "LEGAL_HOLD" (TC-R1-127)
+
+### 2.8 ให้คะแนนหลายกรรมการและ moderation (SCR)
+
+_judge app offline-first, objective/subjective, lock + hash, moderation, conflict queue, paper fallback (W-76)_
+
+#### FR-R1-069 Offline pack และความปลอดภัยของอุปกรณ์กรรมการ
+
+ระบบต้องให้กรรมการดาวน์โหลด offline pack ของ session ที่ได้รับมอบหมายเท่านั้น (roster เลขผู้สอบ + ชื่อ + รูปเพื่อยืนยันตัว, station, rubric, กติกา) เก็บใน IndexedDB ที่เข้ารหัสด้วย WebCrypto key แบบ non-extractable ที่ปลดด้วย PIN ของกรรมการ บน tablet ที่ลงทะเบียน MDM และ revoke จากระยะไกลได้
+
+- **Priority:** Must · **บทบาท:** `judge`, `itadmin` · **โมดูล:** ADM, IAM · **Workflow:** W-76
+- **ที่มา:** 07 §11.8 (S-05); W-76 ขั้น 1; 14 §7
+- **หน้าจอ:** S-R1-27 · **API:** `listMyJudgeSessions`, `downloadOfflinePack`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** กรรมการ station 2 ของ session A **เมื่อ** ขอ offline pack ของ session B **ผลที่ต้องได้** ได้ 403 และ audit (TC-R1-128)
+  2. [ความปลอดภัย] **กำหนดให้** tablet หายและ `itadmin` revoke อุปกรณ์ **เมื่อ** อุปกรณ์นั้นพยายาม sync **ผลที่ต้องได้** server ปฏิเสธทุกรายการจากอุปกรณ์นั้นและแจ้งประธาน session ให้ใช้ paper fallback ตรวจย้อน (TC-R1-129)
+  3. [ความปลอดภัย] **กำหนดให้** มีผู้ใส่ PIN ผิด 5 ครั้ง **เมื่อ** ครั้งที่ 6 **ผลที่ต้องได้** แอปล็อกข้อมูลบนเครื่อง ต้องให้ประธาน station ปลดด้วยบัญชีของตน (TC-R1-130)
+
+#### FR-R1-070 เช็คอินผู้สอบด้วย QR แบบ offline
+
+ระบบต้องให้กรรมการ/เจ้าหน้าที่สแกน QR บัตรผู้สอบแบบ offline ตรวจลายเซ็น QR แสดงรูปและชื่อเพื่อยืนยันตัว บันทึกเวลาเช็คอิน เตือนการสแกนซ้ำ และบันทึกผู้ไม่มาสอบ
+
+- **Priority:** Must · **บทบาท:** `judge`, `admission` · **โมดูล:** ADM · **Workflow:** W-42, W-76
+- **ที่มา:** W-42 ขั้น 6; W-76 ขั้น 1; 02 QS-9
+- **หน้าจอ:** S-R1-28 · **API:** `syncJudgeBatch`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ไม่มีสัญญาณที่สนาม **เมื่อ** สแกน QR ผู้สอบ 30 คน **ผลที่ต้องได้** เช็คอินทั้งหมดบันทึกบนเครื่องพร้อมเวลา และแสดง "รอส่ง 30 รายการ" (TC-R1-131)
+  2. [กรณีผิดปกติ] **กำหนดให้** สแกน QR เดิมซ้ำที่ station เดียวกัน **เมื่อ** สแกน **ผลที่ต้องได้** แอปแจ้ง "เช็คอินแล้วเมื่อ 09:12" ไม่สร้างรายการซ้ำ (TC-R1-132)
+
+#### FR-R1-071 Station OBJECTIVE
+
+ระบบต้องให้ station OBJECTIVE บันทึกผลวัด (เวลา/ระยะ/จำนวนครั้ง) ตามจำนวน trial ที่กำหนด ใช้ค่า best-of (หรือกติกาที่ประกาศ) แปลงเป็นคะแนนตามตารางเกณฑ์ต่อเพศ/อายุ รับค่าจากเครื่องจับเวลาไฟฟ้าแบบ import ได้ และไม่ผ่าน aggregate/moderation
+
+- **Priority:** Must · **บทบาท:** `judge` · **โมดูล:** ADM · **Workflow:** W-76
+- **ที่มา:** W-76 ขั้น 2; 02 §2.5.4, §2.5.5 ข้อ 3
+- **หน้าจอ:** S-R1-29 · **API:** `syncJudgeBatch`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** station วิ่ง 50 ม. กำหนด 2 trial best-of **เมื่อ** ผู้วัดบันทึก 7.42 s และ 7.35 s **ผลที่ต้องได้** ระบบใช้ 7.35 s แปลงเป็นคะแนนตามตารางเกณฑ์เพศ/อายุของรอบ (TC-R1-133)
+  2. [กรณีผิดปกติ] **กำหนดให้** ผู้วัดกรอก 0.735 s (ผิดหน่วย) **เมื่อ** บันทึก **ผลที่ต้องได้** แอปเตือน "ค่านอกช่วงที่เป็นไปได้ (5–20 s)" และให้ยืนยันหรือแก้ (TC-R1-134)
+
+#### FR-R1-072 Station SUBJECTIVE ให้คะแนนอิสระและล็อกเมื่อส่ง
+
+ระบบต้องให้กรรมการแต่ละคนใน station SUBJECTIVE ให้คะแนนตาม rubric อย่างอิสระ มองไม่เห็นคะแนนกรรมการอื่นจนกว่าทุกคนส่ง ล็อกคะแนนเมื่อส่ง (`locked_at`) และแก้ได้เฉพาะเมื่อประธาน station เปิดแก้พร้อมเหตุผล (audit ทุกครั้ง)
+
+- **Priority:** Must · **บทบาท:** `judge`, `head` · **โมดูล:** ADM, AUD · **Workflow:** W-76
+- **ที่มา:** W-76 ขั้น 2; 02 §2.5.5 ข้อ 1, 6; 04 SoD-14
+- **หน้าจอ:** S-R1-29, S-R1-31 · **API:** `syncJudgeBatch`, `reopenScore`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** กรรมการ A ส่งคะแนนแล้ว และกรรมการ B ยังไม่ส่ง **เมื่อ** กรรมการ B เปิดหน้าผู้สอบเดียวกัน **ผลที่ต้องได้** ไม่เห็นคะแนนของ A (TC-R1-135)
+  2. [กรณีผิดปกติ] **กำหนดให้** กรรมการส่งคะแนนแล้วต้องการแก้ **เมื่อ** กดแก้ **ผลที่ต้องได้** ระบบไม่ให้แก้ แสดงปุ่ม "ขอให้ประธานเปิดแก้" และเมื่อประธานเปิดต้องกรอกเหตุผลซึ่งบันทึกใน audit (TC-R1-136)
+
+#### FR-R1-073 Sync แบบ idempotent และ conflict queue
+
+ระบบต้อง sync คะแนนและเช็คอินจาก tablet ด้วย UUIDv7 ที่สร้างฝั่ง client แบบ idempotent ตรวจ validation ซ้ำที่ server ส่งรายการที่ขัดแย้ง (รายการเดียวกันจากสองเครื่อง) เข้า conflict queue ให้ประธานตัดสิน (ห้าม last-writer-wins) แสดงจำนวนรายการรอส่งและเวลา sync ล่าสุด และล้างข้อมูลบนเครื่องหลัง sync สำเร็จ
+
+- **Priority:** Must · **บทบาท:** `judge`, `head`, `system` · **โมดูล:** ADM · **Workflow:** W-76
+- **ที่มา:** W-76; 07 §11.8; 08 §1 ข้อ 6; 14 §7
+- **หน้าจอ:** S-R1-30 · **API:** `syncJudgeBatch`, `listSyncConflicts`, `resolveSyncConflict`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** tablet ส่ง batch 200 รายการซ้ำเพราะไม่ได้รับ ack **เมื่อ** server รับ batch ซ้ำ **ผลที่ต้องได้** ผล 200 รายการเหมือนเดิม ไม่มีคะแนนซ้ำ (TC-R1-137)
+  2. [กรณีผิดปกติ] **กำหนดให้** คะแนนรายการเดียวกัน (กรรมการ × ผู้สอบ × rubric item) ถูกส่งจากสองเครื่องด้วยค่าต่างกัน **เมื่อ** sync **ผลที่ต้องได้** รายการเข้า conflict queue ของประธาน station ทั้งสองค่ายังไม่ถูกใช้คำนวณจนตัดสิน (TC-R1-138)
+  3. [ฟังก์ชัน] **กำหนดให้** sync สำเร็จทั้งหมด **เมื่อ** กรรมการดูหน้า sync **ผลที่ต้องได้** แสดง "ส่งครบแล้ว — sync ล่าสุด 15:42" และข้อมูลคะแนนบนเครื่องถูกล้าง (TC-R1-139)
+
+#### FR-R1-074 Flag ความต่างของคะแนนและ moderation
+
+ระบบต้องตรวจความต่างของคะแนนระหว่างกรรมการใน station SUBJECTIVE เมื่อทุกคนส่ง ถ้าเกินเกณฑ์ (ตัวอย่าง พิสัย > 20% ของคะแนนเต็ม [ต้องตรวจสอบ]) ให้ flag ในวันสอบ และให้ประธาน station ทำ moderation (ให้คะแนนใหม่หรือบันทึกเหตุผลคงคะแนน) ภายใน ≤ 1 วันทำการก่อนรวมคะแนน
+
+- **Priority:** Must · **บทบาท:** `head`, `judge`, `system` · **โมดูล:** ADM · **Workflow:** W-76
+- **ที่มา:** W-76 ขั้น 3–4, SLA; 02 §2.5.5 ข้อ 4, QS-10 · **ขึ้นกับ:** A-52, Q-14
+- **หน้าจอ:** S-R1-31 · **API:** `listModerationFlags`, `recordModeration`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** กรรมการ 3 คนให้คะแนน 6, 9, 15 จากเต็ม 20 (พิสัย 45%) **เมื่อ** คนที่ 3 ส่งคะแนน **ผลที่ต้องได้** ระบบสร้าง flag ทันทีและแจ้งประธาน station (TC-R1-140)
+  2. [กรณีผิดปกติ] **กำหนดให้** ยังมี flag ค้างของ session **เมื่อ** `head` พยายามยืนยันผลรวมทุก station **ผลที่ต้องได้** ระบบไม่ให้ยืนยันและแสดงรายการ flag ที่ค้างพร้อมเวลาที่เหลือของ SLA (TC-R1-141)
+
+#### FR-R1-075 กติกาการรวมคะแนนกรรมการ
+
+ระบบต้องรวมคะแนน station SUBJECTIVE ตาม config (เฉลี่ย / ตัดสูงสุด-ต่ำสุดเมื่อกรรมการ ≥ 5 / มัธยฐาน) โดยไม่ทำ normalisation ข้ามชุดกรรมการเป็นค่าเริ่มต้น และถ้าจำเป็นต้องใช้หลายชุดกรรมการต่อ sub-bucket ต้องมีวิธีที่ประกาศล่วงหน้าและ `head` อนุมัติ
+
+- **Priority:** Must · **บทบาท:** `system`, `head` · **โมดูล:** ADM · **Workflow:** W-76
+- **ที่มา:** W-76 ขั้น 5; 02 §2.5.5 ข้อ 3, 5; D-06 · **ขึ้นกับ:** A-52
+- **หน้าจอ:** S-R1-31, S-R1-38 · **API:** `confirmSessionResults`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** station มีกรรมการ 5 คนให้คะแนน 12, 14, 15, 15, 19 และตั้ง trimmed mean **เมื่อ** ระบบคำนวณ **ผลที่ต้องได้** ได้ (14 + 15 + 15) / 3 = 14.67 และบันทึกวิธีคำนวณใน audit ของผลรวม (TC-R1-142)
+
+#### FR-R1-076 ประธานยืนยันและล็อกผลด้วย hash
+
+ระบบต้องให้ `head` (selection_chair) ยืนยันผลรวมทุก station ของ session เมื่อไม่มี flag/conflict ค้าง แล้วล็อกพร้อม hash ของชุดผล คะแนนที่ล็อกแล้วแก้ตรงไม่ได้ (เปลี่ยนได้เฉพาะผ่าน override ที่มีผู้อนุมัติคนที่ 2) และ job รายคืนเทียบ hash ถ้าไม่ตรงให้ publish `aud.AnomalyDetected`
+
+- **Priority:** Must · **บทบาท:** `head`, `system`, `auditor` · **โมดูล:** ADM, AUD · **Workflow:** W-76, W-42
+- **ที่มา:** W-76 ขั้น 6–7; 04 SoD-14; 06 §5.9 (SEC-01)
+- **หน้าจอ:** S-R1-31 · **API:** `confirmSessionResults`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ทุก station ของ session ไม่มี flag ค้าง **เมื่อ** `head` ยืนยันผลพร้อม step-up MFA **ผลที่ต้องได้** session เป็น `locked` มี hash (SHA-256) ของชุดผล และส่งผลเข้าการจัดอันดับ (TC-R1-143)
+  2. [ความปลอดภัย] **กำหนดให้** DBA แก้ค่า `raw_score` ตรงในฐานข้อมูลหลังล็อก (จำลองใน test) **เมื่อ** job ตรวจ integrity รายคืนทำงาน **ผลที่ต้องได้** hash ไม่ตรง → `aud.AnomalyDetected` และแจ้ง `security_admin`/`auditor` (TC-R1-144)
+
+#### FR-R1-077 Paper fallback และนำเข้าคะแนนแบบ 4-eyes
+
+ระบบควรพิมพ์ใบให้คะแนนสำรองล่วงหน้า และให้นำเข้าคะแนนจากกระดาษ/CSV แบบ dry-run รายงานข้อผิดพลาดรายแถว แล้วอนุมัติโดยผู้อนุมัติคนที่ 2 ภายใน T+1 วันทำการ โดยบันทึกแหล่งที่มา `PAPER_IMPORT`
+
+- **Priority:** Should · **บทบาท:** `admission`, `head` · **โมดูล:** ADM · **Workflow:** W-76
+- **ที่มา:** 07 §11.8; 14 §7.1 (UXR-40); 06 §6.1 (กระดาษ + import เป็น fallback)
+- **หน้าจอ:** S-R1-58 · **API:** `importPaperScores`, `approvePaperImport`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** tablet 2 เครื่องใช้ไม่ได้และกรรมการใช้ใบให้คะแนน **เมื่อ** `admission` นำเข้า CSV ที่คีย์จากใบ แล้ว `head` อนุมัติ **ผลที่ต้องได้** คะแนนเข้าระบบพร้อม source = PAPER_IMPORT และไฟล์สแกนใบให้คะแนนแนบเป็นหลักฐาน (TC-R1-145)
+  2. [ความปลอดภัย] **กำหนดให้** ผู้นำเข้าและผู้อนุมัติเป็นคนเดียวกัน **เมื่อ** อนุมัติ **ผลที่ต้องได้** ระบบปฏิเสธ (4-eyes) (TC-R1-146)
+
+#### FR-R1-078 ส่งออกรายชื่อค่าตอบแทนกรรมการ
+
+ระบบอาจส่งออกรายชื่อกรรมการ จำนวน session/station ที่ปฏิบัติจริง ให้การเงินใช้เบิกจ่าย (W-29 อยู่ R2)
+
+- **Priority:** Could · **บทบาท:** `admission`, `finance` · **โมดูล:** ADM · **Workflow:** W-75
+- **ที่มา:** 02 §2.5.5 ข้อ 9; W-29
+- **หน้าจอ:** S-R1-37 · **API:** `requestStandardExport`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** รอบโควตาปิดแล้ว **เมื่อ** `admission` ส่งออกรายชื่อกรรมการ **ผลที่ต้องได้** ได้ไฟล์ UTF-8 with BOM ที่มี watermark ผู้ดึงและบันทึก audit (TC-R1-147)
+
+### 2.9 ผลคัดเลือกและการประกาศ (RES)
+
+_composite, จัดอันดับ, อนุมัติผล, override, ประกาศแบบ CDN, คะแนนรายสถานี (W-42, W-70..W-72, W-76)_
+
+#### FR-R1-079 คะแนนรวมและการจัดอันดับที่ทำซ้ำได้
+
+ระบบต้องรวมคะแนน GPAX/ข้อเขียน/ทักษะ/สัมภาษณ์/ผลงานตามน้ำหนักของรอบ จัดอันดับภายใน sub-bucket แล้ว spill-over ตามกติกาที่ประกาศ ใช้ tie-break ตามลำดับที่ประกาศ และการคำนวณต้อง deterministic (คำนวณซ้ำได้ผลเดิม) พร้อมบันทึก input hash และเวอร์ชัน scheme
+
+- **Priority:** Must · **บทบาท:** `system`, `admission` · **โมดูล:** ADM · **Workflow:** W-76, W-42, W-70, W-71, W-72
+- **ที่มา:** W-76 ขั้น 7; W-42 ขั้น 7; 02 QA-7, QS-12; 06 §6.1
+- **หน้าจอ:** S-R1-38 · **API:** `computeRankList`, `getRankList`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัคร 2 คนคะแนนรวมเท่ากัน 78.50 และ tie-break = GPAX → อายุน้อยกว่า **เมื่อ** คำนวณอันดับ **ผลที่ต้องได้** คนที่ GPAX สูงกว่าได้อันดับดีกว่า และหน้าจออธิบายว่าใช้ tie-break ข้อใด (TC-R1-148)
+  2. [ฟังก์ชัน] **กำหนดให้** rank list ถูกคำนวณแล้ว **เมื่อ** สั่งคำนวณซ้ำโดยไม่มีข้อมูลเปลี่ยน **ผลที่ต้องได้** ได้อันดับและ hash เดิมทุกประการ (TC-R1-149)
+
+#### FR-R1-080 ผ่าน/สำรอง/ไม่ผ่าน และลำดับสำรอง
+
+ระบบต้องกำหนดผล passed/reserve/failed ตามที่นั่งของแต่ละ bucket/sub-bucket และเกณฑ์ขั้นต่ำ (ถ้ามี) และสร้างรายการสำรองเรียงลำดับสำหรับ cascade
+
+- **Priority:** Must · **บทบาท:** `system` · **โมดูล:** ADM · **Workflow:** W-42, W-74
+- **ที่มา:** W-42; 02 §2.1 (state), QA-7; C-9
+- **หน้าจอ:** S-R1-38 · **API:** `computeRankList`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** bucket 8 ที่ ผู้ผ่านเกณฑ์ขั้นต่ำ 20 คน **เมื่อ** คำนวณผล **ผลที่ต้องได้** อันดับ 1–8 = passed, 9–20 = reserve ตามลำดับ, คนที่ต่ำกว่าเกณฑ์ขั้นต่ำ = failed (TC-R1-150)
+
+#### FR-R1-081 สายอนุมัติผลและ override 2 คน
+
+ระบบต้องให้ผลผ่านการยืนยันของ `head` (selection_chair) → `dean` → `campusvp` ล็อกหลังอนุมัติ และการแก้ผล (override) ต้องมีเหตุผล ผู้เสนอ และผู้อนุมัติคนที่ 2 (SoD-14) พร้อม audit และคำนวณผลกระทบต่อ offer โดยไม่กระทบผู้ที่ confirmed แล้ว
+
+- **Priority:** Must · **บทบาท:** `head`, `dean`, `campusvp` · **โมดูล:** ADM, AUD · **Workflow:** W-42, W-70, W-71, W-72, W-18
+- **ที่มา:** 02 QA-8, QS-13, GN-6, EX-5; 04 SoD-14; W-18
+- **หน้าจอ:** S-R1-38, S-R1-45 · **API:** `decideRankListApproval`, `createResultOverride`, `approveResultOverride`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** `head` เสนอ override และพยายามอนุมัติเอง **เมื่อ** กดอนุมัติ **ผลที่ต้องได้** ระบบปฏิเสธ (SoD-14) (TC-R1-151)
+  2. [ฟังก์ชัน] **กำหนดให้** `campusvp` อนุมัติ rank list **เมื่อ** อนุมัติ **ผลที่ต้องได้** rank list เป็น `approved` (แก้ไม่ได้) และปุ่มประกาศผลเปิดให้ `admission` (TC-R1-152)
+
+#### FR-R1-082 ประกาศผลภายใน 24 ชม. หลังอนุมัติ
+
+ระบบต้องประกาศผลได้ภายใน 24 ชม. หลังอนุมัติ: ผลรายบุคคลใน portal, PDF รายชื่อแบบ mask ที่ลงนามผ่าน DOC, ประกาศ ENG, แจ้งเตือน NOTI แบบทยอย (P1) และ publish `adm.ResultsAnnounced` (มีเพียงจำนวน ไม่มีรายชื่อ)
+
+- **Priority:** Must · **บทบาท:** `admission`, `pr`, `campusvp`, `system` · **โมดูล:** ADM, ENG, DOC, NOTI · **Workflow:** W-42, W-70, W-71, W-72
+- **ที่มา:** W-42 ขั้น 8; 02 QA-9, GN-7; A-53; 06 #61 · **ขึ้นกับ:** A-53
+- **หน้าจอ:** S-R1-38, S-R1-46 · **API:** `publishResults`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** rank list รอบ 5 อนุมัติเวลา 10:00 วันที่ 7 มิ.ย. 2572 **เมื่อ** `admission` กดประกาศ **ผลที่ต้องได้** ภายใน 30 นาที ผลรายบุคคลพร้อมบน CDN, PDF ลงนามแล้ว, ประกาศเผยแพร่ และแจ้งเตือนทยอยครบภายในเวลาที่คำนวณ (≤ 2,000 ผู้รับ/นาที) (TC-R1-153)
+
+#### FR-R1-083 หน้าตรวจผลแบบ static shard บน CDN
+
+ระบบต้องสร้างผลรายบุคคลล่วงหน้าเป็น static shard บน CDN โดย key = HMAC(เลขผู้สมัคร + วันเกิด) ไม่มีชื่อเต็มหรือเลขบัตร ให้บริการแบบ fail-static ได้แม้ origin ไม่พร้อม และใช้ waiting room เมื่อผู้เข้าเกินเกณฑ์
+
+- **Priority:** Must · **บทบาท:** `candidate`, `applicant`, `system` · **โมดูล:** ADM, ADMIN · **Workflow:** W-42
+- **ที่มา:** 07 §9.3, §10.2; A-34; 14 S-37 · **ขึ้นกับ:** A-34
+- **หน้าจอ:** S-R1-47 · **API:** `getPublicResultShard`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** ผู้ไม่หวังดีเดาเลขผู้สมัครเรียงลำดับเพื่อดึงผลทั้งหมด **เมื่อ** ส่งคำขอโดยไม่มีวันเกิดที่ถูกต้อง **ผลที่ต้องได้** ไม่ได้ข้อมูลใด (key ไม่ตรง) และ rate limit/บอท challenge ทำงาน (TC-R1-154)
+  2. [ฟังก์ชัน] **กำหนดให้** origin ถูกปิดระหว่างช่วงประกาศ (จำลอง) **เมื่อ** ผู้สมัครตรวจผล **ผลที่ต้องได้** ยังได้ผลจาก CDN และหน้า offer แจ้ง "ยืนยันสิทธิ์ได้เมื่อระบบกลับมา — กำหนดเวลาไม่นับช่วงที่ระบบไม่พร้อม" [ต้องตรวจสอบนโยบายขยายเวลา] (TC-R1-155)
+
+#### FR-R1-084 คะแนนรายสถานีของตน
+
+ระบบต้องให้ผู้สมัครเห็นคะแนนรายสถานี/องค์ประกอบและอันดับของตนหลังประกาศ พร้อมคำอธิบายวิธีคำนวณ เพื่อใช้ประกอบคำขอทบทวน
+
+- **Priority:** Must · **บทบาท:** `candidate` · **โมดูล:** ADM · **Workflow:** W-42, W-18
+- **ที่มา:** 02 §2.5.5 ข้อ 7; W-18 ขั้น 1
+- **หน้าจอ:** S-R1-16 · **API:** `getMyResults`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครเป็นสำรองอันดับ 3 **เมื่อ** เปิดหน้าผล **ผลที่ต้องได้** เห็นคะแนนรวม คะแนนแต่ละสถานี (ค่าที่รวมแล้ว ไม่ระบุชื่อกรรมการ) อันดับ และปุ่มขอทบทวนพร้อมวันสุดท้ายที่ยื่นได้ (TC-R1-156)
+  2. [ความปลอดภัย] **กำหนดให้** ผู้สมัคร A เปลี่ยน applicationId ใน URL เป็นของผู้อื่น **เมื่อ** เรียก `GET /me/results` **ผลที่ต้องได้** ได้เฉพาะผลของตน (IDOR ไม่สำเร็จ) (TC-R1-157)
+
+#### FR-R1-085 กติกา mask รายชื่อสาธารณะ
+
+ระบบต้องบังคับกติกา mask ของรายชื่อที่เผยแพร่สาธารณะ (เลขผู้สมัคร + ชื่อแบบ mask ตามที่ DPO อนุมัติ [ต้องตรวจสอบรูปแบบ]; ไม่มีเลขบัตร วันเกิด หรือคะแนน) และตรวจ DLP ก่อนเผยแพร่ทุกฉบับ
+
+- **Priority:** Must · **บทบาท:** `admission`, `pr`, `dpo` · **โมดูล:** ENG, DOC, ADM · **Workflow:** W-42, W-36
+- **ที่มา:** 02 §0.4 ข้อ 5; 06 §5.4 (DLP); 08 §7.1 (Public) · **ขึ้นกับ:** Q-69
+- **หน้าจอ:** S-R1-46, S-R1-56 · **API:** `publishResults`, `publishEligibleList`
+- **เกณฑ์ยอมรับ:**
+  1. [PDPA] **กำหนดให้** ร่าง PDF ประกาศผลมีวันเกิดผู้สมัคร **เมื่อ** กดเผยแพร่ **ผลที่ต้องได้** DLP บล็อกและแจ้งคอลัมน์ที่ต้องลบ (TC-R1-158)
+
+### 2.10 Clearing และการยืนยันสิทธิ์ (CLR)
+
+_กติกา C-1..C-15 (เล่ม 02 §2.8.1), offer, ยืนยันได้ที่เดียว, cascade, reconfirm, no-show (W-43, W-74, W-163)_
+
+#### FR-R1-086 สร้าง offer พร้อม deadline และ quiet hours
+
+ระบบต้องสร้าง `Offer` ให้ผู้ผ่านทุกคนเมื่อประกาศผล พร้อม `confirm_deadline` ตามรอบ (C-6) แจ้งเตือน T-24 ชม./T-3 ชม. และสำหรับ offer จาก cascade ให้ส่งเฉพาะ 07:00–20:00 โดย deadline ไม่นับ quiet hours 21:00–07:00
+
+- **Priority:** Must · **บทบาท:** `system`, `candidate` · **โมดูล:** ADM, NOTI · **Workflow:** W-74, W-43
+- **ที่มา:** W-74 ขั้น 3; 02 CL-1, C-6; 03 J-04; UXR-25 · **ขึ้นกับ:** A-93
+- **หน้าจอ:** S-R1-17 · **API:** `listMyOffers`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** สำรองถูกเรียกเวลา 22:10 จากที่นั่งที่หมดเวลา **เมื่อ** J-04 สร้าง offer **ผลที่ต้องได้** ข้อความถูกส่ง 07:00 วันถัดไป และ deadline 48 ชม. เริ่มนับจาก 07:00 (ไม่นับช่วง 22:10–07:00) (TC-R1-159)
+
+#### FR-R1-087 หน้า offer และยืนยัน 1 คลิกพร้อมสรุปผล
+
+ระบบต้องแสดง offer ทั้งหมดของผู้สมัครทุกวิทยาเขตในหน้าเดียว เปรียบเทียบได้ และให้ยืนยัน 1 ที่ด้วยปุ่มเดียวพร้อมสรุปผลที่จะเกิด ("offer อื่นจะถูกสละโดยอัตโนมัติ — ไม่นับเป็นสิทธิ์สละของคุณ")
+
+- **Priority:** Must · **บทบาท:** `candidate` · **โมดูล:** ADM · **Workflow:** W-74, W-43
+- **ที่มา:** W-74 ขั้น 1; 02 CL-2; 14 S-05
+- **หน้าจอ:** S-R1-17 · **API:** `listMyOffers`, `confirmOffer`, `declineOffer`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครมี offer โควตานักกีฬาชลบุรีและโควตาเรียนดีมหาสารคาม **เมื่อ** เปิดหน้า offer **ผลที่ต้องได้** เห็นทั้งสองพร้อม deadline ค่ายืนยันสิทธิ์ และข้อความสรุปก่อนกดยืนยัน (TC-R1-160)
+  2. [การเข้าถึง] **กำหนดให้** ผู้ใช้ TalkBack **เมื่อ** ยืนยัน offer **ผลที่ต้องได้** ข้อความสรุปผลถูกอ่านก่อนปุ่มยืนยัน และปุ่มมี label ไทยที่ระบุวิทยาเขต/หลักสูตร (TC-R1-161)
+
+#### FR-R1-088 ยืนยันได้ที่เดียวทั้ง มกช. (C-3) แบบ atomic
+
+ระบบต้องตรวจกติกา C-3 ณ เวลายืนยันใน transaction เดียวกับการสละ offer อื่น ด้วย unique constraint บน (person, cycle, ระดับ) ครอบสถานะ `confirmed` ∪ `reported` ∪ `matriculated` ทั่ว มกช. ทนต่อการกดพร้อมกันหลายอุปกรณ์/หลายวิทยาเขต และใช้ `Idempotency-Key`
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** ADM · **Workflow:** W-74, W-43
+- **ที่มา:** W-74 ขั้น 2; W-43 ขั้น 2; 02 C-3, CL-5; 08 §6 (CLEARING_RUN note); D-06 · **ขึ้นกับ:** A-51, Q-12
+- **หน้าจอ:** S-R1-17 · **API:** `confirmOffer`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครกดยืนยัน offer A บนมือถือและ offer B บน notebook ในวินาทีเดียวกัน **เมื่อ** ทั้งสองคำขอถึง server **ผลที่ต้องได้** สำเร็จเพียง 1 รายการ อีกรายการได้ 409 `ADM-ALREADY-CONFIRMED` และ offer ที่ไม่ได้ยืนยันถูกสละอัตโนมัติพร้อมเหตุ `CONFIRMED_ELSEWHERE` (TC-R1-162)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครยืนยัน offer ชลบุรี **เมื่อ** transaction สำเร็จ **ผลที่ต้องได้** offer มหาสารคามเป็น `released` ทันที ไม่นับใน C-5 และที่นั่งเข้าคิว cascade รอบถัดไปของ J-04 (≤ 15 นาที) (TC-R1-163)
+
+#### FR-R1-089 ชำระค่ายืนยันสิทธิ์ภายในกำหนด
+
+ระบบต้องให้สถานะ `confirmed` มีผลเมื่อยืนยัน และต้องชำระค่ายืนยันสิทธิ์ภายใน deadline ของ offer (C-7) มิฉะนั้น offer หมดเวลาเป็น `expired` และคืนที่นั่งเข้า cascade
+
+- **Priority:** Must · **บทบาท:** `candidate`, `finance`, `system` · **โมดูล:** ADM, FIN · **Workflow:** W-43, W-74
+- **ที่มา:** W-43 ขั้น 3–5; 02 C-7, CL-4
+- **หน้าจอ:** S-R1-17, S-R1-10 · **API:** `confirmOffer`, `getPaymentStatus`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครยืนยันแต่ไม่ชำระจนพ้น deadline **เมื่อ** J-04 รอบถัดไปทำงาน **ผลที่ต้องได้** offer เป็น `expired` ภายใน ≤ 15 นาที ที่นั่งคืน bucket และสำรองลำดับถัดไปได้ offer (TC-R1-164)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้ปกครองชำระด้วยลิงก์ก่อน deadline 2 ชม. **เมื่อ** callback มาถึง **ผลที่ต้องได้** offer คงสถานะ `confirmed` (paid) ใบเสร็จออก และผู้สมัคร + ผู้ปกครองได้รับแจ้ง (TC-R1-165)
+
+#### FR-R1-090 สละสิทธิ์หลังยืนยัน (นับ C-5)
+
+ระบบต้องให้ผู้สมัครสละสิทธิ์ที่ยืนยันแล้วผ่าน e-Form โดยแจ้งผลต่อค่ายืนยันสิทธิ์ตาม C-7 และนับเป็นการสละ 1 ครั้งต่อ cycle (C-5) แล้วคืนที่นั่ง ≤ 15 นาที
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** ADM, FIN · **Workflow:** W-74
+- **ที่มา:** W-74; 02 CL-7, C-5, C-7 · **ขึ้นกับ:** A-51, Q-12
+- **หน้าจอ:** S-R1-17 · **API:** `waiveConfirmedSeat`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครใช้สิทธิ์สละไปแล้ว 1 ครั้งใน cycle **เมื่อ** ขอสละสิทธิ์ที่ยืนยันใหม่ **ผลที่ต้องได้** ระบบแจ้งว่าเกินจำนวนครั้งที่กำหนดของ cycle และให้ติดต่อเจ้าหน้าที่ (ไม่สละอัตโนมัติ) [config: ไม่จำกัดได้] (TC-R1-166)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครยังไม่เคยสละ **เมื่อ** ยืนยันการสละด้วย step-up OTP **ผลที่ต้องได้** สถานะเป็น `waived`, ตัวนับ C-5 = 1, ใบรับคำขอออก และที่นั่งคืน ≤ 15 นาที (TC-R1-167)
+
+#### FR-R1-091 J-04 คืนที่นั่งและเรียกสำรองจนถึง cascade_cutoff
+
+ระบบต้องรัน J-04 ทุก 5 นาทีระหว่าง clearing window: เปลี่ยน offer หมดเวลาเป็น `expired`, คืนที่นั่งจากทุกเหตุเข้า bucket เดิม, เรียกสำรองลำดับถัดไปภายใน ≤ 15 นาทีหลังเหตุ, ข้าม sub-bucket ที่มี appeal_hold และหลัง `cascade_cutoff` (T0 + 5 วันทำการ) ไม่เรียกสำรองแต่บันทึกเป็น `unfilled` (J-49)
+
+- **Priority:** Must · **บทบาท:** `system`, `admission` · **โมดูล:** ADM, ORG · **Workflow:** W-74
+- **ที่มา:** W-74 ขั้น 3–4; 02 C-8, C-9, ตารางเวลาคืนที่นั่ง; 03 J-04, J-49; A-110 · **ขึ้นกับ:** A-110, Q-95
+- **หน้าจอ:** S-R1-39 · **API:** `getClearingDashboard`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** offer หมดเวลา 10:00:00 **เมื่อ** J-04 ทำงานรอบ 10:05 **ผลที่ต้องได้** ภายใน 10:15 สำรองถัดไปใน bucket เดียวกันได้ offer (ถ้าอยู่ในช่วง 07:00–20:00) และ log บันทึกการเลื่อนลำดับ (TC-R1-168)
+  2. [กรณีผิดปกติ] **กำหนดให้** ที่นั่งว่างหลัง `cascade_cutoff` **เมื่อ** J-04 ทำงาน **ผลที่ต้องได้** ไม่มี offer ใหม่ ที่นั่งเป็น `unfilled` และแสดงใน dashboard (TC-R1-169)
+  3. [กรณีผิดปกติ] **กำหนดให้** sub-bucket มี `appeal_hold` **เมื่อ** ที่นั่งสุดท้ายของ sub-bucket ว่าง **ผลที่ต้องได้** ไม่เรียกสำรองจนกว่าจะตัดสินอุทธรณ์ (TC-R1-170)
+
+#### FR-R1-092 ห้ามสมัครรอบอื่นขณะยืนยันสิทธิ์อยู่ (C-4, C-13)
+
+ระบบต้องปิดสิทธิ์สมัครรอบ/ช่องทางอื่นทั้ง มกช. ใน cycle เดียวกันสำหรับผู้ที่ `confirmed`/`reported` จนกว่าจะสละ และบอกจำนวนสิทธิ์สละที่เหลือ โดย "upgrade" ไม่เปิดใน R1
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** ADM · **Workflow:** W-72, W-74
+- **ที่มา:** 02 C-4, C-13, QA-11; W-72 ขั้น 4 · **ขึ้นกับ:** A-51, Q-12
+- **หน้าจอ:** S-R1-01, S-R1-04 · **API:** `createApplication`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครยืนยันโควตาแล้ว **เมื่อ** สมัครรอบทั่วไปของวิทยาเขตเดิม **ผลที่ต้องได้** ระบบปฏิเสธ (`ADM-CONFIRMED-ELSEWHERE`) พร้อมทางเลือก "สละสิทธิ์เดิม (เหลือ 1 ครั้ง)" (TC-R1-171)
+
+#### FR-R1-093 ความเป็นส่วนตัวของ clearing ข้ามวิทยาเขต (C-11)
+
+ระบบต้องให้เจ้าหน้าที่วิทยาเขต A เห็นเพียงว่า "ยืนยันสิทธิ์ที่อื่นแล้ว" โดยไม่เห็นวิทยาเขต/หลักสูตรปลายทาง ส่วน `registrar` ส่วนกลางเห็นภาพรวมแบบ aggregate เท่านั้น
+
+- **Priority:** Must · **บทบาท:** `admission`, `registrar` · **โมดูล:** ADM · **Workflow:** W-74
+- **ที่มา:** 02 C-11, CL-8; W-74 ขั้น 6
+- **หน้าจอ:** S-R1-39, S-R1-35 · **API:** `getApplication`, `getClearingDashboard`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** `admission` มหาสารคามเปิดใบสมัครที่ผู้สมัครยืนยันที่ชลบุรี **เมื่อ** ดูสถานะ **ผลที่ต้องได้** เห็น "ยืนยันสิทธิ์ที่อื่นใน มกช. แล้ว" เท่านั้น ไม่มีชื่อวิทยาเขต หลักสูตร หรือวันที่ (TC-R1-172)
+
+#### FR-R1-094 ขยายเวลา/ข้อยกเว้นรายบุคคล 2 คน
+
+ระบบต้องให้ `admission` ขยาย deadline หรือให้ grace รายบุคคลพร้อมเหตุผล (ข้อมูลผิด ข้อพิพาท เหตุสุดวิสัย) เป็น `GateOverride` ที่ต้องมีผู้อนุมัติคนที่ 2 (SoD-14) และ J-04 ต้องเคารพ override ที่อนุมัติแล้ว
+
+- **Priority:** Must · **บทบาท:** `admission`, `campusvp` · **โมดูล:** ADM, ORG · **Workflow:** W-74
+- **ที่มา:** W-74 ขั้น 5; 02 C-8; 03 GateOverride; 04 SoD-14
+- **หน้าจอ:** S-R1-39, S-R1-45 · **API:** `extendOfferDeadline`, `approveDeadlineExtension`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครแจ้งว่าธนาคารล่มช่วงท้าย deadline และมีหลักฐาน **เมื่อ** `admission` ขอขยาย 24 ชม. และหัวหน้างานอนุมัติ **ผลที่ต้องได้** deadline ใหม่มีผล J-04 ไม่ expire offer และ audit แสดงผู้ขอ ผู้อนุมัติ และเหตุผล (TC-R1-173)
+  2. [ความปลอดภัย] **กำหนดให้** ผู้ขอและผู้อนุมัติเป็นคนเดียวกัน **เมื่อ** อนุมัติ **ผลที่ต้องได้** ปฏิเสธ (SoD-14) (TC-R1-174)
+
+#### FR-R1-095 ยืนยันสิทธิ์ซ้ำก่อนเปิดภาค (C-14, W-163)
+
+ระบบต้องเปิด `ADM_RECONFIRM_WINDOW` (ตั้งได้ต่อวิทยาเขต) สำหรับผู้ที่ confirmed ก่อนวันที่กำหนด เตือน 2 ครั้ง (ผู้เยาว์แจ้งผู้ปกครอง) ให้รายชื่อผู้ยังไม่ตอบแก่เจ้าหน้าที่เพื่อโทรติดตาม ยืนยันซ้ำได้ 1 แตะ และเมื่อพ้น window + 2 วันทำการให้เปลี่ยนเป็น `waived` (ไม่นับ C-5) แล้วส่งที่นั่งเข้า cascade
+
+- **Priority:** Must · **บทบาท:** `candidate`, `admission`, `system`, `guardian` · **โมดูล:** ADM, NOTI · **Workflow:** W-163
+- **ที่มา:** W-163; 02 C-14, CL-10; 03 J-48 · **ขึ้นกับ:** A-110, Q-95
+- **หน้าจอ:** S-R1-18, S-R1-39 · **API:** `reconfirmOffer`, `getReconfirmationRiskDashboard`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** window 1–15 พ.ค. 2572 และผู้สมัครโควตายังไม่ยืนยันซ้ำ **เมื่อ** ผู้สมัครกดลิงก์จากแจ้งเตือนครั้งที่ 2 **ผลที่ต้องได้** ยืนยันซ้ำด้วย 1 แตะ สถานะ `reconfirmed` และไม่ต้อง login ใหม่ถ้า session ยังใช้ได้ (มิฉะนั้น login ก่อน) (TC-R1-175)
+  2. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครไม่ยืนยันซ้ำจนพ้น 15 พ.ค. + 2 วันทำการ **เมื่อ** J-48 ทำงาน **ผลที่ต้องได้** offer เป็น `waived` เหตุ `NOT_RECONFIRMED` ไม่นับ C-5 ที่นั่งเข้า cascade (ถ้ายังไม่พ้น cutoff) และผู้สมัคร/ผู้ปกครองได้รับแจ้ง (TC-R1-176)
+  3. [ฟังก์ชัน] **กำหนดให้** `admission` เปิด dashboard ความเสี่ยง **เมื่อ** ดูภาพรวม **ผลที่ต้องได้** เห็นจำนวนตามหลักสูตร/ช่องทางแบบไม่ระบุตัวบุคคล และรายการโทรติดตามแยกเป็นงาน (เห็นรายชื่อเฉพาะในงานที่ได้รับมอบหมาย) (TC-R1-177)
+
+#### FR-R1-096 ผู้ไม่มารายงานตัว (C-10)
+
+ระบบต้องติดตามผู้ confirmed ที่ไม่รายงานตัวภายในกำหนด ให้แจ้งเหตุเป็นลายลักษณ์อักษรภายใน 7 วัน (ตั้งได้) มิฉะนั้นถือสละสิทธิ์ และส่งที่นั่งเข้า cascade เฉพาะเมื่อยังไม่พ้น cutoff
+
+- **Priority:** Must · **บทบาท:** `admission`, `candidate`, `system` · **โมดูล:** ADM · **Workflow:** W-78, W-74
+- **ที่มา:** W-78 ขั้น 5; 02 C-10; 03 J-07
+- **หน้าจอ:** S-R1-39, S-R1-17 · **API:** `recordNoShowNotice`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครไม่มารายงานตัว 9 มิ.ย. แต่ยื่นแจ้งเหตุ (เจ็บป่วย) วันที่ 11 มิ.ย. **เมื่อ** บันทึกการแจ้งเหตุ **ผลที่ต้องได้** การนับ 7 วันหยุด และเจ้าหน้าที่ได้งานพิจารณา (TC-R1-178)
+  2. [กรณีผิดปกติ] **กำหนดให้** ไม่มีการแจ้งเหตุภายใน 7 วัน **เมื่อ** ครบกำหนด **ผลที่ต้องได้** offer เป็น `no_show` → `waived` และที่นั่งเข้า cascade ถ้ายังไม่พ้น cutoff (TC-R1-179)
+
+#### FR-R1-097 Dedupe กับวิทยาเขตที่ยังใช้ระบบเดิม (BR-01)
+
+ระบบควรนำเข้า/ส่งออกไฟล์รายชื่อผู้ยืนยันสิทธิ์ (HMAC ของเลขบัตร) กับวิทยาเขตที่ยังใช้ระบบเดิมรายวันในช่วงประกาศผล เพื่อ flag ผู้ที่ยืนยันซ้อนให้เจ้าหน้าที่ติดต่อ (ไม่ตัดสิทธิ์อัตโนมัติ)
+
+- **Priority:** Should · **บทบาท:** `admission`, `registrar`, `system` · **โมดูล:** ADM · **Workflow:** W-74
+- **ที่มา:** 12 BR-01; 02 §2.8; D-06 · **ขึ้นกับ:** A-51, Q-12, Q-60
+- **หน้าจอ:** S-R1-39 · **API:** `importLegacyConfirmations`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ไฟล์จากวิทยาเขตกรุงเทพ (ระบบเดิม) มี HMAC ตรงกับผู้ confirmed ที่ชลบุรี 3 ราย **เมื่อ** นำเข้าไฟล์ **ผลที่ต้องได้** เกิดงานติดตาม 3 รายการให้ `admission` ชลบุรี และไม่มีการเปลี่ยนสถานะอัตโนมัติ (TC-R1-180)
+  2. [ความปลอดภัย] **กำหนดให้** ไฟล์นำเข้ามี hash ซ้ำกับไฟล์ที่นำเข้าแล้ว **เมื่อ** นำเข้า **ผลที่ต้องได้** ระบบปฏิเสธการนำเข้าซ้ำ (`file_hash`) (TC-R1-181)
+
+#### FR-R1-098 Dashboard clearing
+
+ระบบต้องมี dashboard ที่นั่งคงเหลือ อัตรายืนยัน การยืนยันซ้ำ no-show cascade และ unfilled ต่อรอบ/หลักสูตร/วิทยาเขต โดย `registrar` ส่วนกลางเห็นทุกวิทยาเขตแบบ aggregate และ cell ที่น้อยกว่า 5 ถูกซ่อนเมื่อมี attribute อ่อนไหว
+
+- **Priority:** Must · **บทบาท:** `admission`, `registrar`, `campusvp` · **โมดูล:** ADM, ANA · **Workflow:** W-74
+- **ที่มา:** W-74 ขั้น 6; 02 CL-8; 14 KPI-01, KPI-02 · **ขึ้นกับ:** KPI-01, KPI-02
+- **หน้าจอ:** S-R1-39 · **API:** `getClearingDashboard`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ช่วงยืนยันสิทธิ์โควตา **เมื่อ** `registrar` ส่วนกลางเปิด dashboard **ผลที่ต้องได้** เห็นตัวเลขของชลบุรีและมหาสารคามแยกกัน ไม่มีรายชื่อบุคคล และข้อมูลไม่เก่ากว่า 5 นาที (TC-R1-182)
+
+### 2.11 อุทธรณ์ผลคัดเลือก ร้องเรียน และเหตุวันสอบ (APL)
+
+_W-18 แบบเร่งด่วน + appeal_hold (C-15), W-19 ร้องเรียน/แจ้งเบาะแส, W-85 ขอสอบใหม่_
+
+#### FR-R1-099 ยื่นขอทบทวนผลคัดเลือกภายในกรอบเวลา
+
+ระบบต้องให้ผู้สมัครยื่นขอทบทวนผลคัดเลือกภายใน `ADM_APPEAL_WINDOW` (≤ 3 วันทำการหลังประกาศ; รอบที่ยืนยัน ≤ 72 ชม.: ≤ 1 วันทำการ) พร้อมเหตุผลและหลักฐาน โดยสร้าง `Appeal(subject_type = ADMISSION)` ใน CASE ออกเลขรับ + ใบรับ และ publish `case.AppealFiled`
+
+- **Priority:** Must · **บทบาท:** `candidate`, `admission` · **โมดูล:** CASE, ADM · **Workflow:** W-18
+- **ที่มา:** W-18 ขั้น 1, 3, SLA; 02 EX-4, QS-16; 03 ADM_APPEAL_WINDOW; 06 §5.6 · **ขึ้นกับ:** Q-19, Q-96
+- **หน้าจอ:** S-R1-19 · **API:** `fileAdmissionAppeal`, `getAppeal`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ประกาศผลวันจันทร์ และรอบตั้ง window 3 วันทำการ **เมื่อ** ผู้สมัครยื่นวันพุธ **ผลที่ต้องได้** ได้เลขรับ `APL-CB-2571-000123` ใบรับ PDF และเห็นสถานะ "รับเรื่องแล้ว — ตัดสินภายใน 5 วันทำการ" (TC-R1-183)
+  2. [กรณีผิดปกติ] **กำหนดให้** พ้น window แล้ว **เมื่อ** ผู้สมัครกดยื่น **ผลที่ต้องได้** ระบบไม่รับคำขอทบทวน แสดงเหตุผลและช่องทางร้องเรียน (W-19) แทน (TC-R1-184)
+
+#### FR-R1-100 appeal_hold และการขยายกำหนดยืนยันสิทธิ์ของผู้ยื่น
+
+ระบบต้องตรวจว่าอันดับที่อาจแก้ได้ของผู้ยื่นถึงเส้นตัดหรือไม่ ถ้าถึงให้ตั้ง `appeal_hold` 1 ที่ต่อ sub-bucket (หยุด cascade ของที่นั่งสุดท้าย) และขยาย deadline ยืนยันสิทธิ์ของผู้ยื่น (ถ้ามี offer) ถึงวันตัดสิน + 24 ชม. ผ่าน `GateOverride`
+
+- **Priority:** Must · **บทบาท:** `system`, `admission` · **โมดูล:** ADM, CASE, ORG · **Workflow:** W-18, W-74
+- **ที่มา:** W-18 ขั้น 2; 02 C-15, EX-4; 03 K-20 · **ขึ้นกับ:** Q-96
+- **หน้าจอ:** S-R1-40, S-R1-39 · **API:** `fileAdmissionAppeal`, `getClearingDashboard`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ยื่นเป็นสำรองอันดับ 1 ห่างเส้นตัด 0.5 คะแนน และมีคำขอทบทวนการคำนวณ **เมื่อ** ยื่นคำขอ **ผลที่ต้องได้** ระบบตั้ง appeal_hold ใน sub-bucket นั้น และ dashboard แสดง "hold 1 ที่ (อุทธรณ์ APL-…)" (TC-R1-185)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้ยื่นอยู่อันดับ 40 จากที่นั่ง 8 และสำรองถึงอันดับ 20 **เมื่อ** ยื่นคำขอ **ผลที่ต้องได้** ไม่ตั้ง hold (ไม่ถึงเส้นตัด) แต่คำขอยังพิจารณาตามปกติ (TC-R1-186)
+
+#### FR-R1-101 กระบวนการพิจารณาและ SLA เร่งด่วน
+
+ระบบต้องให้ `admission` ตรวจกรอบเวลา, กรรมการชุดเดิมตรวจการบันทึกและการคำนวณ (ห้ามแก้คะแนนที่ล็อกโดยตรง), `head` ตัดสินพร้อมเหตุผล และ `campusvp` อนุมัติเมื่อเปลี่ยนผล โดยนับ SLA ตัดสิน ≤ 5 วันทำการ (รอบยืนยัน ≤ 72 ชม.: ≤ 2) และก่อนปิดยืนยันสิทธิ์ ≥ 1 วันทำการ พร้อม escalation
+
+- **Priority:** Must · **บทบาท:** `admission`, `judge`, `head`, `campusvp` · **โมดูล:** CASE, ADM · **Workflow:** W-18
+- **ที่มา:** W-18 ขั้น 3–6, SLA; 04 SoD-14, SoD-20 (แนวเดียวกัน) · **ขึ้นกับ:** Q-19, Q-96
+- **หน้าจอ:** S-R1-40, S-R1-45 · **API:** `listAppeals`, `recordAppealRecheck`, `decideAppeal`, `approveAppealDecision`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** กรรมการชุดเดิมพบว่ากรอกคะแนน station 3 ผิดหลัก (7 แทน 17) **เมื่อ** บันทึกผลตรวจ **ผลที่ต้องได้** ระบบสร้างข้อเสนอแก้ผ่าน override (FR-R1-081) ไม่แก้ JudgeScore ที่ล็อกโดยตรง และคำนวณอันดับใหม่แบบ preview ให้ `head` (TC-R1-187)
+  2. [กรณีผิดปกติ] **กำหนดให้** เหลือ 1 วันทำการก่อนปิดยืนยันสิทธิ์และยังไม่ตัดสิน **เมื่อ** ถึงเวลาเตือน **ผลที่ต้องได้** ระบบ escalate ถึง `campusvp` และแสดงในหน้า inbox เป็นงานด่วน (TC-R1-188)
+
+#### FR-R1-102 ที่นั่งสำหรับผู้ชนะอุทธรณ์และเพดานคุรุสภา
+
+ระบบต้องให้ผู้ชนะอุทธรณ์ใช้ที่นั่ง `appeal_hold` ก่อน ถ้าต้องเพิ่มที่นั่งต้องไม่เกินแผนรับและไม่เกิน `AccreditedIntakeCap` (hard stop) มิฉะนั้นเสนอรอบถัดไป/ปีถัดไป และเมื่อตัดสินแล้วให้ปลด hold เข้า cascade ตาม W-74
+
+- **Priority:** Must · **บทบาท:** `head`, `campusvp`, `system` · **โมดูล:** ADM, CASE, CUR · **Workflow:** W-18, W-74
+- **ที่มา:** W-18 ขั้น 6–7; 02 C-15, EX-5 · **ขึ้นกับ:** A-48, Q-96
+- **หน้าจอ:** S-R1-40 · **API:** `decideAppeal`, `approveAppealDecision`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ยื่นชนะอุทธรณ์และมี hold 1 ที่ **เมื่อ** `campusvp` อนุมัติ **ผลที่ต้องได้** ผู้ยื่นได้ offer จากที่นั่ง hold ทันที และ hold ถูกปลด (TC-R1-189)
+  2. [กรณีผิดปกติ] **กำหนดให้** ผู้ชนะ 2 คนแต่ hold 1 ที่และหลักสูตรเต็มเพดานคุรุสภา **เมื่อ** อนุมัติผล **ผลที่ต้องได้** คนที่ 2 ไม่ได้ที่นั่งเพิ่ม (hard stop) ระบบบันทึกข้อเสนอสิทธิ์ในรอบถัดไป/ปีถัดไป และแจ้งพร้อมเหตุผล (TC-R1-190)
+  3. [ฟังก์ชัน] **กำหนดให้** อุทธรณ์ไม่สำเร็จ **เมื่อ** บันทึกคำตัดสิน **ผลที่ต้องได้** hold ถูกปลดและที่นั่งเข้า cascade ภายใน ≤ 15 นาที (ถ้ายังไม่พ้น cutoff) (TC-R1-191)
+
+#### FR-R1-103 แจ้งผลพร้อมเหตุผลและสิทธิ์ต่อ
+
+ระบบต้องแจ้งผลการพิจารณาพร้อมเหตุผลและช่องทางร้องเรียนต่อ (W-19 และหน่วยงานภายนอกตามกฎหมาย) เป็นเอกสารที่ DOC ออก และบันทึก `served_at` [ต้องตรวจสอบ: ถือเป็นคำสั่งทางปกครองหรือไม่]
+
+- **Priority:** Must · **บทบาท:** `candidate`, `system` · **โมดูล:** CASE, DOC, NOTI · **Workflow:** W-18, W-19
+- **ที่มา:** W-18 ขั้น 8; 06 §5.6 (AdministrativeOrder); 10 §3 · **ขึ้นกับ:** Q-19
+- **หน้าจอ:** S-R1-19 · **API:** `getAppeal`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** คำขอทบทวนถูกยืน (ไม่เปลี่ยนผล) **เมื่อ** ระบบแจ้งผล **ผลที่ต้องได้** ผู้สมัครได้หนังสือแจ้งผลที่มีเหตุผล คะแนนที่ตรวจซ้ำ และช่องทางร้องเรียนต่อ ใน portal และแจ้งเตือน P1 (TC-R1-192)
+
+#### FR-R1-104 ร้องเรียน/แจ้งเบาะแสแบบไม่ระบุตัวตนได้
+
+ระบบต้องรับเรื่องร้องเรียน/แจ้งเบาะแสจากทุกคน (รวมไม่ระบุตัวตน) ออกเลขรับและรหัสติดตาม คัดแยกหมวด (บริการ, ทุจริต, คุกคาม, PDPA, คุ้มครองเด็ก) route เรื่องทุจริตนอกสายบังคับบัญชาของผู้ถูกร้อง และนับสถิติ aggregate ให้ RPT/OIT
+
+- **Priority:** Must · **บทบาท:** `applicant`, `candidate`, `complaint`, `auditor` · **โมดูล:** CASE, RPT · **Workflow:** W-19
+- **ที่มา:** W-19; 06 §5.6; 10 L-21
+- **หน้าจอ:** S-R1-20 · **API:** `createComplaint`, `getComplaintByTrackingCode`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ประชาชนร้องเรียนการรับสมัครแบบไม่ระบุตัวตน **เมื่อ** ส่งเรื่อง **ผลที่ต้องได้** ได้รหัสติดตามที่ต้องเก็บเอง (ระบบไม่เก็บตัวตน) และใช้ตรวจสถานะได้ (TC-R1-193)
+  2. [ความปลอดภัย] **กำหนดให้** เรื่องร้องเรียนทุจริตเกี่ยวกับเจ้าหน้าที่รับสมัคร X **เมื่อ** ระบบ route **ผลที่ต้องได้** X และผู้บังคับบัญชาในสายของ X ไม่เห็นเรื่อง และการเปิดอ่านทุกครั้งถูก audit (TC-R1-194)
+
+#### FR-R1-105 แจ้งเหตุวันสอบและขอสอบใหม่
+
+ระบบต้องให้ผู้สมัครยื่นขอสอบใหม่/เลื่อนพร้อมหลักฐานภายใน 48 ชม. หลังวันสอบ (หรือก่อนวันสอบ) ให้ `admission` พิจารณาตามประกาศ `head` อนุมัติกรณีนอกเกณฑ์ และจัด slot ใหม่ถ้ายังอยู่ในช่วงรอบ โดยตัดสินก่อนประกาศผล
+
+- **Priority:** Must · **บทบาท:** `candidate`, `admission`, `head` · **โมดูล:** ADM · **Workflow:** W-85
+- **ที่มา:** W-85; 02 EX-1
+- **หน้าจอ:** S-R1-21, S-R1-37 · **API:** `requestRetest`, `decideRetest`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครติดแข่งขันระดับชาติวันสอบและมีหนังสือขอตัวจากสมาคม **เมื่อ** ยื่นขอเลื่อนก่อนวันสอบ **ผลที่ต้องได้** `admission` อนุมัติและผู้สมัครได้ slot สำรองของรอบเดียวกัน (TC-R1-195)
+  2. [กรณีผิดปกติ] **กำหนดให้** ยื่นหลังวันสอบ 4 วัน **เมื่อ** กดยื่น **ผลที่ต้องได้** ระบบแจ้งว่าเกินกรอบ 48 ชม. และให้ยื่นเป็นคำขอทบทวน (W-18) หากยังอยู่ในกรอบ (TC-R1-196)
+
+#### FR-R1-106 ขอทบทวนเมื่อถูกปฏิเสธ accommodation
+
+ระบบควรให้ผู้สมัครที่ถูกปฏิเสธ accommodation หรือเห็นว่าข้อกำหนดทางกายไม่เป็นธรรมขอทบทวนผ่าน CASE ภายใน 7 วัน โดยผู้พิจารณาเห็นหลักฐานเท่าที่จำเป็น
+
+- **Priority:** Should · **บทบาท:** `candidate`, `dss`, `head` · **โมดูล:** CASE, ADM · **Workflow:** W-79, W-18
+- **ที่มา:** 02 DA-7; W-79 ขั้น 6 · **ขึ้นกับ:** Q-18
+- **หน้าจอ:** S-R1-19, S-R1-41 · **API:** `fileAdmissionAppeal`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** `dss` ปฏิเสธคำขอ "ผู้อ่านแทน" **เมื่อ** ผู้สมัครยื่นขอทบทวน **ผลที่ต้องได้** เกิด Appeal ประเภท ACCOMMODATION ที่ผูกกับคำขอเดิม และนับ SLA (TC-R1-197)
+
+### 2.12 ผู้ปกครองและความยินยอมของผู้สมัครผู้เยาว์ (GRD)
+
+_dual consent ตาม consent policy (อายุ × กิจกรรม), ผูกบัญชีผู้ปกครอง, การแจ้งผู้ปกครอง (CM-3, W-41, W-42, W-74, W-127)_
+
+#### FR-R1-107 เชิญผู้ปกครองเมื่อผู้สมัครเป็นผู้เยาว์
+
+ระบบต้องตรวจว่าผู้สมัครเป็นผู้เยาว์ และก่อนขั้นที่ consent policy กำหนดให้ต้องมีผู้ปกครอง (เช่น ข้อมูลสุขภาพ/การทดสอบร่างกาย) ต้องให้ผู้สมัครเชิญผู้ปกครองผ่าน SMS/LINE/อีเมล พร้อมระบุความสัมพันธ์
+
+- **Priority:** Must · **บทบาท:** `candidate`, `guardian`, `system` · **โมดูล:** PRIV, REC, IAM · **Workflow:** W-41, W-127
+- **ที่มา:** 02 CM-3; W-41 ขั้น 3; 10 §2.4; A-17 · **ขึ้นกับ:** A-17, A-26
+- **หน้าจอ:** S-R1-03, S-R1-24 · **API:** `createGuardianInvitation`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครอายุ 17 ปีเลือกช่องทางโควตานักกีฬา **เมื่อ** ไปถึงขั้นคัดกรองสุขภาพ **ผลที่ต้องได้** ระบบแจ้งว่าต้องมีผู้ปกครองยินยอมก่อน และให้ส่งคำเชิญ (ลิงก์อายุ 7 วัน) ไปยังเบอร์/อีเมลของผู้ปกครอง (TC-R1-198)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครอายุ 17 ปีสมัครโควตาเรียนดี (ไม่มีการทดสอบร่างกาย) **เมื่อ** ยื่นใบสมัคร **ผลที่ต้องได้** ยื่นได้โดยไม่ต้องรอผู้ปกครอง เพราะฐานการคัดเลือกคือ PT (L-01) และระบบแนะนำให้ผูกผู้ปกครองเพื่อรับแจ้งเตือน (TC-R1-199)
+
+#### FR-R1-108 ผูกบัญชีผู้ปกครอง 2 ระดับ
+
+ระบบต้องให้ผู้ปกครองรับคำเชิญทาง LIFF/PWA และผูกบัญชี: ระดับ provisional (เลขบัตร + OTP; รับแจ้งเตือนและชำระเงินเท่านั้น), ระดับ 2 (ThaID + อัปโหลดเอกสารอำนาจปกครองให้เจ้าหน้าที่ตรวจออนไลน์ใน 3 วันทำการ), ระดับ 1 (ที่จุดบริการต่อหน้า) รองรับความสัมพันธ์ LEGAL/CAREGIVER (สิทธิ์จำกัดตามที่มอบ) และแจ้งผู้สมัครทุกครั้งที่มีการผูก
+
+- **Priority:** Must · **บทบาท:** `guardian`, `registrar`, `candidate`, `system` · **โมดูล:** REC, PRIV, IAM · **Workflow:** W-127, W-41
+- **ที่มา:** W-127; 04 G1, G2; 14 §4.4 (UXR-19); D-08 · **ขึ้นกับ:** A-26
+- **หน้าจอ:** S-R1-24, S-R1-26 · **API:** `acceptGuardianInvitation`, `listMyWards`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** มารดาผู้สมัครเปิดลิงก์คำเชิญใน LINE **เมื่อ** ยืนยันด้วย ThaID และอัปโหลดสูติบัตร **ผลที่ต้องได้** ได้สถานะ "รอเจ้าหน้าที่ตรวจ" ระหว่างนี้ใช้สิทธิ์ provisional และผู้สมัครได้แจ้ง "มีผู้ขอผูกเป็นผู้ปกครองของคุณ" (TC-R1-200)
+  2. [ความปลอดภัย] **กำหนดให้** ผู้ไม่เกี่ยวข้องได้ลิงก์คำเชิญที่ถูกส่งต่อ **เมื่อ** ผูกด้วยเลขบัตรของตน **ผลที่ต้องได้** ไม่ตรงกับข้อมูลผู้ปกครองที่ผู้สมัครระบุ → ระบบไม่ผูก แจ้งผู้สมัคร และนับความพยายามเพื่อกันการเดา (TC-R1-201)
+  3. [ฟังก์ชัน] **กำหนดให้** ย่าที่ดูแลจริงแต่ไม่มีเอกสารอำนาจปกครอง **เมื่อ** ผูกบัญชี **ผลที่ต้องได้** ได้ความสัมพันธ์ CAREGIVER ที่สิทธิ์จำกัด (รับแจ้งเตือน/ชำระ) และ consent ที่ต้องใช้อำนาจปกครองยังต้องมาจาก LEGAL (เส้นทาง W-160) (TC-R1-202)
+
+#### FR-R1-109 Consent policy engine และ dual consent
+
+ระบบต้องประเมิน `ConsentPolicyRule` (อายุ × ประเภทกิจกรรม) เพื่อกำหนดว่าใครต้องให้ความยินยอม: ข้อมูลสุขภาพ/การทดสอบร่างกายในการคัดเลือก (L-36) และการเผยแพร่ภาพ (L-15) ของผู้อายุ 10–<20 ปี = dual consent (ผู้เยาว์ + ผู้ปกครอง); กิจกรรมทั่วไป (เช่น ผูก LINE) = ผู้เยาว์ให้เอง; บันทึก consent แบบ granular อ้างเวอร์ชัน notice ถอนได้ และไม่มี consent ที่จำเป็น = จอง slot สอบทักษะไม่ได้ (การคัดเลือกส่วนอื่นยังดำเนินต่อด้วยฐาน PT)
+
+- **Priority:** Must · **บทบาท:** `candidate`, `guardian`, `dpo`, `system` · **โมดูล:** PRIV, ADM, HLT · **Workflow:** W-41, W-42
+- **ที่มา:** 10 §2.2 (L-01, L-15, L-26, L-36), §2.4; 06 §5.8; W-42 ขั้น 4; A-17 · **ขึ้นกับ:** A-17, Q-103
+- **หน้าจอ:** S-R1-23, S-R1-25, S-R1-14 · **API:** `listConsentRequests`, `grantConsent`, `withdrawConsent`, `listMyConsents`
+- **เกณฑ์ยอมรับ:**
+  1. [PDPA] **กำหนดให้** ผู้สมัครอายุ 17 ปี ผู้เยาว์ให้ consent `SELECTION_HEALTH` แล้ว แต่ผู้ปกครองยังไม่ให้ **เมื่อ** จอง slot สอบทักษะ **ผลที่ต้องได้** ระบบไม่ให้จองและแสดง "รอผู้ปกครองยินยอม" พร้อมปุ่มส่งเตือนผู้ปกครอง (TC-R1-203)
+  2. [PDPA] **กำหนดให้** ผู้สมัครอายุ 17 ปีผูก LINE กับบัญชีของตน **เมื่อ** ให้ consent L-26 **ผลที่ต้องได้** บันทึก consent `given_by = SELF` โดยไม่ต้องรอผู้ปกครอง (TC-R1-204)
+  3. [PDPA] **กำหนดให้** ผู้ปกครองถอน consent `SELECTION_HEALTH` ก่อนวันสอบ **เมื่อ** ถอน **ผลที่ต้องได้** slot สอบทักษะถูกระงับ ผู้สมัครและเจ้าหน้าที่ได้แจ้ง และข้อมูลที่เก็บไปแล้วจัดการตาม retention (ไม่ลบหลักฐาน consent) (TC-R1-205)
+
+#### FR-R1-110 หน้าผู้ปกครอง: สรุปผู้สมัครในความดูแล
+
+ระบบต้องมีหน้า LIFF/PWA สำหรับผู้ปกครองแสดงสถานะใบสมัคร ค่าใช้จ่ายพร้อมลิงก์ชำระ วันสอบ consent ที่รอ ผลประกาศ และ offer/การยืนยันของผู้สมัครที่ตนผูกไว้เท่านั้น โดยเคารพ `CustodyRestriction` และไม่แสดงข้อมูลสุขภาพ/ความพิการ
+
+- **Priority:** Must · **บทบาท:** `guardian` · **โมดูล:** REC, PRIV, ADM, FIN · **Workflow:** W-41, W-74
+- **ที่มา:** 14 S-29 (รูปแบบ), §4.4; 04 G3, G6; 06 §5.1 (Guardian access) · **ขึ้นกับ:** A-26
+- **หน้าจอ:** S-R1-26 · **API:** `listMyWards`, `getWardAdmissionSummary`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ปกครองผูกบัญชีกับผู้สมัคร 2 คน (พี่น้อง) **เมื่อ** เปิดหน้า **ผลที่ต้องได้** เลือกผู้สมัครทีละคนจากด้านบน แต่ละคนแสดงความคืบหน้าใบสมัคร ยอดค้าง และสิ่งที่ต้องทำ (TC-R1-206)
+  2. [ความปลอดภัย] **กำหนดให้** ผู้ปกครองที่มี `CustodyRestriction(DATA_VIEW)` **เมื่อ** เปิดหน้า **ผลที่ต้องได้** ไม่เห็นข้อมูลของผู้สมัครนั้น (deny overrides) (TC-R1-207)
+  3. [การเข้าถึง] **กำหนดให้** ผู้ปกครองสูงอายุใช้โหมดตัวอักษร 18 px **เมื่อ** เปิดหน้าใน LINE in-app browser **ผลที่ต้องได้** ข้อความไทยไม่ถูกตัด ขยาย 200% ไม่ล้นจอ และปุ่มโทรหาเจ้าหน้าที่ใช้งานได้ (TC-R1-208)
+
+#### FR-R1-111 แจ้งผู้ปกครองในเหตุการณ์สำคัญ
+
+ระบบต้องส่งสำเนาแจ้งเตือน P1 ที่เกี่ยวกับความปลอดภัยและการเงินของผู้สมัครผู้เยาว์ให้ผู้ปกครองที่ผูกไว้เสมอ ได้แก่ ใบแจ้งชำระ ใกล้ครบกำหนด การยืนยัน/สละสิทธิ์ (การยืนยันมีผลแม้ผู้ปกครองยังไม่กดรับทราบ) ยืนยันสิทธิ์ซ้ำ และเหตุสุขภาพวันสอบ
+
+- **Priority:** Must · **บทบาท:** `guardian`, `system` · **โมดูล:** NOTI, PRIV, ADM · **Workflow:** W-74, W-163, W-43
+- **ที่มา:** 02 CL-3; W-74 ขั้น 1; W-163 ขั้น 1; 14 §8.4
+- **หน้าจอ:** S-R1-26, S-R1-22 · **API:** `listMyNotifications`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครอายุ 18 ปียืนยันสิทธิ์ที่ชลบุรี **เมื่อ** transaction สำเร็จ **ผลที่ต้องได้** ผู้ปกครองได้แจ้งเตือน "บุตรของท่านยืนยันสิทธิ์ ... ค่ายืนยันสิทธิ์ครบกำหนด ..." พร้อมลิงก์ชำระ และการยืนยันมีผลทันที (TC-R1-209)
+
+#### FR-R1-112 ผู้ปกครองไม่มีสมาร์ตโฟน (assisted)
+
+ระบบควรให้เจ้าหน้าที่บันทึกความยินยอมของผู้ปกครองแบบ assisted (โทรออกไปเบอร์ที่ลงทะเบียน หรือให้ผู้ปกครองอ่าน OTP ทาง SMS) พร้อมเหตุผล ผู้บันทึก และหลักฐาน
+
+- **Priority:** Should · **บทบาท:** `admission`, `guardian` · **โมดูล:** PRIV · **Workflow:** W-41, W-42
+- **ที่มา:** 04 G13; 14 §4.4 (UXR-21)
+- **หน้าจอ:** S-R1-25, S-R1-55 · **API:** `recordAssistedGuardianApproval`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ปกครองไม่มี LINE/อินเทอร์เน็ต **เมื่อ** เจ้าหน้าที่ส่ง OTP ทาง SMS และผู้ปกครองอ่านรหัสทางโทรศัพท์ที่เจ้าหน้าที่โทรออก **ผลที่ต้องได้** consent ถูกบันทึกเป็น `ASSISTED_OTP` พร้อมเจ้าหน้าที่ เวลา และเบอร์ปลายทางแบบ mask (TC-R1-210)
+
+#### FR-R1-113 บรรลุนิติภาวะระหว่างฤดูรับสมัคร
+
+ระบบควรตรวจวันเกิดรายวันและเมื่อผู้สมัครอายุครบ 20 ปีระหว่าง cycle ให้ flag consent ที่ผู้ปกครองให้แทนเพื่อให้ผู้สมัครยืนยันเองภายใน 30 วัน และเปลี่ยนสิทธิ์ผู้ปกครองเป็น observer ที่ต้องได้ consent ของผู้สมัคร (`priv.AgeOfMajorityReached`)
+
+- **Priority:** Should · **บทบาท:** `candidate`, `guardian`, `system` · **โมดูล:** PRIV, IAM · **Workflow:** W-127
+- **ที่มา:** 04 G4; 10 §2.4 (re-consent); 06 §5.8
+- **หน้าจอ:** S-R1-23 · **API:** `listConsentRequests`
+- **เกณฑ์ยอมรับ:**
+  1. [PDPA] **กำหนดให้** ผู้สมัครอายุครบ 20 ปีวันที่ 2 ม.ค. 2572 **เมื่อ** job รายวันทำงาน **ผลที่ต้องได้** ผู้สมัครได้คำขอยืนยัน consent เอง และผู้ปกครองไม่เห็นข้อมูลใบสมัครจนกว่าผู้สมัครให้ consent observer (TC-R1-211)
+
+### 2.13 ส่งต่อรายงานตัวเข้า REC (HND)
+
+_handoff ผู้ยืนยันสิทธิ์ (W-78, W-43) — R1 ยังไม่ออกรหัสนักศึกษา (เล่ม 12 §2.1)_
+
+#### FR-R1-114 Handoff ผู้ยืนยันสิทธิ์และชำระแล้ว
+
+ระบบต้องสร้าง `ReportingHandoff` เมื่อ offer เป็น confirmed และชำระแล้ว พร้อม publish `adm.OfferConfirmed` ให้ REC/FIN/NOTI โดย handoff มีอ้างอิง Person, ProgramOffering, ช่องทาง, เอกสารและ hash, สถานะยืนยันตัวตน, แผน accommodation (เฉพาะที่ผู้สมัครยินยอมให้ส่งต่อ) และความสัมพันธ์ผู้ปกครอง
+
+- **Priority:** Must · **บทบาท:** `system`, `registrar` · **โมดูล:** ADM, REC · **Workflow:** W-78, W-43
+- **ที่มา:** W-78; W-43 ขั้น 6; 06 §6.1 (ส่งต่อเข้าทะเบียน), #63; 02 CL-9
+- **หน้าจอ:** S-R1-42 · **API:** `listReportingHandoffs`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครยืนยันและชำระค่ายืนยันสิทธิ์ **เมื่อ** callback ชำระมาถึง **ผลที่ต้องได้** ภายใน ≤ 5 วินาที (outbox lag) มี handoff สถานะ `READY` ที่ `registrar` วิทยาเขตปลายทางเห็น และ event `adm.OfferConfirmed` 1 ครั้ง (TC-R1-212)
+  2. [PDPA] **กำหนดให้** ผู้สมัครไม่ยินยอมส่งต่อแผน accommodation **เมื่อ** สร้าง handoff **ผลที่ต้องได้** handoff ไม่มีข้อมูล accommodation และแสดงเพียง "ผู้สมัครเลือกไม่ส่งต่อ" (TC-R1-213)
+
+#### FR-R1-115 รหัสนักศึกษาและสะพานไประบบทะเบียน
+
+ระบบต้องไม่ออกรหัสนักศึกษาใน R1 (REC ขั้นต่ำ) แต่เก็บ handoff ไว้ให้ REC ใน R2 ออกรหัสภายใน 24 ชม. หลังเปิดใช้; สำหรับรอบที่ต้องรายงานตัวก่อน R2 go-live (1 พ.ค. 2572) ระบบต้องส่งออก handoff เป็นไฟล์มาตรฐาน (hash + watermark) ให้ระบบทะเบียนเดิมของวิทยาเขต pilot [ต้องตรวจสอบ — คำถามเปิดเล่ม 06 §6.1 และ Q-67]
+
+- **Priority:** Must · **บทบาท:** `registrar`, `admission`, `system` · **โมดูล:** ADM, REC · **Workflow:** W-78
+- **ที่มา:** 12 §2.1 (REC ขั้นต่ำ: ยังไม่ออกรหัส), BR-01/BR-02; 06 §6.1 คำถามเปิด; A-69 · **ขึ้นกับ:** A-69, Q-67
+- **หน้าจอ:** S-R1-42 · **API:** `exportReportingHandoffs`, `listReportingHandoffs`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** รอบโควตาของชลบุรีกำหนดรายงานตัว 20 มี.ค. 2572 (ก่อน R2) **เมื่อ** `registrar` ส่งออก handoff **ผลที่ต้องได้** ได้ไฟล์มาตรฐานพร้อม hash และบันทึก audit ว่าผู้ใดส่งออกเมื่อใด และ handoff เปลี่ยนเป็น `EXPORTED_TO_LEGACY` (TC-R1-214)
+  2. [กรณีผิดปกติ] **กำหนดให้** ผู้ใช้ที่ไม่มีบทบาท `registrar` ของวิทยาเขตนั้น **เมื่อ** เรียกส่งออก **ผลที่ต้องได้** ได้ 403 (TC-R1-215)
+
+#### FR-R1-116 เลือกช่องทางรายงานตัวและนัดหมาย
+
+ระบบควรให้ผู้ยืนยันสิทธิ์เลือกรายงานตัวออนไลน์หรือที่จุดบริการ และจองคิว/นัดเวลาที่จุดบริการ (SVC booking ขั้นต่ำ) สำหรับผู้ที่ต้องแสดงเอกสารตัวจริง
+
+- **Priority:** Should · **บทบาท:** `candidate`, `registrar` · **โมดูล:** ADM, SVC · **Workflow:** W-78
+- **ที่มา:** W-78 ขั้น 2; 06 §5.5 Release R1 (booking สำหรับรายงานตัว); 02 GN-8
+- **หน้าจอ:** S-R1-17, S-R1-42 · **API:** `chooseReportingMode`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ยืนยันสิทธิ์รอบ 5 ต้องแสดงตนเพราะบัญชียังไม่ยืนยันตัวตน **เมื่อ** เลือก "ที่จุดบริการ" **ผลที่ต้องได้** จองเวลา 9 มิ.ย. 10:30 ได้ และได้ QR นัดหมายใน tracker (TC-R1-216)
+
+#### FR-R1-117 ตรวจตัวตนและเอกสารตัวจริงที่จุดบริการ
+
+ระบบต้องให้ `registrar` ตรวจเอกสารตัวจริงเทียบ hash/ผลตรวจเดิม บันทึกการยืนยันตัวตน (`IN_PERSON`) สำหรับบัญชีที่ยังไม่ยืนยัน และบันทึกสถานะ `reported` ใน offer
+
+- **Priority:** Must · **บทบาท:** `registrar` · **โมดูล:** ADM, IAM · **Workflow:** W-78
+- **ที่มา:** W-78 ขั้น 3; FR-R1-013; A-71 · **ขึ้นกับ:** A-71
+- **หน้าจอ:** S-R1-42 · **API:** `verifyReportingIdentity`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้สมัครที่สมัครด้วย OTP มาแสดงบัตรประชาชน **เมื่อ** `registrar` บันทึกยืนยัน **ผลที่ต้องได้** บัญชีเปลี่ยนเป็น `IN_PERSON` offer เป็น `reported` และ C-3 ยังคงครอบสถานะนี้ (TC-R1-217)
+
+#### FR-R1-118 ธงผู้รับเข้ารอบท้าย (late-admit)
+
+ระบบควรติดธง `late_admit` ใน handoff เมื่อผู้ยืนยันสิทธิ์รายงานตัวที่ `matriculated_at` ≥ T0 − 7 วัน เพื่อให้ REC/REG/FIN ใน R2 ดำเนิน fast-track (W-148)
+
+- **Priority:** Should · **บทบาท:** `system` · **โมดูล:** ADM, REC · **Workflow:** W-78, W-148
+- **ที่มา:** W-148; 02 §3.7; 03 J-49, L-13; A-110 · **ขึ้นกับ:** A-110
+- **หน้าจอ:** S-R1-42 · **API:** `listReportingHandoffs`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** T0 = 15 มิ.ย. 2572 และผู้สมัครรอบ 6 รายงานตัว 10 มิ.ย. **เมื่อ** สร้าง handoff **ผลที่ต้องได้** handoff มี `late_admit = true` และแสดงป้ายในรายการของ `registrar` (TC-R1-218)
+
+### 2.14 เปิดเผยข้อมูล ITA/OIT (OIT)
+
+_OIT registry ทั้งมหาวิทยาลัย, สถิติรับสมัคร/ร้องเรียนแบบ aggregate, snapshot WORM (W-136)_
+
+#### FR-R1-119 OIT registry และ checklist
+
+ระบบต้องมีทะเบียนข้อ OIT ต่อปีงบประมาณ ผูกเจ้าของข้อมูลและ deadline (OIT เปิด 2 มี.ค.–30 มิ.ย.) พร้อม checklist ความครบ และเตือน T-30/T-7/T-1
+
+- **Priority:** Must · **บทบาท:** `planner`, `data_owner` · **โมดูล:** RPT · **Workflow:** W-136
+- **ที่มา:** W-136 ขั้น 1–2; 06 §5.11 Release R1; 03 J-30; A-47 · **ขึ้นกับ:** A-47, Q-71, KPI-13
+- **หน้าจอ:** S-R1-53 · **API:** `listOitItems`, `updateOitItem`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ปีงบ 2572 มีข้อ OIT 40 ข้อ **เมื่อ** `planner` มอบหมายเจ้าของและ deadline **ผลที่ต้องได้** เจ้าของแต่ละข้อได้งานและแจ้งเตือนตามกำหนด และ dashboard แสดงความครบ (KPI-13) (TC-R1-219)
+
+#### FR-R1-120 ข้อมูลรับสมัครที่ต้องเปิดเผย
+
+ระบบต้องสร้างข้อมูลเปิดเผยด้านรับสมัคร: ประกาศรับสมัคร เกณฑ์ rubric ช่องทาง e-Service สถิติผู้สมัคร/ผู้ผ่าน/ผู้ยืนยันต่อช่องทาง/วิทยาเขต และสถิติร้องเรียน/อุทธรณ์ แบบ aggregate จาก snapshot (suppress cell n < 5 เมื่อมี attribute อ่อนไหว)
+
+- **Priority:** Must · **บทบาท:** `system`, `planner` · **โมดูล:** RPT, ADM, CASE · **Workflow:** W-136, W-19
+- **ที่มา:** W-136 ขั้น 3; W-19 ขั้น 6; 06 §5.11, §6.1 (สถิติส่ง OIT); 10 §3.2, §6.4 · **ขึ้นกับ:** A-47
+- **หน้าจอ:** S-R1-53, S-R1-48 · **API:** `listOitItems`, `createOitSnapshot`
+- **เกณฑ์ยอมรับ:**
+  1. [PDPA] **กำหนดให้** สถิติผู้สมัครพิการต่อหลักสูตรมีค่า 2 **เมื่อ** สร้างข้อมูลเปิดเผย **ผลที่ต้องได้** cell นั้นแสดงเป็น "< 5" (TC-R1-220)
+
+#### FR-R1-121 อนุมัติ เผยแพร่ และ snapshot WORM
+
+ระบบต้องให้ `rector` (หรือผู้ได้รับมอบอำนาจ) อนุมัติก่อน `pr` เผยแพร่ เก็บ snapshot แบบ WORM และ publish `rpt.OitItemPublished` ให้ X-CMS แสดงบนหน้า ITA/OIT
+
+- **Priority:** Must · **บทบาท:** `rector`, `pr`, `system` · **โมดูล:** RPT, DOC · **Workflow:** W-136
+- **ที่มา:** W-136 ขั้น 4–5; 06 #52 · **ขึ้นกับ:** A-47
+- **หน้าจอ:** S-R1-53, S-R1-48 · **API:** `approveOitPublication`, `createOitSnapshot`, `listOitItemsPublic`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ข้อ OIT ด้านรับสมัครพร้อมและได้อนุมัติ **เมื่อ** `pr` เผยแพร่ **ผลที่ต้องได้** หน้าสาธารณะแสดงข้อมูล snapshot ที่มี hash และวันที่ และแก้ไขย้อนหลังไม่ได้ (เผยแพร่ฉบับใหม่ได้เท่านั้น) (TC-R1-221)
+
+#### FR-R1-122 สถิติบริการสำหรับ ITA
+
+ระบบควรสรุปสถิติการให้บริการด้านรับสมัคร (จำนวนคำขอ, เวลาให้บริการตาม SLA, ช่องทาง, CSAT) จาก SVC/CASE/X-HELP แบบ aggregate ให้ RPT
+
+- **Priority:** Should · **บทบาท:** `system`, `planner` · **โมดูล:** RPT, SVC, CASE · **Workflow:** W-136
+- **ที่มา:** 06 §5.11; 14 KPI-15, KPI-44 · **ขึ้นกับ:** KPI-15
+- **หน้าจอ:** S-R1-53 · **API:** `listOitItems`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** สิ้นเดือน พ.ย. 2571 **เมื่อ** job สรุปทำงาน **ผลที่ต้องได้** ได้ตัวเลขคำขอยกเว้นค่าสมัคร อุทธรณ์ ร้องเรียน และ ticket ต่อวิทยาเขต พร้อม % ภายใน SLA (TC-R1-222)
+
+### 2.15 Admin, 4-eyes, audit และการปฏิบัติการ (CFG)
+
+_ADMIN ขั้นต่ำของ R1 (D-03), AUD, DOC template, waiting room/status page (W-124, W-125)_
+
+#### FR-R1-123 4-eyes สำหรับ config สำคัญ
+
+ระบบต้องบังคับ maker-checker (คนละคน) พร้อม diff และวันที่มีผลสำหรับ config สำคัญ: FeeSchedule, Biller ID/บัญชีรับเงิน, privacy notice/consent policy, role catalogue, retention, signature policy, แม่แบบเอกสาร, การแก้ scoring/rule หลังเผยแพร่ และ feature flag TCAS; อนุมัติแล้ว publish `admin.ConfigChangeApproved`
+
+- **Priority:** Must · **บทบาท:** `module_admin`, `finance`, `dpo`, `itadmin` · **โมดูล:** ADMIN, ORG, FIN, PRIV, DOC · **Workflow:** W-69, W-81
+- **ที่มา:** 06 §5.12; 04 SoD-05, SoD-06; D-03
+- **หน้าจอ:** S-R1-50 · **API:** `createChangeRequest`, `decideChangeRequest`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** `module_admin` แก้ Biller ID ของวิทยาเขตชลบุรี **เมื่อ** พยายาม publish เอง **ผลที่ต้องได้** ระบบไม่ให้ (ต้องมี checker ที่มีสิทธิ์) และ change อยู่สถานะ `pending` (TC-R1-223)
+  2. [ฟังก์ชัน] **กำหนดให้** checker อนุมัติ FeeSchedule ใหม่ที่มีผล 1 ส.ค. 2571 **เมื่อ** อนุมัติ **ผลที่ต้องได้** ใบแจ้งหนี้ที่สร้างตั้งแต่ 1 ส.ค. ใช้ค่าใหม่ ใบที่ออกก่อนหน้าไม่เปลี่ยน (TC-R1-224)
+
+#### FR-R1-124 Onboard วิทยาเขต pilot และ release ring
+
+ระบบต้องให้ onboard OrgUnit ของวิทยาเขต pilot (ชลบุรี, มหาสารคาม) ด้วยการตั้งค่า settings ผู้ลงนาม ค่าธรรมเนียม ปฏิทิน และแม่แบบเอกสาร พร้อม checklist ความพร้อมและ go-live flag ต่อ OrgUnit โดย OrgUnit ที่ยังไม่ go-live ต้องไม่ปรากฏในหน้าสมัคร
+
+- **Priority:** Must · **บทบาท:** `itadmin`, `registrar` · **โมดูล:** ADMIN, ORG · **Workflow:** W-69
+- **ที่มา:** 06 §5.12; 12 §2.1; A-85; ADR-025 · **ขึ้นกับ:** A-85, Q-59
+- **หน้าจอ:** S-R1-50 · **API:** `createChangeRequest`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ชลบุรีและมหาสารคาม go-live R1 ส่วนวิทยาเขตอื่นยังไม่ **เมื่อ** ผู้สมัครเปิดหน้าแรก **ผลที่ต้องได้** เห็นรอบของ 2 วิทยาเขตเท่านั้น และมีข้อความแนะนำช่องทางเดิมของวิทยาเขตอื่น (TC-R1-225)
+
+#### FR-R1-125 Job และ integration monitor
+
+ระบบต้องแสดงสถานะ job ที่ R1 ใช้ (J-01, J-03, J-04, J-06, J-16, J-48, J-49, retention) และ integration (ธนาคาร callback/statement, ThaID, LINE, SMS, TCAS ถ้าเปิด) พร้อม DLQ replay และแจ้งเตือนเมื่อ job ล้มเหลว (`admin.JobFailed`)
+
+- **Priority:** Must · **บทบาท:** `itadmin`, `dba_sre` · **โมดูล:** ADMIN · **Workflow:** W-74
+- **ที่มา:** 06 §5.12; 03 §J; 09 §4
+- **หน้าจอ:** S-R1-51 · **API:** `listJobRuns`, `retryJobRun`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** J-04 ล้มเหลว 2 รอบติดกัน **เมื่อ** ครบรอบที่ 2 **ผลที่ต้องได้** `itadmin` และ on-call ได้ alert และ dashboard แสดงจำนวน offer ที่รอประมวลผลและเวลาเหตุล่าสุด (TC-R1-226)
+  2. [ความปลอดภัย] **กำหนดให้** `itadmin` เปิดหน้า monitor **เมื่อ** ดูรายละเอียด job **ผลที่ต้องได้** เห็นเฉพาะ metadata (จำนวน เวลา error code) ไม่เห็นข้อมูลผู้สมัคร (SoD-07) (TC-R1-227)
+
+#### FR-R1-126 Break-glass 2 คน
+
+ระบบต้องให้ใช้บัญชี break-glass ได้เมื่อผู้อนุมัติครบ 2 คน (W-125) แจ้ง SOC ทันที บันทึกทุกคำสั่งลง WORM ทบทวนร่วม DPO ภายใน 24 ชม. และหมุน credential หลังใช้
+
+- **Priority:** Must · **บทบาท:** `itadmin`, `security_admin`, `vp`, `dpo` · **โมดูล:** ADMIN, AUD · **Workflow:** W-125
+- **ที่มา:** W-125; 04 §11.3; blueprint §10
+- **หน้าจอ:** S-R1-52 · **API:** `requestBreakGlass`, `approveBreakGlass`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** มีผู้อนุมัติเพียง 1 คน **เมื่อ** ขอใช้ break-glass **ผลที่ต้องได้** credential ไม่ถูกปลด (TC-R1-228)
+  2. [ฟังก์ชัน] **กำหนดให้** ผู้อนุมัติครบ 2 คน **เมื่อ** ใช้ break-glass **ผลที่ต้องได้** SOC ได้ alert ภายใน 1 นาที และหลังเหตุมีงานทบทวนที่ครบกำหนด 24 ชม. (TC-R1-229)
+
+#### FR-R1-127 Just-in-time privileged access
+
+ระบบต้องให้สิทธิ์ privileged แบบ JIT อ้าง ticket ที่อนุมัติ ผู้ขอ ≠ ผู้อนุมัติ อายุ ≤ 8 ชม. พร้อม session recording และ schema ธุรกิจเป็น read-only โดยค่าเริ่มต้น
+
+- **Priority:** Must · **บทบาท:** `dba_sre`, `security_admin`, `data_owner` · **โมดูล:** ADMIN · **Workflow:** W-124
+- **ที่มา:** W-124; 04 SoD-16; ADR-023
+- **หน้าจอ:** S-R1-52 · **API:** —
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** `dba_sre` ขอ JIT เขียน schema `adm` โดยไม่มี data_owner อนุมัติ **เมื่อ** ส่งคำขอ **ผลที่ต้องได้** ได้สิทธิ์อ่านอย่างเดียวหรือถูกปฏิเสธตาม policy (TC-R1-230)
+
+#### FR-R1-128 Audit trail ของงานรับสมัคร
+
+ระบบต้องบันทึก audit ของทุกการกระทำสำคัญ (ตั้งรอบ อนุมัติ ให้คะแนน เปิดแก้ moderation override ยืนยัน/สละสิทธิ์ ตัดสินอุทธรณ์ การอ่านรายการข้อมูลบุคคล export) พร้อม actor, on_behalf_of, บทบาทที่ใช้, purpose, org_unit_id และ hash chain โดยผู้ดูแลระบบแก้ไม่ได้
+
+- **Priority:** Must · **บทบาท:** `auditor`, `system` · **โมดูล:** AUD · **Workflow:** W-76, W-74, W-18
+- **ที่มา:** 06 §5.9; 04 §12, SoD-07; 07 §11.10
+- **หน้าจอ:** S-R1-50 · **API:** —
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** ผู้ใช้ทุกบทบาท (รวม itadmin) **เมื่อ** พยายามแก้/ลบ AuditEvent **ผลที่ต้องได้** ทำไม่ได้ และการตรวจ hash chain รายวันผ่าน (TC-R1-231)
+  2. [ฟังก์ชัน] **กำหนดให้** `auditor` ขอชุดหลักฐานของรอบโควตานักกีฬา **เมื่อ** สร้าง auditor export **ผลที่ต้องได้** ได้ CSV + hash + data dictionary ของเหตุการณ์ในรอบนั้นตาม scope ของ `auditor` (TC-R1-232)
+
+#### FR-R1-129 แม่แบบเอกสารของ R1
+
+ระบบต้องมีแม่แบบเอกสาร R1 (ประกาศรับสมัคร, ประกาศรายชื่อ, บัตรประจำตัวผู้สอบ, ใบรับ, e-Receipt, คำสั่งแต่งตั้งกรรมการ, หนังสือขอยืนยันผลงาน, หนังสือแจ้งผลอุทธรณ์, หนังสือตอบรับสองภาษา) แบบ effective-dated ต่อ OrgUnit อนุมัติแบบ maker-checker และผ่าน golden-file visual test + PDF/A + PDF/UA
+
+- **Priority:** Must · **บทบาท:** `module_admin`, `registrar` · **โมดูล:** DOC · **Workflow:** W-69, W-42, W-41
+- **ที่มา:** 06 §5.7 Release R1; 10 §7.2; 14 §5.2; D-03
+- **หน้าจอ:** S-R1-50 · **API:** `createChangeRequest`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** แม่แบบบัตรประจำตัวผู้สอบวิทยาเขตมหาสารคามฉบับใหม่ **เมื่อ** ส่งอนุมัติ **ผลที่ต้องได้** pipeline สร้างตัวอย่างจาก corpus T1–T9 เทียบ golden file (pixel diff ≤ 0.1%) ผ่าน veraPDF และ checker อนุมัติจึงมีผล (TC-R1-233)
+
+#### FR-R1-130 Waiting room และ status page
+
+ระบบต้องเปิด virtual waiting room ที่ gateway เมื่อผู้ใช้พร้อมกันเกินเกณฑ์ในช่วงปิดรับสมัคร 48 ชม. สุดท้ายและช่วงประกาศผล/ยืนยันสิทธิ์ แสดงลำดับคิวและเวลาคาดการณ์ และมี status page สาธารณะที่แสดงเหตุขัดข้อง
+
+- **Priority:** Must · **บทบาท:** `candidate`, `applicant`, `itadmin` · **โมดูล:** ADMIN · **Workflow:** W-41, W-74
+- **ที่มา:** 07 ADR-004, ADR-028; 14 S-37, P4 · **ขึ้นกับ:** A-34
+- **หน้าจอ:** S-R1-47, S-R1-49 · **API:** `getStatus`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ผู้ใช้พร้อมกันเกิน 3,000 ช่วงประกาศผล **เมื่อ** ผู้ใช้ใหม่เข้าหน้า offer **ผลที่ต้องได้** เข้าคิวพร้อมแสดงลำดับและเวลาคาดการณ์ภาษาไทย และ token ผูกกับ `sub` ใช้ได้ 1 session (TC-R1-234)
+  2. [การเข้าถึง] **กำหนดให้** ผู้ใช้ที่แจ้งความต้องการ accommodation **เมื่อ** รออยู่ในคิว **ผลที่ต้องได้** เวลา timeout ของคิวขยายได้ตามที่ตั้งค่า (TC-R1-235)
+
+#### FR-R1-131 Change freeze ตามปฏิทินรับสมัคร
+
+ระบบควรตั้ง change freeze ต่อ OrgUnit ring อัตโนมัติจากปฏิทิน (48 ชม. สุดท้ายของการรับสมัคร, วันประกาศผล, วันครบกำหนดยืนยันสิทธิ์) และบล็อกการ deploy ที่ไม่ใช่ hotfix ที่อนุมัติ
+
+- **Priority:** Should · **บทบาท:** `itadmin` · **โมดูล:** ADMIN, ORG · **Workflow:** W-69
+- **ที่มา:** 06 §5.12; 03 J-46; 11 §5.2
+- **หน้าจอ:** S-R1-51 · **API:** —
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** วันประกาศผลโควตาของชลบุรี **เมื่อ** pipeline ขอ deploy feature ใหม่ **ผลที่ต้องได้** ถูกบล็อกพร้อมเหตุ "freeze: ADM_RESULT_PUBLISH ชลบุรี" (TC-R1-236)
+
+#### FR-R1-132 Standard export ต่อบทบาท
+
+ระบบควรมี standard export ที่อนุมัติล่วงหน้าสำหรับงานรับสมัคร (รายชื่อสอบต่อ session, รายชื่อผู้ผ่าน, รายชื่อรายงานตัว) ที่ใช้ RLS ของผู้ใช้ คอลัมน์คงที่ watermark และ audit ส่วน ad-hoc export > 500 แถว/ครั้งหรือ > 2,000 แถว/วันต้องระบุ purpose และขออนุมัติ
+
+- **Priority:** Should · **บทบาท:** `admission`, `registrar` · **โมดูล:** ADM, DOC, ANA · **Workflow:** W-75, W-78
+- **ที่มา:** 08 §10.3 ข้อ 6; 14 §9.4; A-115 · **ขึ้นกับ:** A-115
+- **หน้าจอ:** S-R1-37, S-R1-42 · **API:** `requestStandardExport`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** `admission` ขอ export รายชื่อผู้สมัครพร้อมเบอร์โทร 3,000 แถวแบบ ad-hoc **เมื่อ** ส่งคำขอ **ผลที่ต้องได้** ต้องระบุ purpose และรออนุมัติ (W-138 pattern) ไฟล์มี watermark ชื่อผู้ดึง/เวลา (TC-R1-237)
+
+### 2.16 การแจ้งเตือนและประกาศ (NTF)
+
+_NOTI (P0/P1/P2, send-once, quiet hours, ลดข้อมูลในช่องทางภายนอก) และ ENG (ประกาศ, DLP, อนุมัติ) (W-36)_
+
+#### FR-R1-133 กฎแจ้งเตือนของงานรับสมัคร
+
+ระบบต้องมี `NotificationRule` สำหรับเหตุการณ์รับสมัคร (ยื่นแล้ว, ชำระแล้ว/ใบเสร็จ, ขอเอกสารเพิ่ม, มีสิทธิ์สอบ, slot, เตือน T-3/T-1 ก่อนสอบ, ประกาศผล, offer T-24/T-3 ชม., offer จาก cascade, ยืนยันซ้ำ, ผลอุทธรณ์) ด้วยแม่แบบไทย/อังกฤษที่มีเวอร์ชันและ override ราย OrgUnit ได้
+
+- **Priority:** Must · **บทบาท:** `system`, `pr` · **โมดูล:** NOTI, ADM · **Workflow:** W-41, W-42, W-43, W-74, W-77, W-18, W-163
+- **ที่มา:** 06 §5.3; 14 §8.2 · **ขึ้นกับ:** A-80
+- **หน้าจอ:** S-R1-22 · **API:** `listMyNotifications`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** `adm.OfferMade` สำหรับผู้สมัครที่ตั้งภาษาอังกฤษ **เมื่อ** NOTI ส่งข้อความ **ผลที่ต้องได้** ใช้แม่แบบภาษาอังกฤษเวอร์ชันปัจจุบันของวิทยาเขตปลายทาง พร้อม deadline ในรูปแบบ ค.ศ. และ deep link (TC-R1-238)
+
+#### FR-R1-134 ลำดับช่องทาง send-once และ quiet hours
+
+ระบบต้องส่งข้อความผู้สมัครตามลำดับ in-app/Web Push → LINE → อีเมล (SMS เฉพาะ OTP, ฉุกเฉิน และ fallback ของผู้ปกครองผู้เยาว์) แบบ send-once ข้ามช่องทาง fallback เมื่อส่งไม่สำเร็จหรือ P1 ไม่มีการคลิก/รับทราบใน 6 ชม. และงดส่ง P1/P2 ช่วง 21:00–07:00 ยกเว้นเหลือเวลา < 12 ชม.
+
+- **Priority:** Must · **บทบาท:** `system` · **โมดูล:** NOTI · **Workflow:** W-74, W-43
+- **ที่มา:** 14 §8.2–8.3 (UXR-24, UXR-25); 06 §5.3; A-93 · **ขึ้นกับ:** A-80, A-93
+- **หน้าจอ:** S-R1-22 · **API:** `updateNotificationPreferences`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** offer ใกล้ครบกำหนดใน 10 ชม. เวลา 22:00 **เมื่อ** ถึงเวลาเตือน T-… ที่ตกช่วง quiet hours **ผลที่ต้องได้** ระบบส่งทันทีเพราะเหลือ < 12 ชม. (TC-R1-239)
+  2. [ฟังก์ชัน] **กำหนดให้** ข้อความ P1 ส่งทาง Web Push และผู้สมัครไม่คลิกใน 6 ชม. **เมื่อ** ครบ 6 ชม. **ผลที่ต้องได้** ส่ง LINE (ถ้าผูก) 1 ครั้ง ไม่ส่งซ้ำช่องทางเดิม (TC-R1-240)
+
+#### FR-R1-135 ลดข้อมูลในช่องทางภายนอก
+
+ระบบต้องส่งข้อความทาง LINE/SMS/Web Push เพียงหัวข้อ + deep link โดยไม่มีคะแนน ผลรายบุคคล ข้อมูลสุขภาพ ยอดเงินรายบุคคล หรือเลขประจำตัว และบันทึกบริการต่างประเทศใน cross-border register
+
+- **Priority:** Must · **บทบาท:** `system`, `dpo` · **โมดูล:** NOTI, PRIV · **Workflow:** W-42, W-74
+- **ที่มา:** blueprint §9.10; 06 §5.3; 09 §3.6; 10 §2.9; A-18 · **ขึ้นกับ:** A-18
+- **หน้าจอ:** S-R1-22 · **API:** —
+- **เกณฑ์ยอมรับ:**
+  1. [PDPA] **กำหนดให้** แม่แบบข้อความประกาศผลที่ส่งทาง LINE **เมื่อ** ตรวจ payload ที่ส่งออก (contract test) **ผลที่ต้องได้** มีเพียงหัวข้อ "ประกาศผลรอบโควตา วิทยาเขตชลบุรีแล้ว" และลิงก์ ไม่มีคำว่า "ผ่าน/ไม่ผ่าน" หรือคะแนน (TC-R1-241)
+
+#### FR-R1-136 Inbox รับทราบ และการตั้งค่า
+
+ระบบต้องมี inbox ในแอปที่เก็บข้อความทั้งหมด ปุ่ม "รับทราบ" สำหรับ P1 และหน้าตั้งค่าช่องทางต่อหมวด โดยหมวดบังคับ (การเงิน วิชาการ ฉุกเฉิน) ปิดทุกช่องทางไม่ได้
+
+- **Priority:** Must · **บทบาท:** `candidate`, `guardian` · **โมดูล:** NOTI · **Workflow:** W-41
+- **ที่มา:** 14 S-36, §8.3; 06 §5.3
+- **หน้าจอ:** S-R1-22 · **API:** `listMyNotifications`, `acknowledgeNotification`, `updateNotificationPreferences`
+- **เกณฑ์ยอมรับ:**
+  1. [กรณีผิดปกติ] **กำหนดให้** ผู้สมัครพยายามปิดทุกช่องทางของหมวด "การเงิน" **เมื่อ** บันทึก **ผลที่ต้องได้** ระบบไม่ให้และแจ้งว่าต้องเหลืออย่างน้อย 1 ช่องทาง (in-app) (TC-R1-242)
+
+#### FR-R1-137 ผูกและยกเลิก LINE
+
+ระบบต้องให้ผูกบัญชี LINE ผ่าน LIFF ด้วย consent L-26 (ผู้เยาว์ 10–<20 ปีให้เองได้) และยกเลิกการผูกได้ทุกเมื่อ โดยลบ `ChannelBinding` และหยุดส่งทาง LINE ทันที
+
+- **Priority:** Must · **บทบาท:** `candidate`, `guardian` · **โมดูล:** NOTI, PRIV · **Workflow:** W-41
+- **ที่มา:** 10 L-26; 06 §5.3; 08 §5 (LINE userId)
+- **หน้าจอ:** S-R1-22 · **API:** `bindLineAccount`, `unbindLineAccount`
+- **เกณฑ์ยอมรับ:**
+  1. [PDPA] **กำหนดให้** ผู้สมัครยกเลิกการผูก LINE **เมื่อ** ยืนยัน **ผลที่ต้องได้** `ChannelBinding` ถูกลบ consent L-26 เป็น WITHDRAWN และข้อความถัดไปไปทางช่องทางอื่น (TC-R1-243)
+
+#### FR-R1-138 สร้างและอนุมัติประกาศ (ENG)
+
+ระบบต้องให้ `pr` ร่างประกาศรับสมัคร/ประกาศผล เลือกกลุ่มผู้รับ ตรวจ DLP ก่อนเผยแพร่ อนุมัติตามระดับ OrgUnit (`campusvp` สำหรับวิทยาเขต) ผู้ร่าง ≠ ผู้อนุมัติ และประกาศฉุกเฉิน P0 ต้องมีผู้อนุมัติ 2 คน
+
+- **Priority:** Must · **บทบาท:** `pr`, `campusvp`, `dean`, `system` · **โมดูล:** ENG, NOTI, DOC · **Workflow:** W-36, W-69, W-42
+- **ที่มา:** W-36; 06 §5.4; 04 SoD-23
+- **หน้าจอ:** S-R1-56 · **API:** `createAnnouncement`, `approveAnnouncement`
+- **เกณฑ์ยอมรับ:**
+  1. [ความปลอดภัย] **กำหนดให้** `pr` ร่างประกาศและพยายามอนุมัติเอง **เมื่อ** กดอนุมัติ **ผลที่ต้องได้** ปฏิเสธ (SoD-23) (TC-R1-244)
+  2. [ฟังก์ชัน] **กำหนดให้** เหตุฉุกเฉินระหว่างวันสอบทักษะ (พายุ) และผู้อนุมัติ 2 คนกดยืนยัน **เมื่อ** ส่ง P0 ถึงผู้สอบและผู้ปกครองของ session **ผลที่ต้องได้** เริ่มส่ง ≤ 10 วินาที และ push + LINE ถึง 95% ≤ 2 นาที (TC-R1-245)
+
+#### FR-R1-139 ทยอยส่งข้อความจำนวนมากและ hold window
+
+ระบบควรทยอยส่งข้อความที่ไม่ใช่ P0 ไม่เกิน 2,000 ผู้รับ/นาที และมี hold window 10 นาทีให้ยกเลิก bulk action (เช่น ประกาศผลผิดรอบ) ก่อนข้อความและ event ปลายน้ำถูกส่ง
+
+- **Priority:** Should · **บทบาท:** `admission`, `pr`, `system` · **โมดูล:** NOTI, ADM · **Workflow:** W-42
+- **ที่มา:** 07 §10.4–10.5; 14 §9.2; 06 §5.3 (release_at)
+- **หน้าจอ:** S-R1-38, S-R1-56 · **API:** `publishResults`
+- **เกณฑ์ยอมรับ:**
+  1. [ฟังก์ชัน] **กำหนดให้** ประกาศผลถึงผู้สมัคร 6,000 คน **เมื่อ** กดเผยแพร่ **ผลที่ต้องได้** ข้อความทยอยส่งครบใน ~3 นาที และในช่วง 10 นาทีแรกผู้กดสามารถยกเลิกได้โดยไม่มีข้อความหลุด (TC-R1-246)
+
+## 3. ข้อกำหนดที่ไม่ใช่หน้าที่ (NFR)
+
+ตัวเลขภาระมาจากเล่ม 07 §10 (admissions peak) และกติกา headroom "คาด × 2 = ออกแบบ, stress 3×" (07 §10.1); SLO ตาม 07 §10.7 และ blueprint §8
+
+| NFR | หมวด | ชื่อ | Priority | Test |
+|---|---|---|---|---|
+| NFR-R1-001 | Performance | ภาระช่วงปิดรับสมัคร | Must | TC-R1-264, TC-R1-265 |
+| NFR-R1-002 | Performance | วันประกาศผล | Must | TC-R1-266 |
+| NFR-R1-003 | Performance | Upload เอกสารและวิดีโอ | Must | TC-R1-267 |
+| NFR-R1-004 | Performance | Sync คะแนนสอบทักษะ | Must | TC-R1-268 |
+| NFR-R1-005 | Performance | การยืนยันสิทธิ์พร้อมกันและความถูกต้องของที่นั่ง | Must | TC-R1-269 |
+| NFR-R1-006 | Performance | เวลาตอบสนองของ API และหน้าเว็บ | Must | TC-R1-270, TC-R1-271 |
+| NFR-R1-007 | Performance | ความทันเวลาของ event และ job | Must | TC-R1-272, TC-R1-273 |
+| NFR-R1-008 | Availability | SLO ราย journey ของ R1 | Must | TC-R1-274 |
+| NFR-R1-009 | Availability | RPO/RTO และการกู้คืน | Must | TC-R1-275, TC-R1-276 |
+| NFR-R1-010 | Availability | การทำงานเมื่อบริการภายนอกไม่พร้อม | Must | TC-R1-277, TC-R1-278 |
+| NFR-R1-011 | Security | มาตรฐานความปลอดภัยแอปพลิเคชัน | Must | TC-R1-250, TC-R1-279, TC-R1-280 |
+| NFR-R1-012 | Security | Row-Level Security ข้ามวิทยาเขต | Must | TC-R1-247, TC-R1-251, TC-R1-254, TC-R1-281, TC-R1-282, TC-R1-283 |
+| NFR-R1-013 | Security | การยืนยันตัวตนและการอนุญาต | Must | TC-R1-284, TC-R1-285 |
+| NFR-R1-014 | Security | การเข้ารหัสและข้อมูลระบุตัวตน | Must | TC-R1-248, TC-R1-286, TC-R1-287 |
+| NFR-R1-015 | Security | กันบอท การจำกัดอัตรา และการฉ้อโกง OTP | Must | TC-R1-288, TC-R1-289 |
+| NFR-R1-016 | Security | ความปลอดภัยของ payment integration | Must | TC-R1-252, TC-R1-290, TC-R1-291 |
+| NFR-R1-017 | Security | อุปกรณ์กรรมการและข้อมูล offline | Must | TC-R1-292 |
+| NFR-R1-018 | Security | การแยกหน้าที่ (SoD) ของงานรับสมัคร | Must | TC-R1-293 |
+| NFR-R1-019 | PDPA | ฐานทางกฎหมายและ DPIA เป็นเงื่อนไข go-live | Must | TC-R1-256, TC-R1-294 |
+| NFR-R1-020 | PDPA | ความยินยอมของผู้เยาว์ | Must | TC-R1-255, TC-R1-295 |
+| NFR-R1-021 | PDPA | ข้อมูลสุขภาพอยู่ใน health vault เท่านั้น | Must | TC-R1-296 |
+| NFR-R1-022 | PDPA | การลดข้อมูลและการเปิดเผยสาธารณะ | Must | TC-R1-257, TC-R1-297 |
+| NFR-R1-023 | PDPA | Retention และการลบ | Must | TC-R1-298 |
+| NFR-R1-024 | Accessibility | WCAG 2.1 AA เป็นเกณฑ์ตรวจรับ | Must | TC-R1-299, TC-R1-300, TC-R1-301, TC-R1-302, TC-R1-315, TC-R1-316, TC-R1-317, TC-R1-318, TC-R1-319, TC-R1-320, TC-R1-321, TC-R1-322, TC-R1-323, TC-R1-324, TC-R1-325, TC-R1-326, TC-R1-327, TC-R1-328, TC-R1-329, TC-R1-330, TC-R1-331, TC-R1-332, TC-R1-333, TC-R1-334, TC-R1-335, TC-R1-336, TC-R1-337, TC-R1-338, TC-R1-339, TC-R1-340, TC-R1-341 |
+| NFR-R1-025 | Thai typography | การแสดงผลภาษาไทยบนจอและเอกสาร | Must | TC-R1-303, TC-R1-304 |
+| NFR-R1-026 | Usability | วันที่ ภาษา และความเข้าใจง่าย | Must | TC-R1-305 |
+| NFR-R1-027 | Usability | เกณฑ์ usability ของ R1 | Must | TC-R1-306 |
+| NFR-R1-028 | Usability | Low-bandwidth และ offline | Must | TC-R1-307 |
+| NFR-R1-029 | Audit | ความสมบูรณ์ของ audit และคะแนน | Must | TC-R1-253, TC-R1-308, TC-R1-309 |
+| NFR-R1-030 | Operations | Observability และการแจ้งเหตุ | Should | TC-R1-310 |
+| NFR-R1-031 | Operations | Helpdesk L1 พร้อมสำหรับฤดูรับสมัคร | Must | TC-R1-311 |
+| NFR-R1-032 | Interoperability | มาตรฐาน API | Must | TC-R1-312, TC-R1-313 |
+| NFR-R1-033 | Scalability | ขยายวิทยาเขตด้วย configuration | Should | TC-R1-314 |
+
+### NFR-R1-001 ภาระช่วงปิดรับสมัคร
+
+**หมวด:** Performance · **Priority:** Must · **ที่มา:** 07 §10.1–10.2, §10.6; 12 MS-1; A-23, A-34 · **ขึ้นกับ:** A-23, A-34
+
+ระบบต้องรองรับภาระช่วงชั่วโมงสูงสุดของรอบโควตา (ทุกวิทยาเขต pilot พร้อมกัน) โดยมี headroom ตามกติกา 2× (ออกแบบ) และ stress 3×
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- คาด: 360 ใบสมัคร/ชม. (0.1 ใบ/s), API ≈ 20 RPS (07 §10.2)
+- ออกแบบ 2×: 40 RPS ต่อเนื่อง 60 นาที โดย p95 อ่าน ≤ 300 ms, เขียน ≤ 500 ms, error 5xx ≤ 0.1%
+- MS-1 (เล่ม 12): ผู้สมัครพร้อมกัน ≥ 2,000 ราย (A-34 ประมาณ ~3,000 ช่วงปิดรับ) ผ่านโดยไม่มี error ของ submit
+- stress 3× (60 RPS) หาจุดแตกและบันทึก
+
+**การทดสอบ:** TC-R1-264, TC-R1-265
+
+### NFR-R1-002 วันประกาศผล
+
+**หมวด:** Performance · **Priority:** Must · **ที่มา:** 07 §10.2, §9.3; 11 §4.2 (admission result); 12 MS-1
+
+หน้าตรวจผลต้องให้บริการจาก CDN แบบ pre-computed shard โดย origin รับภาระ ≈ 0
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- รองรับ 30 คำขอ/s เฉลี่ย และ burst 300/s (A-34: 30,000 คนใน 30 นาที, 60% ใน 10 นาทีแรก)
+- MS-1: ทดสอบ 25,000 ครั้งใน 30 นาที (×3 ของคาดการณ์ pilot) TTFB p95 ≤ 200 ms ที่ CDN
+- origin ปิดระหว่างทดสอบแล้วผลยังแสดงได้ (fail-static)
+
+**การทดสอบ:** TC-R1-266
+
+### NFR-R1-003 Upload เอกสารและวิดีโอ
+
+**หมวด:** Performance · **Priority:** Must · **ที่มา:** 07 §10.2, §11.4
+
+ระบบต้องรับ upload แบบ resumable บนเครือข่ายไม่ดีได้ และมีแบนด์วิดท์ขาเข้าเพียงพอ
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- ออกแบบขาเข้า 100 Mbps (คาด 36 Mbps ช่วงชั่วโมงสูงสุดจากวิดีโอผลงาน)
+- เอกสาร ≤ 10 MB ต่อไฟล์, วิดีโอ ≤ 200 MB; resume ต่อจากส่วนที่ค้างได้หลังสัญญาณหลุด
+- ไฟล์ผ่านการสแกนและพร้อมใช้ภายใน p95 ≤ 2 นาทีหลัง upload เสร็จ (วิดีโอ ≤ 10 นาที)
+
+**การทดสอบ:** TC-R1-267
+
+### NFR-R1-004 Sync คะแนนสอบทักษะ
+
+**หมวด:** Performance · **Priority:** Must · **ที่มา:** 07 §10.2; W-76
+
+บริการ sync ของ judge app ต้องรับ batch หลังปิดสถานีพร้อมกันได้
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- คาด 36,000 คะแนนใน 3 วัน; ช่วง sync 50 เครื่อง × 200 รายการใน 5 นาที ≈ 33 รายการ/s
+- ออกแบบ 2× (≈ 66 รายการ/s) โดย batch 200 รายการ p95 ≤ 3 s และไม่มีคะแนนซ้ำ/หาย
+
+**การทดสอบ:** TC-R1-268
+
+### NFR-R1-005 การยืนยันสิทธิ์พร้อมกันและความถูกต้องของที่นั่ง
+
+**หมวด:** Performance · **Priority:** Must · **ที่มา:** 02 C-3; 07 §10.6; ADR-004 (แนวเดียวกัน)
+
+การยืนยันสิทธิ์ต้องถูกต้องภายใต้การแย่งพร้อมกัน
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- คาด 0.2 รายการ/s (07 §10.2) แต่ทดสอบการยิงพร้อมกัน 500 คำขอใน 10 s ต่อ bucket เดียว
+- invariant: confirmed ∪ reported ∪ matriculated ≤ 1 ต่อ person × cycle × level; ไม่มี bucket ที่ offer confirmed > ที่นั่ง; ไม่มีคำขอที่ตอบ 2xx แต่ไม่มีแถว
+- confirm p95 ≤ 1 s, p99 ≤ 2.5 s
+
+**การทดสอบ:** TC-R1-269
+
+### NFR-R1-006 เวลาตอบสนองของ API และหน้าเว็บ
+
+**หมวด:** Performance · **Priority:** Must · **ที่มา:** 07 §10.6, §11.8; 14 §7
+
+API และหน้า portal ต้องตอบสนองตามเป้า p95 ที่โหลดออกแบบ
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- API อ่าน p95 ≤ 300 ms / p99 ≤ 800 ms; API เขียน p95 ≤ 500 ms / p99 ≤ 1.5 s
+- LCP ≤ 2.5 s บน Android ระดับล่าง + 3G/4G profile; JS ≤ 200 KB gzip ต่อ route
+- PDF/A ลงนาม ≤ 5 s ต่อฉบับ; batch บัตรผู้สอบ 3,000 ฉบับ ≤ 1 ชม.
+
+**การทดสอบ:** TC-R1-270, TC-R1-271
+
+### NFR-R1-007 ความทันเวลาของ event และ job
+
+**หมวด:** Performance · **Priority:** Must · **ที่มา:** 07 §10.5–10.6; 02 §2.8.1; 03 J-04
+
+event และ job ของ clearing ต้องทันเวลาตามกติกาเวลาเดียวของเล่ม 02
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- outbox lag p95 ≤ 5 s, p99 ≤ 30 s
+- J-04 ทุก 5 นาที: ที่นั่งคืนและเรียกสำรอง ≤ 15 นาทีหลังเหตุ แม้มี offer หมดเวลาพร้อมกัน 1,000 รายการ
+- แจ้งเตือนที่ไม่ใช่ P0 ทยอย ≤ 2,000 ผู้รับ/นาที; P0 เริ่มส่ง ≤ 10 s, push + LINE ถึง 95% ≤ 2 นาที, SMS 95% ≤ 5 นาที
+
+**การทดสอบ:** TC-R1-272, TC-R1-273
+
+### NFR-R1-008 SLO ราย journey ของ R1
+
+**หมวด:** Availability · **Priority:** Must · **ที่มา:** 07 §10.7; blueprint §8; A-103 · **ขึ้นกับ:** A-103, Q-90
+
+ระบบต้องบรรลุ SLO ภายในตามเล่ม 07 §10.7 สำหรับ journey ของ R1
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- สมัคร/ชำระ/ยืนยันสิทธิ์ (applicant journeys): 99.9% รายเดือน และ 99.9% ในช่วงวิกฤต (48 ชม. ปิดรับ, ประกาศผล, deadline ยืนยัน)
+- หน้าประกาศผล/ประกาศ P0 (CDN): 99.95%
+- Back-office เจ้าหน้าที่: 99.5% รายเดือน (99.9% ในเวลาทำการ); BI ไม่อยู่ใน R1
+- callback ธนาคารไม่สัญญา 99.95% — ต้องไม่มีเงินหายด้วย bank retry + statement reconcile
+- SLA สัญญา 99.9% ไม่เปลี่ยน; เป้า 99.94% ของ journey ลงทะเบียนเป็นเรื่อง R2 (Q-90)
+
+**การทดสอบ:** TC-R1-274
+
+### NFR-R1-009 RPO/RTO และการกู้คืน
+
+**หมวด:** Availability · **Priority:** Must · **ที่มา:** blueprint §8; 08 §9.2; 11 §4.1; 12 MS-1; D-04
+
+ระบบต้องกู้คืนได้ตามเป้าของ blueprint
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- RPO ≤ 5 นาที, RTO ≤ 4 ชม. (ศูนย์ข้อมูลล่ม); ransomware: RTO 48–72 ชม. จาก immutable backup
+- หลัง restore ต้อง reapply erasure ledger ก่อนเปิดใช้
+- ซ้อมกู้ key กรณี "OpenBao สูญหาย" และ "HSM สูญหาย" ผ่านก่อน MS-1
+- หลัง DR failover ใช้ชุดเลขใบเสร็จใหม่และ reconcile DB ↔ object storage
+
+**การทดสอบ:** TC-R1-275, TC-R1-276
+
+### NFR-R1-010 การทำงานเมื่อบริการภายนอกไม่พร้อม
+
+**หมวด:** Availability · **Priority:** Must · **ที่มา:** 07 §10.7, §11.8; 14 §7.1
+
+journey หลักต้องมีทางสำรองเมื่อบริการภายนอกไม่พร้อม
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- ThaID ล่ม → สมัคร/ login ด้วย e-mail/OTP ได้ (ไม่นับเวลา ThaID ล่มใน SLO)
+- LINE ล่ม → in-app/อีเมล; SMS gateway ล่ม → OTP ทางอีเมล
+- OpenBao ล่ม ≤ 10 นาที → journey ที่ถอดรหัสใช้ DEK cache ได้
+- เครือข่ายสนามสอบล่ม → judge app ทำงาน offline ตลอดวัน; ระบบล่ม > 15 นาทีที่จุดบริการ → paper fallback (14 §7.1)
+
+**การทดสอบ:** TC-R1-277, TC-R1-278
+
+### NFR-R1-011 มาตรฐานความปลอดภัยแอปพลิเคชัน
+
+**หมวด:** Security · **Priority:** Must · **ที่มา:** 11 §4.1, §4.3; 10 §6.4 (Website Security Standard 2568); 12 MS-1
+
+ระบบต้องผ่าน OWASP ASVS L2 (L3 สำหรับ FIN/IAM/ADMIN) และมาตรฐานความปลอดภัยเว็บไซต์ภาครัฐสำหรับหน้าสาธารณะตั้งแต่ R1
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- pen test อิสระก่อน R1: ไม่มี High/Critical ค้าง (ขอบเขต: payment callback, waiting room/bot, RLS bypass, IDOR ข้ามวิทยาเขต, guardian linking, admin/PAM, เอกสารลงนาม)
+- SAST/secret scan ทุก PR, SCA + licence ทุก build, DAST baseline ทุก release
+- TLS 1.2+, HSTS, security headers, WAF บนหน้าสาธารณะ (portal, OIT, verify)
+
+**การทดสอบ:** TC-R1-250, TC-R1-279, TC-R1-280
+
+### NFR-R1-012 Row-Level Security ข้ามวิทยาเขต
+
+**หมวด:** Security · **Priority:** Must · **ที่มา:** 08 §6, §10.1; 07 ADR-005; D-09; 11 §4.1
+
+ข้อมูลธุรกรรมของ R1 ทุกตาราง (ADM, FIN, CASE, PRIV, DOC, FAC, ENG ส่วนรายบุคคล) ต้องอยู่ใต้ FORCE RLS ที่ scope ตั้งผ่าน `sec.begin_scope(token)` (SECURITY DEFINER) ไม่ใช่ `set_config` จาก app role
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- ทุกตารางธุรกรรมมี `org_unit_id NOT NULL` + `relrowsecurity` + `relforcerowsecurity` (CI fail ถ้าไม่ครบ)
+- cross-tenant suite: scope ผิด/ว่าง/สุ่ม/หมดอายุ/token ของ transaction อื่น → 0 แถว
+- ไม่มี role ใดมี BYPASSRLS (ยกเว้น superuser ผ่าน break-glass)
+- ผู้ใช้วิทยาเขต A ไม่เห็นข้อมูลรายบุคคลของวิทยาเขต B ยกเว้นข้อยกเว้นที่ออกแบบ (C-11 "ยืนยันที่อื่นแล้ว", registrar ส่วนกลางแบบ aggregate)
+
+**การทดสอบ:** TC-R1-247, TC-R1-251, TC-R1-254, TC-R1-281, TC-R1-282, TC-R1-283
+
+### NFR-R1-013 การยืนยันตัวตนและการอนุญาต
+
+**หมวด:** Security · **Priority:** Must · **ที่มา:** 06 §5.1; 10 §9.3; 04 §4
+
+ระบบต้องใช้ OIDC (Keycloak) กับทุกแอป, MFA แบบ phishing-resistant (WebAuthn) สำหรับบทบาทสิทธิ์สูง (admission, finance, registrar, nurse/physician, ADMIN) และ step-up สำหรับการกระทำเสี่ยง (อนุมัติผล/override, อนุมัติคืนเงิน/ยกเว้น, เปลี่ยนช่องทางติดต่อ, สละสิทธิ์)
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- บุคลากรทุกคนต้องมี MFA; บทบาทสิทธิ์สูงใช้ WebAuthn
+- ผู้สมัคร/ผู้ปกครอง: passkey หรือ TOTP/OTP; SMS เป็นทางสำรอง
+- ทุก endpoint ตรวจ scope + ABAC (own/child/assigned/campus) และ deny-overrides ของ CustodyRestriction
+
+**การทดสอบ:** TC-R1-284, TC-R1-285
+
+### NFR-R1-014 การเข้ารหัสและข้อมูลระบุตัวตน
+
+**หมวด:** Security · **Priority:** Must · **ที่มา:** 08 §5, §9, §11; 06 §10.1 (payload)
+
+ข้อมูลระบุตัวตนและข้อมูลอ่อนไหวต้องเข้ารหัสและค้นหาด้วย HMAC เท่านั้น
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- เลขประจำตัวประชาชน/passport/รหัส G: `value_enc` (envelope encryption) + `value_hmac` (key แยก context)
+- volume encryption ทุก DB; column-level encryption ใน `hlt_vault` ด้วย DEK ต่อบุคคล × record class
+- ไม่มีเลขบัตรใน log, URL, event payload, QR, ไฟล์ export มาตรฐาน
+- QR บัตรผู้สอบลงนามและมีเพียง token
+
+**การทดสอบ:** TC-R1-248, TC-R1-286, TC-R1-287
+
+### NFR-R1-015 กันบอท การจำกัดอัตรา และการฉ้อโกง OTP
+
+**หมวด:** Security · **Priority:** Must · **ที่มา:** 07 §11.2; 09 I-55
+
+ระบบต้องกันบอทและการใช้งานผิดปกติโดยไม่ใช้ CAPTCHA SaaS ต่างประเทศเป็นค่าเริ่มต้น
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- APISIX: 20 req/s ต่อผู้ใช้ (API ทั่วไป), จำกัดต่อ IP/route; 429 มี `Retry-After` และข้อความไทย
+- bot challenge แบบ self-hosted proof-of-work บนสมัคร/login/ลืมรหัส/ตรวจผล
+- OTP: จำกัดต่อเบอร์/IP/prefix, ส่งเฉพาะเบอร์ไทยโดยค่าเริ่มต้น, alert เมื่อยอด SMS เกินงบรายวัน
+
+**การทดสอบ:** TC-R1-288, TC-R1-289
+
+### NFR-R1-016 ความปลอดภัยของ payment integration
+
+**หมวด:** Security · **Priority:** Must · **ที่มา:** 09 §3.3, §4.2; 07 §13 (STRIDE การเงิน)
+
+callback/webhook การเงินต้องพิสูจน์แหล่งที่มาและ idempotent
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- mTLS + ลายเซ็น/JWS ตามสัญญา + IP allow-list; webhook PSP ลงลายเซ็น
+- inbox unique(partner, external_ref); ตอบ 200 หลังบันทึก inbox
+- QR สร้างจากระบบเท่านั้น; หน้าแสดงคำเตือน phishing และหน้า verify ใบเสร็จ
+
+**การทดสอบ:** TC-R1-252, TC-R1-290, TC-R1-291
+
+### NFR-R1-017 อุปกรณ์กรรมการและข้อมูล offline
+
+**หมวด:** Security · **Priority:** Must · **ที่มา:** 07 §11.8; W-76
+
+ข้อมูลบน tablet ของกรรมการต้องปลอดภัยแม้เครื่องหาย
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- IndexedDB เข้ารหัสด้วย key non-extractable ปลดด้วย PIN; ล็อกหลัง PIN ผิด 5 ครั้ง
+- tablet อยู่ใน MDM/kiosk mode; revoke ระยะไกลแล้ว sync ถูกปฏิเสธ
+- ข้อมูลล้างหลัง sync สำเร็จ; offline pack มีเฉพาะ session ที่ได้รับมอบหมาย
+
+**การทดสอบ:** TC-R1-292
+
+### NFR-R1-018 การแยกหน้าที่ (SoD) ของงานรับสมัคร
+
+**หมวด:** Security · **Priority:** Must · **ที่มา:** 04 §8
+
+การอนุมัติในงานรับสมัครต้องบังคับ SoD ที่ runtime
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- SoD-08 (COI กรรมการ), SoD-10 (ยกเว้นค่าธรรมเนียม), SoD-11 (ยกเลิกใบเสร็จ), SoD-14 (override ผลคัดเลือก/คะแนนล็อก), SoD-16 (JIT), SoD-23 (ประกาศ), SoD-03 (คืนเงิน)
+- บทบาทที่ใช้อยู่ (role switcher) ถูกส่งไปกับทุกการอนุมัติ
+
+**การทดสอบ:** TC-R1-293
+
+### NFR-R1-019 ฐานทางกฎหมายและ DPIA เป็นเงื่อนไข go-live
+
+**หมวด:** PDPA · **Priority:** Must · **ที่มา:** 10 §2.2, §2.5, §2.6; 06 §5.8 Release R1; 12 MS-1 · **ขึ้นกับ:** Q-69, Q-103
+
+กิจกรรมประมวลผลของ R1 ต้องมีรายการใน purpose registry/lawful-basis matrix ที่ DPO อนุมัติ และ DPIA ที่บังคับต้องอนุมัติก่อน go-live
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- L-01, L-02, L-04, L-10, L-15, L-21, L-22, L-26, L-34, L-35, L-36 อยู่ใน PRIV พร้อมเวอร์ชัน
+- DPIA D-01 (ผู้สมัครผู้เยาว์) และ D-02 ส่วน medical clearance ก่อนสอบทักษะ อนุมัติก่อน MS-1
+- ROPA และ cross-border register ครอบคลุม LINE, Web Push (I-57), video call (I-53), PSP (I-54 ถ้าเปิด)
+
+**การทดสอบ:** TC-R1-256, TC-R1-294
+
+### NFR-R1-020 ความยินยอมของผู้เยาว์
+
+**หมวด:** PDPA · **Priority:** Must · **ที่มา:** 10 §2.4; A-17 · **ขึ้นกับ:** A-17
+
+การขอ/บันทึก/ถอนความยินยอมต้องเป็นไปตาม consent policy table (อายุ × กิจกรรม) และหลักฐานต้องตรวจสอบได้
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- consent อ้าง notice version, purpose, given_by (SELF/GUARDIAN/ASSISTED), เวลา, ช่องทาง
+- dual consent สำหรับ L-36/L-15 ของผู้อายุ 10–<20 ปี; ผู้เยาว์ให้เองสำหรับกิจกรรมทั่วไป
+- ถอนได้ทุกเมื่อโดยไม่เสียสิทธิการคัดเลือกส่วนที่ไม่อาศัย consent
+- re-consent เมื่ออายุครบ 20 ปีภายใน 30 วัน
+
+**การทดสอบ:** TC-R1-255, TC-R1-295
+
+### NFR-R1-021 ข้อมูลสุขภาพอยู่ใน health vault เท่านั้น
+
+**หมวด:** PDPA · **Priority:** Must · **ที่มา:** 08 §9; 06 §7.6; D-04
+
+ข้อมูลสุขภาพ/ความพิการของ R1 ต้องอยู่ใน `hlt_vault` (record class `SELECTION_MEDICAL`, `INJURY_RTP`, `DISABILITY`) และโมดูลอื่นได้เพียงสถานะที่ไม่มีการวินิจฉัย
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- schema scan: ไม่มีคอลัมน์สุขภาพ/ความพิการใน core
+- ทุกการอ่าน vault ระบุ purpose และ care relationship และบันทึกใน `VAULT_ACCESS_LOG`
+- analytics/ELT role ไม่มีสิทธิ์ CONNECT `hlt_vault`/`hlt_keys`
+
+**การทดสอบ:** TC-R1-296
+
+### NFR-R1-022 การลดข้อมูลและการเปิดเผยสาธารณะ
+
+**หมวด:** PDPA · **Priority:** Must · **ที่มา:** blueprint §9.10; 06 §5.3, §5.4; 08 §10.3
+
+ข้อมูลที่ออกนอกระบบหรือเผยแพร่ต้องลดให้น้อยที่สุด
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- ข้อความ LINE/SMS/push มีเพียงหัวข้อ + ลิงก์
+- รายชื่อสาธารณะตามกติกา mask ที่ DPO อนุมัติ และผ่าน DLP ทุกฉบับ
+- สถิติเปิดเผยแบบ aggregate; suppress cell n < 5 เมื่อมี attribute อ่อนไหว
+- ThaID ขอ scope ขั้นต่ำ
+
+**การทดสอบ:** TC-R1-257, TC-R1-297
+
+### NFR-R1-023 Retention และการลบ
+
+**หมวด:** PDPA · **Priority:** Must · **ที่มา:** 08 §8, §9.2; D-04; A-118 · **ขึ้นกับ:** A-118
+
+ข้อมูลรับสมัครต้องถูกเก็บ/ลบตาม retention class ของเล่ม 08 §8 และต้องเคารพ legal hold
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- ใบสมัครที่ไม่ได้รับเข้า + คะแนนกรรมการ + เอกสาร: 2 ปีหลังปิดรอบ (ขยายเมื่อมีอุทธรณ์/คดี) แล้วลบ/ทำให้ไม่ระบุตัวตน [ต้องตรวจสอบ]
+- `SELECTION_MEDICAL` ผู้ไม่ได้รับเข้า: crypto-shred เมื่อปิดรอบ + ระยะอุทธรณ์
+- การเงิน 10 ปีหลังสิ้นปีงบ; consent: อายุ consent + 10 ปี; ร้องเรียน 10 ปี; ประกาศทางการ ถาวร; ข้อความแจ้งเตือน 1 ปี (metadata 2 ปี)
+- erasure ledger ใน WORM และ reapply หลัง restore; backup `hlt_keys` ≤ 35 วัน
+
+**การทดสอบ:** TC-R1-298
+
+### NFR-R1-024 WCAG 2.1 AA เป็นเกณฑ์ตรวจรับ
+
+**หมวด:** Accessibility · **Priority:** Must · **ที่มา:** 07 §11.7; 14 §6, §14 (R1); 11 §4.1
+
+ทุกหน้าจอ R1 ที่ผู้ใช้ภายนอกใช้ และ back-office หลักต้องผ่าน WCAG 2.1 AA (เป้าการออกแบบ WCAG 2.2 AA) รวมถึง LIFF ใน LINE in-app browser
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- axe-core ใน CI: 0 critical
+- ผู้ตรวจอิสระตรวจทุกหน้าจอ ★ + สุ่ม 20% ของหน้าจออื่น
+- screen reader ภาษาไทย NVDA, TalkBack, VoiceOver ผ่าน flow สมัคร–ชำระ–ดูผล–ยืนยัน
+- ผู้ใช้พิการจริง ≥ 3 คนในการทดสอบ R1; target ≥ 44×44 px; contrast ≥ 4.5:1; ขยาย 200% ไม่ตกขอบ; ใช้คีย์บอร์ดได้ทั้งหมด
+- PDF สาธารณะ (ประกาศ, บัตรผู้สอบ, ใบเสร็จ) เป็น PDF/UA
+
+**การทดสอบ:** TC-R1-299, TC-R1-300, TC-R1-301, TC-R1-302, TC-R1-315, TC-R1-316, TC-R1-317, TC-R1-318, TC-R1-319, TC-R1-320, TC-R1-321, TC-R1-322, TC-R1-323, TC-R1-324, TC-R1-325, TC-R1-326, TC-R1-327, TC-R1-328, TC-R1-329, TC-R1-330, TC-R1-331, TC-R1-332, TC-R1-333, TC-R1-334, TC-R1-335, TC-R1-336, TC-R1-337, TC-R1-338, TC-R1-339, TC-R1-340, TC-R1-341
+
+### NFR-R1-025 การแสดงผลภาษาไทยบนจอและเอกสาร
+
+**หมวด:** Thai typography · **Priority:** Must · **ที่มา:** 14 §5.1–5.2; 11 §4.1 (เอกสารไทย); ADR-010
+
+ข้อความไทยบน UI และ PDF ต้องถูกต้องตาม corpus T1–T9 ของเล่ม 14 §5.2
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- line-height ≥ 1.6 ในทุก component ที่มีไทย, ไม่ใช้ justify/italic
+- visual regression pixel-diff ≤ 0.1% ต่อ snapshot; ไม่มี clipping ใน T1–T5 ทุก browser ใน matrix (รวม LINE in-app)
+- ข้อความที่ extract จาก PDF ตรงต้นฉบับ 100% และไม่มี U+200B
+- collation ไทย (ICU th) ตรงทุกจอและ export; CSV export เป็น UTF-8 with BOM
+
+**การทดสอบ:** TC-R1-303, TC-R1-304
+
+### NFR-R1-026 วันที่ ภาษา และความเข้าใจง่าย
+
+**หมวด:** Usability · **Priority:** Must · **ที่มา:** 07 §11.6; 14 §5.3–5.4, P15; A-81
+
+UI ต้องแสดงวันที่ พ.ศ. (เก็บ ISO), รองรับสองภาษาสำหรับผู้ใช้ภายนอก และใช้ภาษาที่ไม่ตำหนิ
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- วันที่แสดง `th-TH-u-ca-buddhist`; date picker รับ พ.ศ./ค.ศ. และยืนยันก่อนบันทึก
+- หน้าผู้สมัครภาษาอังกฤษครบ (ผู้สมัครต่างชาติ); เอกสารทางการ 2 ภาษาตาม template
+- ข้อความ error/ไม่ผ่านเกณฑ์บอกสิ่งที่ทำต่อได้ก่อน (P15)
+
+**การทดสอบ:** TC-R1-305
+
+### NFR-R1-027 เกณฑ์ usability ของ R1
+
+**หมวด:** Usability · **Priority:** Must · **ที่มา:** 14 §14 (R1), KPI-18 · **ขึ้นกับ:** A-95
+
+flow ผู้สมัครต้องผ่านเกณฑ์ usability ก่อน go-live
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- task success ≥ 90% สำหรับ สมัคร + ชำระ + ดูผล; SUS ≥ 70; ไม่มี severity 1–2 ค้าง
+- ทดสอบ 2 รอบ (prototype ม.ค.–ก.พ. 2571; RC มิ.ย.–ก.ค. 2571) ที่วิทยาเขตชลบุรีและมหาสารคามด้วยอุปกรณ์จริง
+- KPI-18 ใบสมัครออนไลน์ครบวงจร ≥ 95% (วัดหลัง go-live)
+
+**การทดสอบ:** TC-R1-306
+
+### NFR-R1-028 Low-bandwidth และ offline
+
+**หมวด:** Usability · **Priority:** Must · **ที่มา:** 14 §7; 07 §11.8
+
+ระบบต้องใช้ได้บนเครือข่ายช้าและงานภาคสนามต้องทำงาน offline
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- save & resume ทุกฟอร์มยาว; upload resumable
+- judge app และ nurse screening ทำงาน offline ได้ทั้งวัน; แสดงจำนวนรายการรอส่งและเวลา sync ล่าสุด
+- ชำระเงิน/ยืนยันสิทธิ์ห้าม offline และแจ้งชัดเจน
+- LIFF มีปุ่ม "เปิดในเบราว์เซอร์" สำหรับขั้นอัปโหลดหลายไฟล์
+
+**การทดสอบ:** TC-R1-307
+
+### NFR-R1-029 ความสมบูรณ์ของ audit และคะแนน
+
+**หมวด:** Audit · **Priority:** Must · **ที่มา:** 06 §5.9; 07 §11.10; 04 §12
+
+audit และคะแนนที่ล็อกต้องตรวจสอบความสมบูรณ์ได้
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- AuditEvent มี hash chain ต่อ partition รายวัน + สำเนา Object Lock compliance mode
+- ระดับ audit: confidential = write ทั้งหมด + read ข้อมูลผู้อื่น + bulk read; sensitive = ทุก read/write
+- job รายคืนเทียบ hash ของ ScoreLock/RankList ที่อนุมัติ ถ้าไม่ตรง publish `aud.AnomalyDetected`
+- UEBA ≥ 10 กฎขั้นต่ำ (bulk read, ข้ามวิทยาเขต, นอกเวลา, อ่าน vault โดยไม่มี care relationship, export ใหญ่, ใช้ break-glass)
+
+**การทดสอบ:** TC-R1-253, TC-R1-308, TC-R1-309
+
+### NFR-R1-030 Observability และการแจ้งเหตุ
+
+**หมวด:** Operations · **Priority:** Should · **ที่มา:** 07 ADR-018, §10.7; 14 KPI-17
+
+ระบบต้องวัด SLI ต่อ journey และแยกตาม OrgUnit/ISP
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- SLI request-based จาก APISIX + synthetic + RUM แยก OrgUnit; export รายวัน `fct_slo_daily`
+- alert เมื่อ J-04/J-48/J-16 ล้มเหลว, outbox lag > 30 s, DLQ > 0, callback error rate > 1%
+- status page อัปเดต ≤ 10 นาทีหลังยืนยันเหตุ
+
+**การทดสอบ:** TC-R1-310
+
+### NFR-R1-031 Helpdesk L1 พร้อมสำหรับฤดูรับสมัคร
+
+**หมวด:** Operations · **Priority:** Must · **ที่มา:** 12 §5.6, MS-1; A-121; D-07 · **ขึ้นกับ:** A-121, Q-110
+
+ต้องมี service desk L1 และ routing LINE OA พร้อมตาม staffing model ก่อน go-live
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- ประมาณ 0.15–0.25 การติดต่อต่อใบสมัครในเดือนเปิดรับ → agent 6–8 คนช่วงพีครับสมัคร (A-121)
+- FAQ/บทความช่วยเหลือภาษาไทยสำหรับทุก flow ★ และหมวด ticket "รับสมัคร" ใน X-HELP
+
+**การทดสอบ:** TC-R1-311
+
+### NFR-R1-032 มาตรฐาน API
+
+**หมวด:** Interoperability · **Priority:** Must · **ที่มา:** 07 ADR-022, §11.3
+
+API ของ R1 ต้องเป็นไปตาม ADR-022
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- REST + OpenAPI 3.1 (`r1-api.yaml`), path `/api/v1`, error แบบ RFC 9457 problem+json, cursor pagination
+- `Idempotency-Key` บังคับกับ POST ที่มีผลทางการเงินหรือที่นั่ง (ยื่น, ชำระ, ยืนยัน/สละ, offer, override, อนุมัติผล)
+- N-1 major ≥ 12 เดือน, header Deprecation/Sunset; contract test (Pact) web ↔ core
+
+**การทดสอบ:** TC-R1-312, TC-R1-313
+
+### NFR-R1-033 ขยายวิทยาเขตด้วย configuration
+
+**หมวด:** Scalability · **Priority:** Should · **ที่มา:** 12 W1-ADM; 06 §1 ข้อ 8
+
+การเพิ่มวิทยาเขตใน Wave 1 ต้องทำด้วย configuration ไม่ต้องแก้โค้ด
+
+**เกณฑ์ยอมรับที่วัดได้:**
+
+- onboard OrgUnit ใหม่ (รอบ ค่าธรรมเนียม ผู้ลงนาม ปฏิทิน แม่แบบ) ผ่าน ADMIN ภายใน ≤ 10 วันทำการต่อวิทยาเขต [ต้องตรวจสอบ]
+- ไม่มีค่า มกช. ที่ hard-code (ค่าธรรมเนียม เกณฑ์ วันที่ อยู่ใน config)
+
+**การทดสอบ:** TC-R1-314
+
+## 4. ช่องว่างและประเด็นที่ต้องตัดสิน (G-xx)
+
+| รหัส | ประเด็น | ข้อเสนอในเอกสารนี้ | FR ที่กระทบ | อ้าง |
+|---|---|---|---|---|
+| G-01 | AFF (disability services) อยู่ R2 แต่ W-79 (accommodation วันสอบ) ต้องใช้ใน R1 | R1 ใช้ `AccommodationPlan` ชั่วคราวใน ADM + `DisabilityEvidence` ใน `hlt_vault`; ต้องให้ Design Authority ยืนยันเจ้าของตามกติกา single-owner (06 §3) หรือดึง AFF ส่วน dss ขั้นต่ำเข้า R1 | FR-R1-028, FR-R1-106 | Q-18, Q-45 |
+| G-02 | payout ธนาคาร (I-17) อยู่ R2 แต่ FIN R1 ต้องคืนค่าสมัครเมื่อยกเลิกรอบ/ชำระซ้ำ | R1 คืนผ่านช่องทางเดิม (ถ้าธนาคารรองรับ) หรือโอนด้วยมือแบบ maker-checker พร้อมบันทึกใน `Refund` | FR-R1-050 | Q-35 |
+| G-03 | REC ไม่ออกรหัสนักศึกษาใน R1 (เล่ม 12 §2.1) แต่บางรอบอาจกำหนดรายงานตัวก่อน R2 go-live (1 พ.ค. 2572) | handoff + ส่งออกไฟล์ให้ระบบทะเบียนเดิม; REC ใน R2 consume handoff ที่ค้างและออกรหัส ≤ 24 ชม. | FR-R1-115 | Q-67; คำถามเปิดเล่ม 06 §6.1 |
+| G-04 | SSC/ATH ยังไม่ go-live ใน R1 → W-144 ดึงผลการเรียน/ผลงานอัตโนมัติไม่ได้ | R1 ใช้เอกสารที่ `sschool_dir` รับรองและลงนาม + consent ผู้ปกครอง | FR-R1-027 | Q-17 |
+| G-05 | ระดับลายมือชื่อของประกาศผลคัดเลือก: เล่ม 10 §7.2 กำหนดคำสั่ง/ประกาศ (รวมผลคัดเลือก) = S3 (ลายมือชื่อบุคคล) แต่เล่ม 12 §2.1 ระบุ DOC R1 = PAdES ตราหน่วยงาน | ต้องตัดสินก่อน MS-1a; ถ้า S3 ต้องจัดหาใบรับรองบุคคลของ `campusvp` ทั้ง 2 วิทยาเขต pilot ก่อน ก.ย. 2571 | FR-R1-007, FR-R1-082 | A-79 |
+| G-06 | ยังไม่มีนิยามรูปแบบ mask ของรายชื่อที่เผยแพร่สาธารณะ | DPO อนุมัติรูปแบบ (เสนอ: เลขผู้สมัคร + ชื่อจริง + อักษรแรกของนามสกุล) และบันทึกเป็น template rule ของ DOC/ENG | FR-R1-043, FR-R1-085 | Q-69 |
+| G-07 | เกณฑ์ WBGT (Q-99) ถูกวางให้ตอบ "ก่อน R2" แต่รอบทั่วไป ก.พ.–พ.ค. 2572 (ฤดูร้อน) ใช้ R1 | ต้องได้เกณฑ์ก่อน ม.ค. 2572; ระหว่างนั้นใช้ soft gate + ดุลยพินิจของแพทย์ | FR-R1-061 | Q-99 |
+| G-08 | เงื่อนไขใบรับรองแพทย์ (อายุ 30 วัน, ผู้ตรวจ) ยังไม่ยืนยัน | เป็น config ของรอบ ค่าเริ่มต้น 30 วัน ณ วันทดสอบ | FR-R1-064 | Q-23 |
+| G-09 | ไม่มีนโยบายขยายเวลาเมื่อระบบล่มช่วง deadline (ยืนยัน/ชำระ/อุทธรณ์) | เสนอเพิ่มในกติกา clearing ชุดเดียว (02 §2.8.1) ว่า outage ที่ประกาศบน status page ขยาย deadline อัตโนมัติเท่าเวลาที่ล่ม + GateOverride แบบกลุ่ม | FR-R1-083, FR-R1-094 | Q-12 |
+| G-10 | `GuardianRelation.org_unit_id` ของผู้สมัครที่สมัครหลายวิทยาเขตยังไม่มีกติกา (08 กำหนด NOT NULL) | เสนอ: ใช้ OrgUnit ของใบสมัครแรกที่ผูก + visibility ผ่าน guardian-of (self-service) ไม่ใช่ staff scope | FR-R1-108 | — |
+| G-11 | ยังไม่ยืนยันบุคลากร `nurse`/`physician` ประจำสนามสอบทักษะของวิทยาเขต pilot และการให้สิทธิ์ HLT ใน R1 | รวมใน readiness checklist ของ MS-1 (เล่ม 12) และ IAM provisioning ของ R1 | FR-R1-060, FR-R1-066, FR-R1-067 | Q-23, Q-45 |
+| G-12 | นโยบาย grace ของผู้ที่ยื่นแล้วแต่ยังชำระไม่ทันเวลาปิดรับ | เสนอ config `payment_grace_hours` ต่อรอบ (ค่าเริ่มต้น 0) | FR-R1-008, FR-R1-044 | Q-13 |
+| G-13 | entity ใหม่ของ R1 ยังไม่อยู่ในเล่ม 08 (ดู r1-data-dictionary.md §2: สถานะ "R1 ใหม่") | เพิ่มใน 08 §2.2 รอบถัดไป; ไม่ต้องเพิ่ม event ใหม่ใน 06 §10.2 เพราะ R1 ใช้ event ที่มีอยู่เท่านั้น | หลาย FR | D-11 |
+
+## 5. ผลต่อเอกสารเล่มอื่น (ข้อเสนอ)
+
+- **เล่ม 08:** เพิ่ม entity ที่สถานะ "R1 ใหม่" ใน [r1-data-dictionary](r1-data-dictionary.md) (เช่น `ConfirmationLock`, `AppealHold`, `ReportingHandoff`, `TestSlot`, `ScoreLock`, `ModerationFlag`, `ScoreSyncConflict`, `JudgeDevice`) เข้า 08 §2.2
+- **เล่ม 06 §10.2:** ไม่ต้องเพิ่ม event — R1 ใช้ `adm.RoundPublished`, `adm.ApplicationSubmitted`, `adm.ApplicationFeeWaived`, `adm.SkillTestSessionPlanned`, `adm.ResultsAnnounced`, `adm.OfferMade`, `adm.OfferConfirmed`, `adm.OfferDeclined`, `adm.AccommodationRequested`, `hlt.MedicalClearanceChanged`, `case.AppealFiled`, `case.AppealDecided`, `fin.*`, `priv.*`, `rpt.OitItemPublished`, `admin.*`, `aud.AnomalyDetected` ที่มีอยู่แล้ว
+- **เล่ม 02 §2.8.1:** เสนอเพิ่มกติกาขยาย deadline เมื่อระบบล่ม (G-09)
+- **เล่ม 06 §3 / §7.4:** ตัดสินเจ้าของ accommodation ใน R1 (G-01)
+- **เล่ม 10 §7.2 / เล่ม 12 §2.1:** ตัดสินระดับลายมือชื่อประกาศผลคัดเลือก (G-05)
+
+
+---
+
+<!-- ไฟล์ต้นฉบับ: docs/r1/r1-screens.md -->
+# R1 "รับสมัคร" — Screen inventory (S-R1-xx)
+
+> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · Release R1 "รับสมัคร" (go-live 1 ก.ย. 2571 = M18; ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือน — เล่ม 12 §1.3) · ภาษา: ไทย (ศัพท์เทคนิค/โค้ดเป็นภาษาอังกฤษ)
+> **ขอบเขต:** หน้าจอทั้งหมดของ R1 เป็น input สำหรับ UI mockup
+> **อ่านคู่กับ:** [README](README.md) · [00-blueprint](../00-blueprint.md) · [00-fix-decisions-v1.1](../00-fix-decisions-v1.1.md) (D-03, D-06, D-08) · [02 §2](../02-student-journey.md) · [05](../05-workflows.md) · [06](../06-modules.md) · [08](../08-data.md) · [10](../10-security-compliance.md) · [14](../14-ux-adoption.md) · [r1-requirements](r1-requirements.md) · [r1-api.yaml](r1-api.yaml)
+
+## 0. กติกากลางของทุกหน้าจอ (จากเล่ม 14)
+
+| เรื่อง | กติกา | อ้าง |
+|---|---|---|
+| Mobile-first | ออกแบบที่ 360×640 ก่อน; target ≥ 44×44 px; bottom nav ≤ 5 ปุ่ม; back-office desktop-first แต่ไม่พังที่ 1280 px | 14 P1, §3 |
+| Typography ไทย | Noto Sans Thai / IBM Plex Sans Thai (self-host, 2 น้ำหนัก, `font-display: swap`); body ≥ 16 px (ผู้ปกครอง 18 px); `line-height` ≥ 1.6; ห้าม justify/italic; `Intl.Segmenter('th')` สำหรับ truncate; รหัสยาวใช้ `overflow-wrap: anywhere` | 14 §5.1 |
+| วันที่/ตัวเลข | แสดง พ.ศ. (`th-TH-u-ca-buddhist`) เช่น "1 ต.ค. 2571 08:30 น."; date picker รับ พ.ศ./ค.ศ. แล้วแสดงยืนยัน; ตัวเลขอารบิก; เงินแสดง "400.00 บาท" | 14 §5.3 |
+| สถานะ 4 แบบ | ทุกหน้าจอระบุ ว่าง / กำลังโหลด (skeleton ไม่ใช่ spinner เต็มจอ) / ผิดพลาด (บอกสิ่งที่ทำต่อได้ + ลิงก์ status page/ช่วยเหลือ) / สำเร็จ | 14 P15 |
+| ภาษาไม่ตำหนิ | ข้อความไม่ผ่านเกณฑ์/ค้างชำระ/หมดเวลา บอก "ทำอะไรต่อได้" ก่อนบทลงโทษ | 14 P15 |
+| สถานะไม่ใช้สีอย่างเดียว | ทุก badge มีข้อความ + ไอคอน; contrast ≥ 4.5:1 | 14 §6 |
+| Validate-before-commit | ตรวจเกณฑ์/ความครบก่อนกดยืนยัน พร้อมเหตุผลภาษาไทยและทางเลือก | 14 P3 |
+| Offline | ห้าม offline: ชำระ, ยืนยันสิทธิ์, ยื่นใบสมัคร (แสดง "ต้องเชื่อมต่ออินเทอร์เน็ต"); offline-first: judge/nurse; save & resume ทุกฟอร์มยาว | 14 §7 |
+| LIFF | หน้าเดียวกับ PWA; ขั้นอัปโหลดหลายไฟล์มีปุ่ม "เปิดในเบราว์เซอร์" | 14 §7 |
+| การแจ้งเตือน | LINE/SMS/push มีเพียงหัวข้อ + deep link; P1 มีปุ่ม "รับทราบ" | 14 §8 |
+| ผลไม่แน่ใจเมื่อเน็ตหลุด | ทุก command ส่ง `Idempotency-Key`; หน้า "กำลังตรวจสอบสถานะล่าสุด" แทนการกดซ้ำ | 07 ADR-004 ข้อ 9 |
+| ★ | หน้าจอที่ต้องทดสอบ usability ก่อน go-live (14 §14) และ a11y โดยผู้ตรวจอิสระ | 14 §3, §6 |
+
+## 1. แผนผังการเดินทางของผู้สมัคร
+
+```mermaid
+flowchart LR
+  A["S-R1-01 หน้าแรก"] --> B["S-R1-02 บัญชี"]
+  B --> C["S-R1-03 โปรไฟล์"]
+  C --> D["S-R1-04..09 ใบสมัคร"]
+  C --> G1["S-R1-24 เชิญผู้ปกครอง"]
+  D --> E["S-R1-10 ชำระ QR"]
+  E --> F["S-R1-12 Tracker"]
+  F --> H["S-R1-14 คัดกรองสุขภาพ"]
+  G1 --> G2["S-R1-25 consent ผู้ปกครอง"]
+  H --> I["S-R1-15 slot และบัตรผู้สอบ"]
+  I --> J["S-R1-28/29 วันสอบ"]
+  J --> K["S-R1-47 ตรวจผล"]
+  K --> L["S-R1-16 ผลและคะแนน"]
+  L --> M["S-R1-17 Offer และยืนยัน"]
+  L --> N["S-R1-19 ขอทบทวน"]
+  M --> E
+  M --> O["S-R1-18 ยืนยันซ้ำ"]
+  M --> P["S-R1-42 รายงานตัว"]
+```
+
+## 2. รายการหน้าจอ
+
+| ID | หน้าจอ | กลุ่มผู้ใช้ | ช่องทาง | อ้าง 14 | ★ | FR |
+|---|---|---|---|---|---|---|
+| S-R1-01 | หน้าแรกผู้สมัคร: ค้นหารอบที่เปิด | applicant, candidate | PWA, LIFF | S-01 | ★ | FR-R1-019, FR-R1-092 |
+| S-R1-02 | สร้างบัญชี / เข้าสู่ระบบ | candidate, guardian | PWA, LIFF | S-01 (IAM) | ★ | FR-R1-011, FR-R1-012, FR-R1-013, FR-R1-015 |
+| S-R1-03 | โปรไฟล์ผู้สมัคร | candidate | PWA | S-02 |  | FR-R1-012, FR-R1-014, FR-R1-107 |
+| S-R1-04 | ใบสมัคร ขั้น 1: เลือกช่องทาง รอบ และอันดับ | candidate | PWA | S-02 | ★ | FR-R1-020, FR-R1-023, FR-R1-026, FR-R1-027, FR-R1-029, FR-R1-030, FR-R1-031, FR-R1-092 |
+| S-R1-05 | ใบสมัคร ขั้น 2: การศึกษา GPAX และตรวจคุณสมบัติ | candidate | PWA | S-02 | ★ | FR-R1-020, FR-R1-021, FR-R1-022, FR-R1-023 |
+| S-R1-06 | ใบสมัคร ขั้น 3: ประวัติและผลงานกีฬา | candidate | PWA | S-02 |  | FR-R1-020, FR-R1-024 |
+| S-R1-07 | ใบสมัคร ขั้น 4: อัปโหลดเอกสาร | candidate | PWA (ปุ่มเปิดในเบราว์เซอร์เมื่ออยู่ใน LIFF) | S-02 | ★ | FR-R1-020, FR-R1-030, FR-R1-036, FR-R1-037 |
+| S-R1-08 | ขอความช่วยเหลือในการสอบ (accommodation) | candidate | PWA | S-02 |  | FR-R1-028 |
+| S-R1-09 | ใบสมัคร ขั้นสุดท้าย: ตรวจทานและยื่น | candidate | PWA | S-02 | ★ | FR-R1-020, FR-R1-029, FR-R1-033 |
+| S-R1-10 | ชำระเงิน Thai QR และสถานะ | candidate, guardian, ผู้ชำระแทน | PWA, LIFF, ลิงก์ชำระแทน | S-03 | ★ | FR-R1-044, FR-R1-045, FR-R1-048, FR-R1-051, FR-R1-052, FR-R1-089 |
+| S-R1-11 | ขอยกเว้นค่าสมัคร | candidate | PWA | — (SVC e-Form) |  | FR-R1-049 |
+| S-R1-12 | Application tracker | candidate (ผู้ปกครองเห็นแบบย่อใน S-R1-26) | PWA, LIFF | S-04 | ★ | FR-R1-034, FR-R1-048 |
+| S-R1-13 | ส่งเอกสารเพิ่ม | candidate | PWA | S-02 |  | FR-R1-036, FR-R1-039 |
+| S-R1-14 | แบบคัดกรองสุขภาพและใบรับรองแพทย์ | candidate, guardian (consent) | PWA | — (HLT) | ★ | FR-R1-064, FR-R1-065, FR-R1-109 |
+| S-R1-15 | เลือก/ยืนยัน slot และบัตรประจำตัวผู้สอบ | candidate | PWA, LIFF | S-04 | ★ | FR-R1-058, FR-R1-059, FR-R1-062, FR-R1-065 |
+| S-R1-16 | ผลคัดเลือกและคะแนนรายสถานี | candidate | PWA (หลัง waiting room) | S-05 | ★ | FR-R1-084 |
+| S-R1-17 | Offer และยืนยัน/สละสิทธิ์ | candidate | PWA, LIFF | S-05 | ★ | FR-R1-026, FR-R1-051, FR-R1-086, FR-R1-087, FR-R1-088, FR-R1-089, FR-R1-090, FR-R1-096, FR-R1-116 |
+| S-R1-18 | ยืนยันสิทธิ์ซ้ำก่อนเปิดภาค | candidate | PWA, LIFF | — |  | FR-R1-095 |
+| S-R1-19 | ขอทบทวนผลคัดเลือก | candidate | PWA | S-06 |  | FR-R1-099, FR-R1-103, FR-R1-106 |
+| S-R1-20 | ร้องเรียน/แจ้งเบาะแส และติดตาม | applicant, candidate (ไม่ต้อง login ได้) | PWA สาธารณะ | S-06 |  | FR-R1-104 |
+| S-R1-21 | แจ้งเหตุวันสอบ/ขอสอบใหม่ | candidate | PWA | — |  | FR-R1-105 |
+| S-R1-22 | แจ้งเตือน inbox ตั้งค่า และผูก LINE | candidate, guardian | PWA, LIFF | S-36 |  | FR-R1-111, FR-R1-133, FR-R1-134, FR-R1-135, FR-R1-136, FR-R1-137 |
+| S-R1-23 | ความเป็นส่วนตัวและความยินยอมของฉัน | candidate | PWA | — (PRIV) |  | FR-R1-109, FR-R1-113 |
+| S-R1-24 | รับคำเชิญและผูกบัญชีผู้ปกครอง | guardian | LIFF (หลัก), PWA | S-29 (รูปแบบ) | ★ | FR-R1-107, FR-R1-108 |
+| S-R1-25 | ให้ความยินยอม (dual consent) | guardian, candidate | LIFF, PWA | — | ★ | FR-R1-027, FR-R1-109, FR-R1-112 |
+| S-R1-26 | ภาพรวมผู้สมัครในความดูแล | guardian | LIFF, PWA | S-29 | ★ | FR-R1-044, FR-R1-051, FR-R1-108, FR-R1-110, FR-R1-111 |
+| S-R1-27 | Judge: เข้าสู่ระบบ ดาวน์โหลด session และประกาศ COI | judge | PWA บน tablet (MDM) | S-07 | ★ | FR-R1-057, FR-R1-069 |
+| S-R1-28 | Judge: เช็คอินผู้สอบด้วย QR | judge, admission | PWA tablet | S-07 | ★ | FR-R1-035, FR-R1-065, FR-R1-067, FR-R1-070 |
+| S-R1-29 | Judge: ให้คะแนน station | judge | PWA tablet | S-07 | ★ | FR-R1-071, FR-R1-072 |
+| S-R1-30 | Judge: สถานะ sync และความขัดแย้ง | judge, head | PWA tablet | S-07 | ★ | FR-R1-073 |
+| S-R1-31 | ประธาน station: moderation และยืนยันผล | head (selection_chair), judge chair | PWA tablet / BO | S-07, S-08 | ★ | FR-R1-072, FR-R1-074, FR-R1-075, FR-R1-076 |
+| S-R1-32 | พยาบาล: คัดกรองหน้าสนาม WBGT และเหตุการณ์ | nurse, physician | PWA tablet | — |  | FR-R1-061, FR-R1-066, FR-R1-067 |
+| S-R1-33 | BO: Round wizard | admission, module_admin | BO | S-08, S-35 | ★ | FR-R1-001, FR-R1-003, FR-R1-004, FR-R1-005, FR-R1-006, FR-R1-007, FR-R1-010, FR-R1-031 |
+| S-R1-34 | BO: Seat matrix และยกที่นั่ง | admission, planner, campusvp | BO | S-08 |  | FR-R1-002, FR-R1-009 |
+| S-R1-35 | BO: คิวตรวจเอกสาร | admission | BO | S-08 | ★ | FR-R1-022, FR-R1-035, FR-R1-038, FR-R1-039, FR-R1-040, FR-R1-043, FR-R1-093 |
+| S-R1-36 | BO: ตรวจผลงานกีฬา | admission, sportshead | BO | S-08 |  | FR-R1-025, FR-R1-041 |
+| S-R1-37 | BO: ตารางสอบ จองสนาม และแต่งตั้งกรรมการ | admission, facility, head | BO | S-08 | ★ | FR-R1-054, FR-R1-055, FR-R1-056, FR-R1-057, FR-R1-058, FR-R1-060, FR-R1-062, FR-R1-063, FR-R1-078, FR-R1-105, FR-R1-132 |
+| S-R1-38 | BO: จัดอันดับ อนุมัติ และประกาศผล | admission, head, dean, campusvp | BO | S-08 | ★ | FR-R1-075, FR-R1-079, FR-R1-080, FR-R1-081, FR-R1-082, FR-R1-139 |
+| S-R1-39 | BO: Clearing dashboard | admission, registrar (ส่วนกลาง), campusvp | BO | S-08 | ★ | FR-R1-091, FR-R1-093, FR-R1-094, FR-R1-095, FR-R1-096, FR-R1-097, FR-R1-098, FR-R1-100 |
+| S-R1-40 | BO: คำขอทบทวนผล (appeals) | admission, judge, head, campusvp | BO | — |  | FR-R1-100, FR-R1-101, FR-R1-102 |
+| S-R1-41 | BO: accommodation (dss) | dss, head, admission | BO | — |  | FR-R1-028, FR-R1-106 |
+| S-R1-42 | BO: รายงานตัวและ handoff | registrar, admission | BO | — |  | FR-R1-013, FR-R1-042, FR-R1-114, FR-R1-115, FR-R1-116, FR-R1-117, FR-R1-118, FR-R1-132 |
+| S-R1-43 | การเงิน: reconcile และ exception | finance | BO | — |  | FR-R1-046, FR-R1-047, FR-R1-053 |
+| S-R1-44 | การเงิน: อนุมัติยกเว้น/คืนเงิน | finance (head/refund_approver), auditor (อ่าน) | BO | — |  | FR-R1-049, FR-R1-050 |
+| S-R1-45 | Inbox ผู้อนุมัติและ role switcher | head, dean, campusvp, rector, finance, admission | PWA, BO | S-40 | ★ | FR-R1-007, FR-R1-009, FR-R1-017, FR-R1-081, FR-R1-094, FR-R1-101 |
+| S-R1-46 | หน้าประกาศรับสมัคร เกณฑ์ rubric และรายชื่อ | applicant | เว็บสาธารณะ (CDN), X-CMS | S-01 |  | FR-R1-004, FR-R1-008, FR-R1-019, FR-R1-043, FR-R1-082, FR-R1-085 |
+| S-R1-47 | ตรวจผลรายบุคคลและ waiting room | candidate, applicant | CDN static + PWA | S-05, S-37 | ★ | FR-R1-083, FR-R1-130 |
+| S-R1-48 | หน้า ITA/OIT | applicant | X-CMS (แสดงผลจาก RPT) | — |  | FR-R1-120, FR-R1-121 |
+| S-R1-49 | Status page | ทุกคน | สาธารณะ | S-37 |  | FR-R1-130 |
+| S-R1-50 | ADMIN: คำขอเปลี่ยน config (4-eyes) | module_admin, itadmin, finance, dpo | BO | S-35 |  | FR-R1-123, FR-R1-124, FR-R1-128, FR-R1-129 |
+| S-R1-51 | ADMIN: job และ integration monitor | itadmin, dba_sre | BO | — |  | FR-R1-032, FR-R1-125, FR-R1-131 |
+| S-R1-52 | ADMIN: break-glass และ JIT | itadmin, security_admin, vp, dpo | BO | — |  | FR-R1-126, FR-R1-127 |
+| S-R1-53 | RPT: OIT checklist | planner, data_owner, rector, pr | BO | S-34 |  | FR-R1-119, FR-R1-120, FR-R1-121, FR-R1-122 |
+| S-R1-54 | สมาคมกีฬา: ยืนยันผลงาน (magic link) | federation | เว็บ (magic link อายุจำกัด) | — |  | FR-R1-041 |
+| S-R1-55 | โหมดเจ้าหน้าที่ช่วยกรอก (assisted) | admission, helpdesk | BO + PWA | — |  | FR-R1-016, FR-R1-112 |
+| S-R1-56 | ENG: สร้างและอนุมัติประกาศ | pr, campusvp, dean | BO | — |  | FR-R1-008, FR-R1-010, FR-R1-085, FR-R1-138, FR-R1-139 |
+| S-R1-57 | IAM: เปิดบัญชีกรรมการภายนอก | head (sponsor), campus_itadmin | BO | — |  | FR-R1-018 |
+| S-R1-58 | นำเข้าคะแนนจากกระดาษ (4-eyes) | admission, head | BO | — |  | FR-R1-077 |
+
+## 3. ผู้สมัคร (PWA mobile-first, เปิดผ่าน LIFF ได้)
+
+_ออกแบบที่ 360×640 ก่อน, bottom nav ≤ 5 ปุ่ม (หน้าแรก · ใบสมัคร · ชำระ · แจ้งเตือน · ฉัน), target ≥ 44×44 px, body ≥ 16 px, line-height ≥ 1.6 (14 §2, §5)_
+
+### S-R1-01 หน้าแรกผู้สมัคร: ค้นหารอบที่เปิด ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ให้ผู้สนใจเห็นรอบที่เปิด/กำลังจะเปิดของวิทยาเขต pilot และเริ่มสมัคร |
+| บทบาท | applicant, candidate |
+| ช่องทาง | PWA, LIFF (อ้างเล่ม 14: S-01) |
+| ทางเข้า | เว็บวิทยาเขต, LINE OA rich menu, ลิงก์ในประกาศ, QR บนโปสเตอร์ |
+| องค์ประกอบ/ฟิลด์หลัก | • ตัวกรอง: ช่องทาง (โควตาเรียนดี/โควตานักกีฬา/ทั่วไป/โควตาภายใน), วิทยาเขต, หลักสูตร, ชนิดกีฬา<br>• การ์ดรอบ: ชื่อรอบ วิทยาเขต ช่วงรับสมัคร (พ.ศ.) ค่าสมัคร ที่นั่ง สถานะ (เปิด/ใกล้เปิด/ปิด)<br>• แถบเตือน C-4 เมื่อยืนยันสิทธิ์ที่อื่นแล้ว<br>• ปุ่ม "สมัคร" / "ดูประกาศและเกณฑ์" |
+| สถานะ: ว่าง | "ยังไม่มีรอบที่เปิดรับในขณะนี้ — รอบถัดไปของวิทยาเขต{X}เปิด {วันที่}" + ปุ่มรับแจ้งเตือน |
+| สถานะ: กำลังโหลด | skeleton การ์ด 3 ใบ (ไม่ใช้ spinner เต็มจอ) |
+| สถานะ: ผิดพลาด | "โหลดรายการรอบไม่สำเร็จ ลองใหม่อีกครั้ง" + ปุ่มลองใหม่ + ลิงก์ status page |
+| สถานะ: สำเร็จ | รายการรอบเรียงตามวันปิดรับที่ใกล้ที่สุด |
+| Validation | • ตัวกรองไม่มีผลลัพธ์ → แนะนำล้างตัวกรอง |
+| ข้อความไทยหลัก | หัวข้อ: "สมัครเรียน มหาวิทยาลัยการกีฬาแห่งชาติ"<br>ป้าย: "เปิดรับถึง {วัน เดือน ปี พ.ศ.} {เวลา} น."<br>เตือน: "คุณยืนยันสิทธิ์แล้ว 1 ที่ หากต้องการสมัครรอบนี้ต้องสละสิทธิ์เดิมก่อน (เหลือสิทธิ์สละ {n} ครั้ง)" |
+| FR | FR-R1-019, FR-R1-092 |
+
+### S-R1-02 สร้างบัญชี / เข้าสู่ระบบ ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | สร้างบัญชีเดียวทั้ง มกช. ด้วย ThaID หรือ OTP และกู้บัญชีเมื่อพบตัวตนซ้ำ |
+| บทบาท | candidate, guardian |
+| ช่องทาง | PWA, LIFF (อ้างเล่ม 14: S-01 (IAM)) |
+| ทางเข้า | ปุ่มสมัครจาก S-R1-01, ลิงก์ในแจ้งเตือน |
+| องค์ประกอบ/ฟิลด์หลัก | • ปุ่มหลัก "เข้าสู่ระบบด้วย ThaID"<br>• ทางเลือก: อีเมล/เบอร์มือถือ + OTP, passport (ผู้สมัครต่างชาติ)<br>• ช่องเลขประจำตัว 13 หลัก/รหัส G/passport + วันเกิด (date picker พ.ศ.)<br>• bot challenge แบบ proof-of-work (ไม่มีรูปภาพ)<br>• ตัวเลือก passkey หลังสร้างบัญชี |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | "กำลังเชื่อมต่อ ThaID…" (ไม่บล็อกปุ่มยกเลิก) |
+| สถานะ: ผิดพลาด | ThaID ไม่พร้อม: "ขณะนี้เชื่อมต่อ ThaID ไม่ได้ คุณสมัครด้วยอีเมลหรือเบอร์มือถือได้ และยืนยันตัวตนภายหลัง" |
+| สถานะ: สำเร็จ | ไปหน้าโปรไฟล์/ทำใบสมัครต่อ |
+| Validation | • check digit เลข 13 หลัก<br>• OTP 6 หลัก อายุ 5 นาที ขอใหม่ได้หลัง 60 วินาที<br>• พบตัวตนซ้ำ → ขั้นกู้บัญชีด้วยช่องทางที่ลงทะเบียน (mask) |
+| ข้อความไทยหลัก | "เลขประจำตัวประชาชนไม่ถูกต้อง กรุณาตรวจหลักสุดท้าย"<br>"พบบัญชีเดิมของคุณแล้ว เราส่งรหัสยืนยันไปที่ 08x-xxx-x123"<br>"ระบบจะขอเฉพาะ เลขประจำตัว ชื่อ และวันเกิด จาก ThaID" |
+| FR | FR-R1-011, FR-R1-012, FR-R1-013, FR-R1-015 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-20 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-03 โปรไฟล์ผู้สมัคร
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | บันทึกข้อมูลส่วนตัว ติดต่อ ผู้ติดต่อฉุกเฉิน โรงเรียนเดิม และเชิญผู้ปกครองเมื่อเป็นผู้เยาว์ |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: S-02) |
+| ทางเข้า | หลังสร้างบัญชี, เมนู "ฉัน" |
+| องค์ประกอบ/ฟิลด์หลัก | • ข้อมูลจาก ThaID (อ่านอย่างเดียว + ป้าย "ยืนยันแล้ว")<br>• ชื่อ-สกุลอังกฤษ, เพศ, สัญชาติ, ที่อยู่ (reference dataset)<br>• ผู้ติดต่อฉุกเฉิน<br>• โรงเรียนเดิม (ค้นหา typeahead ภาษาไทย)<br>• กล่องผู้เยาว์: "เชิญผู้ปกครอง" |
+| สถานะ: ว่าง | ฟอร์มว่างพร้อมคำอธิบายว่าข้อมูลใช้ทำอะไร (privacy notice ย่อ + ลิงก์ฉบับเต็ม) |
+| สถานะ: กำลังโหลด | skeleton ฟอร์ม |
+| สถานะ: ผิดพลาด | error ต่อช่อง + สรุปด้านบน (WCAG 3.3.1) |
+| สถานะ: สำเร็จ | toast "บันทึกแล้ว" |
+| Validation | • อีเมลรูปแบบถูกต้อง<br>• เบอร์มือถือไทย 10 หลัก<br>• บันทึกร่างอัตโนมัติทุก 10 วินาที |
+| ข้อความไทยหลัก | "คุณอายุต่ำกว่า 20 ปี บางขั้นตอน (เช่น การทดสอบร่างกาย) ต้องมีผู้ปกครองให้ความยินยอม"<br>ปุ่ม: "ส่งคำเชิญผู้ปกครอง" |
+| FR | FR-R1-012, FR-R1-014, FR-R1-107 |
+
+### S-R1-04 ใบสมัคร ขั้น 1: เลือกช่องทาง รอบ และอันดับ ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | เลือกรอบและอันดับ (วิทยาเขต × หลักสูตร × ชนิดกีฬา/ตำแหน่ง/รุ่น) ภายใต้กติกา C-2 |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: S-02) |
+| ทางเข้า | ปุ่มสมัครในการ์ดรอบ, tracker "ทำต่อ" |
+| องค์ประกอบ/ฟิลด์หลัก | • stepper 1–6 แสดงความคืบหน้า<br>• รายการอันดับลากเรียงได้ (มีปุ่มขึ้น/ลงสำหรับคีย์บอร์ด/screen reader)<br>• ตัวเลือกชนิดกีฬา/ตำแหน่ง/รุ่นน้ำหนัก (โควตานักกีฬา)<br>• ช่องทางพิเศษ: โควตาภายใน, ต่างชาติ (ภาษาอังกฤษ), รับโอน (ถ้าเปิด) |
+| สถานะ: ว่าง | "ยังไม่ได้เลือกหลักสูตร" |
+| สถานะ: กำลังโหลด | skeleton |
+| สถานะ: ผิดพลาด | "บันทึกไม่สำเร็จ ข้อมูลของคุณยังอยู่ในเครื่อง ลองใหม่" |
+| สถานะ: สำเร็จ | ไปขั้น 2 พร้อมบันทึกร่าง |
+| Validation | • ไม่เกิน N อันดับต่อรอบต่อวิทยาเขต<br>• รุ่นน้ำหนักล็อกหลังยื่น<br>• ผู้ confirmed ที่อื่น → บล็อกพร้อมทางเลือกสละ |
+| ข้อความไทยหลัก | "เลือกได้สูงสุด {N} หลักสูตรต่อรอบต่อวิทยาเขต"<br>"รุ่นน้ำหนักเปลี่ยนไม่ได้หลังยื่นใบสมัคร" |
+| FR | FR-R1-020, FR-R1-023, FR-R1-026, FR-R1-027, FR-R1-029, FR-R1-030, FR-R1-031, FR-R1-092 |
+
+### S-R1-05 ใบสมัคร ขั้น 2: การศึกษา GPAX และตรวจคุณสมบัติ ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | กรอกผลการเรียน (ช่วยอ่านจาก ปพ.1) และเห็นผลตรวจคุณสมบัติทันทีก่อนชำระ |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: S-02) |
+| ทางเข้า | stepper ขั้น 2 |
+| องค์ประกอบ/ฟิลด์หลัก | • โรงเรียน/แผนการเรียน<br>• GPAX + จำนวนภาคเรียน, GPA กลุ่มสาระ (ถ้ารอบกำหนด)<br>• ปุ่ม "อ่านจาก ปพ.1" (OCR) + ให้ยืนยันค่า<br>• แผงผลตรวจคุณสมบัติรายอันดับ: ผ่าน/ไม่ผ่าน + เหตุผล + สิ่งที่ทำต่อได้ |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | "กำลังตรวจคุณสมบัติ…" |
+| สถานะ: ผิดพลาด | "ตรวจคุณสมบัติไม่สำเร็จ คุณยังบันทึกต่อได้ และเราจะตรวจอีกครั้งก่อนยื่น" |
+| สถานะ: สำเร็จ | ป้ายสถานะต่ออันดับ (ข้อความ + ไอคอน ไม่ใช้สีอย่างเดียว) |
+| Validation | • GPAX 0.00–4.00 ทศนิยม 2 ตำแหน่ง<br>• ค่าที่กรอกต่างจาก OCR → ให้ยืนยัน |
+| ข้อความไทยหลัก | "GPAX {x} ต่ำกว่าเกณฑ์ {y} ของรอบนี้ — ดูรอบทั่วไปที่เปิดอยู่"<br>"ระบบอ่าน GPAX จากเอกสารได้ {x} ตรงกับที่คุณกรอกหรือไม่" |
+| FR | FR-R1-020, FR-R1-021, FR-R1-022, FR-R1-023 |
+
+### S-R1-06 ใบสมัคร ขั้น 3: ประวัติและผลงานกีฬา
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | บันทึก sport profile และผลงานพร้อมหลักฐาน (โควตานักกีฬา/โควตาภายใน) |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: S-02) |
+| ทางเข้า | stepper ขั้น 3 (แสดงเฉพาะช่องทางที่มีกีฬา) |
+| องค์ประกอบ/ฟิลด์หลัก | • ประวัติ: สโมสร สมาคม โค้ช ปีที่เล่น (คำอธิบายว่าใช้ตรวจ COI กรรมการ)<br>• รายการผลงาน: ชื่อรายการ (ค้นจาก competition master), ระดับ, อันดับ/เหรียญ, วันที่, ไฟล์หลักฐาน<br>• ป้ายระดับที่ระบบคำนวณ + "นับคะแนน/ไม่นับ (นอกช่วงวันที่)"<br>• อัปโหลดวิดีโอผลงาน (ถ้ารอบกำหนด) |
+| สถานะ: ว่าง | "ยังไม่มีผลงาน — เพิ่มผลงานอย่างน้อย 1 รายการตามเกณฑ์ของรอบ" |
+| สถานะ: กำลังโหลด | skeleton รายการ |
+| สถานะ: ผิดพลาด | error ต่อรายการ |
+| สถานะ: สำเร็จ | รายการพร้อมป้ายระดับ |
+| Validation | • วันที่อยู่ในช่วงที่ประกาศ (นอกช่วง = ไม่นับ แต่บันทึกได้)<br>• ต้องมีไฟล์หลักฐานต่อผลงาน |
+| ข้อความไทยหลัก | "ผลงานนี้อยู่นอกช่วงวันที่ที่ประกาศ จึงไม่นับคะแนน"<br>"ข้อมูลสโมสรและโค้ชใช้เพื่อไม่ให้กรรมการที่เกี่ยวข้องกับคุณเป็นผู้ให้คะแนน" |
+| FR | FR-R1-020, FR-R1-024 |
+
+### S-R1-07 ใบสมัคร ขั้น 4: อัปโหลดเอกสาร ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | อัปโหลดเอกสารตาม checklist แบบ resumable |
+| บทบาท | candidate |
+| ช่องทาง | PWA (ปุ่มเปิดในเบราว์เซอร์เมื่ออยู่ใน LIFF) (อ้างเล่ม 14: S-02) |
+| ทางเข้า | stepper ขั้น 4, ลิงก์ "ส่งเอกสารเพิ่ม" |
+| องค์ประกอบ/ฟิลด์หลัก | • checklist ตามช่องทาง (✓/ขาด/กำลังตรวจไฟล์/ใช้ไม่ได้)<br>• ตัวอัปโหลด Uppy + progress + resume<br>• พรีวิว (หลังสแกนผ่าน)<br>• บีบอัดรูปฝั่ง client |
+| สถานะ: ว่าง | checklist ว่าง + คำอธิบายเอกสารแต่ละรายการ |
+| สถานะ: กำลังโหลด | progress รายไฟล์ "กำลังอัปโหลด 60% — ปิดหน้าได้ เราจะทำต่อเมื่อคุณกลับมา" |
+| สถานะ: ผิดพลาด | "ไฟล์นี้ใช้ไม่ได้ กรุณาอัปโหลดใหม่" (ไม่เปิดเผยรายละเอียดการสแกน) |
+| สถานะ: สำเร็จ | ✓ "ตรวจไฟล์แล้ว" |
+| Validation | • ชนิดไฟล์ PDF/JPG/PNG (วิดีโอ MP4)<br>• เอกสาร ≤ 10 MB, วิดีโอ ≤ 200 MB |
+| ข้อความไทยหลัก | "ไฟล์ใหญ่เกิน 10 MB — ระบบจะบีบอัดรูปให้อัตโนมัติ หรือสแกนเป็น PDF ขาวดำ" |
+| FR | FR-R1-020, FR-R1-030, FR-R1-036, FR-R1-037 |
+
+### S-R1-08 ขอความช่วยเหลือในการสอบ (accommodation)
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ขอ accommodation โดยสมัครใจผ่านฟอร์มแยกจากใบสมัครหลัก |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: S-02) |
+| ทางเข้า | ลิงก์ในขั้น 4 และใน tracker, ประกาศรับสมัคร |
+| องค์ประกอบ/ฟิลด์หลัก | • ประเภทความช่วยเหลือ (หลายตัวเลือก)<br>• อัปโหลดหลักฐาน (เก็บใน health vault)<br>• สถานะคำขอ + กำหนดเวลา (≥ 10 วันทำการก่อนสอบ)<br>• ข้อความยืนยันว่ากรรมการคัดเลือกไม่เห็นข้อมูลนี้ |
+| สถานะ: ว่าง | คำอธิบายสิทธิ์และตัวอย่างความช่วยเหลือ |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ส่งคำขอไม่สำเร็จ ลองใหม่ หรือโทร {เบอร์}" |
+| สถานะ: สำเร็จ | "ส่งคำขอแล้ว หน่วยบริการนักศึกษาพิการจะแจ้งผลภายใน 3 วันทำการ" |
+| Validation | • ยื่นช้ากว่า 10 วันทำการ → แจ้งว่าเป็น provisional |
+| ข้อความไทยหลัก | "ข้อมูลความพิการของคุณจะไม่ถูกส่งให้กรรมการคัดเลือก กรรมการจะเห็นเฉพาะรายการปรับ เช่น เวลาเพิ่ม" |
+| FR | FR-R1-028 |
+
+### S-R1-09 ใบสมัคร ขั้นสุดท้าย: ตรวจทานและยื่น ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ตรวจทานข้อมูลทั้งหมด ยอมรับคำรับรอง และยื่น พร้อมได้ใบรับอิเล็กทรอนิกส์ |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: S-02) |
+| ทางเข้า | stepper ขั้นสุดท้าย |
+| องค์ประกอบ/ฟิลด์หลัก | • สรุปทุกขั้นพร้อมลิงก์แก้<br>• รายการที่ขาด (ถ้ามี)<br>• คำรับรองความถูกต้อง<br>• ปุ่ม "ยื่นใบสมัคร" (ส่ง Idempotency-Key)<br>• ใบรับ PDF + เลขใบสมัคร |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | "กำลังยื่น… อย่าปิดหน้านี้" (ถ้าเน็ตหลุดจะตรวจผลล่าสุดให้อัตโนมัติ) |
+| สถานะ: ผิดพลาด | "ยังยื่นไม่ได้: ขาด {รายการ}" / "ไม่แน่ใจว่ายื่นสำเร็จหรือไม่ — กำลังตรวจสอบ" |
+| สถานะ: สำเร็จ | "ยื่นใบสมัครแล้ว เลขที่ {application_no}" + ปุ่มชำระเงิน |
+| Validation | • ครบ checklist<br>• ยอมรับคำรับรอง |
+| ข้อความไทยหลัก | "ยื่นใบสมัครเรียบร้อย เลขที่ใบสมัคร {no} — ใบรับเลขที่ {receipt_no} เวลา {time}" |
+| FR | FR-R1-020, FR-R1-029, FR-R1-033 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-18 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-10 ชำระเงิน Thai QR และสถานะ ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ชำระค่าสมัคร/ค่ายืนยันสิทธิ์ รองรับมือถือเครื่องเดียวกับแอปธนาคาร |
+| บทบาท | candidate, guardian, ผู้ชำระแทน |
+| ช่องทาง | PWA, LIFF, ลิงก์ชำระแทน (อ้างเล่ม 14: S-03) |
+| ทางเข้า | หลังยื่น, tracker, แจ้งเตือนครบกำหนด, ลิงก์ที่ส่งต่อ |
+| องค์ประกอบ/ฟิลด์หลัก | • ยอดเงิน, วันหมดอายุ, QR<br>• ปุ่ม "บันทึกรูป QR"<br>• Ref1/Ref2/Biller ID/ยอด กดคัดลอก<br>• ปุ่มเปิดแอปธนาคาร (เฉพาะธนาคารที่รองรับ)<br>• ปุ่ม "ตรวจสถานะอีกครั้ง"<br>• ลิงก์ "ส่งลิงก์ให้ผู้ปกครองชำระ"<br>• ลิงก์ขอยกเว้นค่าสมัคร (ถ้ารอบอนุญาต) |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | "รอยืนยันจากธนาคาร" (ไม่ใช่ "ยังไม่ชำระ") |
+| สถานะ: ผิดพลาด | "ไม่พบการชำระ หากหักเงินแล้วโปรดรอ 15 นาทีหรือแจ้งเจ้าหน้าที่พร้อมสลิป" |
+| สถานะ: สำเร็จ | "ชำระแล้ว" + ลิงก์ใบเสร็จอิเล็กทรอนิกส์ |
+| Validation | • ไม่สร้างใบแจ้งหนี้ใหม่เมื่อกดซ้ำ<br>• QR หมดอายุ → แสดงวิธีขอใหม่ (ค่าสมัคร) หรือแจ้งว่า offer หมดเวลา |
+| ข้อความไทยหลัก | "เปิดแอปธนาคาร > สแกน > เลือกรูปจากอัลบั้ม"<br>"คัดลอกเลขอ้างอิงแล้ว"<br>"อย่าชำระผ่าน QR ที่ได้จากแหล่งอื่นนอกระบบนี้" |
+| FR | FR-R1-044, FR-R1-045, FR-R1-048, FR-R1-051, FR-R1-052, FR-R1-089 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-15 (CSAT หลังธุรกรรม), KPI-21 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-11 ขอยกเว้นค่าสมัคร
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ยื่นคำขอยกเว้นค่าสมัครพร้อมหลักฐาน และติดตามผล |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: — (SVC e-Form)) |
+| ทางเข้า | ลิงก์ในหน้าชำระ |
+| องค์ประกอบ/ฟิลด์หลัก | • เหตุผล (ตามประกาศ)<br>• หลักฐาน<br>• ใบรับคำขอ<br>• สถานะ + SLA 5 วันทำการ |
+| สถานะ: ว่าง | คำอธิบายคุณสมบัติตามประกาศ |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | error ต่อช่อง |
+| สถานะ: สำเร็จ | "ส่งคำขอแล้ว เลขรับ {no}" |
+| Validation | • ต้องแนบหลักฐานอย่างน้อย 1 ไฟล์ |
+| ข้อความไทยหลัก | "ระหว่างพิจารณา ใบสมัครของคุณยังไม่หมดเวลาชำระจนกว่าจะแจ้งผล" |
+| FR | FR-R1-049 |
+
+### S-R1-12 Application tracker ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | เห็นทุกใบสมัครทุกวิทยาเขตเป็น timeline พร้อมสิ่งที่ต้องทำถัดไป |
+| บทบาท | candidate (ผู้ปกครองเห็นแบบย่อใน S-R1-26) |
+| ช่องทาง | PWA, LIFF (อ้างเล่ม 14: S-04) |
+| ทางเข้า | หน้า "ใบสมัคร" ใน bottom nav, deep link จากแจ้งเตือน |
+| องค์ประกอบ/ฟิลด์หลัก | • การ์ดต่อใบสมัคร: สถานะ (draft→…→reported) เป็นข้อความ<br>• สิ่งที่ต้องทำ + กำหนดเวลา (นับถอยหลัง)<br>• ลิงก์บัตรผู้สอบ, ใบรับ, ใบเสร็จ<br>• ปุ่มถอนอันดับ |
+| สถานะ: ว่าง | "ยังไม่มีใบสมัคร" + ปุ่มดูรอบที่เปิด |
+| สถานะ: กำลังโหลด | skeleton |
+| สถานะ: ผิดพลาด | แสดงข้อมูลล่าสุดที่ cache + ป้าย "ข้อมูล ณ {เวลา}" |
+| สถานะ: สำเร็จ | timeline |
+| Validation | • — |
+| ข้อความไทยหลัก | "สิ่งที่ต้องทำ: ส่งเอกสารเพิ่มภายใน {วันที่}"<br>"มีสิทธิ์สอบแบบมีเงื่อนไข — รอยืนยันผลงาน" |
+| FR | FR-R1-034, FR-R1-048 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-18 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-13 ส่งเอกสารเพิ่ม
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ส่งเอกสารที่เจ้าหน้าที่ขอเพิ่มภายในกำหนด |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: S-02) |
+| ทางเข้า | แจ้งเตือน P1, tracker |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการที่ขอพร้อมเหตุผลของเจ้าหน้าที่<br>• ตัวอัปโหลด<br>• deadline |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | progress |
+| สถานะ: ผิดพลาด | "ส่งไม่สำเร็จ ลองใหม่" |
+| สถานะ: สำเร็จ | "ส่งแล้ว เจ้าหน้าที่จะตรวจภายใน 3 วันทำการ" |
+| Validation | • ส่งได้ก่อน deadline เท่านั้น |
+| ข้อความไทยหลัก | "เจ้าหน้าที่ขอ: {รายการ} — เหตุผล: {เหตุผล} — ส่งภายใน {วันที่}" |
+| FR | FR-R1-036, FR-R1-039 |
+
+### S-R1-14 แบบคัดกรองสุขภาพและใบรับรองแพทย์ ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ส่งแบบคัดกรองก่อนออกกำลังกายและใบรับรองแพทย์เพื่อรับ medical clearance ก่อนจอง slot สอบทักษะ |
+| บทบาท | candidate, guardian (consent) |
+| ช่องทาง | PWA (อ้างเล่ม 14: — (HLT)) |
+| ทางเข้า | tracker "สิ่งที่ต้องทำ", ขั้นจอง slot |
+| องค์ประกอบ/ฟิลด์หลัก | • สถานะ consent (ผู้เยาว์ + ผู้ปกครอง)<br>• แบบคัดกรองผู้ใหญ่/เด็กตามอายุ<br>• อัปโหลดใบรับรองแพทย์ (วันที่ออก, เลขใบอนุญาตแพทย์)<br>• สถานะ clearance + วันหมดอายุ |
+| สถานะ: ว่าง | คำอธิบายเหตุผลด้านความปลอดภัยและการเก็บข้อมูลใน health vault |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ส่งไม่สำเร็จ ข้อมูลยังไม่ถูกบันทึก" |
+| สถานะ: สำเร็จ | "ผ่านการคัดกรอง ใช้ได้ถึง {วันที่}" หรือ "รอเจ้าหน้าที่พยาบาลตรวจ" |
+| Validation | • ใบรับรองไม่เกิน 30 วัน ณ วันทดสอบ [ต้องตรวจสอบ]<br>• ตอบ "ใช่" ข้อเสี่ยง → ต้องแนบใบรับรองเฉพาะทาง<br>• ไม่มี consent ที่จำเป็น → ส่งไม่ได้ |
+| ข้อความไทยหลัก | "ข้อมูลสุขภาพเก็บแยกในระบบข้อมูลสุขภาพ เจ้าหน้าที่รับสมัครเห็นเพียงว่า 'ผ่าน/ยังไม่ผ่าน'"<br>"รอผู้ปกครองยินยอม" |
+| FR | FR-R1-064, FR-R1-065, FR-R1-109 |
+
+### S-R1-15 เลือก/ยืนยัน slot และบัตรประจำตัวผู้สอบ ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ยืนยันหรือเปลี่ยน slot สอบ และเปิดบัตรผู้สอบ QR (ใช้ได้ offline) |
+| บทบาท | candidate |
+| ช่องทาง | PWA, LIFF (อ้างเล่ม 14: S-04) |
+| ทางเข้า | แจ้งเตือนประกาศผู้มีสิทธิ์สอบ, tracker |
+| องค์ประกอบ/ฟิลด์หลัก | • slot ที่ระบบจัด + ทางเลือกที่ว่าง<br>• บัตรผู้สอบ: QR, วันเวลา, สนาม/ห้อง, แผนที่, การแต่งกาย, สิ่งที่ต้องนำมา<br>• ปุ่ม "เพิ่มลงปฏิทิน"<br>• ลิงก์ video call (สัมภาษณ์ออนไลน์) |
+| สถานะ: ว่าง | "ยังไม่ประกาศตารางสอบ" |
+| สถานะ: กำลังโหลด | skeleton |
+| สถานะ: ผิดพลาด | "ยืนยัน slot ไม่สำเร็จ slot อาจเต็มแล้ว เลือกใหม่" |
+| สถานะ: สำเร็จ | บัตรผู้สอบพร้อมใช้ (cache offline) |
+| Validation | • ยืนยันได้เมื่อ clearance และ consent ครบ (สอบทักษะ)<br>• เปลี่ยน slot ได้ภายในกำหนด |
+| ข้อความไทยหลัก | "ยังไม่มีใบรับรองสุขภาพที่ใช้ได้ — ทำแบบคัดกรองก่อนเลือกเวลา"<br>"แสดง QR นี้และบัตรประชาชนที่จุดลงทะเบียน" |
+| FR | FR-R1-058, FR-R1-059, FR-R1-062, FR-R1-065 |
+
+### S-R1-16 ผลคัดเลือกและคะแนนรายสถานี ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ดูผลรายบุคคล อันดับ คะแนนรายสถานี และเริ่มยืนยันสิทธิ์หรือขอทบทวน |
+| บทบาท | candidate |
+| ช่องทาง | PWA (หลัง waiting room) (อ้างเล่ม 14: S-05) |
+| ทางเข้า | แจ้งเตือนประกาศผล, S-R1-47 |
+| องค์ประกอบ/ฟิลด์หลัก | • ผล: ผ่าน/สำรองอันดับ n/ไม่ผ่าน (ข้อความ + ไอคอน)<br>• คะแนนรวม + คะแนนรายสถานี/องค์ประกอบ + วิธีคำนวณ<br>• ปุ่ม "ยืนยันสิทธิ์" / "ขอทบทวนผล (ถึง {วันที่})" |
+| สถานะ: ว่าง | "ยังไม่ประกาศผล" |
+| สถานะ: กำลังโหลด | ตำแหน่งในคิว (waiting room) |
+| สถานะ: ผิดพลาด | "ระบบกำลังมีผู้ใช้จำนวนมาก ผลของคุณดูได้ที่ {ลิงก์ CDN}" |
+| สถานะ: สำเร็จ | ผลพร้อมขั้นต่อไป |
+| Validation | • — |
+| ข้อความไทยหลัก | "คุณเป็นสำรองอันดับ {n} — หากมีผู้สละสิทธิ์ เราจะแจ้งทันทีพร้อมเวลายืนยัน" |
+| FR | FR-R1-084 |
+
+### S-R1-17 Offer และยืนยัน/สละสิทธิ์ ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | เปรียบเทียบ offer ทุกวิทยาเขตและยืนยันได้ 1 ที่ ชำระค่ายืนยันสิทธิ์ เลือกรายงานตัว หรือสละสิทธิ์ |
+| บทบาท | candidate |
+| ช่องทาง | PWA, LIFF (อ้างเล่ม 14: S-05) |
+| ทางเข้า | S-R1-16, แจ้งเตือน offer/cascade |
+| องค์ประกอบ/ฟิลด์หลัก | • การ์ด offer: วิทยาเขต หลักสูตร deadline (นับถอยหลัง) ค่ายืนยันสิทธิ์<br>• กล่องสรุปผลก่อนยืนยัน<br>• ปุ่มยืนยัน (step-up ถ้าบัญชียังไม่ยืนยันตัวตน)<br>• หลังยืนยัน: ชำระ (S-R1-10), เลือกรายงานตัวออนไลน์/ที่จุดบริการ, ปุ่มสละสิทธิ์ (นับ C-5) |
+| สถานะ: ว่าง | "ยังไม่มีข้อเสนอที่นั่ง" |
+| สถานะ: กำลังโหลด | "กำลังยืนยัน…" (ห้ามกดซ้ำ, idempotent) |
+| สถานะ: ผิดพลาด | "คุณยืนยันสิทธิ์ที่อื่นแล้ว" / "หมดเวลายืนยันแล้ว" / "ไม่แน่ใจผล — กำลังตรวจสอบสถานะล่าสุด" |
+| สถานะ: สำเร็จ | "ยืนยันสิทธิ์แล้ว — ชำระภายใน {deadline}" |
+| Validation | • ต้องออนไลน์<br>• ยืนยันได้ครั้งละ 1 ที่<br>• สละหลังยืนยันต้องยืนยันด้วย OTP |
+| ข้อความไทยหลัก | "เมื่อยืนยันที่นี่ ข้อเสนออื่นของคุณจะถูกสละโดยอัตโนมัติ — ไม่นับเป็นสิทธิ์สละของคุณ"<br>"การสละสิทธิ์ครั้งนี้นับเป็น 1 ครั้ง (ทำได้ 1 ครั้งต่อปีการศึกษา)" |
+| FR | FR-R1-026, FR-R1-051, FR-R1-086, FR-R1-087, FR-R1-088, FR-R1-089, FR-R1-090, FR-R1-096, FR-R1-116 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-01 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-18 ยืนยันสิทธิ์ซ้ำก่อนเปิดภาค
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ยืนยันซ้ำ 1 แตะในช่วง ADM_RECONFIRM_WINDOW หรือสละสิทธิ์ |
+| บทบาท | candidate |
+| ช่องทาง | PWA, LIFF (อ้างเล่ม 14: —) |
+| ทางเข้า | แจ้งเตือน 2 ครั้ง, SMS ลิงก์, เจ้าหน้าที่โทร |
+| องค์ประกอบ/ฟิลด์หลัก | • สรุปที่นั่งที่ยืนยัน<br>• ปุ่ม "ยืนยันว่าจะเข้าศึกษา"<br>• ปุ่มสละสิทธิ์<br>• วันสุดท้ายของ window |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "พ้นช่วงยืนยันซ้ำแล้ว ติดต่อ {เบอร์}" |
+| สถานะ: สำเร็จ | "ยืนยันซ้ำแล้ว แล้วพบกันวันรายงานตัว" |
+| Validation | • ใช้ได้เฉพาะใน window |
+| ข้อความไทยหลัก | "หากไม่ยืนยันซ้ำภายใน {วันที่} ที่นั่งจะถูกส่งให้ผู้สำรอง (ไม่นับเป็นสิทธิ์สละ)" |
+| FR | FR-R1-095 |
+
+### S-R1-19 ขอทบทวนผลคัดเลือก
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ยื่นและติดตามคำขอทบทวนผลแบบเร่งด่วน |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: S-06) |
+| ทางเข้า | S-R1-16, tracker, ผลการปฏิเสธ accommodation |
+| องค์ประกอบ/ฟิลด์หลัก | • เลือกเรื่อง (คะแนนสถานี/การคำนวณ/คุณสมบัติ/accommodation)<br>• เหตุผล + หลักฐาน<br>• ใบรับ + เลขรับ<br>• timeline SLA + ผลพร้อมเหตุผล |
+| สถานะ: ว่าง | คำอธิบายกรอบเวลาและสิ่งที่ทบทวนได้ |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "พ้นกำหนดยื่นแล้ว — คุณยังร้องเรียนได้ที่ …" |
+| สถานะ: สำเร็จ | "รับเรื่องแล้ว เลขที่ {no} ตัดสินภายใน {วันที่}" |
+| Validation | • ภายใน window<br>• เหตุผล ≥ 20 ตัวอักษร |
+| ข้อความไทยหลัก | "ระหว่างพิจารณา กำหนดยืนยันสิทธิ์ของคุณขยายถึงวันตัดสิน + 24 ชม. (ถ้ามีข้อเสนอที่นั่ง)" |
+| FR | FR-R1-099, FR-R1-103, FR-R1-106 |
+
+### S-R1-20 ร้องเรียน/แจ้งเบาะแส และติดตาม
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | รับเรื่องร้องเรียนแบบระบุ/ไม่ระบุตัวตน และติดตามด้วยรหัส |
+| บทบาท | applicant, candidate (ไม่ต้อง login ได้) |
+| ช่องทาง | PWA สาธารณะ (อ้างเล่ม 14: S-06) |
+| ทางเข้า | ลิงก์ footer ทุกหน้า, หน้า OIT |
+| องค์ประกอบ/ฟิลด์หลัก | • หมวดเรื่อง<br>• รายละเอียด + ไฟล์แนบ<br>• ตัวเลือกไม่ระบุตัวตน<br>• รหัสติดตาม (แสดงครั้งเดียว + ปุ่มคัดลอก/ดาวน์โหลด)<br>• ช่องค้นด้วยรหัสติดตาม |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ไม่พบเรื่องจากรหัสนี้" |
+| สถานะ: สำเร็จ | "รับเรื่องแล้ว รหัสติดตาม {code} — เก็บรหัสนี้ไว้ เราไม่สามารถกู้คืนให้ได้" |
+| Validation | • bot challenge<br>• ไฟล์ ≤ 10 MB |
+| ข้อความไทยหลัก | "การแจ้งเรื่องแบบไม่ระบุตัวตน เราจะไม่เก็บข้อมูลที่ระบุตัวคุณ" |
+| FR | FR-R1-104 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-13 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-21 แจ้งเหตุวันสอบ/ขอสอบใหม่
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ขอเลื่อน/สอบใหม่พร้อมหลักฐาน และดูผลพิจารณา |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: —) |
+| ทางเข้า | tracker, บัตรผู้สอบ |
+| องค์ประกอบ/ฟิลด์หลัก | • เหตุ (ป่วย/บาดเจ็บ/ติดแข่งขัน/อื่น)<br>• หลักฐาน<br>• slot สำรองที่เสนอ (ถ้าอนุมัติ) |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "เกินกรอบ 48 ชม." |
+| สถานะ: สำเร็จ | "ส่งคำขอแล้ว" / "อนุมัติ — slot ใหม่ {วันเวลา}" |
+| Validation | • ภายใน 48 ชม. หลังวันสอบหรือก่อนวันสอบ |
+| ข้อความไทยหลัก | "ผลพิจารณาจะแจ้งก่อนประกาศผลของรอบ" |
+| FR | FR-R1-105 |
+
+### S-R1-22 แจ้งเตือน inbox ตั้งค่า และผูก LINE
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ดูข้อความทั้งหมด กดรับทราบ ตั้งค่าช่องทาง และผูก/ยกเลิก LINE |
+| บทบาท | candidate, guardian |
+| ช่องทาง | PWA, LIFF (อ้างเล่ม 14: S-36) |
+| ทางเข้า | ไอคอนกระดิ่ง, เมนูฉัน |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการข้อความ + ป้าย P1 + ปุ่มรับทราบ<br>• ตั้งค่าช่องทางต่อหมวด (หมวดบังคับปิดทั้งหมดไม่ได้)<br>• ผูก/ยกเลิก LINE (consent L-26) |
+| สถานะ: ว่าง | "ยังไม่มีข้อความ" |
+| สถานะ: กำลังโหลด | skeleton |
+| สถานะ: ผิดพลาด | "โหลดไม่สำเร็จ" |
+| สถานะ: สำเร็จ | รายการ |
+| Validation | • หมวดบังคับต้องเหลือ ≥ 1 ช่องทาง |
+| ข้อความไทยหลัก | "เราจะส่งเฉพาะหัวข้อและลิงก์ทาง LINE ไม่ส่งคะแนนหรือข้อมูลส่วนตัว" |
+| FR | FR-R1-111, FR-R1-133, FR-R1-134, FR-R1-135, FR-R1-136, FR-R1-137 |
+
+### S-R1-23 ความเป็นส่วนตัวและความยินยอมของฉัน
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ดู notice, consent ที่ให้/รอ, ผู้ปกครองที่ผูก และถอนความยินยอม |
+| บทบาท | candidate |
+| ช่องทาง | PWA (อ้างเล่ม 14: — (PRIV)) |
+| ทางเข้า | เมนูฉัน, ลิงก์ในแบบคัดกรอง |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการ consent ตาม purpose + ผู้ให้ (ตนเอง/ผู้ปกครอง) + เวอร์ชัน notice<br>• ปุ่มถอน<br>• รายการผู้ปกครองที่ผูก<br>• ลิงก์ privacy notice |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ถอนไม่สำเร็จ ลองใหม่" |
+| สถานะ: สำเร็จ | "ถอนความยินยอมแล้ว — ผลที่จะเกิด: …" |
+| Validation | • ถอนต้องยืนยัน + แสดงผลกระทบ |
+| ข้อความไทยหลัก | "การถอนความยินยอมไม่กระทบสิทธิในการคัดเลือกส่วนที่ไม่ต้องใช้ความยินยอม" |
+| FR | FR-R1-109, FR-R1-113 |
+
+## 4. ผู้ปกครอง (LINE LIFF เป็นหลัก)
+
+_โหมดตัวอักษร 18 px, ภาษาง่าย, ปุ่มโทรหาเจ้าหน้าที่, ไม่บังคับติดตั้งแอป (14 U5, §4.4)_
+
+### S-R1-24 รับคำเชิญและผูกบัญชีผู้ปกครอง ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ผูกบัญชีกับผู้สมัครด้วย provisional หรือ ThaID + เอกสาร |
+| บทบาท | guardian |
+| ช่องทาง | LIFF (หลัก), PWA (อ้างเล่ม 14: S-29 (รูปแบบ)) |
+| ทางเข้า | ลิงก์คำเชิญ SMS/LINE/อีเมล, QR ที่จุดบริการ |
+| องค์ประกอบ/ฟิลด์หลัก | • ข้อมูลผู้สมัครแบบ mask<br>• ความสัมพันธ์ (บิดา/มารดา/ผู้ปกครองตามกฎหมาย/ผู้อุปการะ)<br>• เลขบัตร + OTP (provisional)<br>• ปุ่ม ThaID + อัปโหลดเอกสาร (ระดับ 2)<br>• สถานะการตรวจ |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ข้อมูลไม่ตรงกับที่ผู้สมัครระบุ กรุณาติดต่อผู้สมัครหรือเจ้าหน้าที่" / "ลิงก์หมดอายุ" |
+| สถานะ: สำเร็จ | "ผูกบัญชีแล้ว (รอเจ้าหน้าที่ตรวจเอกสาร) — ระหว่างนี้รับแจ้งเตือนและชำระเงินได้" |
+| Validation | • ลิงก์อายุ 7 วัน<br>• จำกัดความพยายาม 5 ครั้ง |
+| ข้อความไทยหลัก | "ท่านกำลังผูกบัญชีเป็นผู้ปกครองของ {ชื่อ mask}" |
+| FR | FR-R1-107, FR-R1-108 |
+
+### S-R1-25 ให้ความยินยอม (dual consent) ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ให้/ไม่ให้ความยินยอมรายวัตถุประสงค์ที่ consent policy กำหนด |
+| บทบาท | guardian, candidate |
+| ช่องทาง | LIFF, PWA (อ้างเล่ม 14: —) |
+| ทางเข้า | แจ้งเตือน "รอท่านยินยอม", S-R1-26 |
+| องค์ประกอบ/ฟิลด์หลัก | • notice ภาษาง่าย (ย่อ + ฉบับเต็ม)<br>• รายการ purpose แยกปุ่ม (ไม่ติ๊กไว้ล่วงหน้า)<br>• สถานะของอีกฝ่าย (ผู้เยาว์/ผู้ปกครอง)<br>• ตัวเลือก assisted (เจ้าหน้าที่ช่วยบันทึก) |
+| สถานะ: ว่าง | "ไม่มีเรื่องรอความยินยอม" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "บันทึกไม่สำเร็จ ลองใหม่" |
+| สถานะ: สำเร็จ | "บันทึกความยินยอมแล้ว ถอนได้ทุกเมื่อที่เมนูความเป็นส่วนตัว" |
+| Validation | • ต้องเลือกแต่ละ purpose อย่างชัดแจ้ง |
+| ข้อความไทยหลัก | "ยินยอมให้บุตรเข้ารับการทดสอบสมรรถภาพและให้เก็บข้อมูลสุขภาพเพื่อความปลอดภัยในการทดสอบ" |
+| FR | FR-R1-027, FR-R1-109, FR-R1-112 |
+
+### S-R1-26 ภาพรวมผู้สมัครในความดูแล ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ดูสถานะใบสมัคร ค่าใช้จ่าย วันสอบ ผลและ offer ของบุตร พร้อมลิงก์ชำระ |
+| บทบาท | guardian |
+| ช่องทาง | LIFF, PWA (อ้างเล่ม 14: S-29) |
+| ทางเข้า | LINE rich menu, แจ้งเตือน |
+| องค์ประกอบ/ฟิลด์หลัก | • ตัวเลือกบุตร (ถ้ามีหลายคน)<br>• การ์ด: ความคืบหน้า, สิ่งที่ต้องทำ, ยอดค้าง + ชำระ, วันสอบ, ผล/offer, consent ที่รอ<br>• ปุ่มโทรหาเจ้าหน้าที่ (เวลาทำการ) |
+| สถานะ: ว่าง | "ยังไม่ได้ผูกกับผู้สมัคร" |
+| สถานะ: กำลังโหลด | skeleton |
+| สถานะ: ผิดพลาด | "ไม่สามารถแสดงข้อมูลได้" (รวมกรณี custody restriction โดยไม่บอกเหตุผลเชิงกฎหมาย) |
+| สถานะ: สำเร็จ | ภาพรวม |
+| Validation | • ไม่แสดงข้อมูลสุขภาพ/ความพิการ |
+| ข้อความไทยหลัก | "บุตรของท่านยืนยันสิทธิ์ที่ {วิทยาเขต} แล้ว ค่ายืนยันสิทธิ์ครบกำหนด {วันที่}" |
+| FR | FR-R1-044, FR-R1-051, FR-R1-108, FR-R1-110, FR-R1-111 |
+
+## 5. กรรมการสอบทักษะ / พยาบาลหน้าสนาม (PWA บน tablet, offline-first)
+
+_แนวนอน 10", ใช้มือเดียว, ตัวเลขใหญ่, แสดงสถานะ sync ตลอด, PIN unlock (07 §11.8)_
+
+### S-R1-27 Judge: เข้าสู่ระบบ ดาวน์โหลด session และประกาศ COI ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ปลดล็อกด้วย PIN ดาวน์โหลด offline pack และประกาศความสัมพันธ์ก่อนเริ่ม |
+| บทบาท | judge |
+| ช่องทาง | PWA บน tablet (MDM) (อ้างเล่ม 14: S-07) |
+| ทางเข้า | แอปบน tablet ของ มกช. |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการ session ที่ได้รับมอบหมาย<br>• ปุ่ม "ดาวน์โหลดสำหรับใช้ offline" + ขนาด/เวลา<br>• รายชื่อผู้สอบให้ติ๊ก COI (COACH/SCHOOL/RELATIVE/OTHER)<br>• ข้อตกลงรักษาความลับ |
+| สถานะ: ว่าง | "ยังไม่มี session ที่ได้รับมอบหมาย" |
+| สถานะ: กำลังโหลด | progress ดาวน์โหลด |
+| สถานะ: ผิดพลาด | "ดาวน์โหลดไม่สำเร็จ — ต่ออินเทอร์เน็ตแล้วลองใหม่ก่อนออกจากสำนักงาน" |
+| สถานะ: สำเร็จ | "พร้อมใช้ offline ({n} ผู้สอบ)" |
+| Validation | • PIN 6 หลัก ผิด 5 ครั้งล็อก<br>• ต้องยอมรับข้อตกลงก่อนดาวน์โหลด |
+| ข้อความไทยหลัก | "ระบบพบความสัมพันธ์กับผู้สอบ {n} คน คุณจะไม่ได้ให้คะแนนผู้สอบเหล่านี้" |
+| FR | FR-R1-057, FR-R1-069 |
+
+### S-R1-28 Judge: เช็คอินผู้สอบด้วย QR ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | สแกน QR ยืนยันตัวผู้สอบ (รูป + ชื่อ) และตรวจ gate สุขภาพ |
+| บทบาท | judge, admission |
+| ช่องทาง | PWA tablet (อ้างเล่ม 14: S-07) |
+| ทางเข้า | หน้าหลักของ session |
+| องค์ประกอบ/ฟิลด์หลัก | • กล้องสแกน QR<br>• การ์ดผู้สอบ: รูป ชื่อ เลขผู้สอบ สถานะ clearance (✓/✗) ธง accommodation<br>• ค้นด้วยเลขผู้สอบ (QR ใช้ไม่ได้)<br>• ปุ่ม "ขาดสอบ"<br>• ปุ่ม "บันทึกเหตุการณ์" (บาดเจ็บ/ทุจริต) |
+| สถานะ: ว่าง | "ยังไม่มีผู้เช็คอิน" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "QR ไม่ถูกต้อง — ตรวจบัตรประชาชนและค้นเลขผู้สอบ" |
+| สถานะ: สำเร็จ | "เช็คอินแล้ว 09:12" |
+| Validation | • สแกนซ้ำ → เตือนเวลาเดิม<br>• clearance ไม่ผ่าน → ห้ามเริ่ม |
+| ข้อความไทยหลัก | "ยังไม่มีใบรับรองสุขภาพที่ใช้ได้ — ส่งไปจุดพยาบาล" |
+| FR | FR-R1-035, FR-R1-065, FR-R1-067, FR-R1-070 |
+
+### S-R1-29 Judge: ให้คะแนน station ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | บันทึกผลวัด (OBJECTIVE) หรือคะแนน rubric (SUBJECTIVE) อย่างอิสระและส่ง |
+| บทบาท | judge |
+| ช่องทาง | PWA tablet (อ้างเล่ม 14: S-07) |
+| ทางเข้า | หลังเช็คอิน, คิวผู้สอบของ station |
+| องค์ประกอบ/ฟิลด์หลัก | • OBJECTIVE: ช่อง trial 1..n + หน่วย + best-of อัตโนมัติ + นำเข้าจากเครื่องจับเวลา<br>• SUBJECTIVE: rubric item พร้อมคำอธิบายระดับ ปุ่มคะแนนขนาดใหญ่<br>• ปุ่ม "ส่งคะแนน" (ล็อก)<br>• ปุ่ม "สงสัยกระทบกระเทือนสมอง" (หยุดทันที)<br>• ตัวนับ "รอส่ง {n}" |
+| สถานะ: ว่าง | "เลือกผู้สอบจากคิว" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ค่าอยู่นอกช่วงที่เป็นไปได้" |
+| สถานะ: สำเร็จ | "ส่งแล้ว (ล็อก)" |
+| Validation | • ค่าอยู่ในช่วงที่ตั้งค่า<br>• ครบทุก rubric item ก่อนส่ง<br>• ไม่เห็นคะแนนกรรมการอื่น |
+| ข้อความไทยหลัก | "ส่งแล้วแก้ไม่ได้ หากผิดให้ขอประธานเปิดแก้พร้อมเหตุผล" |
+| FR | FR-R1-071, FR-R1-072 |
+
+### S-R1-30 Judge: สถานะ sync และความขัดแย้ง ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ดูรายการรอส่ง เวลา sync ล่าสุด และ conflict queue (ประธาน) |
+| บทบาท | judge, head |
+| ช่องทาง | PWA tablet (อ้างเล่ม 14: S-07) |
+| ทางเข้า | แถบสถานะด้านบนทุกหน้า |
+| องค์ประกอบ/ฟิลด์หลัก | • จำนวนรอส่ง/ส่งแล้ว<br>• ปุ่ม sync ตอนนี้<br>• conflict queue (ประธาน): ค่าทั้งสองฝั่ง + เลือก + เหตุผล<br>• เตือนก่อน logout ถ้ามีค้าง |
+| สถานะ: ว่าง | "ส่งครบแล้ว" |
+| สถานะ: กำลังโหลด | "กำลังส่ง 120/200" |
+| สถานะ: ผิดพลาด | "อุปกรณ์นี้ถูกระงับ — ติดต่อประธาน" / "ส่งไม่สำเร็จ จะลองใหม่อัตโนมัติ" |
+| สถานะ: สำเร็จ | "ส่งครบแล้ว — sync ล่าสุด 15:42" |
+| Validation | • ห้าม logout ถ้ามีรายการค้าง (ยกเว้นประธานยืนยัน) |
+| ข้อความไทยหลัก | "มี {n} รายการที่บันทึกต่างกันจากสองเครื่อง กรุณาตัดสิน" |
+| FR | FR-R1-073 |
+
+### S-R1-31 ประธาน station: moderation และยืนยันผล ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ทบทวนรายการ flag เปิดแก้คะแนน และยืนยันผลรวมของ session |
+| บทบาท | head (selection_chair), judge chair |
+| ช่องทาง | PWA tablet / BO (อ้างเล่ม 14: S-07, S-08) |
+| ทางเข้า | แจ้งเตือน flag, เมนูประธาน |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการ flag + พิสัยคะแนน + SLA ที่เหลือ<br>• ตัวเลือก: ให้คะแนนใหม่ / คงคะแนนพร้อมเหตุผล<br>• เปิดแก้คะแนนรายการเดียวพร้อมเหตุผล<br>• ปุ่ม "ยืนยันผล session" (step-up) แสดง hash |
+| สถานะ: ว่าง | "ไม่มีรายการที่ต้องทบทวน" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ยังมี flag/conflict ค้าง {n} รายการ" |
+| สถานะ: สำเร็จ | "ล็อกผลแล้ว hash {8 ตัวแรก}" |
+| Validation | • moderation ≤ 1 วันทำการ<br>• ยืนยันได้เมื่อไม่มี flag/conflict ค้าง |
+| ข้อความไทยหลัก | "คะแนนต่างกันเกิน {x}% ของคะแนนเต็ม" |
+| FR | FR-R1-072, FR-R1-074, FR-R1-075, FR-R1-076 |
+
+### S-R1-32 พยาบาล: คัดกรองหน้าสนาม WBGT และเหตุการณ์
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | คัดกรองผู้สอบก่อนทดสอบ บันทึก WBGT และเหตุบาดเจ็บลง health vault |
+| บทบาท | nurse, physician |
+| ช่องทาง | PWA tablet (อ้างเล่ม 14: —) |
+| ทางเข้า | เมนู nurse ของ session |
+| องค์ประกอบ/ฟิลด์หลัก | • roster ของ session (care relationship)<br>• ฟอร์มชีพจร/ความดัน/อาการ → ผ่าน/เลื่อน<br>• บันทึก WBGT + ระดับ + คำสั่งปรับ/หยุด station<br>• บันทึกบาดเจ็บ + ปุ่มโทรผู้ปกครอง (ผู้เยาว์) + ตัวจับเวลา 15 นาที |
+| สถานะ: ว่าง | "ยังไม่มีผู้สอบมาถึง" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "บันทึกไม่สำเร็จ — เก็บไว้ในเครื่องแล้ว จะส่งเมื่อมีสัญญาณ" |
+| สถานะ: สำเร็จ | "บันทึกแล้ว" |
+| Validation | • ค่าชีพจร/ความดันอยู่ในช่วงที่เป็นไปได้<br>• WBGT ต้องบันทึกก่อนเริ่มและทุกชั่วโมง (station กลางแจ้ง) |
+| ข้อความไทยหลัก | "ระดับความร้อนสูงสุด — หยุด station กลางแจ้งและเลื่อน slot (ไม่ตัดสิทธิ์ผู้สอบ)" |
+| FR | FR-R1-061, FR-R1-066, FR-R1-067 |
+
+## 6. เจ้าหน้าที่รับสมัคร / ทะเบียน / dss (back-office desktop-first)
+
+_work queue, keyboard-first, bulk, ตัวกรองบันทึกได้, role switcher (14 §9)_
+
+### S-R1-33 BO: Round wizard ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ตั้งรอบ: ช่องทาง เกณฑ์ (DMN) scoring rubric กำหนดการ ค่าธรรมเนียม เอกสาร แล้วส่งอนุมัติ |
+| บทบาท | admission, module_admin |
+| ช่องทาง | BO (อ้างเล่ม 14: S-08, S-35) |
+| ทางเข้า | เมนูรอบรับสมัคร > สร้าง/clone |
+| องค์ประกอบ/ฟิลด์หลัก | • ขั้น: ข้อมูลรอบ → ที่นั่ง (S-R1-34) → เกณฑ์ + ทดสอบกฎ → scoring/rubric → กำหนดการ (ผล linter) → ค่าธรรมเนียม/เอกสาร/ข้อความประกาศ → ส่งอนุมัติ<br>• พรีวิวประกาศ PDF<br>• แผงผล linter (error/warning + เหตุผล)<br>• ประวัติเวอร์ชันและ diff |
+| สถานะ: ว่าง | "ยังไม่มีรอบ — สร้างใหม่หรือ clone จากปีก่อน" |
+| สถานะ: กำลังโหลด | skeleton |
+| สถานะ: ผิดพลาด | ผล linter/validation ต่อขั้น |
+| สถานะ: สำเร็จ | "ส่งอนุมัติแล้ว" |
+| Validation | • น้ำหนักรวม 100<br>• trim ใช้ได้เมื่อกรรมการ ≥ 5<br>• L-13/L-15 = error<br>• หัวข้อบังคับในประกาศ |
+| ข้อความไทยหลัก | "เกินเพดานรับที่คุรุสภาอนุญาต เหลือ {n} ที่"<br>"อนุมัติก่อนเปิดรับ ≥ 30 วัน (เหลือ {n} วัน)" |
+| FR | FR-R1-001, FR-R1-003, FR-R1-004, FR-R1-005, FR-R1-006, FR-R1-007, FR-R1-010, FR-R1-031 |
+
+### S-R1-34 BO: Seat matrix และยกที่นั่ง
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | กำหนดที่นั่งต่อหลักสูตร/ชนิดกีฬา/เพศ/sub-bucket และพิจารณาข้อเสนอยกที่นั่งรอบถัดไป |
+| บทบาท | admission, planner, campusvp |
+| ช่องทาง | BO (อ้างเล่ม 14: S-08) |
+| ทางเข้า | Round wizard, งานจาก J-06 |
+| องค์ประกอบ/ฟิลด์หลัก | • ตาราง matrix แก้ไขได้แบบ spreadsheet<br>• คอลัมน์: แผนรับ, cap คุรุสภา, ใช้แล้ว (confirmed + hold), คงเหลือ<br>• กติกา spill-over<br>• ข้อเสนอรอบ n+1 + ปรับ ± |
+| สถานะ: ว่าง | "ยังไม่มีหลักสูตรใน cycle นี้ — ตรวจ ProgramOffering ใน CUR" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | เซลล์ที่เกินแผน/เพดาน |
+| สถานะ: สำเร็จ | "บันทึกแล้ว" |
+| Validation | • ผลรวม ≤ แผนรับ ≤ cap<br>• ผลรวม sub-bucket = bucket |
+| ข้อความไทยหลัก | "ที่นั่งคงเหลือหลังรอบ 2: {n} (ไม่รวม appeal hold {m})" |
+| FR | FR-R1-002, FR-R1-009 |
+
+### S-R1-35 BO: คิวตรวจเอกสาร ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ตรวจเอกสารและคุณสมบัติที่ระบบตรวจไม่ได้ verify/reject/ขอเพิ่ม ตาม SLA |
+| บทบาท | admission |
+| ช่องทาง | BO (อ้างเล่ม 14: S-08) |
+| ทางเข้า | เมนูคิวงาน, ตัวนับบนหน้าหลัก |
+| องค์ประกอบ/ฟิลด์หลัก | • ตัวกรอง (รอบ/ช่องทาง/ธง/SLA)<br>• แผงเอกสาร (พรีวิว) + ข้อมูลที่กรอก + ธง (GPAX ไม่ตรง, hash ซ้ำ, ยืนยันที่อื่นแล้ว)<br>• ปุ่ม verify/reject/ขอเพิ่ม + เหตุผลที่ผู้สมัครเห็น<br>• คีย์ลัด (J/K ถัดไป, V verify)<br>• กระจายงาน (หัวหน้า)<br>• ประกาศผู้มีสิทธิ์สอบ |
+| สถานะ: ว่าง | "ไม่มีงานค้าง" |
+| สถานะ: กำลังโหลด | skeleton |
+| สถานะ: ผิดพลาด | "บันทึกไม่สำเร็จ งานยังอยู่ในคิว" |
+| สถานะ: สำเร็จ | ไปงานถัดไปอัตโนมัติ |
+| Validation | • reject/ขอเพิ่มต้องมีเหตุผล<br>• ผู้ตรวจคนที่ 2 ≠ ผู้ตรวจแรก |
+| ข้อความไทยหลัก | "ยืนยันสิทธิ์ที่อื่นใน มกช. แล้ว"<br>"SLA เหลือ {n} ชม." |
+| FR | FR-R1-022, FR-R1-035, FR-R1-038, FR-R1-039, FR-R1-040, FR-R1-043, FR-R1-093 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-19 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-36 BO: ตรวจผลงานกีฬา
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ตรวจหลักฐานผลงาน ออกหนังสือถึงสมาคม และบันทึกผลยืนยัน |
+| บทบาท | admission, sportshead |
+| ช่องทาง | BO (อ้างเล่ม 14: S-08) |
+| ทางเข้า | คิวงาน VerificationTask |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการผลงาน + ระดับ + หลักฐาน + ธง hash ซ้ำ<br>• เลือกหลายรายการ → สร้างหนังสือขอยืนยัน<br>• บันทึกผลตอบกลับ/แนบหนังสือ<br>• deadline + สถานะ provisionally_eligible |
+| สถานะ: ว่าง | "ไม่มีงานค้าง" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "สร้างหนังสือไม่สำเร็จ" |
+| สถานะ: สำเร็จ | "บันทึกผลแล้ว" |
+| Validation | • บันทึกผลต้องอ้างหลักฐาน |
+| ข้อความไทยหลัก | "รอสมาคมยืนยัน — เหลือ {n} วันถึง deadline" |
+| FR | FR-R1-025, FR-R1-041 |
+
+### S-R1-37 BO: ตารางสอบ จองสนาม และแต่งตั้งกรรมการ ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | สร้าง session/station/slot จองสนามผ่าน FAC แต่งตั้งกรรมการ และประกาศตาราง |
+| บทบาท | admission, facility, head |
+| ช่องทาง | BO (อ้างเล่ม 14: S-08) |
+| ทางเข้า | เมนูรอบ > การสอบ |
+| องค์ประกอบ/ฟิลด์หลัก | • ปฏิทิน session + สนาม (สถานะจอง FAC)<br>• station: ชนิด trial ความจุ เวลาเปลี่ยน<br>• กรรมการต่อ station + ประธาน + ภายนอก (ลิงก์ S-R1-57) + warning L-14<br>• จัด slot อัตโนมัติ + ปรับมือ<br>• VenueEmergencyPlan + จำนวน nurse/physician<br>• ส่งออกรายชื่อ/ผังที่นั่ง (standard export) |
+| สถานะ: ว่าง | "ยังไม่มี session" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "สนามชนกับ {การจอง} — เลือกเวลา/สนามอื่น" |
+| สถานะ: สำเร็จ | "ประกาศตารางแล้ว ผู้สอบได้รับแจ้ง" |
+| Validation | • ประกาศ ≥ 7 วันก่อนสอบ<br>• กรรมการครบตามค่าตั้ง<br>• กีฬาต่อสู้ต้องมี physician |
+| ข้อความไทยหลัก | "ความจุไม่พอ: ต้องการ {n} slot มี {m}" |
+| FR | FR-R1-054, FR-R1-055, FR-R1-056, FR-R1-057, FR-R1-058, FR-R1-060, FR-R1-062, FR-R1-063, FR-R1-078, FR-R1-105, FR-R1-132 |
+
+### S-R1-38 BO: จัดอันดับ อนุมัติ และประกาศผล ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | คำนวณคะแนนรวม/อันดับ ตรวจ ส่งอนุมัติ และประกาศผล |
+| บทบาท | admission, head, dean, campusvp |
+| ช่องทาง | BO (อ้างเล่ม 14: S-08) |
+| ทางเข้า | เมนูรอบ > ผล |
+| องค์ประกอบ/ฟิลด์หลัก | • ตารางอันดับต่อ bucket/sub-bucket + tie-break ที่ใช้<br>• การกระจายคะแนนต่อชนิดกีฬา<br>• override (เสนอ + เหตุผล) → ผู้อนุมัติคนที่ 2<br>• ปุ่มประกาศผล + พรีวิว PDF mask + DLP + hold window 10 นาที |
+| สถานะ: ว่าง | "ยังไม่มีคะแนนที่ล็อก" |
+| สถานะ: กำลังโหลด | "กำลังคำนวณ…" |
+| สถานะ: ผิดพลาด | "session {x} ยังไม่ล็อก" / DLP |
+| สถานะ: สำเร็จ | "ประกาศแล้ว — ยกเลิกได้ภายใน 10 นาที" |
+| Validation | • ทุก session ล็อกแล้ว<br>• rank list อนุมัติแล้ว<br>• DLP ผ่าน |
+| ข้อความไทยหลัก | "คำนวณซ้ำได้ผลเดิม (hash {x})" |
+| FR | FR-R1-075, FR-R1-079, FR-R1-080, FR-R1-081, FR-R1-082, FR-R1-139 |
+
+### S-R1-39 BO: Clearing dashboard ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ติดตามที่นั่ง offer cascade appeal hold ยืนยันซ้ำ no-show และ unfilled จัดการข้อยกเว้น |
+| บทบาท | admission, registrar (ส่วนกลาง), campusvp |
+| ช่องทาง | BO (อ้างเล่ม 14: S-08) |
+| ทางเข้า | เมนู clearing |
+| องค์ประกอบ/ฟิลด์หลัก | • ตัวเลขต่อรอบ/หลักสูตร/วิทยาเขต (aggregate สำหรับส่วนกลาง)<br>• รายการเหตุการณ์ cascade ล่าสุด<br>• งานโทรติดตามยืนยันซ้ำ<br>• ขยายเวลา/grace (ขออนุมัติ)<br>• นำเข้าไฟล์ BR-01<br>• บันทึกการแจ้งเหตุ no-show |
+| สถานะ: ว่าง | "ยังไม่เปิด clearing" |
+| สถานะ: กำลังโหลด | ข้อมูล ณ {เวลา} (refresh 1 นาที) |
+| สถานะ: ผิดพลาด | "J-04 ล่าช้า — ดู job monitor" |
+| สถานะ: สำเร็จ | dashboard |
+| Validation | • ขยายเวลาต้องมีเหตุผลและผู้อนุมัติ |
+| ข้อความไทยหลัก | "ยืนยันสิทธิ์ที่อื่นใน มกช. แล้ว"<br>"หลัง cascade_cutoff: ที่นั่งว่างจะไม่ถูกเรียกสำรอง" |
+| FR | FR-R1-091, FR-R1-093, FR-R1-094, FR-R1-095, FR-R1-096, FR-R1-097, FR-R1-098, FR-R1-100 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-01, KPI-02 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-40 BO: คำขอทบทวนผล (appeals)
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | รับเรื่อง ตรวจซ้ำโดยกรรมการชุดเดิม ตัดสิน อนุมัติ และติดตาม SLA/appeal hold |
+| บทบาท | admission, judge, head, campusvp |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | inbox, แจ้งเตือน |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการพร้อม SLA และวันปิดยืนยันสิทธิ์<br>• รายละเอียด: เหตุผล หลักฐาน คะแนนรายสถานี (อ่านอย่างเดียว)<br>• บันทึกผลตรวจซ้ำ (กรรมการ)<br>• ร่างคำตัดสิน + preview อันดับใหม่ + ผลต่อที่นั่ง/cap<br>• อนุมัติ (campusvp) |
+| สถานะ: ว่าง | "ไม่มีคำขอค้าง" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "เกินเพดานคุรุสภา — เสนอรอบถัดไป" |
+| สถานะ: สำเร็จ | "ตัดสินแล้ว แจ้งผู้ยื่นแล้ว" |
+| Validation | • ห้ามแก้คะแนนที่ล็อกโดยตรง<br>• เหตุผลบังคับ |
+| ข้อความไทยหลัก | "ต้องตัดสินก่อน {วันที่} (ก่อนปิดยืนยันสิทธิ์ 1 วันทำการ)" |
+| FR | FR-R1-100, FR-R1-101, FR-R1-102 |
+
+### S-R1-41 BO: accommodation (dss)
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | พิจารณาคำขอ accommodation อนุมัติแผน และส่งรายการปรับให้ ADM |
+| บทบาท | dss, head, admission |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | คิวงาน dss |
+| องค์ประกอบ/ฟิลด์หลัก | • หลักฐาน (จาก vault, เฉพาะ dss)<br>• รายการปรับที่เสนอ<br>• ความเห็น head ว่ายังวัดสมรรถนะหลัก<br>• อนุมัติ/ปฏิเสธพร้อมเหตุผล<br>• SLA ≤ 3 วันทำการ และ ≥ 5 วันทำการก่อนสอบ |
+| สถานะ: ว่าง | "ไม่มีคำขอ" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | — |
+| สถานะ: สำเร็จ | "อนุมัติแล้ว slot/ห้องถูกปรับ" |
+| Validation | • ปฏิเสธต้องมีเหตุผล |
+| ข้อความไทยหลัก | "ข้อมูลนี้เป็นข้อมูลอ่อนไหว ทุกการเปิดถูกบันทึก" |
+| FR | FR-R1-028, FR-R1-106 |
+
+### S-R1-42 BO: รายงานตัวและ handoff
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ดูผู้ยืนยัน/ชำระแล้ว ตรวจตัวตนและเอกสารตัวจริง บันทึก reported และส่งออก handoff |
+| บทบาท | registrar, admission |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | เมนูรายงานตัว, คิวนัดหมาย |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการ handoff (READY/REPORTED/EXPORTED/NO_SHOW) + ธง late-admit<br>• ตรวจเอกสารเทียบ hash<br>• ยืนยันตัวตน IN_PERSON<br>• ส่งออกไฟล์ให้ระบบเดิม (watermark) |
+| สถานะ: ว่าง | "ยังไม่มีผู้ยืนยันสิทธิ์" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ส่งออกไม่สำเร็จ" |
+| สถานะ: สำเร็จ | "บันทึกรายงานตัวแล้ว" |
+| Validation | • ส่งออกเฉพาะ scope วิทยาเขต |
+| ข้อความไทยหลัก | "รหัสนักศึกษาจะออกเมื่อระบบทะเบียนใหม่เปิดใช้ (R2)" |
+| FR | FR-R1-013, FR-R1-042, FR-R1-114, FR-R1-115, FR-R1-116, FR-R1-117, FR-R1-118, FR-R1-132 |
+
+### S-R1-54 สมาคมกีฬา: ยืนยันผลงาน (magic link)
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ให้สมาคม/กกท. ยืนยันผลงานรายการที่ส่งไปทางลิงก์แทนหนังสือตอบ (ทางเลือกคู่กับหนังสือ) |
+| บทบาท | federation |
+| ช่องทาง | เว็บ (magic link อายุจำกัด) (อ้างเล่ม 14: —) |
+| ทางเข้า | ลิงก์ในหนังสือขอยืนยัน |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการผลงาน (ชื่อ mask + รายการ + อันดับ)<br>• ยืนยัน/ไม่ยืนยัน/ไม่มีข้อมูล ต่อรายการ<br>• ชื่อผู้ยืนยัน/ตำแหน่ง |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ลิงก์หมดอายุ" |
+| สถานะ: สำเร็จ | "ขอบคุณ บันทึกแล้ว" |
+| Validation | • ลิงก์ใช้ได้ครั้งเดียว/อายุ 14 วัน |
+| ข้อความไทยหลัก | "โปรดยืนยันว่าผู้มีชื่อด้านล่างได้รับผลการแข่งขันตามที่ระบุ" |
+| FR | FR-R1-041 |
+
+### S-R1-55 โหมดเจ้าหน้าที่ช่วยกรอก (assisted)
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ช่วยผู้สมัคร walk-in/ผู้ปกครองไม่มีสมาร์ตโฟนสร้างบัญชี กรอกใบสมัคร และบันทึก consent แบบ assisted |
+| บทบาท | admission, helpdesk |
+| ช่องทาง | BO + PWA (อ้างเล่ม 14: —) |
+| ทางเข้า | จุดบริการวิทยาเขต |
+| องค์ประกอบ/ฟิลด์หลัก | • เริ่ม assisted session (อายุ 30 นาที)<br>• ฟอร์มเดียวกับผู้สมัคร + แถบ "กำลังทำแทน {ชื่อ}"<br>• ยืนยัน OTP โดยผู้สมัคร/ผู้ปกครอง<br>• ปิด session |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "session หมดอายุ" |
+| สถานะ: สำเร็จ | "ยื่นแทนสำเร็จ — ผู้สมัครได้รับข้อความยืนยัน" |
+| Validation | • ต้องมี OTP ก่อนยื่น |
+| ข้อความไทยหลัก | "กำลังทำรายการแทน {ชื่อ} — ทุกขั้นตอนถูกบันทึก" |
+| FR | FR-R1-016, FR-R1-112 |
+
+### S-R1-56 ENG: สร้างและอนุมัติประกาศ
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ร่างประกาศ เลือกกลุ่มผู้รับ ตรวจ DLP ส่งอนุมัติ และเผยแพร่ (รวม P0) |
+| บทบาท | pr, campusvp, dean |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | เมนูประกาศ |
+| องค์ประกอบ/ฟิลด์หลัก | • editor + แม่แบบ<br>• กลุ่มผู้รับ (segment) + จำนวนโดยประมาณ<br>• ผล DLP<br>• ระดับ P0/P1/P2<br>• ผู้อนุมัติ (P0 2 คน) |
+| สถานะ: ว่าง | "ยังไม่มีร่าง" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "พบข้อมูลส่วนบุคคลในเนื้อหา" |
+| สถานะ: สำเร็จ | "เผยแพร่แล้ว" |
+| Validation | • ผู้ร่าง ≠ ผู้อนุมัติ<br>• alt text บังคับ |
+| ข้อความไทยหลัก | "ข้อความ P0 จะข้าม quiet hours และส่ง SMS" |
+| FR | FR-R1-008, FR-R1-010, FR-R1-085, FR-R1-138, FR-R1-139 |
+
+### S-R1-57 IAM: เปิดบัญชีกรรมการภายนอก
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ขอเปิดบัญชี ExternalPerson สำหรับกรรมการสอบทักษะพร้อมวันหมดอายุ |
+| บทบาท | head (sponsor), campus_itadmin |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | S-R1-37 > เพิ่มกรรมการภายนอก |
+| องค์ประกอบ/ฟิลด์หลัก | • ข้อมูลบุคคล + ช่องทางติดต่อ<br>• บทบาท judge + session + valid_to<br>• สถานะยืนยันตัวตน/ข้อตกลง<br>• StaffClearance (ถ้าทำงานกับผู้เยาว์ในโรงเรียนกีฬา) |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "valid_to เกินนโยบาย" |
+| สถานะ: สำเร็จ | "ส่งคำเชิญแล้ว" |
+| Validation | • valid_to ≤ วันสิ้นรอบ + 30 วัน [ต้องตรวจสอบ] |
+| ข้อความไทยหลัก | "บัญชีนี้จะหมดอายุอัตโนมัติวันที่ {date}" |
+| FR | FR-R1-018 |
+
+### S-R1-58 นำเข้าคะแนนจากกระดาษ (4-eyes)
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | นำเข้าคะแนนจากใบให้คะแนนสำรองแบบ dry-run และอนุมัติคนที่ 2 |
+| บทบาท | admission, head |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | S-R1-31 / S-R1-38 เมื่อมี paper fallback |
+| องค์ประกอบ/ฟิลด์หลัก | • อัปโหลด CSV/Excel (TIS-620/UTF-8)<br>• รายงาน dry-run รายแถว<br>• แนบสแกนใบให้คะแนน<br>• อนุมัติ (คนละคน) |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | "กำลังตรวจไฟล์…" |
+| สถานะ: ผิดพลาด | "แถว {n}: คะแนนเกินช่วง" |
+| สถานะ: สำเร็จ | "นำเข้าแล้ว {n} รายการ" |
+| Validation | • ผู้นำเข้า ≠ ผู้อนุมัติ<br>• ภายใน T+1 วันทำการ |
+| ข้อความไทยหลัก | "ปี พ.ศ. ในช่องวันที่ถูกแปลงเป็น ค.ศ. แล้ว — ตรวจก่อนยืนยัน" |
+| FR | FR-R1-077 |
+
+## 7. การเงิน (back-office)
+
+_คิว exception และการอนุมัติตามวงเงิน (SoD-10/11)_
+
+### S-R1-43 การเงิน: reconcile และ exception
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ติดตามการจับคู่ callback–statement–ใบแจ้งหนี้ และแก้รายการไม่ตรง |
+| บทบาท | finance |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | เมนูการเงิน |
+| องค์ประกอบ/ฟิลด์หลัก | • สรุปรายวัน: จับคู่อัตโนมัติ %, รายการค้าง<br>• คิว exception (ขาด/เกิน/ซ้ำ/หลังยกเลิก/statement-only) + SLA 2 วันทำการ<br>• การแก้: จับคู่มือ, สร้างคำขอคืน, เครดิตยกไป<br>• นำเข้าใบรับเงินชั่วคราว (paper fallback) |
+| สถานะ: ว่าง | "ไม่มีรายการค้าง" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "นำเข้า statement ไม่สำเร็จ — ดู job monitor" |
+| สถานะ: สำเร็จ | "แก้แล้ว" |
+| Validation | • การแก้ต้องมีเหตุผล |
+| ข้อความไทยหลัก | "จับคู่อัตโนมัติ {x}% (เป้า ≥ 99%)" |
+| FR | FR-R1-046, FR-R1-047, FR-R1-053 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-21, KPI-22 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-44 การเงิน: อนุมัติยกเว้น/คืนเงิน
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | อนุมัติคำขอยกเว้นค่าสมัครและคืนเงินตามวงเงิน |
+| บทบาท | finance (head/refund_approver), auditor (อ่าน) |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | inbox การเงิน |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการคำขอ + ผู้ตรวจ + วงเงิน<br>• หลักฐาน<br>• อนุมัติ/ปฏิเสธ (step-up)<br>• รายงาน exception รายเดือน (auditor) |
+| สถานะ: ว่าง | "ไม่มีคำขอ" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "เกินวงเงินอนุมัติของท่าน — ส่งต่อ {ผู้มีอำนาจ}" |
+| สถานะ: สำเร็จ | "อนุมัติแล้ว" |
+| Validation | • ผู้ตรวจ ≠ ผู้อนุมัติ<br>• วงเงินตามบทบาท |
+| ข้อความไทยหลัก | "ท่านเป็นผู้ตรวจคำขอนี้ จึงอนุมัติไม่ได้" |
+| FR | FR-R1-049, FR-R1-050 |
+
+## 8. คณะกรรมการ/ผู้อนุมัติ
+
+_inbox รวมทุกบทบาท อนุมัติบนมือถือได้ 1–2 แตะ พร้อม step-up (14 U6, U10, S-40)_
+
+### S-R1-45 Inbox ผู้อนุมัติและ role switcher ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | อนุมัติรอบ ผลคัดเลือก override ขยายเวลา อุทธรณ์ และประกาศ จากที่เดียว |
+| บทบาท | head, dean, campusvp, rector, finance, admission |
+| ช่องทาง | PWA, BO (อ้างเล่ม 14: S-40) |
+| ทางเข้า | แจ้งเตือน, digest รายวัน |
+| องค์ประกอบ/ฟิลด์หลัก | • ตัวสลับบทบาท × OrgUnit<br>• รายการรออนุมัติ + SLA + ป้ายด่วน<br>• หน้ารายละเอียด + diff + ผลกระทบ<br>• ปุ่มอนุมัติ/ส่งกลับ (step-up) แสดง "อนุมัติในฐานะ …" |
+| สถานะ: ว่าง | "ไม่มีงานรออนุมัติ" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ท่านเป็นผู้เสนอเรื่องนี้ จึงอนุมัติไม่ได้" |
+| สถานะ: สำเร็จ | "อนุมัติแล้ว" |
+| Validation | • SoD ทุกเรื่อง |
+| ข้อความไทยหลัก | "กำลังอนุมัติในฐานะ {บทบาท} {OrgUnit}" |
+| FR | FR-R1-007, FR-R1-009, FR-R1-017, FR-R1-081, FR-R1-094, FR-R1-101 |
+
+## 9. หน้าสาธารณะ
+
+_ไม่ต้อง login, CDN/static, ผ่านมาตรฐานความปลอดภัยเว็บไซต์ภาครัฐ_
+
+### S-R1-46 หน้าประกาศรับสมัคร เกณฑ์ rubric และรายชื่อ
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | เผยแพร่ประกาศรับสมัคร เกณฑ์ rubric รายชื่อผู้มีสิทธิ์สอบ/ผู้ผ่านแบบ mask และฉบับแก้ไข |
+| บทบาท | applicant |
+| ช่องทาง | เว็บสาธารณะ (CDN), X-CMS (อ้างเล่ม 14: S-01) |
+| ทางเข้า | เว็บวิทยาเขต, LINE OA, ค้นหา |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการประกาศต่อวิทยาเขต/รอบ (เลขที่/ปี พ.ศ.)<br>• PDF ลงนาม (PDF/UA) + HTML ที่อ่านได้<br>• ป้าย "ฉบับแก้ไข — แทนฉบับลงวันที่ …"<br>• rubric/น้ำหนัก/tie-break |
+| สถานะ: ว่าง | "ยังไม่มีประกาศ" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ไม่พบประกาศ" |
+| สถานะ: สำเร็จ | ประกาศ |
+| Validation | • — |
+| ข้อความไทยหลัก | "ประกาศฉบับนี้แก้ไขประกาศเลขที่ {no} ลงวันที่ {date}" |
+| FR | FR-R1-004, FR-R1-008, FR-R1-019, FR-R1-043, FR-R1-082, FR-R1-085 |
+
+### S-R1-47 ตรวจผลรายบุคคลและ waiting room ★
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ตรวจผลด้วยเลขผู้สมัคร + วันเกิดจาก shard บน CDN และเข้าคิวเมื่อมีผู้ใช้มาก |
+| บทบาท | candidate, applicant |
+| ช่องทาง | CDN static + PWA (อ้างเล่ม 14: S-05, S-37) |
+| ทางเข้า | แจ้งเตือนประกาศผล, หน้าประกาศ |
+| องค์ประกอบ/ฟิลด์หลัก | • ฟอร์มเลขผู้สมัคร + วันเกิด<br>• ผลแบบย่อ + ลิงก์ login ไปยืนยันสิทธิ์<br>• หน้าคิว: ลำดับ เวลาคาดการณ์ |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | หน้าคิว |
+| สถานะ: ผิดพลาด | "ไม่พบผล ตรวจเลขผู้สมัครและวันเกิด" |
+| สถานะ: สำเร็จ | ผลย่อ |
+| Validation | • bot challenge เมื่อพยายามหลายครั้ง |
+| ข้อความไทยหลัก | "ขณะนี้มีผู้ใช้จำนวนมาก คุณอยู่ลำดับที่ {n} ประมาณ {m} นาที" |
+| FR | FR-R1-083, FR-R1-130 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-17 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-48 หน้า ITA/OIT
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | แสดงข้อมูลเปิดเผยตาม OIT รวมสถิติรับสมัคร/ร้องเรียนแบบ aggregate |
+| บทบาท | applicant |
+| ช่องทาง | X-CMS (แสดงผลจาก RPT) (อ้างเล่ม 14: —) |
+| ทางเข้า | เว็บมหาวิทยาลัย |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการข้อ OIT + วันที่ snapshot + hash<br>• ตารางสถิติ (cell < 5 ซ่อน)<br>• ลิงก์ช่องทาง e-Service |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | — |
+| สถานะ: สำเร็จ | ข้อมูล OIT |
+| Validation | • — |
+| ข้อความไทยหลัก | "ข้อมูล ณ วันที่ {date} (snapshot)" |
+| FR | FR-R1-120, FR-R1-121 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-13 (นิยามในเล่ม 14 §12.1) |
+
+### S-R1-49 Status page
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | แจ้งสถานะบริการและเหตุขัดข้องระหว่างฤดูรับสมัคร |
+| บทบาท | ทุกคน |
+| ช่องทาง | สาธารณะ (อ้างเล่ม 14: S-37) |
+| ทางเข้า | ลิงก์จากข้อความ error ทุกหน้า |
+| องค์ประกอบ/ฟิลด์หลัก | • สถานะต่อบริการ (สมัคร, ชำระเงิน, ประกาศผล, LINE)<br>• เหตุที่กำลังแก้ + เวลาอัปเดต<br>• นโยบายขยายเวลา (ถ้ามี) |
+| สถานะ: ว่าง | "ทุกบริการทำงานปกติ" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | — |
+| สถานะ: สำเร็จ | สถานะ |
+| Validation | • — |
+| ข้อความไทยหลัก | "ระบบชำระเงินขัดข้อง {เวลา} — กำหนดเวลาที่ได้รับผลกระทบจะประกาศที่นี่" |
+| FR | FR-R1-130 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-17 (นิยามในเล่ม 14 §12.1) |
+
+## 10. ผู้ดูแลระบบและงานกำกับ
+
+_ADMIN ขั้นต่ำของ R1 และ RPT OIT_
+
+### S-R1-50 ADMIN: คำขอเปลี่ยน config (4-eyes)
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | เสนอ/ตรวจ/อนุมัติการเปลี่ยน config สำคัญพร้อม diff และวันที่มีผล |
+| บทบาท | module_admin, itadmin, finance, dpo |
+| ช่องทาง | BO (อ้างเล่ม 14: S-35) |
+| ทางเข้า | เมนู ADMIN |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการคำขอ + สถานะ<br>• diff ก่อน/หลัง<br>• วันที่มีผล<br>• maker/checker<br>• golden-file report (แม่แบบเอกสาร) |
+| สถานะ: ว่าง | "ไม่มีคำขอ" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ผู้เสนออนุมัติเองไม่ได้" |
+| สถานะ: สำเร็จ | "อนุมัติแล้ว มีผล {date}" |
+| Validation | • maker ≠ checker |
+| ข้อความไทยหลัก | "การเปลี่ยนนี้กระทบใบแจ้งหนี้ที่สร้างตั้งแต่ {date}" |
+| FR | FR-R1-123, FR-R1-124, FR-R1-128, FR-R1-129 |
+
+### S-R1-51 ADMIN: job และ integration monitor
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ติดตาม job (J-03/J-04/J-06/J-16/J-48/J-49) integration และ DLQ |
+| บทบาท | itadmin, dba_sre |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | เมนู ADMIN, alert |
+| องค์ประกอบ/ฟิลด์หลัก | • สถานะ job ล่าสุด/ถัดไป<br>• integration health (ธนาคาร, ThaID, LINE, SMS, TCAS)<br>• DLQ + replay<br>• feature flag (TCAS) อ่านอย่างเดียว (เปลี่ยนผ่าน 4-eyes) |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | แถบแดง + เวลาเหตุ |
+| สถานะ: สำเร็จ | ทุก job เขียว |
+| Validation | • replay ต้องระบุเหตุผล |
+| ข้อความไทยหลัก | "J-04 ล้มเหลว 2 รอบ — offer ที่รอประมวลผล {n}" |
+| FR | FR-R1-032, FR-R1-125, FR-R1-131 |
+
+### S-R1-52 ADMIN: break-glass และ JIT
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ขอ/อนุมัติ break-glass และ JIT พร้อมบันทึกและทบทวน |
+| บทบาท | itadmin, security_admin, vp, dpo |
+| ช่องทาง | BO (อ้างเล่ม 14: —) |
+| ทางเข้า | เมนู ADMIN (เฉพาะบทบาท) |
+| องค์ประกอบ/ฟิลด์หลัก | • แบบขอพร้อมเหตุผล/ticket<br>• ผู้อนุมัติ 1 และ 2<br>• ตัวจับเวลา<br>• งานทบทวน 24 ชม. |
+| สถานะ: ว่าง | — |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "รอผู้อนุมัติคนที่ 2" |
+| สถานะ: สำเร็จ | "เปิดใช้แล้ว — SOC ได้รับแจ้ง" |
+| Validation | • ผู้ขอ ≠ ผู้อนุมัติ |
+| ข้อความไทยหลัก | "ทุกคำสั่งในเซสชันนี้ถูกบันทึกแบบแก้ไขไม่ได้" |
+| FR | FR-R1-126, FR-R1-127 |
+
+### S-R1-53 RPT: OIT checklist
+
+| หัวข้อ | รายละเอียด |
+|---|---|
+| วัตถุประสงค์ | ทะเบียนข้อ OIT มอบหมายเจ้าของ ติดตามความครบ อนุมัติ และเผยแพร่ snapshot |
+| บทบาท | planner, data_owner, rector, pr |
+| ช่องทาง | BO (อ้างเล่ม 14: S-34) |
+| ทางเข้า | เมนู RPT |
+| องค์ประกอบ/ฟิลด์หลัก | • รายการข้อ OIT ต่อปีงบ + เจ้าของ + deadline + สถานะ<br>• แนบ/ลิงก์ข้อมูล (สถิติจากระบบอัตโนมัติ)<br>• อนุมัติ (rector)<br>• เผยแพร่ + snapshot hash |
+| สถานะ: ว่าง | "ยังไม่สร้างทะเบียนปีงบนี้" |
+| สถานะ: กำลังโหลด | — |
+| สถานะ: ผิดพลาด | "ขาดข้อมูล {n} ข้อ" |
+| สถานะ: สำเร็จ | "เผยแพร่แล้ว" |
+| Validation | • เผยแพร่ได้เมื่ออนุมัติแล้ว |
+| ข้อความไทยหลัก | "เหลือ {n} วันถึงปิด OIT (30 มิ.ย.)" |
+| FR | FR-R1-119, FR-R1-120, FR-R1-121, FR-R1-122 |
+| KPI ที่วัดจากหน้าจอนี้ | KPI-13 (นิยามในเล่ม 14 §12.1) |
+
+
+
+---
+
+<!-- ไฟล์ต้นฉบับ: docs/r1/r1-test-plan.md -->
+# R1 "รับสมัคร" — Test plan (TC-R1 / UAT-R1)
+
+> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · Release R1 "รับสมัคร" (go-live 1 ก.ย. 2571 = M18; ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือน — เล่ม 12 §1.3) · ภาษา: ไทย (ศัพท์เทคนิค/โค้ดเป็นภาษาอังกฤษ)
+> **ขอบเขต:** test case ทุกประเภทของ R1 และ UAT ที่วิทยาเขต pilot ชลบุรี/มหาสารคาม
+> **อ่านคู่กับ:** [README](README.md) · [00-blueprint](../00-blueprint.md) · [00-fix-decisions-v1.1](../00-fix-decisions-v1.1.md) (D-03, D-06, D-08) · [02 §2](../02-student-journey.md) · [05](../05-workflows.md) · [06](../06-modules.md) · [08](../08-data.md) · [10](../10-security-compliance.md) · [14](../14-ux-adoption.md) · [11-operations §4](../11-operations.md) · [r1-requirements](r1-requirements.md)
+
+## 1. วัตถุประสงค์ ขอบเขต และเกณฑ์
+
+- พิสูจน์ว่า FR/NFR ของ R1 ผ่านเกณฑ์ยอมรับ และระบบพร้อมสำหรับ **MS-1 (go/no-go 15 ส.ค. 2571)**
+- **เกณฑ์เข้า (entry):** feature-freeze 1 มิ.ย. 2571; MS-1a integration-ready (31 มี.ค. 2571: ThaID RP หรือ OTP fallback, Biller ID + Thai QR ผ่าน UAT ธนาคาร, ADM end-to-end บน staging); configuration รอบของ 2 วิทยาเขตใน namespace `uat`
+- **เกณฑ์ออก (exit) = เกณฑ์ MS-1 (เล่ม 12) + UAT exit (เล่ม 11 §4.4):** UAT ผ่าน ≥ 95% ของ business scenario, 0 Sev-1/Sev-2 ค้าง; load test ผู้สมัครพร้อมกัน ≥ 2,000 และหน้าประกาศผล 25,000 ครั้งใน 30 นาที; pen test ไม่มี High/Critical; DPIA D-01/D-02 อนุมัติ; reconcile ค่าสมัครใน rehearsal ตรง 100%; ซ้อมกู้ key "OpenBao สูญหาย" และ "HSM สูญหาย" ผ่าน; DR failover ผ่าน; usability R1 ผ่าน (task success ≥ 90%, SUS ≥ 70); helpdesk พร้อม; **นายทะเบียนและหัวหน้าการเงินของแต่ละวิทยาเขต pilot ลงนาม**
+- **Defect severity:** Sev-1 ระบบใช้ไม่ได้/ข้อมูลผิดทางการเงิน-ที่นั่ง-PDPA; Sev-2 flow หลักติดขัดไม่มีทางเลี่ยง (รวม typography T1–T5 ผิด และ a11y critical); Sev-3 มีทางเลี่ยง; Sev-4 ความสวยงาม
+
+## 2. สภาพแวดล้อมและข้อมูลทดสอบ
+
+| สภาพแวดล้อม | ใช้ทดสอบ | ข้อมูล |
+|---|---|---|
+| ci / test | unit, module, RLS cross-tenant, contract, a11y (axe), typography visual | synthetic 2 วิทยาเขต (+ วิทยาเขตจำลองที่ 3 สำหรับ NFR-R1-033) |
+| staging / perf | E2E, peak load, resilience, DR, pen test | synthetic ขนาดจริง: 12,000 ใบสมัครในรอบโควตา, 3,000 ผู้สอบทักษะ, 30,000 ผู้ดูผล |
+| uat (namespace ต่อ OrgUnit) | UAT ที่ชลบุรีและมหาสารคามด้วย config จริงของวิทยาเขต | synthetic ที่สร้างตามโปรไฟล์จริง — **ห้ามใช้ข้อมูลผู้สมัครจริง/ข้อมูลเด็กจริง** (08 §15); ผู้เข้าร่วม usability ที่เป็นผู้เยาว์ต้องมี consent ผู้ปกครอง (14 §14) |
+| ธนาคาร sandbox | callback/statement golden files (ไม่มี sandbox → golden file ตาม 11 §4.1) | — |
+
+## 3. สรุปจำนวน test case
+
+| ประเภท | จำนวน | วิธี |
+|---|---|---|
+| Functional (ฟังก์ชัน) | 142 | API + E2E; API + E2E (Playwright) |
+| Security (ความปลอดภัย) | 61 | Security; Security (API/DB, pen test) |
+| Negative (กรณีผิดปกติ) | 53 | API + E2E |
+| Accessibility (การเข้าถึง) | 35 | axe + manual; axe-core + manual screen reader |
+| PDPA (PDPA) | 25 | PDPA (API/DB/contract); PDPA review + test |
+| Performance (Peak load/ประสิทธิภาพ) | 10 | k6/Gatling |
+| Resilience (Resilience) | 3 | chaos/game day |
+| Usability (Usability) | 3 | usability/E2E |
+| Operations (ปฏิบัติการ) | 3 | ops drill |
+| DR (DR/กู้คืน) | 2 | DR drill |
+| Typography (Thai typography) | 2 | visual regression + veraPDF |
+| API contract (API contract) | 2 | spec lint + Pact |
+| **รวม** | **341** | |
+
+UAT scenario: **18** (หัวข้อ 9)
+
+## 4. Peak-load (สรุปจาก NFR-R1-001..007)
+
+| Scenario | ภาระคาด (07 §10.2) | ระดับทดสอบ | เกณฑ์ผ่าน | TC |
+|---|---|---|---|---|
+| ปิดรับสมัคร 48 ชม. สุดท้าย | 360 ใบ/ชม., ~20 RPS | 2× = 40 RPS / 2,000 VU 60 นาที; stress 3× | p95 อ่าน ≤ 300 ms เขียน ≤ 500 ms; 5xx ≤ 0.1% | TC-R1-264, TC-R1-265 |
+| ประกาศผล | 30/s เฉลี่ย, burst 300/s | 25,000 ครั้งใน 30 นาที + 300/s 10 นาที, ปิด origin | TTFB p95 ≤ 200 ms, origin ≈ 0 | TC-R1-266 |
+| Upload วิดีโอ | 36 Mbps | 108 วิดีโอ/ชม. + 360 ชุดเอกสาร บน 4G loss 2% | สำเร็จ ≥ 99% + resume | TC-R1-267 |
+| Judge sync | 33 รายการ/s | 50 เครื่อง × 200 × 2 รอบ (retry) | p95 batch ≤ 3 s, ไม่มีซ้ำ/หาย | TC-R1-268 |
+| ยืนยันสิทธิ์พร้อมกัน | 0.2/s | 500 คำขอ/10 s ต่อ bucket, 2 client/คน | invariant C-3, p95 ≤ 1 s | TC-R1-269 |
+| Mass expiry cascade | — | 1,000 offer หมดเวลาพร้อมกัน | ≤ 15 นาที | TC-R1-272, TC-R1-273 |
+| แจ้งผลทยอย | ≤ 2,000 ผู้รับ/นาที | 6,000 ผู้รับ | ครบ ≤ 4 นาที | TC-R1-272, TC-R1-273 |
+
+## 5. ความปลอดภัย (รวม RLS scope)
+
+- **RLS cross-campus:** ทุก repository/endpoint ของ ADM/FIN/CASE/PRIV/DOC/FAC/ENG ถูกเรียกด้วยผู้ใช้ `admission`/`finance`/`registrar` ของวิทยาเขต A กับข้อมูลวิทยาเขต B → 0 แถว/404 (NFR-R1-012); scope ปลอมด้วย `set_config` และ token ของ transaction อื่น → 0 แถว; lint ไม่มี `BYPASSRLS`
+- **Relationship scope:** judge-of-session (กรรมการเห็นเฉพาะ session ที่ได้รับมอบหมาย), care (nurse เห็นเฉพาะ roster ของ session), guardian-of (ผู้ปกครองเห็นเฉพาะผู้สมัครที่ผูก + CustodyRestriction deny-overrides), own (ผู้สมัครเห็นเฉพาะของตน — IDOR)
+- **C-11:** เจ้าหน้าที่ต่างวิทยาเขตเห็นเพียง "ยืนยันสิทธิ์ที่อื่นแล้ว"; `ConfirmationLock` ไม่ถูกอ่านโดย role เจ้าหน้าที่
+- **SoD:** SoD-03, 08, 10, 11, 14, 16, 23 (NFR-R1-018)
+- **การเงิน:** callback ปลอม/ซ้ำ/ไม่มี mTLS, QR ปลอม, ยอดถูกแก้ (NFR-R1-016)
+- **Pen test อิสระก่อน R1** ตามขอบเขต 11 §4.3
+
+## 6. Accessibility
+
+- axe-core ทุกหน้าจอ S-R1-01..58 ใน CI (0 critical) + ผู้ตรวจอิสระทุกหน้าจอ ★ (TC แยกต่อหน้าจอในหัวข้อ 8) + สุ่ม 20% ของหน้าจออื่น + PDF/UA ของประกาศ บัตรผู้สอบ ใบเสร็จ
+- Screen reader ภาษาไทย NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200%, LINE in-app browser; ผู้ใช้พิการจริง ≥ 3 คน (UAT-R1-12)
+
+## 7. PDPA และ consent
+
+- Consent matrix ตามอายุ (15/17/19/20 ปี) × กิจกรรม (ผูก LINE, ใบรับรองแพทย์, เผยแพร่ภาพ) (NFR-R1-020)
+- Health data boundary: schema scan + role analytics เชื่อม `hlt_vault` ไม่ได้ (NFR-R1-021); event payload contract test (NFR-R1-014)
+- Outbound minimisation ของ LINE/SMS (NFR-R1-022), mask/DLP ของรายชื่อสาธารณะ (FR-R1-085)
+- Retention: crypto-shred `SELECTION_MEDICAL` และ legal hold (FR-R1-068, NFR-R1-023); privacy gate ก่อน go-live (NFR-R1-019)
+
+## 8. รายการ test case
+
+| TC | ประเภท | อ้างอิง | ชื่อ | กำหนดให้ (Given) | เมื่อ (When) | ผลที่ต้องได้ (Then) | Pri | วิธี |
+|---|---|---|---|---|---|---|---|---|
+| TC-R1-001 | ฟังก์ชัน | FR-R1-001 | สร้างรอบจาก template/clone (#1) | `admission` วิทยาเขตชลบุรี (scope campus) และมีรอบ "โควตานักกีฬา 2571" ที่ปิดแล้ว | สร้างรอบ "โควตานักกีฬา 2572" โดยเลือก clone จากรอบ 2571 | ได้รอบสถานะ `draft` ที่ `org_unit_id` = ชลบุรี คัดลอก seat matrix, rule, scoring scheme, ค่าสมัคร และกำหนดการครบ โดยวันที่ทุก milestone เลื่อน +1 ปีและติดป้าย "ต้องตรวจวันที่" | P1 | API + E2E (Playwright) |
+| TC-R1-002 | ความปลอดภัย | FR-R1-001 | สร้างรอบจาก template/clone (#2) | `admission` วิทยาเขตมหาสารคาม | เรียก `GET /rounds/{roundId}` หรือ `PATCH` รอบของวิทยาเขตชลบุรี | ได้ 404 (ไม่เปิดเผยว่ามีรอบนั้น) และมี `AuditEvent` ผลการตัดสินสิทธิ์ = deny | P1 | Security (API/DB, pen test) |
+| TC-R1-003 | กรณีผิดปกติ | FR-R1-002 | Seat matrix และเพดานรับ (#1) | หลักสูตร ศษ.บ. พลศึกษา ชลบุรี มี `AccreditedIntakeCap` = 120 และรอบก่อนหน้าใช้ไป (confirmed + appeal_hold) 100 ที่ | ตั้งที่นั่งรอบใหม่ 30 ที่ | บันทึกไม่ได้ (422 `ADM-SEAT-CAP-EXCEEDED`) พร้อมข้อความ "เกินเพดานรับที่คุรุสภาอนุญาต เหลือ 20 ที่" | P1 | API + E2E |
+| TC-R1-004 | ฟังก์ชัน | FR-R1-002 | Seat matrix และเพดานรับ (#2) | bucket ฟุตบอลชาย 8 ที่ แบ่ง sub-bucket ผู้รักษาประตู 1 และผู้เล่นทั่วไป 7 พร้อมกติกา spill-over "ที่ว่างใน sub-bucket ไปยังลำดับรวมของ bucket" | บันทึก seat matrix | ระบบตรวจว่าผลรวม sub-bucket = bucket และบันทึกกติกา spill-over เป็นส่วนหนึ่งของประกาศที่จะเผยแพร่ | P1 | API + E2E (Playwright) |
+| TC-R1-005 | ฟังก์ชัน | FR-R1-003 | เกณฑ์คุณสมบัติแบบ DMN มีเวอร์ชัน (#1) | rule โควตาเรียนดี GPAX ≥ 2.75 จาก 5 ภาคเรียน และชุดทดสอบ 20 ราย | กด "ทดสอบกฎ" | ระบบแสดงผลผ่าน/ไม่ผ่านรายคนพร้อมเหตุผลภาษาไทยที่จะแสดงให้ผู้สมัคร และบันทึกผลทดสอบเป็นหลักฐานประกอบการอนุมัติ | P1 | API + E2E (Playwright) |
+| TC-R1-006 | กรณีผิดปกติ | FR-R1-003 | เกณฑ์คุณสมบัติแบบ DMN มีเวอร์ชัน (#2) | rule เวอร์ชัน 1 เผยแพร่แล้วและมีใบสมัครที่ประเมินแล้ว 50 ใบ | เจ้าหน้าที่แก้ GPAX ขั้นต่ำ | ระบบบังคับสร้างเวอร์ชัน 2 ผ่าน amendment (FR-R1-010) ใบสมัครเดิมคงอ้างเวอร์ชัน 1 และไม่มีการประเมินใหม่เงียบ ๆ | P1 | API + E2E |
+| TC-R1-007 | กรณีผิดปกติ | FR-R1-004 | Scoring scheme และ rubric สาธารณะ (#1) | scheme มีน้ำหนัก GPAX 30 + ทักษะ 50 + สัมภาษณ์ 30 | บันทึก | ปฏิเสธ (422 `ADM-WEIGHT-SUM`) "น้ำหนักรวมต้องเท่ากับ 100 (ปัจจุบัน 110)" | P1 | API + E2E |
+| TC-R1-008 | กรณีผิดปกติ | FR-R1-004 | Scoring scheme และ rubric สาธารณะ (#2) | scheme ตั้ง aggregation = ตัดสูงสุด-ต่ำสุด แต่ station มีกรรมการ 3 คน | บันทึก | ปฏิเสธพร้อมเหตุผล "ตัดสูงสุด-ต่ำสุดใช้ได้เมื่อมีกรรมการ ≥ 5 คน" | P1 | API + E2E |
+| TC-R1-009 | ฟังก์ชัน | FR-R1-004 | Scoring scheme และ rubric สาธารณะ (#3) | รอบอนุมัติแล้ว | ผู้ใช้ทั่วไปเปิดหน้าประกาศของรอบ | เห็น rubric รายสถานี น้ำหนัก และ tie-break ครบก่อนวันเปิดรับ | P1 | API + E2E (Playwright) |
+| TC-R1-010 | กรณีผิดปกติ | FR-R1-005 | กำหนดการรอบเป็นปฏิทิน + linter (#1) | รอบโควตาตั้ง `ADM_CONFIRM.start` ก่อน `ADM_RESULT_PUBLISH` + `ADM_APPEAL_WINDOW` + SLA ตัดสินอุทธรณ์ + 1 วันทำการ และไม่ได้เปิด appeal_hold | กดส่งอนุมัติ | ระบบไม่ให้ส่ง (linter L-15 = error) และชี้วันที่ที่ต้องแก้ | P1 | API + E2E |
+| TC-R1-011 | ฟังก์ชัน | FR-R1-005 | กำหนดการรอบเป็นปฏิทิน + linter (#2) | วันสอบทักษะของรอบทับช่วง `FINAL_EXAM` ของวิทยาเขต (L-9 = warning) | เจ้าหน้าที่กรอกเหตุผล "ใช้สนามนอกอาคารเรียน" แล้วส่ง | ส่งได้ และเหตุผลแสดงต่อผู้อนุมัติในหน้าอนุมัติ | P1 | API + E2E (Playwright) |
+| TC-R1-012 | กรณีผิดปกติ | FR-R1-006 | ค่าธรรมเนียม เอกสาร และข้อกำหนดทางกายในรอบ (#1) | แม่แบบประกาศรอบโควตานักกีฬายังไม่ได้กรอกหัวข้อ "ข้อกำหนดทางกายและการขอความช่วยเหลือในการสอบ" | ส่งอนุมัติ | ระบบไม่ให้ส่งและเน้นหัวข้อที่ขาด | P1 | API + E2E |
+| TC-R1-013 | ฟังก์ชัน | FR-R1-006 | ค่าธรรมเนียม เอกสาร และข้อกำหนดทางกายในรอบ (#2) | วิทยาเขตมหาสารคาม override ค่าสมัครจากค่าเริ่มต้นส่วนกลาง | ตั้งค่าในรอบ | รอบอ้าง `FeeSchedule` ที่ผ่าน 4-eyes แล้วเท่านั้น (FR-R1-123) และแสดงยอดในประกาศ | P1 | API + E2E (Playwright) |
+| TC-R1-014 | กรณีผิดปกติ | FR-R1-007 | สายอนุมัติรอบและลงนามประกาศ (#1) | ผู้ใช้คนเดียวมีบทบาท `admission` และ `head` (role switcher) | พยายามอนุมัติขั้น `head` ของรอบที่ตนส่ง | ระบบปฏิเสธ (403 `SOD-MAKER-CHECKER`) และบันทึก audit | P1 | API + E2E |
+| TC-R1-015 | ฟังก์ชัน | FR-R1-007 | สายอนุมัติรอบและลงนามประกาศ (#2) | `campusvp` อนุมัติรอบในวันที่ 35 วันก่อนเปิดรับ | กดอนุมัติพร้อม step-up MFA | สถานะรอบเป็น `approved` และ DOC สร้างประกาศ PDF/A ภาษาไทยที่ลงนามตามระดับใน signature policy [ต้องตรวจสอบ ระดับ S2/S3 ของประกาศผลคัดเลือก — เล่ม 10 §7.2] | P1 | API + E2E (Playwright) |
+| TC-R1-016 | กรณีผิดปกติ | FR-R1-007 | สายอนุมัติรอบและลงนามประกาศ (#3) | เหลือ 20 วันก่อนวันเปิดรับ | ส่งอนุมัติ | ระบบเตือน SLA ไม่ถึง 30 วัน ต้องบันทึกเหตุผลและแสดงต่อ `campusvp` | P1 | API + E2E |
+| TC-R1-017 | ฟังก์ชัน | FR-R1-008 | เผยแพร่รอบ (#1) | รอบอนุมัติแล้วและ `ADM_ROUND_APPLY.start` = 1 ต.ค. 2571 08:30 | `pr` เผยแพร่เมื่อ 20 ก.ย. 2571 | หน้าสาธารณะแสดงรอบพร้อมสถานะ "เปิดรับ 1 ต.ค. 2571 08:30" และปุ่มสมัครใช้ไม่ได้จนถึงเวลาเปิด | P1 | API + E2E (Playwright) |
+| TC-R1-018 | กรณีผิดปกติ | FR-R1-008 | เผยแพร่รอบ (#2) | ผู้สมัครเรียก `POST /applications` สำหรับรอบนี้ก่อนเวลาเปิด | ส่งคำขอ | ได้ 409 `ADM-WINDOW-CLOSED` พร้อมเวลาที่จะเปิด | P1 | API + E2E |
+| TC-R1-019 | ฟังก์ชัน | FR-R1-009 | ยกที่นั่งคงเหลือสู่รอบทั่วไปถัดไป (#1) | ทั่วไปรอบ 2 ปิดยืนยันสิทธิ์ เหลือที่นั่งคงเหลือ 12 ที่ และมี appeal_hold 1 ที่ | J-06 ทำงาน | ระบบสร้างข้อเสนอรอบ 3 ที่นั่ง 11 ที่ (ไม่รวมที่ hold) พร้อม clone กำหนดการ และส่งเข้าคิวอนุมัติแบบย่อของ `campusvp` | P1 | API + E2E (Playwright) |
+| TC-R1-020 | ฟังก์ชัน | FR-R1-010 | แก้ไขประกาศหลังเผยแพร่แบบมีห่วงโซ่ฉบับ (#1) | ประกาศโควตานักกีฬาเผยแพร่แล้วและมีผู้สมัคร 300 ราย | แก้ไขวันสอบทักษะผ่าน amendment ที่อนุมัติแล้ว | ประกาศฉบับแก้ไขมี `supersedes_id` ชี้ฉบับเดิม และผู้สมัคร 300 รายได้รับแจ้ง P1 พร้อมสรุปสิ่งที่เปลี่ยน | P2 | API + E2E (Playwright) |
+| TC-R1-021 | ฟังก์ชัน | FR-R1-011 | สร้างบัญชีด้วย ThaID หรือ OTP (#1) | ผู้สมัครอายุ 17 ปีมี ThaID | เลือก "เข้าสู่ระบบด้วย ThaID" และยินยอมส่ง pid ชื่อ วันเกิด | ได้บัญชีที่ `IdentityLink.ial` ตามที่ ThaID ส่ง ชื่อและวันเกิดถูกเติมอัตโนมัติ และไม่มีการขอ scope `address` | P1 | API + E2E (Playwright) |
+| TC-R1-022 | ฟังก์ชัน | FR-R1-011 | สร้างบัญชีด้วย ThaID หรือ OTP (#2) | ThaID ใช้ไม่ได้ (RP ยังไม่อนุมัติหรือระบบล่ม) | ผู้สมัครเลือกสมัครด้วยอีเมล + OTP และกรอกเลขบัตร | ได้บัญชีสถานะตัวตน "ยังไม่ยืนยัน" ที่สมัครได้ แต่ต้องยืนยันตัวตนก่อนยืนยันสิทธิ์หรือที่จุดรายงานตัว (FR-R1-013) | P1 | API + E2E (Playwright) |
+| TC-R1-023 | กรณีผิดปกติ | FR-R1-012 | Applicant master และการกันซ้ำ (#1) | ผู้สมัครกรอกเลขประจำตัวประชาชนที่ check digit ไม่ถูกต้อง | กดบันทึก | ระบบแจ้ง "เลขประจำตัวประชาชนไม่ถูกต้อง กรุณาตรวจหลักสุดท้าย" และไม่บันทึก | P1 | API + E2E |
+| TC-R1-024 | ฟังก์ชัน | FR-R1-012 | Applicant master และการกันซ้ำ (#2) | มี Person ที่ผูกเลขบัตร X อยู่แล้วจากการสมัครปีก่อน | ผู้ใช้สร้างบัญชีใหม่ด้วยเลขบัตร X และวันเกิดเดียวกัน | ระบบไม่สร้าง Person ใหม่ แต่พาไปขั้นกู้คืน/ผูกบัญชีเดิมด้วย OTP ไปยังช่องทางที่ลงทะเบียนไว้ (แสดงแบบ mask) | P1 | API + E2E (Playwright) |
+| TC-R1-025 | ความปลอดภัย | FR-R1-012 | Applicant master และการกันซ้ำ (#3) | ฐานข้อมูล core | ตรวจ schema และ log | เลขบัตรเก็บเป็น `value_enc` + `value_hmac` เท่านั้น ไม่ปรากฏเป็น plaintext ใน log, event payload หรือ URL | P1 | Security (API/DB, pen test) |
+| TC-R1-026 | กรณีผิดปกติ | FR-R1-013 | ระดับความน่าเชื่อถือของตัวตน (#1) | บัญชี `OTP_ONLY` ได้ offer และรอบตั้งค่า "ต้องยืนยันตัวตนก่อนยืนยันสิทธิ์" | กดยืนยันสิทธิ์ | ระบบพาไปยืนยันด้วย ThaID ก่อน และไม่ล็อกสถานะ `confirmed` จนกว่าจะผ่าน | P1 | API + E2E |
+| TC-R1-027 | ฟังก์ชัน | FR-R1-013 | ระดับความน่าเชื่อถือของตัวตน (#2) | ผู้สมัครต่างชาติไม่มี ThaID | ยื่นขอยืนยันตัวตนด้วย passport และนัด video call | เจ้าหน้าที่บันทึกผลเป็น `VIDEO_CALL` พร้อมผู้ตรวจและเวลา โดยไม่บันทึกวิดีโอ (A-119) | P1 | API + E2E (Playwright) |
+| TC-R1-028 | ฟังก์ชัน | FR-R1-014 | โปรไฟล์ผู้สมัครและการตรวจผู้เยาว์ (#1) | ผู้สมัครวันเกิด 3 ก.พ. 2554 ยื่นใบสมัครวันที่ 15 ต.ค. 2571 | ระบบคำนวณสถานะ | `is_minor = true` และระบบแจ้งให้เชิญผู้ปกครองก่อนขั้นที่ต้องใช้ความยินยอม (FR-R1-107) | P1 | API + E2E (Playwright) |
+| TC-R1-029 | ฟังก์ชัน | FR-R1-014 | โปรไฟล์ผู้สมัครและการตรวจผู้เยาว์ (#2) | ผู้สมัครพิมพ์ชื่อโรงเรียนเดิมบางส่วน "สาธิต" | ค้นหา | ระบบเสนอรายชื่อจาก reference dataset โรงเรียน (สพฐ./สังกัดอื่น) เรียงตาม collation ภาษาไทย และเลือกได้ | P1 | API + E2E (Playwright) |
+| TC-R1-030 | ความปลอดภัย | FR-R1-015 | ความปลอดภัยของบัญชีผู้สมัคร (#1) | IP เดียวขอ OTP ไปยังเบอร์ต่างกัน 30 เบอร์ใน 10 นาที | คำขอที่ 11 เป็นต้นไป | ถูกปฏิเสธ 429 พร้อม `Retry-After` และข้อความไทย และเกิด alert เมื่อยอด SMS รายวันเกินงบ | P1 | Security (API/DB, pen test) |
+| TC-R1-031 | การเข้าถึง | FR-R1-015 | ความปลอดภัยของบัญชีผู้สมัคร (#2) | ผู้ใช้ screen reader สมัครบัญชี | ผ่านขั้น bot challenge | ไม่มี CAPTCHA รูปภาพ (WCAG 3.3.8) และทำงานได้ด้วยคีย์บอร์ด | P1 | axe-core + manual screen reader |
+| TC-R1-032 | ฟังก์ชัน | FR-R1-016 | โหมดเจ้าหน้าที่ช่วยกรอก (assisted) (#1) | ผู้สมัครไม่มีสมาร์ตโฟนมาที่จุดบริการวิทยาเขตมหาสารคาม | เจ้าหน้าที่เปิด assisted session และกรอกใบสมัครแทน แล้วผู้สมัครอ่านรหัส OTP ที่ได้ทาง SMS ให้เจ้าหน้าที่ | ใบสมัครถูกยื่นในชื่อผู้สมัคร โดย audit แสดง actor = เจ้าหน้าที่ และ on_behalf_of = ผู้สมัคร | P2 | API + E2E (Playwright) |
+| TC-R1-033 | ความปลอดภัย | FR-R1-016 | โหมดเจ้าหน้าที่ช่วยกรอก (assisted) (#2) | assisted session หมดอายุ (30 นาที) หรือถูกปิด | เจ้าหน้าที่เปิดใบสมัครเดิม | ได้ 403 และต้องเปิด session ใหม่พร้อม OTP ใหม่ | P2 | Security (API/DB, pen test) |
+| TC-R1-034 | ฟังก์ชัน | FR-R1-017 | Role switcher สำหรับบุคลากร (#1) | อาจารย์มีบทบาท `judge` (ROUND) และ `head.selection_chair` | สลับไปบทบาท `head` | เมนูและ inbox เปลี่ยนตามบทบาท และหน้าอนุมัติแสดง "กำลังอนุมัติในฐานะ ประธานคณะกรรมการคัดเลือก วิทยาเขตชลบุรี" | P2 | API + E2E (Playwright) |
+| TC-R1-035 | ฟังก์ชัน | FR-R1-018 | บัญชีกรรมการภายนอก (sponsor-based) (#1) | `head` ขอเปิดบัญชีกรรมการจากสมาคมวอลเลย์บอลสำหรับรอบโควตา valid_to = 31 ธ.ค. 2571 | กรรมการยืนยันตัวตนด้วย ThaID และยอมรับข้อตกลง | บัญชีใช้งานได้เฉพาะ session ที่ได้รับมอบหมาย และหมดสิทธิ์อัตโนมัติ 1 ม.ค. 2572 | P1 | API + E2E (Playwright) |
+| TC-R1-036 | กรณีผิดปกติ | FR-R1-018 | บัญชีกรรมการภายนอก (sponsor-based) (#2) | กรรมการภายนอกยังไม่ยอมรับข้อตกลงรักษาความลับ | ดาวน์โหลด offline pack | ได้ 403 `IAM-AGREEMENT-REQUIRED` | P1 | API + E2E |
+| TC-R1-037 | ฟังก์ชัน | FR-R1-019 | ค้นหารอบที่เปิดและมีสิทธิ์ (#1) | ผู้ใช้ไม่ login เปิดหน้าแรก | กรองช่องทาง "โควตานักกีฬา" วิทยาเขต "ชลบุรี" | เห็นรอบ หลักสูตร ชนิดกีฬา ที่นั่ง ค่าสมัคร และกำหนดการ (ปี พ.ศ.) โดยไม่ต้อง login | P1 | API + E2E (Playwright) |
+| TC-R1-038 | ฟังก์ชัน | FR-R1-019 | ค้นหารอบที่เปิดและมีสิทธิ์ (#2) | ผู้สมัครยืนยันสิทธิ์โควตาชลบุรีแล้ว | เปิดรอบทั่วไป 1 กรุงเทพ | เห็นแถบเตือน "คุณยืนยันสิทธิ์แล้ว 1 ที่ หากต้องการสมัครรอบนี้ต้องสละสิทธิ์เดิมก่อน (เหลือสิทธิ์สละ 1 ครั้ง)" | P1 | API + E2E (Playwright) |
+| TC-R1-039 | ฟังก์ชัน | FR-R1-020 | ใบสมัครหลายขั้นแบบบันทึกร่างและหลายอันดับ (#1) | ผู้สมัครกรอกใบสมัครถึงขั้นที่ 3 แล้วสัญญาณหลุด | เปิดใหม่ในอีก 2 วันบนอุปกรณ์อื่น | ข้อมูลขั้น 1–3 ยังอยู่ และระบบพาไปขั้นที่ค้าง | P1 | API + E2E (Playwright) |
+| TC-R1-040 | กรณีผิดปกติ | FR-R1-020 | ใบสมัครหลายขั้นแบบบันทึกร่างและหลายอันดับ (#2) | รอบตั้ง N = 3 | เพิ่มอันดับที่ 4 ของวิทยาเขตเดียวกัน | ระบบไม่ให้เพิ่มและแจ้ง "เลือกได้สูงสุด 3 หลักสูตรต่อรอบต่อวิทยาเขต" | P1 | API + E2E |
+| TC-R1-041 | กรณีผิดปกติ | FR-R1-021 | ตรวจคุณสมบัติทันทีก่อนชำระเงิน (#1) | รอบโควตาเรียนดีกำหนด GPAX ≥ 2.75 จาก 5 ภาคเรียน และผู้สมัครกรอก 2.50 | ไปขั้นถัดไป | ระบบแสดง "GPAX 2.50 ต่ำกว่าเกณฑ์ 2.75 ของรอบนี้ — ดูรอบทั่วไปที่เปิดอยู่" และไม่สร้างใบแจ้งชำระ | P1 | API + E2E |
+| TC-R1-042 | ฟังก์ชัน | FR-R1-021 | ตรวจคุณสมบัติทันทีก่อนชำระเงิน (#2) | ผู้สมัครผ่านเกณฑ์ 2 จาก 3 อันดับ | ไปขั้นชำระเงิน | ระบบออกใบแจ้งชำระเฉพาะอันดับที่ผ่าน และแสดงอันดับที่ไม่ผ่านพร้อมเหตุผล | P1 | API + E2E (Playwright) |
+| TC-R1-043 | ฟังก์ชัน | FR-R1-022 | ช่วยกรอก GPAX จาก ปพ.1 (#1) | ผู้สมัครอัปโหลด ปพ.1 ที่อ่าน GPAX ได้ 3.12 แต่กรอก 3.21 | ยื่นใบสมัคร | คิวตรวจเอกสารแสดงธง "GPAX ไม่ตรงกับเอกสาร (กรอก 3.21 / อ่านได้ 3.12)" ให้ `admission` ตัดสิน | P2 | API + E2E (Playwright) |
+| TC-R1-044 | ฟังก์ชัน | FR-R1-023 | ช่องทางโควตาเรียนดี (#1) | รอบโควตาเรียนดีวิทยาเขตชลบุรีเปิด | ผู้สมัครเลือกช่องทางนี้ | ฟอร์มแสดงเฉพาะฟิลด์ GPAX/แผนการเรียน/เอกสารตาม checklist ของช่องทาง และไม่แสดงส่วนผลงานกีฬา | P1 | API + E2E (Playwright) |
+| TC-R1-045 | กรณีผิดปกติ | FR-R1-024 | ช่องทางโควตานักกีฬา: sport profile และผลงาน (#1) | ผู้สมัครยื่นใบสมัครรุ่นน้ำหนัก ≤ 57 กก. แล้ว | แก้เป็นรุ่น ≤ 60 กก. | ระบบไม่ให้แก้และแจ้ง "รุ่นน้ำหนักเปลี่ยนไม่ได้หลังยื่นใบสมัคร" | P1 | API + E2E |
+| TC-R1-046 | ฟังก์ชัน | FR-R1-024 | ช่องทางโควตานักกีฬา: sport profile และผลงาน (#2) | ผู้สมัครเพิ่มผลงาน "กีฬาเยาวชนแห่งชาติ เหรียญเงิน 2570" | บันทึก | ระบบจับคู่รายการกับ competition master เป็นระดับ L2 คะแนนตามตาราง config และตรวจว่าวันที่อยู่ในช่วงที่ประกาศ | P1 | API + E2E (Playwright) |
+| TC-R1-047 | กรณีผิดปกติ | FR-R1-024 | ช่องทางโควตานักกีฬา: sport profile และผลงาน (#3) | ผลงานลงวันที่ก่อนช่วงที่ประกาศ (เช่น ย้อนหลังเกิน 5 ปี) | บันทึก | ระบบรับไว้แต่ทำเครื่องหมาย "ไม่นับคะแนน — นอกช่วงวันที่" | P1 | API + E2E |
+| TC-R1-048 | ฟังก์ชัน | FR-R1-025 | สถานะ provisionally_eligible ระหว่างรอสมาคมยืนยัน (#1) | ผลงาน L1 ของผู้สมัครรอหนังสือตอบจากสมาคม | ถึงวันจัดตารางสอบ | ผู้สมัครได้ slot สอบตามปกติและ tracker แสดง "มีสิทธิ์สอบแบบมีเงื่อนไข — รอยืนยันผลงาน" | P1 | API + E2E (Playwright) |
+| TC-R1-049 | กรณีผิดปกติ | FR-R1-025 | สถานะ provisionally_eligible ระหว่างรอสมาคมยืนยัน (#2) | ถึง deadline ยืนยันผลงานแต่สมาคมยังไม่ตอบ | `admission` สั่งคำนวณผล | ระบบไม่นับคะแนนผลงานรายการนั้น (หรือตามกติกาที่ประกาศ) และบันทึกเหตุผลให้ผู้สมัครเห็น | P1 | API + E2E |
+| TC-R1-050 | กรณีผิดปกติ | FR-R1-026 | ช่องทางทั่วไปรายรอบ (#1) | ผู้สมัคร `confirmed` โควตานักกีฬาชลบุรี | เรียก `POST /applications` รอบทั่วไป 1 มหาสารคาม | ได้ 409 `ADM-CONFIRMED-ELSEWHERE` พร้อม link ไปหน้าสละสิทธิ์ (ไม่บอกวิทยาเขตต่อเจ้าหน้าที่อื่นตาม C-11) | P1 | API + E2E |
+| TC-R1-051 | ฟังก์ชัน | FR-R1-026 | ช่องทางทั่วไปรายรอบ (#2) | รอบ 5 ประกาศผล 8 มิ.ย. 2572 และกำหนดรายงานตัว 9 มิ.ย. | ผู้ผ่านกดยืนยันสิทธิ์ | หน้าเดียวพาไปชำระ QR และเลือกรายงานตัวออนไลน์/ที่จุดบริการต่อทันที | P1 | API + E2E (Playwright) |
+| TC-R1-052 | ฟังก์ชัน | FR-R1-027 | ช่องทางโควตาภายในจากโรงเรียนกีฬา (#1) | นักเรียน ม.6 โรงเรียนกีฬาสุพรรณบุรีอายุ 17 ปีเลือกช่องทางโควตาภายใน | ผู้ปกครองให้ความยินยอม `TALENT_PATHWAY_TRANSFER` และ `sschool_dir` อัปโหลดเอกสารรับรองที่ลงนาม | ใบสมัครเข้าคิวตรวจคุณสมบัติตามโควตาภายในโดยไม่ต้องให้นักเรียนอัปโหลด ปพ.1 ซ้ำ | P2 | API + E2E (Playwright) |
+| TC-R1-053 | PDPA | FR-R1-027 | ช่องทางโควตาภายในจากโรงเรียนกีฬา (#2) | ผู้ปกครองไม่ยินยอมให้ส่งข้อมูล | นักเรียนยื่นใบสมัคร | ระบบไม่ส่งข้อมูลจากโรงเรียน และแจ้งให้สมัครช่องทางปกติด้วยเอกสารของตนเองแทน | P2 | PDPA (API/DB/contract) |
+| TC-R1-054 | ฟังก์ชัน | FR-R1-028 | คำขอ accommodation ในการสอบ (#1) | ผู้สมัครใช้รถเข็นยื่นคำขอ 15 วันทำการก่อนสอบ | `dss` อนุมัติ "ห้องสอบชั้น 1 + เวลาเพิ่ม 50%" | slot และห้องสอบถูกจัดใหม่อัตโนมัติ และกรรมการเห็นเพียงธง "+50% เวลา, ห้องชั้น 1" | P1 | API + E2E (Playwright) |
+| TC-R1-055 | PDPA | FR-R1-028 | คำขอ accommodation ในการสอบ (#2) | `admission` และ `judge` เปิดใบสมัครของผู้สมัครนี้ | ดูรายละเอียด | ไม่เห็นประเภทความพิการหรือหลักฐาน เห็นเฉพาะแผนการปรับที่อนุมัติ | P1 | PDPA (API/DB/contract) |
+| TC-R1-056 | ฟังก์ชัน | FR-R1-028 | คำขอ accommodation ในการสอบ (#3) | ยื่นคำขอ 4 วันทำการก่อนสอบ | ส่งคำขอ | ระบบรับเป็น provisional accommodation วันสอบ และแจ้ง `dss`/`admission` ให้เตรียมหน้างาน | P1 | API + E2E (Playwright) |
+| TC-R1-057 | ฟังก์ชัน | FR-R1-029 | ผู้สมัครต่างชาติ (ขั้นต่ำ) (#1) | ผู้สมัครเลือกภาษาอังกฤษ | กรอกใบสมัครทุกขั้น | ทุก label ข้อความ error และอีเมลเป็นภาษาอังกฤษ และวันที่แสดงเป็น ค.ศ. | P2 | API + E2E (Playwright) |
+| TC-R1-058 | ฟังก์ชัน | FR-R1-030 | ช่องทางรับโอน/เทียบโอน (intake) (#1) | ช่องทาง TRANSFER เปิดด้วย feature flag สำหรับหลักสูตรหนึ่ง | ผู้สมัครยื่นพร้อมทรานสคริปต์ | ใบสมัครอยู่สถานะ `submitted` พร้อมงานรอเทียบโอนที่จะส่งต่อ CUR เมื่อ R2 พร้อม | P3 | API + E2E (Playwright) |
+| TC-R1-059 | ฟังก์ชัน | FR-R1-031 | ช่องทางบัณฑิตศึกษา (ถ้าผ่าน go/no-go) (#1) | หลักสูตร ศษ.ม. ตั้งขั้นต่ำการเปิด 10 คนแต่มีผู้ผ่าน 6 คน | `gradschool` บันทึกตัดสินไม่เปิด | ระบบเสนอทางเลือก (ภาคพิเศษ/รอบถัดไป/วิทยาเขตอื่น) ให้ผู้ผ่านก่อน แล้วสร้างคำขอคืนเงินให้ผู้ไม่รับข้อเสนอ | P3 | API + E2E (Playwright) |
+| TC-R1-060 | ฟังก์ชัน | FR-R1-032 | TCAS adapter (ปิดโดยค่าเริ่มต้น) (#1) | flag TCAS ปิด (ค่าเริ่มต้น) | ถึงเวลา J-05 | job ไม่ทำงานและไม่มีการเรียก API ภายนอก | P3 | API + E2E (Playwright) |
+| TC-R1-061 | ฟังก์ชัน | FR-R1-032 | TCAS adapter (ปิดโดยค่าเริ่มต้น) (#2) | flag เปิดสำหรับหลักสูตรหนึ่งและไฟล์นำเข้าพบผู้ยืนยันสิทธิ์ที่อื่นใน myTCAS | นำเข้าไฟล์ | ผู้สมัครคนนั้นถูกปิดสิทธิ์ยืนยันใน มกช. และหน้าเจ้าหน้าที่แสดงสถานะทั้งสองระบบ | P3 | API + E2E (Playwright) |
+| TC-R1-062 | ฟังก์ชัน | FR-R1-033 | ยื่นใบสมัครและใบรับอิเล็กทรอนิกส์ (#1) | ใบสมัครครบทุกขั้น | กดยื่น (ส่ง `Idempotency-Key`) | ได้เลขใบสมัคร เช่น `2572CB-QA-00123`, ใบรับ PDF ที่มีเลขรับและเวลา และ event `adm.ApplicationSubmitted` 1 ครั้ง | P1 | API + E2E (Playwright) |
+| TC-R1-063 | กรณีผิดปกติ | FR-R1-033 | ยื่นใบสมัครและใบรับอิเล็กทรอนิกส์ (#2) | ผู้สมัครกดยื่นซ้ำด้วย `Idempotency-Key` เดิมเพราะเน็ตหลุด | ส่งคำขอซ้ำ | ได้ผลลัพธ์เดิม (200) ไม่มีใบสมัครหรือ event ซ้ำ | P1 | API + E2E |
+| TC-R1-064 | กรณีผิดปกติ | FR-R1-033 | ยื่นใบสมัครและใบรับอิเล็กทรอนิกส์ (#3) | ยังไม่อัปโหลดเอกสารบังคับ 1 รายการ | กดยื่น | ระบบแสดงรายการที่ขาดพร้อมลิงก์ไปขั้นนั้น และไม่ยื่น | P1 | API + E2E |
+| TC-R1-065 | ฟังก์ชัน | FR-R1-034 | ถอนใบสมัคร (#1) | ใบสมัครชำระแล้วและยังไม่ประกาศผู้มีสิทธิ์สอบ | ผู้สมัครถอนอันดับหนึ่ง | อันดับนั้นเป็น `withdrawn` ระบบแสดงข้อความเรื่องค่าสมัครตามประกาศของรอบ และ tracker อัปเดต | P2 | API + E2E (Playwright) |
+| TC-R1-066 | ฟังก์ชัน | FR-R1-035 | บันทึกทุจริตในการคัดเลือก (#1) | เจ้าหน้าที่ตรวจพบเกียรติบัตรที่ hash ซ้ำกับผู้สมัครอีกคนและยืนยันว่าปลอม | บันทึกเหตุทุจริต | ใบสมัครเป็น `suspended`, มี CaseFile อ้างอิง และผู้สมัครได้รับหนังสือแจ้งพร้อมช่องทางชี้แจง | P2 | API + E2E (Playwright) |
+| TC-R1-067 | ฟังก์ชัน | FR-R1-036 | อัปโหลดแบบ resumable และสแกนความปลอดภัย (#1) | ผู้สมัครอัปโหลดวิดีโอ 150 MB บนเครือข่าย 4G แล้วสัญญาณหลุดที่ 60% | กลับมาเปิดหน้าเดิม | การอัปโหลดต่อจาก 60% ได้ ไม่ต้องเริ่มใหม่ | P1 | API + E2E (Playwright) |
+| TC-R1-068 | ความปลอดภัย | FR-R1-036 | อัปโหลดแบบ resumable และสแกนความปลอดภัย (#2) | ไฟล์นามสกุล .pdf แต่ magic bytes เป็น executable | อัปโหลดเสร็จ | ไฟล์ถูกกักใน quarantine 30 วัน ผู้สมัครได้ข้อความกลาง "ไฟล์นี้ใช้ไม่ได้ กรุณาอัปโหลดใหม่" และ `security_admin` ได้ alert | P1 | Security (API/DB, pen test) |
+| TC-R1-069 | PDPA | FR-R1-036 | อัปโหลดแบบ resumable และสแกนความปลอดภัย (#3) | รูปถ่ายของผู้สมัครผู้เยาว์มีพิกัด GPS ใน EXIF | ไฟล์ผ่านการสแกน | ไฟล์ใน bucket clean ไม่มี EXIF/GPS | P1 | PDPA (API/DB/contract) |
+| TC-R1-070 | ฟังก์ชัน | FR-R1-037 | Checklist เอกสารและการตรวจอัตโนมัติ (#1) | รอบโควตานักกีฬากำหนด 5 เอกสาร และผู้สมัครอัปโหลด 4 | เปิดขั้นตรวจทาน | checklist แสดง 4 ✓ และ 1 รายการขาดเป็นข้อความ (ไม่ใช้สีอย่างเดียว) พร้อมปุ่มอัปโหลด | P1 | API + E2E (Playwright) |
+| TC-R1-071 | ฟังก์ชัน | FR-R1-038 | คิวตรวจเอกสารของเจ้าหน้าที่ (#1) | คิวมีใบสมัคร 400 ใบและเจ้าหน้าที่ 4 คน | หัวหน้างานกด "กระจายงาน" | งานถูกแบ่งเท่า ๆ กัน และแต่ละคนเห็นเฉพาะงานของตน (ยกเว้นหัวหน้า) พร้อมนับ SLA | P1 | API + E2E (Playwright) |
+| TC-R1-072 | กรณีผิดปกติ | FR-R1-038 | คิวตรวจเอกสารของเจ้าหน้าที่ (#2) | เจ้าหน้าที่เลือก reject โดยไม่กรอกเหตุผล | บันทึก | ระบบไม่บันทึกและแจ้ง "กรุณาระบุเหตุผลที่ผู้สมัครจะเห็น" | P1 | API + E2E |
+| TC-R1-073 | ฟังก์ชัน | FR-R1-039 | ขอเอกสารเพิ่มพร้อมกำหนดเวลา (#1) | เจ้าหน้าที่ขอ "หนังสือรับรองผลการเรียนฉบับลงนาม" deadline 3 วัน | ผู้สมัครอัปโหลดในวันที่ 2 | งานกลับเข้าคิวของเจ้าหน้าที่เดิมพร้อมป้าย "ส่งเพิ่มแล้ว" | P1 | API + E2E (Playwright) |
+| TC-R1-074 | กรณีผิดปกติ | FR-R1-039 | ขอเอกสารเพิ่มพร้อมกำหนดเวลา (#2) | ผู้สมัครไม่ส่งเอกสารภายใน deadline | พ้น deadline | อันดับเป็น `ineligible` ผู้สมัครได้รับแจ้งเหตุผลและลิงก์ขอทบทวน (W-18) | P1 | API + E2E |
+| TC-R1-075 | ความปลอดภัย | FR-R1-040 | ผู้ตรวจคนที่ 2 สุ่มตรวจ (#1) | ผู้ตรวจ A verify ใบสมัคร X และถูกสุ่มเข้าคิวผู้ตรวจคนที่ 2 | ผู้ตรวจ A เปิดงานผู้ตรวจคนที่ 2 ของ X | ระบบไม่ให้ตัดสิน (SoD) และกระจายให้ผู้ตรวจคนอื่น | P2 | Security (API/DB, pen test) |
+| TC-R1-076 | ฟังก์ชัน | FR-R1-041 | ตรวจหลักฐานผลงานกีฬาและหนังสือถึงสมาคม (#1) | ผู้สมัคร 2 คนแนบไฟล์เกียรติบัตรที่ hash เดียวกัน | ระบบตรวจหลังยื่น | สร้างธง "หลักฐานซ้ำข้ามผู้สมัคร" ในงานตรวจของทั้งสองใบ | P1 | API + E2E (Playwright) |
+| TC-R1-077 | ฟังก์ชัน | FR-R1-041 | ตรวจหลักฐานผลงานกีฬาและหนังสือถึงสมาคม (#2) | `admission` เลือกผลงาน 25 รายการของสมาคมเดียวกัน | สร้างหนังสือขอยืนยัน | DOC สร้างหนังสือ 1 ฉบับพร้อมรายการแนบ (ไม่มีเลขบัตรเต็ม) และระบบนับ deadline ตอบกลับ | P1 | API + E2E (Playwright) |
+| TC-R1-078 | ฟังก์ชัน | FR-R1-042 | เก็บ hash เอกสารเพื่อใช้ซ้ำตอนรายงานตัว (#1) | ผู้ผ่านยืนยันสิทธิ์และชำระแล้ว | ระบบสร้าง handoff | handoff มีรายการเอกสาร hash ผลตรวจ และผู้ตรวจ โดย registrar เห็นโดยไม่ต้องให้ผู้สมัครอัปโหลดใหม่ | P2 | API + E2E (Playwright) |
+| TC-R1-079 | ฟังก์ชัน | FR-R1-043 | ประกาศผู้มีสิทธิ์สอบ (#1) | ตรวจคุณสมบัติครบ 1,200 ใบ ผู้มีสิทธิ์ 1,050 | `admission` เผยแพร่รายชื่อหลังอนุมัติ | PDF รายชื่อ (เลขผู้สมัคร + ชื่อแบบ mask ตามกติกา DPO) ถูกเผยแพร่ ผู้มีสิทธิ์ 1,050 คนได้แจ้งเตือนพร้อมลิงก์บัตรผู้สอบ และ 150 คนได้เหตุผล | P1 | API + E2E (Playwright) |
+| TC-R1-080 | PDPA | FR-R1-043 | ประกาศผู้มีสิทธิ์สอบ (#2) | ร่างรายชื่อมีคอลัมน์เลขประจำตัวประชาชน | กดเผยแพร่ | DLP check ของ ENG บล็อกการเผยแพร่และแจ้งคอลัมน์ที่ผิดกติกา | P1 | PDPA (API/DB/contract) |
+| TC-R1-081 | ฟังก์ชัน | FR-R1-044 | ใบแจ้งชำระค่าสมัคร Thai QR (#1) | ใบสมัครผ่านเกณฑ์และค่าสมัครวิทยาเขตชลบุรี 400 บาท [ตัวอย่าง] | ผู้สมัครไปขั้นชำระ | ได้ใบแจ้งหนี้ 1 ใบ QR มี Ref1 = เลขใบแจ้งหนี้ Ref2 = รหัสวิทยาเขต+รอบ และยอด 400.00 บาท | P1 | API + E2E (Playwright) |
+| TC-R1-082 | ความปลอดภัย | FR-R1-044 | ใบแจ้งชำระค่าสมัคร Thai QR (#2) | ผู้รับลิงก์ชำระแทน (เช่น ญาติ) เปิดลิงก์ | ดูหน้า | เห็นเพียงชื่อแบบ mask ยอดเงิน และ QR ไม่เห็นข้อมูลใบสมัครอื่น | P1 | Security (API/DB, pen test) |
+| TC-R1-083 | ฟังก์ชัน | FR-R1-045 | ชำระบนมือถือเครื่องเดียวกับแอปธนาคาร (#1) | ผู้สมัครใช้มือถือเครื่องเดียว | กด "บันทึกรูป QR" | ได้ไฟล์ PNG ที่มียอดเงิน Ref1/Ref2 และวันหมดอายุอยู่ในรูป พร้อมคำแนะนำ "เปิดแอปธนาคาร > สแกน > เลือกรูปจากอัลบั้ม" | P1 | API + E2E (Playwright) |
+| TC-R1-084 | กรณีผิดปกติ | FR-R1-045 | ชำระบนมือถือเครื่องเดียวกับแอปธนาคาร (#2) | ผู้สมัครกดปุ่มชำระ 5 ครั้งเพราะหน้าโหลดช้า | ระบบได้รับ 5 คำขอ | มีใบแจ้งหนี้เดียว (idempotent ต่อใบสมัคร × รายการ) และ QR เดิม | P1 | API + E2E |
+| TC-R1-085 | ฟังก์ชัน | FR-R1-045 | ชำระบนมือถือเครื่องเดียวกับแอปธนาคาร (#3) | ผู้สมัครกลับจากแอปธนาคารก่อน callback มาถึง | เปิดหน้าสถานะ | แสดง "รอยืนยันจากธนาคาร" ไม่ใช่ "ยังไม่ชำระ" และปุ่มตรวจสถานะอีกครั้ง | P1 | API + E2E (Playwright) |
+| TC-R1-086 | ความปลอดภัย | FR-R1-046 | รับ payment notification จากธนาคาร (#1) | callback ที่ลายเซ็นไม่ถูกต้องหรือไม่มี client certificate | ส่งมาที่ endpoint | ถูกปฏิเสธ (401/403) ไม่มีการตัดหนี้ และมี security alert | P1 | Security (API/DB, pen test) |
+| TC-R1-087 | กรณีผิดปกติ | FR-R1-046 | รับ payment notification จากธนาคาร (#2) | ธนาคารส่ง callback `bank_txn_ref` เดิมซ้ำ 3 ครั้ง | ระบบรับ | ตัดหนี้ 1 ครั้ง ตอบ 200 ทุกครั้ง และไม่มีใบเสร็จซ้ำ | P1 | API + E2E |
+| TC-R1-088 | กรณีผิดปกติ | FR-R1-046 | รับ payment notification จากธนาคาร (#3) | ยอดที่ชำระ 300 บาท แต่ใบแจ้งหนี้ 400 บาท | callback มาถึง | ใบแจ้งหนี้ยังไม่ชำระครบ มีรายการ exception "ชำระขาด" ในคิว `finance` และผู้สมัครเห็นข้อความแนะนำ | P1 | API + E2E |
+| TC-R1-089 | ฟังก์ชัน | FR-R1-047 | Reconcile 3 ทางรายวัน (#1) | callback ของรายการหนึ่งหายแต่ statement T+1 มีรายการนั้น | J-16 ทำงาน 06:00 | ระบบสร้าง Payment จาก statement จับคู่ใบแจ้งหนี้ ออกใบเสร็จ และ flag "จาก statement" ให้ `finance` ทบทวน | P1 | API + E2E (Playwright) |
+| TC-R1-090 | ฟังก์ชัน | FR-R1-047 | Reconcile 3 ทางรายวัน (#2) | rehearsal ค่าสมัคร 1,000 รายการ | reconcile | จับคู่อัตโนมัติ ≥ 99% (KPI-21) และรายการเหลือเข้าคิว exception ทั้งหมด | P1 | API + E2E (Playwright) |
+| TC-R1-091 | ฟังก์ชัน | FR-R1-048 | ใบเสร็จอิเล็กทรอนิกส์ (#1) | callback ชำระครบเวลา 30 ก.ย. 2571 23:58 และอีกรายการ 1 ต.ค. 2571 00:02 | ระบบออกใบเสร็จ | ใบแรกอยู่ชุดปีงบ 2571 ใบที่สองอยู่ชุดปีงบ 2572 เลขต่อเนื่องในชุดของตน (ตัดตาม timestamp การรับเงิน) | P1 | API + E2E (Playwright) |
+| TC-R1-092 | ฟังก์ชัน | FR-R1-048 | ใบเสร็จอิเล็กทรอนิกส์ (#2) | ใบเสร็จออกแล้ว | ผู้สมัครเปิดไฟล์ใน Acrobat/Foxit | ลายเซ็นตรวจผ่าน (green check) และข้อความไทยคัดลอกได้ถูกต้อง | P1 | API + E2E (Playwright) |
+| TC-R1-093 | ฟังก์ชัน | FR-R1-049 | ขอยกเว้นค่าสมัคร (#1) | ผู้สมัครยื่นคำขอยกเว้นพร้อมหนังสือรับรองรายได้ | `admission` ตรวจผ่าน และ `finance` อนุมัติ | ใบสมัครเป็นสถานะ `paid` (waived) โดยไม่มีใบแจ้งหนี้ค้าง และมีใบรับคำขอ | P1 | API + E2E (Playwright) |
+| TC-R1-094 | ความปลอดภัย | FR-R1-049 | ขอยกเว้นค่าสมัคร (#2) | `finance` คนเดียวกับผู้ตรวจคุณสมบัติ (มีสองบทบาท) | อนุมัติคำขอ | ปฏิเสธ 403 `SOD-MAKER-CHECKER` | P1 | Security (API/DB, pen test) |
+| TC-R1-095 | ฟังก์ชัน | FR-R1-050 | คืนค่าสมัครเมื่อยกเลิกรอบ/ชำระซ้ำ (#1) | ผู้ปกครองชำระค่าสมัครซ้ำ 2 ครั้ง | callback ที่ 2 มาถึง | ระบบสร้างคำขอคืนเงิน 1 รายการอ้าง `bank_txn_ref` ที่ 2 และแจ้งผู้ชำระว่ากำลังดำเนินการคืน | P1 | API + E2E (Playwright) |
+| TC-R1-096 | ความปลอดภัย | FR-R1-050 | คืนค่าสมัครเมื่อยกเลิกรอบ/ชำระซ้ำ (#2) | ผู้เตรียมคืนเงินคนเดียวกับผู้อนุมัติ | อนุมัติ | ระบบปฏิเสธ (SoD-03) | P1 | Security (API/DB, pen test) |
+| TC-R1-097 | ฟังก์ชัน | FR-R1-051 | ใบแจ้งชำระค่ายืนยันสิทธิ์ผูกกับ offer (#1) | ผู้สมัครยืนยันสิทธิ์ offer ที่ deadline 12 ม.ค. 2572 16:30 | ระบบออกใบแจ้งชำระ | QR หมดอายุ 12 ม.ค. 2572 16:30 ตรงกับ offer และผู้ปกครองที่ผูกบัญชีได้ลิงก์ชำระ | P1 | API + E2E (Playwright) |
+| TC-R1-098 | กรณีผิดปกติ | FR-R1-051 | ใบแจ้งชำระค่ายืนยันสิทธิ์ผูกกับ offer (#2) | QR หมดอายุแล้ว | ผู้ชำระสแกนจ่าย | ธนาคารปฏิเสธตาม expiry (ถ้ารองรับ) หรือถ้าเงินเข้า ระบบส่งเข้า exception "ชำระหลังหมดอายุ" และไม่คืนสิทธิ์อัตโนมัติ | P1 | API + E2E |
+| TC-R1-099 | ความปลอดภัย | FR-R1-052 | ชำระด้วยบัตร/โอนจากต่างประเทศ (#1) | webhook PSP ที่ลายเซ็นไม่ตรง | ส่งมา | ถูกปฏิเสธ ไม่มีการตัดหนี้ | P3 | Security (API/DB, pen test) |
+| TC-R1-100 | ฟังก์ชัน | FR-R1-053 | รับชำระแบบ paper fallback ที่จุดบริการ (#1) | ระบบล่ม 40 นาทีวันรายงานตัวรอบ 5 และรับเงินสด 12 ราย | หัวหน้าการเงินนำเข้าไฟล์ในวันถัดไป | dry-run แสดงผลรายแถว ผู้อนุมัติคนที่ 2 อนุมัติ และใบเสร็จจริงอ้างเลขใบรับชั่วคราวครบ 12 ราย | P2 | API + E2E (Playwright) |
+| TC-R1-101 | ฟังก์ชัน | FR-R1-054 | Session และ station ของการสอบ (#1) | รอบโควตานักกีฬามีผู้มีสิทธิ์สอบวอลเลย์บอลหญิง 120 คน | `admission` สร้าง session 2 วัน 4 station | ระบบคำนวณความจุและแนะนำจำนวน slot ที่พอดี พร้อมเตือนถ้าไม่พอ | P1 | API + E2E (Playwright) |
+| TC-R1-102 | กรณีผิดปกติ | FR-R1-054 | Session และ station ของการสอบ (#2) | เหลือ 5 วันก่อนวันสอบ | กดประกาศตาราง | ระบบเตือนว่าไม่ถึง 7 วันตาม SLA ต้องบันทึกเหตุผลและแจ้งผู้สมัครแบบ P1 | P1 | API + E2E |
+| TC-R1-103 | ฟังก์ชัน | FR-R1-055 | จองสนามสอบทักษะผ่าน FAC (#1) | สนามวอลเลย์บอลในร่มว่างวันที่ 23–24 พ.ย. 2571 | `admission` ขอจองจาก session | FAC สร้าง Booking สถานะ confirmed และ session แสดงสนามที่ยืนยันแล้ว | P1 | API + E2E (Playwright) |
+| TC-R1-104 | กรณีผิดปกติ | FR-R1-055 | จองสนามสอบทักษะผ่าน FAC (#2) | สนามมีการซ้อมทีมมหาวิทยาลัยแบบ recurring ช่วงเวลาเดียวกัน | ขอจอง | FAC แจ้งชนพร้อมเจ้าของการจองและทางเลือกช่วงเวลา/สนามอื่น ไม่ยืนยันอัตโนมัติ | P1 | API + E2E |
+| TC-R1-105 | กรณีผิดปกติ | FR-R1-056 | แต่งตั้งกรรมการต่อ station (#1) | station SUBJECTIVE มีกรรมการ 2 คน | บันทึกการแต่งตั้ง | ระบบเตือนว่าต่ำกว่าค่าตั้งของรอบ (3 คน) และไม่ให้ล็อกตารางจนกว่าจะครบหรือ `head` อนุมัติข้อยกเว้น | P1 | API + E2E |
+| TC-R1-106 | ฟังก์ชัน | FR-R1-056 | แต่งตั้งกรรมการต่อ station (#2) | กรรมการ 1 คนอยู่ใน delegation แข่งระดับชาติที่เริ่มอีก 10 วัน | บันทึกการแต่งตั้ง | ระบบแสดง warning L-14 ให้พิจารณาเปลี่ยนตัว | P1 | API + E2E (Playwright) |
+| TC-R1-107 | ฟังก์ชัน | FR-R1-057 | ประกาศ COI และสลับกรรมการอัตโนมัติ (#1) | กรรมการเป็นโค้ชสโมสรที่ผู้สมัคร A ระบุในประวัติ | ระบบตรวจ COI ตอนสร้าง offline pack | ผู้สมัคร A ถูกตั้ง `recused` สำหรับกรรมการคนนั้น และประธาน station ได้แจ้งให้จัดคนแทน | P1 | API + E2E (Playwright) |
+| TC-R1-108 | ความปลอดภัย | FR-R1-057 | ประกาศ COI และสลับกรรมการอัตโนมัติ (#2) | กรรมการที่ถูก recused พยายามส่งคะแนนให้ผู้สมัคร A (เช่น แก้ไขข้อมูลบนเครื่อง) | sync | server ปฏิเสธรายการนั้น (`ADM-COI-RECUSED`) และบันทึก audit | P1 | Security (API/DB, pen test) |
+| TC-R1-109 | กรณีผิดปกติ | FR-R1-058 | จัด slot ผู้สอบ (#1) | ผู้สมัครยังไม่มี `MedicalClearance(PRE_TEST)` สถานะ valid | กดยืนยัน slot สอบทักษะ | ระบบไม่ให้ยืนยันและพาไปหน้าคัดกรองสุขภาพพร้อมบอกว่าขาดอะไร | P1 | API + E2E |
+| TC-R1-110 | ฟังก์ชัน | FR-R1-058 | จัด slot ผู้สอบ (#2) | ผู้สมัครที่ได้ accommodation "+50% เวลา" | ระบบจัด slot | slot ของผู้สมัครยาวขึ้นตามแผนและไม่ชนกับ slot ถัดไปของ station | P1 | API + E2E (Playwright) |
+| TC-R1-111 | ฟังก์ชัน | FR-R1-059 | บัตรประจำตัวผู้สอบ QR (#1) | ผู้สมัครยืนยัน slot แล้ว | ดาวน์โหลดบัตร | ได้ PDF ภาษาไทยที่ข้อความไม่ทับกัน (corpus T1–T8) และ QR ที่ judge app ตรวจลายเซ็นได้แบบ offline | P1 | API + E2E (Playwright) |
+| TC-R1-112 | ความปลอดภัย | FR-R1-059 | บัตรประจำตัวผู้สอบ QR (#2) | มีผู้แก้ไข QR (เปลี่ยน slot token) | สแกนที่หน้างาน | judge app แสดง "QR ไม่ถูกต้อง" และให้ตรวจด้วยบัตรประชาชน + ค้นรายชื่อแทน | P1 | Security (API/DB, pen test) |
+| TC-R1-113 | กรณีผิดปกติ | FR-R1-060 | แผนฉุกเฉินสนามและหน่วยปฐมพยาบาล (#1) | session มวยไทยยังไม่มี `physician` ในรายชื่อเจ้าหน้าที่ | กดประกาศตาราง | ระบบไม่ให้ประกาศและแจ้ง "กีฬาต่อสู้ต้องมีแพทย์ประจำข้างเวที" | P2 | API + E2E |
+| TC-R1-114 | ฟังก์ชัน | FR-R1-061 | ค่าความร้อน WBGT และการระงับ station (#1) | WBGT วัดได้เกินระดับสูงสุดที่ตั้งค่า เวลา 13:00 | nurse บันทึกค่า | station วิ่ง 800 ม. ถูกระงับ ผู้สอบใน slot ที่เหลือได้ slot สำรองพร้อมแจ้งเตือน และไม่มีใครถูกบันทึกขาดสอบ | P2 | API + E2E (Playwright) |
+| TC-R1-115 | ฟังก์ชัน | FR-R1-062 | สัมภาษณ์ออนไลน์ (#1) | ผู้สมัครต่างจังหวัดได้รับอนุมัติสัมภาษณ์ออนไลน์ | จัด slot | บัตรผู้สอบแสดงลิงก์ประชุมและคำชี้แจงว่าไม่มีการบันทึกวิดีโอ | P2 | API + E2E (Playwright) |
+| TC-R1-116 | ฟังก์ชัน | FR-R1-063 | ห้องสอบข้อเขียนและผังที่นั่ง (#1) | รอบทั่วไป 3 มีผู้สอบข้อเขียน 640 คน ห้องละ 40 | จัดผังที่นั่ง | ได้ 16 ห้อง ผังที่นั่งพิมพ์ได้ และผู้ที่มี accommodation ห้องชั้น 1 ถูกจัดในห้องที่มีคุณลักษณะเข้าถึงได้ | P2 | API + E2E (Playwright) |
+| TC-R1-117 | PDPA | FR-R1-064 | แบบคัดกรองสุขภาพและใบรับรองแพทย์ใน health vault (#1) | ผู้สมัครส่งแบบคัดกรองและใบรับรองแพทย์ | ตรวจฐานข้อมูล core (schema `adm`) และ event ที่ publish | ไม่มีคำตอบแบบคัดกรองหรือไฟล์ใบรับรองใน core; ADM ได้เพียง `hlt.MedicalClearanceChanged` (status, valid_to) | P1 | PDPA (API/DB/contract) |
+| TC-R1-118 | ฟังก์ชัน | FR-R1-064 | แบบคัดกรองสุขภาพและใบรับรองแพทย์ใน health vault (#2) | ผู้สมัครตอบ "ใช่" ข้อ "เคยหมดสติขณะออกกำลังกาย" | ส่งแบบคัดกรอง | ระบบบังคับแนบใบรับรองแพทย์เฉพาะทางก่อนออก clearance และอธิบายเหตุผลด้วยภาษาไม่ตำหนิ | P1 | API + E2E (Playwright) |
+| TC-R1-119 | กรณีผิดปกติ | FR-R1-064 | แบบคัดกรองสุขภาพและใบรับรองแพทย์ใน health vault (#3) | ใบรับรองแพทย์ลงวันที่ 45 วันก่อนวันสอบ | ระบบประเมิน | clearance ไม่ผ่าน เหตุผล "ใบรับรองแพทย์ต้องออกไม่เกิน 30 วันก่อนวันทดสอบ" | P1 | API + E2E |
+| TC-R1-120 | กรณีผิดปกติ | FR-R1-065 | สถานะ MedicalClearance(PRE_TEST) เป็น gate (#1) | clearance ของผู้สอบหมดอายุก่อนวันสอบ 1 วัน | judge สแกน QR เช็คอิน | judge app แสดง "ยังไม่มีใบรับรองสุขภาพที่ใช้ได้ — ส่งไปจุดพยาบาล" และไม่เปิดให้ให้คะแนน | P1 | API + E2E |
+| TC-R1-121 | PDPA | FR-R1-065 | สถานะ MedicalClearance(PRE_TEST) เป็น gate (#2) | `admission` เปิด roster ของ session | ดูคอลัมน์สุขภาพ | เห็นเพียงสถานะ ✓/รอ/ไม่ผ่าน ไม่เห็นคำตอบหรือการวินิจฉัย | P1 | PDPA (API/DB/contract) |
+| TC-R1-122 | ฟังก์ชัน | FR-R1-066 | คัดกรองหน้าสนามโดยพยาบาล (#1) | ความดันของผู้สอบสูงเกินเกณฑ์ที่ทีมแพทย์ตั้ง | nurse บันทึกไม่ผ่าน | ผู้สอบได้สถานะ "เลื่อนสอบ (สุขภาพ)" พร้อม slot สำรอง และ ADM ได้เพียงเหตุ "HEALTH_DEFERRAL" | P1 | API + E2E (Playwright) |
+| TC-R1-123 | ความปลอดภัย | FR-R1-066 | คัดกรองหน้าสนามโดยพยาบาล (#2) | nurse ของ session A | เปิดข้อมูลคัดกรองของผู้สอบใน session B | ได้ 0 แถว/403 และ UEBA บันทึก "อ่าน vault โดยไม่มี care relationship" | P1 | Security (API/DB, pen test) |
+| TC-R1-124 | ฟังก์ชัน | FR-R1-067 | เหตุบาดเจ็บวันสอบและ concussion (#1) | ผู้สอบกีฬาเทควันโดถูกกระแทกศีรษะและมีอาการมึน | judge กด "สงสัยกระทบกระเทือนสมอง" | ผู้สอบถูกล็อกไม่ให้เช็คอิน station ใดในวันนั้น, nurse ได้แจ้งเตือน และสร้าง TestIncident ที่ ADM เห็นเพียง "ยุติการทดสอบด้วยเหตุสุขภาพ" | P1 | API + E2E (Playwright) |
+| TC-R1-125 | ฟังก์ชัน | FR-R1-067 | เหตุบาดเจ็บวันสอบและ concussion (#2) | ผู้สอบอายุ 17 ปีบาดเจ็บ และเจ้าหน้าที่โทรหาผู้ปกครองไม่ติด | ครบ 15 นาทีหลังบันทึกเหตุ | ระบบส่งข้อความเร่งด่วนถึงผู้ปกครองทุกช่องทางที่ผูกไว้ พร้อมเบอร์ติดต่อจุดพยาบาล (ไม่มีรายละเอียดการวินิจฉัย) | P1 | API + E2E (Playwright) |
+| TC-R1-126 | PDPA | FR-R1-068 | Retention ของข้อมูลสุขภาพการคัดเลือก (#1) | รอบโควตาปิดอุทธรณ์แล้ว 30 วันและผู้สมัคร X ไม่ได้รับเข้า ไม่มี legal hold | job retention ทำงาน | DEK (X × SELECTION_MEDICAL) ถูกลบ มีรายการใน erasure ledger และการอ่านข้อมูลนั้นได้ ciphertext ที่ถอดไม่ได้ | P1 | PDPA (API/DB/contract) |
+| TC-R1-127 | PDPA | FR-R1-068 | Retention ของข้อมูลสุขภาพการคัดเลือก (#2) | ผู้สมัคร Y มีอุทธรณ์ค้าง (legal hold) | job retention ทำงาน | ไม่ลบข้อมูลของ Y และบันทึกเหตุผล "LEGAL_HOLD" | P1 | PDPA (API/DB/contract) |
+| TC-R1-128 | ความปลอดภัย | FR-R1-069 | Offline pack และความปลอดภัยของอุปกรณ์กรรมการ (#1) | กรรมการ station 2 ของ session A | ขอ offline pack ของ session B | ได้ 403 และ audit | P1 | Security (API/DB, pen test) |
+| TC-R1-129 | ความปลอดภัย | FR-R1-069 | Offline pack และความปลอดภัยของอุปกรณ์กรรมการ (#2) | tablet หายและ `itadmin` revoke อุปกรณ์ | อุปกรณ์นั้นพยายาม sync | server ปฏิเสธทุกรายการจากอุปกรณ์นั้นและแจ้งประธาน session ให้ใช้ paper fallback ตรวจย้อน | P1 | Security (API/DB, pen test) |
+| TC-R1-130 | ความปลอดภัย | FR-R1-069 | Offline pack และความปลอดภัยของอุปกรณ์กรรมการ (#3) | มีผู้ใส่ PIN ผิด 5 ครั้ง | ครั้งที่ 6 | แอปล็อกข้อมูลบนเครื่อง ต้องให้ประธาน station ปลดด้วยบัญชีของตน | P1 | Security (API/DB, pen test) |
+| TC-R1-131 | ฟังก์ชัน | FR-R1-070 | เช็คอินผู้สอบด้วย QR แบบ offline (#1) | ไม่มีสัญญาณที่สนาม | สแกน QR ผู้สอบ 30 คน | เช็คอินทั้งหมดบันทึกบนเครื่องพร้อมเวลา และแสดง "รอส่ง 30 รายการ" | P1 | API + E2E (Playwright) |
+| TC-R1-132 | กรณีผิดปกติ | FR-R1-070 | เช็คอินผู้สอบด้วย QR แบบ offline (#2) | สแกน QR เดิมซ้ำที่ station เดียวกัน | สแกน | แอปแจ้ง "เช็คอินแล้วเมื่อ 09:12" ไม่สร้างรายการซ้ำ | P1 | API + E2E |
+| TC-R1-133 | ฟังก์ชัน | FR-R1-071 | Station OBJECTIVE (#1) | station วิ่ง 50 ม. กำหนด 2 trial best-of | ผู้วัดบันทึก 7.42 s และ 7.35 s | ระบบใช้ 7.35 s แปลงเป็นคะแนนตามตารางเกณฑ์เพศ/อายุของรอบ | P1 | API + E2E (Playwright) |
+| TC-R1-134 | กรณีผิดปกติ | FR-R1-071 | Station OBJECTIVE (#2) | ผู้วัดกรอก 0.735 s (ผิดหน่วย) | บันทึก | แอปเตือน "ค่านอกช่วงที่เป็นไปได้ (5–20 s)" และให้ยืนยันหรือแก้ | P1 | API + E2E |
+| TC-R1-135 | ความปลอดภัย | FR-R1-072 | Station SUBJECTIVE ให้คะแนนอิสระและล็อกเมื่อส่ง (#1) | กรรมการ A ส่งคะแนนแล้ว และกรรมการ B ยังไม่ส่ง | กรรมการ B เปิดหน้าผู้สอบเดียวกัน | ไม่เห็นคะแนนของ A | P1 | Security (API/DB, pen test) |
+| TC-R1-136 | กรณีผิดปกติ | FR-R1-072 | Station SUBJECTIVE ให้คะแนนอิสระและล็อกเมื่อส่ง (#2) | กรรมการส่งคะแนนแล้วต้องการแก้ | กดแก้ | ระบบไม่ให้แก้ แสดงปุ่ม "ขอให้ประธานเปิดแก้" และเมื่อประธานเปิดต้องกรอกเหตุผลซึ่งบันทึกใน audit | P1 | API + E2E |
+| TC-R1-137 | กรณีผิดปกติ | FR-R1-073 | Sync แบบ idempotent และ conflict queue (#1) | tablet ส่ง batch 200 รายการซ้ำเพราะไม่ได้รับ ack | server รับ batch ซ้ำ | ผล 200 รายการเหมือนเดิม ไม่มีคะแนนซ้ำ | P1 | API + E2E |
+| TC-R1-138 | กรณีผิดปกติ | FR-R1-073 | Sync แบบ idempotent และ conflict queue (#2) | คะแนนรายการเดียวกัน (กรรมการ × ผู้สอบ × rubric item) ถูกส่งจากสองเครื่องด้วยค่าต่างกัน | sync | รายการเข้า conflict queue ของประธาน station ทั้งสองค่ายังไม่ถูกใช้คำนวณจนตัดสิน | P1 | API + E2E |
+| TC-R1-139 | ฟังก์ชัน | FR-R1-073 | Sync แบบ idempotent และ conflict queue (#3) | sync สำเร็จทั้งหมด | กรรมการดูหน้า sync | แสดง "ส่งครบแล้ว — sync ล่าสุด 15:42" และข้อมูลคะแนนบนเครื่องถูกล้าง | P1 | API + E2E (Playwright) |
+| TC-R1-140 | ฟังก์ชัน | FR-R1-074 | Flag ความต่างของคะแนนและ moderation (#1) | กรรมการ 3 คนให้คะแนน 6, 9, 15 จากเต็ม 20 (พิสัย 45%) | คนที่ 3 ส่งคะแนน | ระบบสร้าง flag ทันทีและแจ้งประธาน station | P1 | API + E2E (Playwright) |
+| TC-R1-141 | กรณีผิดปกติ | FR-R1-074 | Flag ความต่างของคะแนนและ moderation (#2) | ยังมี flag ค้างของ session | `head` พยายามยืนยันผลรวมทุก station | ระบบไม่ให้ยืนยันและแสดงรายการ flag ที่ค้างพร้อมเวลาที่เหลือของ SLA | P1 | API + E2E |
+| TC-R1-142 | ฟังก์ชัน | FR-R1-075 | กติกาการรวมคะแนนกรรมการ (#1) | station มีกรรมการ 5 คนให้คะแนน 12, 14, 15, 15, 19 และตั้ง trimmed mean | ระบบคำนวณ | ได้ (14 + 15 + 15) / 3 = 14.67 และบันทึกวิธีคำนวณใน audit ของผลรวม | P1 | API + E2E (Playwright) |
+| TC-R1-143 | ฟังก์ชัน | FR-R1-076 | ประธานยืนยันและล็อกผลด้วย hash (#1) | ทุก station ของ session ไม่มี flag ค้าง | `head` ยืนยันผลพร้อม step-up MFA | session เป็น `locked` มี hash (SHA-256) ของชุดผล และส่งผลเข้าการจัดอันดับ | P1 | API + E2E (Playwright) |
+| TC-R1-144 | ความปลอดภัย | FR-R1-076 | ประธานยืนยันและล็อกผลด้วย hash (#2) | DBA แก้ค่า `raw_score` ตรงในฐานข้อมูลหลังล็อก (จำลองใน test) | job ตรวจ integrity รายคืนทำงาน | hash ไม่ตรง → `aud.AnomalyDetected` และแจ้ง `security_admin`/`auditor` | P1 | Security (API/DB, pen test) |
+| TC-R1-145 | ฟังก์ชัน | FR-R1-077 | Paper fallback และนำเข้าคะแนนแบบ 4-eyes (#1) | tablet 2 เครื่องใช้ไม่ได้และกรรมการใช้ใบให้คะแนน | `admission` นำเข้า CSV ที่คีย์จากใบ แล้ว `head` อนุมัติ | คะแนนเข้าระบบพร้อม source = PAPER_IMPORT และไฟล์สแกนใบให้คะแนนแนบเป็นหลักฐาน | P2 | API + E2E (Playwright) |
+| TC-R1-146 | ความปลอดภัย | FR-R1-077 | Paper fallback และนำเข้าคะแนนแบบ 4-eyes (#2) | ผู้นำเข้าและผู้อนุมัติเป็นคนเดียวกัน | อนุมัติ | ระบบปฏิเสธ (4-eyes) | P2 | Security (API/DB, pen test) |
+| TC-R1-147 | ฟังก์ชัน | FR-R1-078 | ส่งออกรายชื่อค่าตอบแทนกรรมการ (#1) | รอบโควตาปิดแล้ว | `admission` ส่งออกรายชื่อกรรมการ | ได้ไฟล์ UTF-8 with BOM ที่มี watermark ผู้ดึงและบันทึก audit | P3 | API + E2E (Playwright) |
+| TC-R1-148 | ฟังก์ชัน | FR-R1-079 | คะแนนรวมและการจัดอันดับที่ทำซ้ำได้ (#1) | ผู้สมัคร 2 คนคะแนนรวมเท่ากัน 78.50 และ tie-break = GPAX → อายุน้อยกว่า | คำนวณอันดับ | คนที่ GPAX สูงกว่าได้อันดับดีกว่า และหน้าจออธิบายว่าใช้ tie-break ข้อใด | P1 | API + E2E (Playwright) |
+| TC-R1-149 | ฟังก์ชัน | FR-R1-079 | คะแนนรวมและการจัดอันดับที่ทำซ้ำได้ (#2) | rank list ถูกคำนวณแล้ว | สั่งคำนวณซ้ำโดยไม่มีข้อมูลเปลี่ยน | ได้อันดับและ hash เดิมทุกประการ | P1 | API + E2E (Playwright) |
+| TC-R1-150 | ฟังก์ชัน | FR-R1-080 | ผ่าน/สำรอง/ไม่ผ่าน และลำดับสำรอง (#1) | bucket 8 ที่ ผู้ผ่านเกณฑ์ขั้นต่ำ 20 คน | คำนวณผล | อันดับ 1–8 = passed, 9–20 = reserve ตามลำดับ, คนที่ต่ำกว่าเกณฑ์ขั้นต่ำ = failed | P1 | API + E2E (Playwright) |
+| TC-R1-151 | ความปลอดภัย | FR-R1-081 | สายอนุมัติผลและ override 2 คน (#1) | `head` เสนอ override และพยายามอนุมัติเอง | กดอนุมัติ | ระบบปฏิเสธ (SoD-14) | P1 | Security (API/DB, pen test) |
+| TC-R1-152 | ฟังก์ชัน | FR-R1-081 | สายอนุมัติผลและ override 2 คน (#2) | `campusvp` อนุมัติ rank list | อนุมัติ | rank list เป็น `approved` (แก้ไม่ได้) และปุ่มประกาศผลเปิดให้ `admission` | P1 | API + E2E (Playwright) |
+| TC-R1-153 | ฟังก์ชัน | FR-R1-082 | ประกาศผลภายใน 24 ชม. หลังอนุมัติ (#1) | rank list รอบ 5 อนุมัติเวลา 10:00 วันที่ 7 มิ.ย. 2572 | `admission` กดประกาศ | ภายใน 30 นาที ผลรายบุคคลพร้อมบน CDN, PDF ลงนามแล้ว, ประกาศเผยแพร่ และแจ้งเตือนทยอยครบภายในเวลาที่คำนวณ (≤ 2,000 ผู้รับ/นาที) | P1 | API + E2E (Playwright) |
+| TC-R1-154 | ความปลอดภัย | FR-R1-083 | หน้าตรวจผลแบบ static shard บน CDN (#1) | ผู้ไม่หวังดีเดาเลขผู้สมัครเรียงลำดับเพื่อดึงผลทั้งหมด | ส่งคำขอโดยไม่มีวันเกิดที่ถูกต้อง | ไม่ได้ข้อมูลใด (key ไม่ตรง) และ rate limit/บอท challenge ทำงาน | P1 | Security (API/DB, pen test) |
+| TC-R1-155 | ฟังก์ชัน | FR-R1-083 | หน้าตรวจผลแบบ static shard บน CDN (#2) | origin ถูกปิดระหว่างช่วงประกาศ (จำลอง) | ผู้สมัครตรวจผล | ยังได้ผลจาก CDN และหน้า offer แจ้ง "ยืนยันสิทธิ์ได้เมื่อระบบกลับมา — กำหนดเวลาไม่นับช่วงที่ระบบไม่พร้อม" [ต้องตรวจสอบนโยบายขยายเวลา] | P1 | API + E2E (Playwright) |
+| TC-R1-156 | ฟังก์ชัน | FR-R1-084 | คะแนนรายสถานีของตน (#1) | ผู้สมัครเป็นสำรองอันดับ 3 | เปิดหน้าผล | เห็นคะแนนรวม คะแนนแต่ละสถานี (ค่าที่รวมแล้ว ไม่ระบุชื่อกรรมการ) อันดับ และปุ่มขอทบทวนพร้อมวันสุดท้ายที่ยื่นได้ | P1 | API + E2E (Playwright) |
+| TC-R1-157 | ความปลอดภัย | FR-R1-084 | คะแนนรายสถานีของตน (#2) | ผู้สมัคร A เปลี่ยน applicationId ใน URL เป็นของผู้อื่น | เรียก `GET /me/results` | ได้เฉพาะผลของตน (IDOR ไม่สำเร็จ) | P1 | Security (API/DB, pen test) |
+| TC-R1-158 | PDPA | FR-R1-085 | กติกา mask รายชื่อสาธารณะ (#1) | ร่าง PDF ประกาศผลมีวันเกิดผู้สมัคร | กดเผยแพร่ | DLP บล็อกและแจ้งคอลัมน์ที่ต้องลบ | P1 | PDPA (API/DB/contract) |
+| TC-R1-159 | ฟังก์ชัน | FR-R1-086 | สร้าง offer พร้อม deadline และ quiet hours (#1) | สำรองถูกเรียกเวลา 22:10 จากที่นั่งที่หมดเวลา | J-04 สร้าง offer | ข้อความถูกส่ง 07:00 วันถัดไป และ deadline 48 ชม. เริ่มนับจาก 07:00 (ไม่นับช่วง 22:10–07:00) | P1 | API + E2E (Playwright) |
+| TC-R1-160 | ฟังก์ชัน | FR-R1-087 | หน้า offer และยืนยัน 1 คลิกพร้อมสรุปผล (#1) | ผู้สมัครมี offer โควตานักกีฬาชลบุรีและโควตาเรียนดีมหาสารคาม | เปิดหน้า offer | เห็นทั้งสองพร้อม deadline ค่ายืนยันสิทธิ์ และข้อความสรุปก่อนกดยืนยัน | P1 | API + E2E (Playwright) |
+| TC-R1-161 | การเข้าถึง | FR-R1-087 | หน้า offer และยืนยัน 1 คลิกพร้อมสรุปผล (#2) | ผู้ใช้ TalkBack | ยืนยัน offer | ข้อความสรุปผลถูกอ่านก่อนปุ่มยืนยัน และปุ่มมี label ไทยที่ระบุวิทยาเขต/หลักสูตร | P1 | axe-core + manual screen reader |
+| TC-R1-162 | กรณีผิดปกติ | FR-R1-088 | ยืนยันได้ที่เดียวทั้ง มกช. (C-3) แบบ atomic (#1) | ผู้สมัครกดยืนยัน offer A บนมือถือและ offer B บน notebook ในวินาทีเดียวกัน | ทั้งสองคำขอถึง server | สำเร็จเพียง 1 รายการ อีกรายการได้ 409 `ADM-ALREADY-CONFIRMED` และ offer ที่ไม่ได้ยืนยันถูกสละอัตโนมัติพร้อมเหตุ `CONFIRMED_ELSEWHERE` | P1 | API + E2E |
+| TC-R1-163 | ฟังก์ชัน | FR-R1-088 | ยืนยันได้ที่เดียวทั้ง มกช. (C-3) แบบ atomic (#2) | ผู้สมัครยืนยัน offer ชลบุรี | transaction สำเร็จ | offer มหาสารคามเป็น `released` ทันที ไม่นับใน C-5 และที่นั่งเข้าคิว cascade รอบถัดไปของ J-04 (≤ 15 นาที) | P1 | API + E2E (Playwright) |
+| TC-R1-164 | กรณีผิดปกติ | FR-R1-089 | ชำระค่ายืนยันสิทธิ์ภายในกำหนด (#1) | ผู้สมัครยืนยันแต่ไม่ชำระจนพ้น deadline | J-04 รอบถัดไปทำงาน | offer เป็น `expired` ภายใน ≤ 15 นาที ที่นั่งคืน bucket และสำรองลำดับถัดไปได้ offer | P1 | API + E2E |
+| TC-R1-165 | ฟังก์ชัน | FR-R1-089 | ชำระค่ายืนยันสิทธิ์ภายในกำหนด (#2) | ผู้ปกครองชำระด้วยลิงก์ก่อน deadline 2 ชม. | callback มาถึง | offer คงสถานะ `confirmed` (paid) ใบเสร็จออก และผู้สมัคร + ผู้ปกครองได้รับแจ้ง | P1 | API + E2E (Playwright) |
+| TC-R1-166 | กรณีผิดปกติ | FR-R1-090 | สละสิทธิ์หลังยืนยัน (นับ C-5) (#1) | ผู้สมัครใช้สิทธิ์สละไปแล้ว 1 ครั้งใน cycle | ขอสละสิทธิ์ที่ยืนยันใหม่ | ระบบแจ้งว่าเกินจำนวนครั้งที่กำหนดของ cycle และให้ติดต่อเจ้าหน้าที่ (ไม่สละอัตโนมัติ) [config: ไม่จำกัดได้] | P1 | API + E2E |
+| TC-R1-167 | ฟังก์ชัน | FR-R1-090 | สละสิทธิ์หลังยืนยัน (นับ C-5) (#2) | ผู้สมัครยังไม่เคยสละ | ยืนยันการสละด้วย step-up OTP | สถานะเป็น `waived`, ตัวนับ C-5 = 1, ใบรับคำขอออก และที่นั่งคืน ≤ 15 นาที | P1 | API + E2E (Playwright) |
+| TC-R1-168 | ฟังก์ชัน | FR-R1-091 | J-04 คืนที่นั่งและเรียกสำรองจนถึง cascade_cutoff (#1) | offer หมดเวลา 10:00:00 | J-04 ทำงานรอบ 10:05 | ภายใน 10:15 สำรองถัดไปใน bucket เดียวกันได้ offer (ถ้าอยู่ในช่วง 07:00–20:00) และ log บันทึกการเลื่อนลำดับ | P1 | API + E2E (Playwright) |
+| TC-R1-169 | กรณีผิดปกติ | FR-R1-091 | J-04 คืนที่นั่งและเรียกสำรองจนถึง cascade_cutoff (#2) | ที่นั่งว่างหลัง `cascade_cutoff` | J-04 ทำงาน | ไม่มี offer ใหม่ ที่นั่งเป็น `unfilled` และแสดงใน dashboard | P1 | API + E2E |
+| TC-R1-170 | กรณีผิดปกติ | FR-R1-091 | J-04 คืนที่นั่งและเรียกสำรองจนถึง cascade_cutoff (#3) | sub-bucket มี `appeal_hold` | ที่นั่งสุดท้ายของ sub-bucket ว่าง | ไม่เรียกสำรองจนกว่าจะตัดสินอุทธรณ์ | P1 | API + E2E |
+| TC-R1-171 | กรณีผิดปกติ | FR-R1-092 | ห้ามสมัครรอบอื่นขณะยืนยันสิทธิ์อยู่ (C-4, C-13) (#1) | ผู้สมัครยืนยันโควตาแล้ว | สมัครรอบทั่วไปของวิทยาเขตเดิม | ระบบปฏิเสธ (`ADM-CONFIRMED-ELSEWHERE`) พร้อมทางเลือก "สละสิทธิ์เดิม (เหลือ 1 ครั้ง)" | P1 | API + E2E |
+| TC-R1-172 | ความปลอดภัย | FR-R1-093 | ความเป็นส่วนตัวของ clearing ข้ามวิทยาเขต (C-11) (#1) | `admission` มหาสารคามเปิดใบสมัครที่ผู้สมัครยืนยันที่ชลบุรี | ดูสถานะ | เห็น "ยืนยันสิทธิ์ที่อื่นใน มกช. แล้ว" เท่านั้น ไม่มีชื่อวิทยาเขต หลักสูตร หรือวันที่ | P1 | Security (API/DB, pen test) |
+| TC-R1-173 | ฟังก์ชัน | FR-R1-094 | ขยายเวลา/ข้อยกเว้นรายบุคคล 2 คน (#1) | ผู้สมัครแจ้งว่าธนาคารล่มช่วงท้าย deadline และมีหลักฐาน | `admission` ขอขยาย 24 ชม. และหัวหน้างานอนุมัติ | deadline ใหม่มีผล J-04 ไม่ expire offer และ audit แสดงผู้ขอ ผู้อนุมัติ และเหตุผล | P1 | API + E2E (Playwright) |
+| TC-R1-174 | ความปลอดภัย | FR-R1-094 | ขยายเวลา/ข้อยกเว้นรายบุคคล 2 คน (#2) | ผู้ขอและผู้อนุมัติเป็นคนเดียวกัน | อนุมัติ | ปฏิเสธ (SoD-14) | P1 | Security (API/DB, pen test) |
+| TC-R1-175 | ฟังก์ชัน | FR-R1-095 | ยืนยันสิทธิ์ซ้ำก่อนเปิดภาค (C-14, W-163) (#1) | window 1–15 พ.ค. 2572 และผู้สมัครโควตายังไม่ยืนยันซ้ำ | ผู้สมัครกดลิงก์จากแจ้งเตือนครั้งที่ 2 | ยืนยันซ้ำด้วย 1 แตะ สถานะ `reconfirmed` และไม่ต้อง login ใหม่ถ้า session ยังใช้ได้ (มิฉะนั้น login ก่อน) | P1 | API + E2E (Playwright) |
+| TC-R1-176 | กรณีผิดปกติ | FR-R1-095 | ยืนยันสิทธิ์ซ้ำก่อนเปิดภาค (C-14, W-163) (#2) | ผู้สมัครไม่ยืนยันซ้ำจนพ้น 15 พ.ค. + 2 วันทำการ | J-48 ทำงาน | offer เป็น `waived` เหตุ `NOT_RECONFIRMED` ไม่นับ C-5 ที่นั่งเข้า cascade (ถ้ายังไม่พ้น cutoff) และผู้สมัคร/ผู้ปกครองได้รับแจ้ง | P1 | API + E2E |
+| TC-R1-177 | ฟังก์ชัน | FR-R1-095 | ยืนยันสิทธิ์ซ้ำก่อนเปิดภาค (C-14, W-163) (#3) | `admission` เปิด dashboard ความเสี่ยง | ดูภาพรวม | เห็นจำนวนตามหลักสูตร/ช่องทางแบบไม่ระบุตัวบุคคล และรายการโทรติดตามแยกเป็นงาน (เห็นรายชื่อเฉพาะในงานที่ได้รับมอบหมาย) | P1 | API + E2E (Playwright) |
+| TC-R1-178 | ฟังก์ชัน | FR-R1-096 | ผู้ไม่มารายงานตัว (C-10) (#1) | ผู้สมัครไม่มารายงานตัว 9 มิ.ย. แต่ยื่นแจ้งเหตุ (เจ็บป่วย) วันที่ 11 มิ.ย. | บันทึกการแจ้งเหตุ | การนับ 7 วันหยุด และเจ้าหน้าที่ได้งานพิจารณา | P1 | API + E2E (Playwright) |
+| TC-R1-179 | กรณีผิดปกติ | FR-R1-096 | ผู้ไม่มารายงานตัว (C-10) (#2) | ไม่มีการแจ้งเหตุภายใน 7 วัน | ครบกำหนด | offer เป็น `no_show` → `waived` และที่นั่งเข้า cascade ถ้ายังไม่พ้น cutoff | P1 | API + E2E |
+| TC-R1-180 | ฟังก์ชัน | FR-R1-097 | Dedupe กับวิทยาเขตที่ยังใช้ระบบเดิม (BR-01) (#1) | ไฟล์จากวิทยาเขตกรุงเทพ (ระบบเดิม) มี HMAC ตรงกับผู้ confirmed ที่ชลบุรี 3 ราย | นำเข้าไฟล์ | เกิดงานติดตาม 3 รายการให้ `admission` ชลบุรี และไม่มีการเปลี่ยนสถานะอัตโนมัติ | P2 | API + E2E (Playwright) |
+| TC-R1-181 | ความปลอดภัย | FR-R1-097 | Dedupe กับวิทยาเขตที่ยังใช้ระบบเดิม (BR-01) (#2) | ไฟล์นำเข้ามี hash ซ้ำกับไฟล์ที่นำเข้าแล้ว | นำเข้า | ระบบปฏิเสธการนำเข้าซ้ำ (`file_hash`) | P2 | Security (API/DB, pen test) |
+| TC-R1-182 | ฟังก์ชัน | FR-R1-098 | Dashboard clearing (#1) | ช่วงยืนยันสิทธิ์โควตา | `registrar` ส่วนกลางเปิด dashboard | เห็นตัวเลขของชลบุรีและมหาสารคามแยกกัน ไม่มีรายชื่อบุคคล และข้อมูลไม่เก่ากว่า 5 นาที | P1 | API + E2E (Playwright) |
+| TC-R1-183 | ฟังก์ชัน | FR-R1-099 | ยื่นขอทบทวนผลคัดเลือกภายในกรอบเวลา (#1) | ประกาศผลวันจันทร์ และรอบตั้ง window 3 วันทำการ | ผู้สมัครยื่นวันพุธ | ได้เลขรับ `APL-CB-2571-000123` ใบรับ PDF และเห็นสถานะ "รับเรื่องแล้ว — ตัดสินภายใน 5 วันทำการ" | P1 | API + E2E (Playwright) |
+| TC-R1-184 | กรณีผิดปกติ | FR-R1-099 | ยื่นขอทบทวนผลคัดเลือกภายในกรอบเวลา (#2) | พ้น window แล้ว | ผู้สมัครกดยื่น | ระบบไม่รับคำขอทบทวน แสดงเหตุผลและช่องทางร้องเรียน (W-19) แทน | P1 | API + E2E |
+| TC-R1-185 | ฟังก์ชัน | FR-R1-100 | appeal_hold และการขยายกำหนดยืนยันสิทธิ์ของผู้ยื่น (#1) | ผู้ยื่นเป็นสำรองอันดับ 1 ห่างเส้นตัด 0.5 คะแนน และมีคำขอทบทวนการคำนวณ | ยื่นคำขอ | ระบบตั้ง appeal_hold ใน sub-bucket นั้น และ dashboard แสดง "hold 1 ที่ (อุทธรณ์ APL-…)" | P1 | API + E2E (Playwright) |
+| TC-R1-186 | ฟังก์ชัน | FR-R1-100 | appeal_hold และการขยายกำหนดยืนยันสิทธิ์ของผู้ยื่น (#2) | ผู้ยื่นอยู่อันดับ 40 จากที่นั่ง 8 และสำรองถึงอันดับ 20 | ยื่นคำขอ | ไม่ตั้ง hold (ไม่ถึงเส้นตัด) แต่คำขอยังพิจารณาตามปกติ | P1 | API + E2E (Playwright) |
+| TC-R1-187 | ฟังก์ชัน | FR-R1-101 | กระบวนการพิจารณาและ SLA เร่งด่วน (#1) | กรรมการชุดเดิมพบว่ากรอกคะแนน station 3 ผิดหลัก (7 แทน 17) | บันทึกผลตรวจ | ระบบสร้างข้อเสนอแก้ผ่าน override (FR-R1-081) ไม่แก้ JudgeScore ที่ล็อกโดยตรง และคำนวณอันดับใหม่แบบ preview ให้ `head` | P1 | API + E2E (Playwright) |
+| TC-R1-188 | กรณีผิดปกติ | FR-R1-101 | กระบวนการพิจารณาและ SLA เร่งด่วน (#2) | เหลือ 1 วันทำการก่อนปิดยืนยันสิทธิ์และยังไม่ตัดสิน | ถึงเวลาเตือน | ระบบ escalate ถึง `campusvp` และแสดงในหน้า inbox เป็นงานด่วน | P1 | API + E2E |
+| TC-R1-189 | ฟังก์ชัน | FR-R1-102 | ที่นั่งสำหรับผู้ชนะอุทธรณ์และเพดานคุรุสภา (#1) | ผู้ยื่นชนะอุทธรณ์และมี hold 1 ที่ | `campusvp` อนุมัติ | ผู้ยื่นได้ offer จากที่นั่ง hold ทันที และ hold ถูกปลด | P1 | API + E2E (Playwright) |
+| TC-R1-190 | กรณีผิดปกติ | FR-R1-102 | ที่นั่งสำหรับผู้ชนะอุทธรณ์และเพดานคุรุสภา (#2) | ผู้ชนะ 2 คนแต่ hold 1 ที่และหลักสูตรเต็มเพดานคุรุสภา | อนุมัติผล | คนที่ 2 ไม่ได้ที่นั่งเพิ่ม (hard stop) ระบบบันทึกข้อเสนอสิทธิ์ในรอบถัดไป/ปีถัดไป และแจ้งพร้อมเหตุผล | P1 | API + E2E |
+| TC-R1-191 | ฟังก์ชัน | FR-R1-102 | ที่นั่งสำหรับผู้ชนะอุทธรณ์และเพดานคุรุสภา (#3) | อุทธรณ์ไม่สำเร็จ | บันทึกคำตัดสิน | hold ถูกปลดและที่นั่งเข้า cascade ภายใน ≤ 15 นาที (ถ้ายังไม่พ้น cutoff) | P1 | API + E2E (Playwright) |
+| TC-R1-192 | ฟังก์ชัน | FR-R1-103 | แจ้งผลพร้อมเหตุผลและสิทธิ์ต่อ (#1) | คำขอทบทวนถูกยืน (ไม่เปลี่ยนผล) | ระบบแจ้งผล | ผู้สมัครได้หนังสือแจ้งผลที่มีเหตุผล คะแนนที่ตรวจซ้ำ และช่องทางร้องเรียนต่อ ใน portal และแจ้งเตือน P1 | P1 | API + E2E (Playwright) |
+| TC-R1-193 | ฟังก์ชัน | FR-R1-104 | ร้องเรียน/แจ้งเบาะแสแบบไม่ระบุตัวตนได้ (#1) | ประชาชนร้องเรียนการรับสมัครแบบไม่ระบุตัวตน | ส่งเรื่อง | ได้รหัสติดตามที่ต้องเก็บเอง (ระบบไม่เก็บตัวตน) และใช้ตรวจสถานะได้ | P1 | API + E2E (Playwright) |
+| TC-R1-194 | ความปลอดภัย | FR-R1-104 | ร้องเรียน/แจ้งเบาะแสแบบไม่ระบุตัวตนได้ (#2) | เรื่องร้องเรียนทุจริตเกี่ยวกับเจ้าหน้าที่รับสมัคร X | ระบบ route | X และผู้บังคับบัญชาในสายของ X ไม่เห็นเรื่อง และการเปิดอ่านทุกครั้งถูก audit | P1 | Security (API/DB, pen test) |
+| TC-R1-195 | ฟังก์ชัน | FR-R1-105 | แจ้งเหตุวันสอบและขอสอบใหม่ (#1) | ผู้สมัครติดแข่งขันระดับชาติวันสอบและมีหนังสือขอตัวจากสมาคม | ยื่นขอเลื่อนก่อนวันสอบ | `admission` อนุมัติและผู้สมัครได้ slot สำรองของรอบเดียวกัน | P1 | API + E2E (Playwright) |
+| TC-R1-196 | กรณีผิดปกติ | FR-R1-105 | แจ้งเหตุวันสอบและขอสอบใหม่ (#2) | ยื่นหลังวันสอบ 4 วัน | กดยื่น | ระบบแจ้งว่าเกินกรอบ 48 ชม. และให้ยื่นเป็นคำขอทบทวน (W-18) หากยังอยู่ในกรอบ | P1 | API + E2E |
+| TC-R1-197 | ฟังก์ชัน | FR-R1-106 | ขอทบทวนเมื่อถูกปฏิเสธ accommodation (#1) | `dss` ปฏิเสธคำขอ "ผู้อ่านแทน" | ผู้สมัครยื่นขอทบทวน | เกิด Appeal ประเภท ACCOMMODATION ที่ผูกกับคำขอเดิม และนับ SLA | P2 | API + E2E (Playwright) |
+| TC-R1-198 | ฟังก์ชัน | FR-R1-107 | เชิญผู้ปกครองเมื่อผู้สมัครเป็นผู้เยาว์ (#1) | ผู้สมัครอายุ 17 ปีเลือกช่องทางโควตานักกีฬา | ไปถึงขั้นคัดกรองสุขภาพ | ระบบแจ้งว่าต้องมีผู้ปกครองยินยอมก่อน และให้ส่งคำเชิญ (ลิงก์อายุ 7 วัน) ไปยังเบอร์/อีเมลของผู้ปกครอง | P1 | API + E2E (Playwright) |
+| TC-R1-199 | ฟังก์ชัน | FR-R1-107 | เชิญผู้ปกครองเมื่อผู้สมัครเป็นผู้เยาว์ (#2) | ผู้สมัครอายุ 17 ปีสมัครโควตาเรียนดี (ไม่มีการทดสอบร่างกาย) | ยื่นใบสมัคร | ยื่นได้โดยไม่ต้องรอผู้ปกครอง เพราะฐานการคัดเลือกคือ PT (L-01) และระบบแนะนำให้ผูกผู้ปกครองเพื่อรับแจ้งเตือน | P1 | API + E2E (Playwright) |
+| TC-R1-200 | ฟังก์ชัน | FR-R1-108 | ผูกบัญชีผู้ปกครอง 2 ระดับ (#1) | มารดาผู้สมัครเปิดลิงก์คำเชิญใน LINE | ยืนยันด้วย ThaID และอัปโหลดสูติบัตร | ได้สถานะ "รอเจ้าหน้าที่ตรวจ" ระหว่างนี้ใช้สิทธิ์ provisional และผู้สมัครได้แจ้ง "มีผู้ขอผูกเป็นผู้ปกครองของคุณ" | P1 | API + E2E (Playwright) |
+| TC-R1-201 | ความปลอดภัย | FR-R1-108 | ผูกบัญชีผู้ปกครอง 2 ระดับ (#2) | ผู้ไม่เกี่ยวข้องได้ลิงก์คำเชิญที่ถูกส่งต่อ | ผูกด้วยเลขบัตรของตน | ไม่ตรงกับข้อมูลผู้ปกครองที่ผู้สมัครระบุ → ระบบไม่ผูก แจ้งผู้สมัคร และนับความพยายามเพื่อกันการเดา | P1 | Security (API/DB, pen test) |
+| TC-R1-202 | ฟังก์ชัน | FR-R1-108 | ผูกบัญชีผู้ปกครอง 2 ระดับ (#3) | ย่าที่ดูแลจริงแต่ไม่มีเอกสารอำนาจปกครอง | ผูกบัญชี | ได้ความสัมพันธ์ CAREGIVER ที่สิทธิ์จำกัด (รับแจ้งเตือน/ชำระ) และ consent ที่ต้องใช้อำนาจปกครองยังต้องมาจาก LEGAL (เส้นทาง W-160) | P1 | API + E2E (Playwright) |
+| TC-R1-203 | PDPA | FR-R1-109 | Consent policy engine และ dual consent (#1) | ผู้สมัครอายุ 17 ปี ผู้เยาว์ให้ consent `SELECTION_HEALTH` แล้ว แต่ผู้ปกครองยังไม่ให้ | จอง slot สอบทักษะ | ระบบไม่ให้จองและแสดง "รอผู้ปกครองยินยอม" พร้อมปุ่มส่งเตือนผู้ปกครอง | P1 | PDPA (API/DB/contract) |
+| TC-R1-204 | PDPA | FR-R1-109 | Consent policy engine และ dual consent (#2) | ผู้สมัครอายุ 17 ปีผูก LINE กับบัญชีของตน | ให้ consent L-26 | บันทึก consent `given_by = SELF` โดยไม่ต้องรอผู้ปกครอง | P1 | PDPA (API/DB/contract) |
+| TC-R1-205 | PDPA | FR-R1-109 | Consent policy engine และ dual consent (#3) | ผู้ปกครองถอน consent `SELECTION_HEALTH` ก่อนวันสอบ | ถอน | slot สอบทักษะถูกระงับ ผู้สมัครและเจ้าหน้าที่ได้แจ้ง และข้อมูลที่เก็บไปแล้วจัดการตาม retention (ไม่ลบหลักฐาน consent) | P1 | PDPA (API/DB/contract) |
+| TC-R1-206 | ฟังก์ชัน | FR-R1-110 | หน้าผู้ปกครอง: สรุปผู้สมัครในความดูแล (#1) | ผู้ปกครองผูกบัญชีกับผู้สมัคร 2 คน (พี่น้อง) | เปิดหน้า | เลือกผู้สมัครทีละคนจากด้านบน แต่ละคนแสดงความคืบหน้าใบสมัคร ยอดค้าง และสิ่งที่ต้องทำ | P1 | API + E2E (Playwright) |
+| TC-R1-207 | ความปลอดภัย | FR-R1-110 | หน้าผู้ปกครอง: สรุปผู้สมัครในความดูแล (#2) | ผู้ปกครองที่มี `CustodyRestriction(DATA_VIEW)` | เปิดหน้า | ไม่เห็นข้อมูลของผู้สมัครนั้น (deny overrides) | P1 | Security (API/DB, pen test) |
+| TC-R1-208 | การเข้าถึง | FR-R1-110 | หน้าผู้ปกครอง: สรุปผู้สมัครในความดูแล (#3) | ผู้ปกครองสูงอายุใช้โหมดตัวอักษร 18 px | เปิดหน้าใน LINE in-app browser | ข้อความไทยไม่ถูกตัด ขยาย 200% ไม่ล้นจอ และปุ่มโทรหาเจ้าหน้าที่ใช้งานได้ | P1 | axe-core + manual screen reader |
+| TC-R1-209 | ฟังก์ชัน | FR-R1-111 | แจ้งผู้ปกครองในเหตุการณ์สำคัญ (#1) | ผู้สมัครอายุ 18 ปียืนยันสิทธิ์ที่ชลบุรี | transaction สำเร็จ | ผู้ปกครองได้แจ้งเตือน "บุตรของท่านยืนยันสิทธิ์ ... ค่ายืนยันสิทธิ์ครบกำหนด ..." พร้อมลิงก์ชำระ และการยืนยันมีผลทันที | P1 | API + E2E (Playwright) |
+| TC-R1-210 | ฟังก์ชัน | FR-R1-112 | ผู้ปกครองไม่มีสมาร์ตโฟน (assisted) (#1) | ผู้ปกครองไม่มี LINE/อินเทอร์เน็ต | เจ้าหน้าที่ส่ง OTP ทาง SMS และผู้ปกครองอ่านรหัสทางโทรศัพท์ที่เจ้าหน้าที่โทรออก | consent ถูกบันทึกเป็น `ASSISTED_OTP` พร้อมเจ้าหน้าที่ เวลา และเบอร์ปลายทางแบบ mask | P2 | API + E2E (Playwright) |
+| TC-R1-211 | PDPA | FR-R1-113 | บรรลุนิติภาวะระหว่างฤดูรับสมัคร (#1) | ผู้สมัครอายุครบ 20 ปีวันที่ 2 ม.ค. 2572 | job รายวันทำงาน | ผู้สมัครได้คำขอยืนยัน consent เอง และผู้ปกครองไม่เห็นข้อมูลใบสมัครจนกว่าผู้สมัครให้ consent observer | P2 | PDPA (API/DB/contract) |
+| TC-R1-212 | ฟังก์ชัน | FR-R1-114 | Handoff ผู้ยืนยันสิทธิ์และชำระแล้ว (#1) | ผู้สมัครยืนยันและชำระค่ายืนยันสิทธิ์ | callback ชำระมาถึง | ภายใน ≤ 5 วินาที (outbox lag) มี handoff สถานะ `READY` ที่ `registrar` วิทยาเขตปลายทางเห็น และ event `adm.OfferConfirmed` 1 ครั้ง | P1 | API + E2E (Playwright) |
+| TC-R1-213 | PDPA | FR-R1-114 | Handoff ผู้ยืนยันสิทธิ์และชำระแล้ว (#2) | ผู้สมัครไม่ยินยอมส่งต่อแผน accommodation | สร้าง handoff | handoff ไม่มีข้อมูล accommodation และแสดงเพียง "ผู้สมัครเลือกไม่ส่งต่อ" | P1 | PDPA (API/DB/contract) |
+| TC-R1-214 | ฟังก์ชัน | FR-R1-115 | รหัสนักศึกษาและสะพานไประบบทะเบียน (#1) | รอบโควตาของชลบุรีกำหนดรายงานตัว 20 มี.ค. 2572 (ก่อน R2) | `registrar` ส่งออก handoff | ได้ไฟล์มาตรฐานพร้อม hash และบันทึก audit ว่าผู้ใดส่งออกเมื่อใด และ handoff เปลี่ยนเป็น `EXPORTED_TO_LEGACY` | P1 | API + E2E (Playwright) |
+| TC-R1-215 | กรณีผิดปกติ | FR-R1-115 | รหัสนักศึกษาและสะพานไประบบทะเบียน (#2) | ผู้ใช้ที่ไม่มีบทบาท `registrar` ของวิทยาเขตนั้น | เรียกส่งออก | ได้ 403 | P1 | API + E2E |
+| TC-R1-216 | ฟังก์ชัน | FR-R1-116 | เลือกช่องทางรายงานตัวและนัดหมาย (#1) | ผู้ยืนยันสิทธิ์รอบ 5 ต้องแสดงตนเพราะบัญชียังไม่ยืนยันตัวตน | เลือก "ที่จุดบริการ" | จองเวลา 9 มิ.ย. 10:30 ได้ และได้ QR นัดหมายใน tracker | P2 | API + E2E (Playwright) |
+| TC-R1-217 | ฟังก์ชัน | FR-R1-117 | ตรวจตัวตนและเอกสารตัวจริงที่จุดบริการ (#1) | ผู้สมัครที่สมัครด้วย OTP มาแสดงบัตรประชาชน | `registrar` บันทึกยืนยัน | บัญชีเปลี่ยนเป็น `IN_PERSON` offer เป็น `reported` และ C-3 ยังคงครอบสถานะนี้ | P1 | API + E2E (Playwright) |
+| TC-R1-218 | ฟังก์ชัน | FR-R1-118 | ธงผู้รับเข้ารอบท้าย (late-admit) (#1) | T0 = 15 มิ.ย. 2572 และผู้สมัครรอบ 6 รายงานตัว 10 มิ.ย. | สร้าง handoff | handoff มี `late_admit = true` และแสดงป้ายในรายการของ `registrar` | P2 | API + E2E (Playwright) |
+| TC-R1-219 | ฟังก์ชัน | FR-R1-119 | OIT registry และ checklist (#1) | ปีงบ 2572 มีข้อ OIT 40 ข้อ | `planner` มอบหมายเจ้าของและ deadline | เจ้าของแต่ละข้อได้งานและแจ้งเตือนตามกำหนด และ dashboard แสดงความครบ (KPI-13) | P1 | API + E2E (Playwright) |
+| TC-R1-220 | PDPA | FR-R1-120 | ข้อมูลรับสมัครที่ต้องเปิดเผย (#1) | สถิติผู้สมัครพิการต่อหลักสูตรมีค่า 2 | สร้างข้อมูลเปิดเผย | cell นั้นแสดงเป็น "< 5" | P1 | PDPA (API/DB/contract) |
+| TC-R1-221 | ฟังก์ชัน | FR-R1-121 | อนุมัติ เผยแพร่ และ snapshot WORM (#1) | ข้อ OIT ด้านรับสมัครพร้อมและได้อนุมัติ | `pr` เผยแพร่ | หน้าสาธารณะแสดงข้อมูล snapshot ที่มี hash และวันที่ และแก้ไขย้อนหลังไม่ได้ (เผยแพร่ฉบับใหม่ได้เท่านั้น) | P1 | API + E2E (Playwright) |
+| TC-R1-222 | ฟังก์ชัน | FR-R1-122 | สถิติบริการสำหรับ ITA (#1) | สิ้นเดือน พ.ย. 2571 | job สรุปทำงาน | ได้ตัวเลขคำขอยกเว้นค่าสมัคร อุทธรณ์ ร้องเรียน และ ticket ต่อวิทยาเขต พร้อม % ภายใน SLA | P2 | API + E2E (Playwright) |
+| TC-R1-223 | ความปลอดภัย | FR-R1-123 | 4-eyes สำหรับ config สำคัญ (#1) | `module_admin` แก้ Biller ID ของวิทยาเขตชลบุรี | พยายาม publish เอง | ระบบไม่ให้ (ต้องมี checker ที่มีสิทธิ์) และ change อยู่สถานะ `pending` | P1 | Security (API/DB, pen test) |
+| TC-R1-224 | ฟังก์ชัน | FR-R1-123 | 4-eyes สำหรับ config สำคัญ (#2) | checker อนุมัติ FeeSchedule ใหม่ที่มีผล 1 ส.ค. 2571 | อนุมัติ | ใบแจ้งหนี้ที่สร้างตั้งแต่ 1 ส.ค. ใช้ค่าใหม่ ใบที่ออกก่อนหน้าไม่เปลี่ยน | P1 | API + E2E (Playwright) |
+| TC-R1-225 | ฟังก์ชัน | FR-R1-124 | Onboard วิทยาเขต pilot และ release ring (#1) | ชลบุรีและมหาสารคาม go-live R1 ส่วนวิทยาเขตอื่นยังไม่ | ผู้สมัครเปิดหน้าแรก | เห็นรอบของ 2 วิทยาเขตเท่านั้น และมีข้อความแนะนำช่องทางเดิมของวิทยาเขตอื่น | P1 | API + E2E (Playwright) |
+| TC-R1-226 | ฟังก์ชัน | FR-R1-125 | Job และ integration monitor (#1) | J-04 ล้มเหลว 2 รอบติดกัน | ครบรอบที่ 2 | `itadmin` และ on-call ได้ alert และ dashboard แสดงจำนวน offer ที่รอประมวลผลและเวลาเหตุล่าสุด | P1 | API + E2E (Playwright) |
+| TC-R1-227 | ความปลอดภัย | FR-R1-125 | Job และ integration monitor (#2) | `itadmin` เปิดหน้า monitor | ดูรายละเอียด job | เห็นเฉพาะ metadata (จำนวน เวลา error code) ไม่เห็นข้อมูลผู้สมัคร (SoD-07) | P1 | Security (API/DB, pen test) |
+| TC-R1-228 | ความปลอดภัย | FR-R1-126 | Break-glass 2 คน (#1) | มีผู้อนุมัติเพียง 1 คน | ขอใช้ break-glass | credential ไม่ถูกปลด | P1 | Security (API/DB, pen test) |
+| TC-R1-229 | ฟังก์ชัน | FR-R1-126 | Break-glass 2 คน (#2) | ผู้อนุมัติครบ 2 คน | ใช้ break-glass | SOC ได้ alert ภายใน 1 นาที และหลังเหตุมีงานทบทวนที่ครบกำหนด 24 ชม. | P1 | API + E2E (Playwright) |
+| TC-R1-230 | ความปลอดภัย | FR-R1-127 | Just-in-time privileged access (#1) | `dba_sre` ขอ JIT เขียน schema `adm` โดยไม่มี data_owner อนุมัติ | ส่งคำขอ | ได้สิทธิ์อ่านอย่างเดียวหรือถูกปฏิเสธตาม policy | P1 | Security (API/DB, pen test) |
+| TC-R1-231 | ความปลอดภัย | FR-R1-128 | Audit trail ของงานรับสมัคร (#1) | ผู้ใช้ทุกบทบาท (รวม itadmin) | พยายามแก้/ลบ AuditEvent | ทำไม่ได้ และการตรวจ hash chain รายวันผ่าน | P1 | Security (API/DB, pen test) |
+| TC-R1-232 | ฟังก์ชัน | FR-R1-128 | Audit trail ของงานรับสมัคร (#2) | `auditor` ขอชุดหลักฐานของรอบโควตานักกีฬา | สร้าง auditor export | ได้ CSV + hash + data dictionary ของเหตุการณ์ในรอบนั้นตาม scope ของ `auditor` | P1 | API + E2E (Playwright) |
+| TC-R1-233 | ฟังก์ชัน | FR-R1-129 | แม่แบบเอกสารของ R1 (#1) | แม่แบบบัตรประจำตัวผู้สอบวิทยาเขตมหาสารคามฉบับใหม่ | ส่งอนุมัติ | pipeline สร้างตัวอย่างจาก corpus T1–T9 เทียบ golden file (pixel diff ≤ 0.1%) ผ่าน veraPDF และ checker อนุมัติจึงมีผล | P1 | API + E2E (Playwright) |
+| TC-R1-234 | ฟังก์ชัน | FR-R1-130 | Waiting room และ status page (#1) | ผู้ใช้พร้อมกันเกิน 3,000 ช่วงประกาศผล | ผู้ใช้ใหม่เข้าหน้า offer | เข้าคิวพร้อมแสดงลำดับและเวลาคาดการณ์ภาษาไทย และ token ผูกกับ `sub` ใช้ได้ 1 session | P1 | API + E2E (Playwright) |
+| TC-R1-235 | การเข้าถึง | FR-R1-130 | Waiting room และ status page (#2) | ผู้ใช้ที่แจ้งความต้องการ accommodation | รออยู่ในคิว | เวลา timeout ของคิวขยายได้ตามที่ตั้งค่า | P1 | axe-core + manual screen reader |
+| TC-R1-236 | ฟังก์ชัน | FR-R1-131 | Change freeze ตามปฏิทินรับสมัคร (#1) | วันประกาศผลโควตาของชลบุรี | pipeline ขอ deploy feature ใหม่ | ถูกบล็อกพร้อมเหตุ "freeze: ADM_RESULT_PUBLISH ชลบุรี" | P2 | API + E2E (Playwright) |
+| TC-R1-237 | ความปลอดภัย | FR-R1-132 | Standard export ต่อบทบาท (#1) | `admission` ขอ export รายชื่อผู้สมัครพร้อมเบอร์โทร 3,000 แถวแบบ ad-hoc | ส่งคำขอ | ต้องระบุ purpose และรออนุมัติ (W-138 pattern) ไฟล์มี watermark ชื่อผู้ดึง/เวลา | P2 | Security (API/DB, pen test) |
+| TC-R1-238 | ฟังก์ชัน | FR-R1-133 | กฎแจ้งเตือนของงานรับสมัคร (#1) | `adm.OfferMade` สำหรับผู้สมัครที่ตั้งภาษาอังกฤษ | NOTI ส่งข้อความ | ใช้แม่แบบภาษาอังกฤษเวอร์ชันปัจจุบันของวิทยาเขตปลายทาง พร้อม deadline ในรูปแบบ ค.ศ. และ deep link | P1 | API + E2E (Playwright) |
+| TC-R1-239 | ฟังก์ชัน | FR-R1-134 | ลำดับช่องทาง send-once และ quiet hours (#1) | offer ใกล้ครบกำหนดใน 10 ชม. เวลา 22:00 | ถึงเวลาเตือน T-… ที่ตกช่วง quiet hours | ระบบส่งทันทีเพราะเหลือ < 12 ชม. | P1 | API + E2E (Playwright) |
+| TC-R1-240 | ฟังก์ชัน | FR-R1-134 | ลำดับช่องทาง send-once และ quiet hours (#2) | ข้อความ P1 ส่งทาง Web Push และผู้สมัครไม่คลิกใน 6 ชม. | ครบ 6 ชม. | ส่ง LINE (ถ้าผูก) 1 ครั้ง ไม่ส่งซ้ำช่องทางเดิม | P1 | API + E2E (Playwright) |
+| TC-R1-241 | PDPA | FR-R1-135 | ลดข้อมูลในช่องทางภายนอก (#1) | แม่แบบข้อความประกาศผลที่ส่งทาง LINE | ตรวจ payload ที่ส่งออก (contract test) | มีเพียงหัวข้อ "ประกาศผลรอบโควตา วิทยาเขตชลบุรีแล้ว" และลิงก์ ไม่มีคำว่า "ผ่าน/ไม่ผ่าน" หรือคะแนน | P1 | PDPA (API/DB/contract) |
+| TC-R1-242 | กรณีผิดปกติ | FR-R1-136 | Inbox รับทราบ และการตั้งค่า (#1) | ผู้สมัครพยายามปิดทุกช่องทางของหมวด "การเงิน" | บันทึก | ระบบไม่ให้และแจ้งว่าต้องเหลืออย่างน้อย 1 ช่องทาง (in-app) | P1 | API + E2E |
+| TC-R1-243 | PDPA | FR-R1-137 | ผูกและยกเลิก LINE (#1) | ผู้สมัครยกเลิกการผูก LINE | ยืนยัน | `ChannelBinding` ถูกลบ consent L-26 เป็น WITHDRAWN และข้อความถัดไปไปทางช่องทางอื่น | P1 | PDPA (API/DB/contract) |
+| TC-R1-244 | ความปลอดภัย | FR-R1-138 | สร้างและอนุมัติประกาศ (ENG) (#1) | `pr` ร่างประกาศและพยายามอนุมัติเอง | กดอนุมัติ | ปฏิเสธ (SoD-23) | P1 | Security (API/DB, pen test) |
+| TC-R1-245 | ฟังก์ชัน | FR-R1-138 | สร้างและอนุมัติประกาศ (ENG) (#2) | เหตุฉุกเฉินระหว่างวันสอบทักษะ (พายุ) และผู้อนุมัติ 2 คนกดยืนยัน | ส่ง P0 ถึงผู้สอบและผู้ปกครองของ session | เริ่มส่ง ≤ 10 วินาที และ push + LINE ถึง 95% ≤ 2 นาที | P1 | API + E2E (Playwright) |
+| TC-R1-246 | ฟังก์ชัน | FR-R1-139 | ทยอยส่งข้อความจำนวนมากและ hold window (#1) | ประกาศผลถึงผู้สมัคร 6,000 คน | กดเผยแพร่ | ข้อความทยอยส่งครบใน ~3 นาที และในช่วง 10 นาทีแรกผู้กดสามารถยกเลิกได้โดยไม่มีข้อความหลุด | P2 | API + E2E (Playwright) |
+| TC-R1-247 | ความปลอดภัย | FR-R1-069, FR-R1-074, NFR-R1-012 | กรรมการเข้าถึงเฉพาะ station ที่ได้รับมอบหมาย | กรรมการได้รับมอบหมาย station 1 ของ session A | เรียก `GET /test-stations/{station2}/moderation-flags` และ `GET /judge/sessions/{B}/offline-pack` | ได้ 403 ทั้งสองคำขอ และ audit deny | P1 | Security |
+| TC-R1-248 | ความปลอดภัย | FR-R1-069, NFR-R1-014 | Offline pack ไม่มีเลขประจำตัวประชาชน | session มีผู้สอบ 120 คน | ถอดข้อมูล offline pack ที่ดาวน์โหลด | ไม่มีเลขประจำตัว วันเกิด ที่อยู่ หรือข้อมูลสุขภาพ มีเพียงเลขผู้สอบ ชื่อ รูป ธง clearance และธง accommodation | P1 | Security |
+| TC-R1-249 | ความปลอดภัย | FR-R1-041 | magic link ของสมาคมใช้ซ้ำไม่ได้ | สมาคมยืนยันผลงานผ่าน magic link แล้ว | เปิดลิงก์เดิมอีกครั้ง | แสดง "ลิงก์หมดอายุ" และไม่แก้ผลเดิม | P1 | Security |
+| TC-R1-250 | ความปลอดภัย | FR-R1-104, NFR-R1-011 | XSS/CSRF บนหน้าร้องเรียนสาธารณะ | ผู้ทดสอบส่ง payload `<script>` ในรายละเอียดร้องเรียน | เจ้าหน้าที่เปิดเรื่องใน back-office | ข้อความถูก escape ไม่มีการรันสคริปต์ และ endpoint ที่เปลี่ยนสถานะต้องมี token/SameSite ที่ถูกต้อง | P1 | Security |
+| TC-R1-251 | ความปลอดภัย | FR-R1-098, FR-R1-093, NFR-R1-012 | registrar ส่วนกลางเห็นเฉพาะ aggregate | `registrar` scope university | เปิด clearing dashboard และพยายาม drill ถึงรายบุคคลของวิทยาเขตมหาสารคาม | เห็นเพียงตัวเลขรวม และ API รายบุคคลตอบ 403 | P1 | Security |
+| TC-R1-252 | ความปลอดภัย | FR-R1-045, NFR-R1-016 | เฉพาะระบบสร้าง QR ชำระเงิน | มีผู้สร้าง QR ปลอมที่ Ref1 เป็นเลขใบแจ้งหนี้จริงแต่ Biller ID อื่น | ผู้สมัครเปิดหน้าตรวจสอบใบแจ้งหนี้ | หน้าแสดง Biller ID ที่ถูกต้องและคำเตือน phishing; เงินที่เข้า Biller อื่นไม่ถูกตัดหนี้ | P1 | Security |
+| TC-R1-253 | ความปลอดภัย | FR-R1-079, FR-R1-081, NFR-R1-029 | Integrity ของ rank list หลังอนุมัติ | rank list อนุมัติแล้วพร้อม hash | แก้ `entries` ตรงในฐานข้อมูล (test DB) | job รายคืนรายงาน `aud.AnomalyDetected` และหน้า BO แสดงคำเตือน hash ไม่ตรง | P1 | Security |
+| TC-R1-254 | ความปลอดภัย | FR-R1-088, FR-R1-093, NFR-R1-012 | ConfirmationLock มองไม่เห็นจาก role เจ้าหน้าที่ | `admission` ชลบุรีมีสิทธิ์อ่านตาราง adm ตาม RLS | query `adm.confirmation_lock` ผ่าน repository ของเจ้าหน้าที่ | 0 แถว (ตารางระดับมหาวิทยาลัยใช้ได้เฉพาะ service ADM ผ่าน function ที่คืนเพียงธง) | P1 | Security |
+| TC-R1-255 | PDPA | FR-R1-109, NFR-R1-020 | Notice เวอร์ชันใหม่ต้องขอความยินยอมใหม่เฉพาะ purpose ที่เปลี่ยน | DPO เผยแพร่ notice `SELECTION_HEALTH` เวอร์ชัน 2 ที่เพิ่มการส่งต่อข้อมูล | ผู้สมัครที่ให้ consent เวอร์ชัน 1 เปิดแอป | ระบบขอ consent ใหม่เฉพาะ purpose นั้น (dual consent ถ้าผู้เยาว์) และไม่ใช้ข้อมูลตาม purpose ใหม่จนกว่าจะได้ | P1 | PDPA review + test |
+| TC-R1-256 | PDPA | FR-R1-104, NFR-R1-019 | เรื่องหมวด PDPA ส่งเข้าคิว DPO | ผู้สมัครร้องเรียนหมวด PDPA (DSR execution อยู่ R2) | ส่งเรื่อง | เรื่องถูก route ไปคิว `dpo` พร้อมเลขรับ และ SLA ตามกฎหมายเริ่มนับ [ต้องตรวจสอบ 30 วัน] | P1 | PDPA review + test |
+| TC-R1-257 | PDPA | FR-R1-114, NFR-R1-022 | ข้อมูลผู้สมัครไม่ได้รับเข้าไม่ถูกส่งต่อ REC | ผู้สมัครไม่ผ่านการคัดเลือก | ปิดรอบ | ไม่มี ReportingHandoff หรือ event ที่ส่งข้อมูลบุคคลไป REC/ANA; สถิติเข้าเฉพาะแบบ aggregate | P1 | PDPA review + test |
+| TC-R1-258 | ฟังก์ชัน | FR-R1-008, FR-R1-033 | ยื่นใบสมัครหลังปิด window | รอบปิดรับ 7 พ.ย. 2571 16:30 และผู้สมัครเปิดร่างค้างไว้ | กดยื่น 16:31 | ได้ 409 `ADM-WINDOW-CLOSED` พร้อมข้อความไทย และร่างยังอยู่ [ต้องตรวจสอบนโยบาย grace สำหรับผู้ที่อยู่ระหว่างชำระ] | P1 | API + E2E |
+| TC-R1-259 | ฟังก์ชัน | FR-R1-050, FR-R1-010 | ยกเลิกรอบหลังมีผู้ชำระแล้ว | รอบทั่วไป 6 มีผู้ชำระค่าสมัคร 40 ราย | `campusvp` อนุมัติยกเลิกรอบ | สร้างคำขอคืนเงิน 40 รายการ ผู้สมัครได้แจ้ง P1 และรอบเป็น CANCELLED โดยไม่ลบใบสมัคร | P1 | API + E2E |
+| TC-R1-260 | ฟังก์ชัน | FR-R1-091, FR-R1-100, FR-R1-102 | appeal_hold กับ cascade ที่นั่งสุดท้าย | sub-bucket ผู้รักษาประตูมี 1 ที่ มี hold จากอุทธรณ์ และผู้ได้ที่นั่งสละสิทธิ์ | J-04 ทำงาน | ไม่เรียกสำรองจนกว่าอุทธรณ์ตัดสิน; หลังตัดสิน (ไม่ชนะ) สำรองได้ offer ≤ 15 นาที | P1 | API + E2E |
+| TC-R1-261 | ฟังก์ชัน | FR-R1-095 | ปิดยืนยันซ้ำต่อวิทยาเขต | วิทยาเขตมหาสารคามตั้ง `reconfirm_enabled = false` | ถึง `ADM_RECONFIRM_WINDOW` | ไม่มีแจ้งเตือนยืนยันซ้ำถึงผู้สมัครของมหาสารคาม และไม่มีการ waive อัตโนมัติ | P1 | API + E2E |
+| TC-R1-262 | ฟังก์ชัน | FR-R1-139, FR-R1-082 | ยกเลิกการประกาศผลภายใน hold window | `admission` กดประกาศผลผิดรอบ | กดยกเลิกภายใน 3 นาที | ไม่มีข้อความถึงผู้สมัคร shard บน CDN ไม่ถูกเผยแพร่ และ event ปลายน้ำไม่ถูกส่ง | P1 | API + E2E |
+| TC-R1-263 | ฟังก์ชัน | FR-R1-086, FR-R1-134 | Quiet hours ไม่ทำให้ deadline สั้นลง | offer จาก cascade สร้างเวลา 20:30 | ตรวจ deadline | ข้อความส่ง 07:00 และ deadline = 07:00 + 48 ชม. (ไม่นับ 20:30–07:00) | P1 | API + E2E |
+| TC-R1-264 | Peak load/ประสิทธิภาพ | NFR-R1-001 | Load: ช่วง 48 ชม. สุดท้ายของรอบโควตา | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | k6/Gatling จำลอง 2,000 virtual users กรอก–อัปโหลด–ยื่น–ชำระ 60 นาทีที่ 40 RPS | p95 อ่าน ≤ 300 ms, เขียน ≤ 500 ms, 5xx ≤ 0.1%, ไม่มีใบสมัครซ้ำ/หาย | P1 | k6/Gatling |
+| TC-R1-265 | Peak load/ประสิทธิภาพ | NFR-R1-001 | Stress: 3× ภาระคาด | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | เพิ่มเป็น 60 RPS และ 3,000 VU จนกว่าจะเสื่อม | บันทึกจุดแตก ระบบฟื้นตัวเองเมื่อภาระลด ไม่มีข้อมูลเสียหาย | P1 | k6/Gatling |
+| TC-R1-266 | Peak load/ประสิทธิภาพ | NFR-R1-002 | Admission result burst | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ยิง 300 req/s 10 นาทีไปที่ shard URL ผ่าน CDN แล้วปิด origin นาทีที่ 5 | TTFB p95 ≤ 200 ms, 0 คำขอถึง origin ต่อผลรายบุคคล, ไม่มี error ระหว่าง origin ปิด | P1 | k6/Gatling |
+| TC-R1-267 | Peak load/ประสิทธิภาพ | NFR-R1-003 | Upload 108 วิดีโอ/ชม. | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | จำลอง 108 upload วิดีโอ 150 MB พร้อมเอกสาร 360 ชุดใน 1 ชม. บนโปรไฟล์ 4G ที่มี packet loss 2% | upload สำเร็จ ≥ 99% (ที่เหลือ resume ได้), scan p95 ตามเกณฑ์ | P1 | k6/Gatling |
+| TC-R1-268 | Peak load/ประสิทธิภาพ | NFR-R1-004 | Judge sync storm | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | 50 tablet จำลองส่ง batch 200 รายการพร้อมกัน 2 รอบ (รอบ 2 เป็น retry ทั้งหมด) | ทุกรายการบันทึกครั้งเดียว, p95 batch ≤ 3 s, conflict queue ว่างเมื่อไม่มีความขัดแย้งจริง | P1 | k6/Gatling |
+| TC-R1-269 | Peak load/ประสิทธิภาพ | NFR-R1-005 | Concurrent confirm | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | สร้าง 300 ผู้สมัครที่มี offer 2–3 วิทยาเขต แล้วยิงยืนยันสลับวิทยาเขตพร้อมกันจาก 2 client ต่อคน | invariant ทั้งหมดผ่าน, p95 ≤ 1 s | P1 | k6/Gatling |
+| TC-R1-270 | Peak load/ประสิทธิภาพ | NFR-R1-006 | Lighthouse CI หน้า applicant | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | รัน Lighthouse CI บน S-R1-01, 04, 10, 16, 17 ด้วยโปรไฟล์ Moto G4 + Slow 4G | LCP ≤ 2.5 s, JS ≤ 200 KB/route ทุกหน้า | P1 | k6/Gatling |
+| TC-R1-271 | Peak load/ประสิทธิภาพ | NFR-R1-006 | Batch บัตรผู้สอบ | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | สร้างและลงนามบัตร 3,000 ฉบับ | เสร็จ ≤ 1 ชม., ฉบับเดี่ยว ≤ 5 s | P1 | k6/Gatling |
+| TC-R1-272 | Peak load/ประสิทธิภาพ | NFR-R1-007 | Mass expiry cascade | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ตั้ง 1,000 offer ให้หมดเวลาเดียวกันใน 2 วิทยาเขต | ทุกที่นั่งคืนและสำรองได้ offer ≤ 15 นาที (ในช่วง 07:00–20:00), log ครบ | P1 | k6/Gatling |
+| TC-R1-273 | Peak load/ประสิทธิภาพ | NFR-R1-007 | Staggered result notification | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ประกาศผลถึง 6,000 ผู้รับ | อัตราส่ง ≤ 2,000/นาที และครบ ≤ 4 นาที; outbox lag p95 ≤ 5 s | P1 | k6/Gatling |
+| TC-R1-274 | Resilience | NFR-R1-008 | Game day ช่วงประกาศผล | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ฆ่า PG primary, core pod 2 ตัว, Valkey primary และปิด Keycloak 2 นาทีระหว่าง load 2× | ผู้ที่ login แล้วยืนยันสิทธิ์ต่อได้, failover ≤ 60 s, ไม่มีข้อมูลเสียหาย, SLI ไม่ต่ำกว่าเป้า | P1 | chaos/game day |
+| TC-R1-275 | DR/กู้คืน | NFR-R1-009 | DR failover drill | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | failover ทั้ง site ระหว่าง rehearsal รับสมัคร | RPO ≤ 5 นาที, RTO ≤ 4 ชม., ใบเสร็จชุดใหม่ถูกใช้, erasure ledger ถูก reapply | P1 | DR drill |
+| TC-R1-276 | DR/กู้คืน | NFR-R1-009 | HSM สูญหาย | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | จำลอง HSM ไซต์ A หาย แล้วกู้ด้วย escrow ตาม runbook | OpenBao unseal และ DOC ลงนามได้ตามเวลาใน runbook | P1 | DR drill |
+| TC-R1-277 | Resilience | NFR-R1-010 | ThaID outage | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ปิด IdP ThaID ใน staging | ผู้สมัครใหม่สมัครด้วย OTP ได้และถูกติดธงยืนยันตัวตนภายหลัง | P1 | chaos/game day |
+| TC-R1-278 | Resilience | NFR-R1-010 | Venue offline full day | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | judge app ไม่มีเครือข่าย 8 ชม. บันทึก 600 คะแนน | ไม่มีข้อมูลหาย, sync ครบเมื่อออนไลน์, ข้อมูลบนเครื่องถูกล้าง | P1 | chaos/game day |
+| TC-R1-279 | ความปลอดภัย | NFR-R1-011 | Pen test R1 | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ผู้ทดสอบอิสระทดสอบตามขอบเขต | 0 High/Critical ค้าง ณ go/no-go | P1 | Security |
+| TC-R1-280 | ความปลอดภัย | NFR-R1-011 | Security headers หน้าสาธารณะ | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | สแกน S-R1-01, 46, 47, 48, 49 | มี HSTS, CSP, X-Content-Type-Options, frame-ancestors และ TLS ≥ 1.2 | P1 | Security |
+| TC-R1-281 | ความปลอดภัย | NFR-R1-012 | RLS cross-campus: admission | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | `admission` ชลบุรีเรียก list/get/patch ใบสมัคร เอกสาร คะแนน offer ของมหาสารคามผ่าน API และ repository | 0 แถว/404 ทุกกรณี และ audit deny | P1 | Security |
+| TC-R1-282 | ความปลอดภัย | NFR-R1-012 | RLS set_config injection | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | จำลอง SQL injection ตั้ง `set_config('app.org_scope', ...)` ปลอม และใช้ token ของ transaction อื่น | 0 แถว | P1 | Security |
+| TC-R1-283 | ความปลอดภัย | NFR-R1-012 | Schema lint | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | CI ตรวจทุก migration ของ schema adm/fin/case/priv/doc/fac/eng | ทุกตารางธุรกรรมมี org_unit_id + RLS forced; ไม่มี BYPASSRLS | P1 | Security |
+| TC-R1-284 | ความปลอดภัย | NFR-R1-013 | Step-up ก่อน override | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | `head` เสนอ override โดย session อายุ > 15 นาที | ระบบขอ WebAuthn ใหม่ก่อนบันทึก | P1 | Security |
+| TC-R1-285 | ความปลอดภัย | NFR-R1-013 | IDOR guardian | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ผู้ปกครองของผู้สมัคร A เรียก summary ของผู้สมัคร B | 403/404 และ audit | P1 | Security |
+| TC-R1-286 | ความปลอดภัย | NFR-R1-014 | PII leakage scan | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ค้นหา pattern เลข 13 หลักใน log, trace, event outbox, ไฟล์ export และ QR ที่ระบบสร้างระหว่าง E2E | ไม่พบ | P1 | Security |
+| TC-R1-287 | ความปลอดภัย | NFR-R1-014 | Event payload contract | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | contract test ทุก event ของ R1 | ไม่มีข้อมูลสุขภาพ เลขบัตร หรือรายละเอียดความพิการ | P1 | Security |
+| TC-R1-288 | ความปลอดภัย | NFR-R1-015 | SMS pumping | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | สคริปต์ขอ OTP ไปยังเบอร์ต่างประเทศและเบอร์สุ่มไทย 500 ครั้ง/ชม. | เบอร์ต่างประเทศถูกปฏิเสธ, ถูก rate limit หลังเกณฑ์, alert เกิด | P1 | Security |
+| TC-R1-289 | ความปลอดภัย | NFR-R1-015 | Result scraping | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | เดา shard key ด้วยเลขผู้สมัครเรียงลำดับ 10,000 ครั้ง | ไม่ได้ข้อมูลและถูกจำกัดอัตรา | P1 | Security |
+| TC-R1-290 | ความปลอดภัย | NFR-R1-016 | Forged callback | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ส่ง callback ไม่มี client cert / ลายเซ็นผิด / ยอดถูกแก้ | ถูกปฏิเสธทั้งหมด ไม่มีการตัดหนี้ | P1 | Security |
+| TC-R1-291 | ความปลอดภัย | NFR-R1-016 | Replay callback | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ส่ง callback ที่ถูกต้องซ้ำ 50 ครั้ง | ตัดหนี้ 1 ครั้ง ใบเสร็จ 1 ฉบับ | P1 | Security |
+| TC-R1-292 | ความปลอดภัย | NFR-R1-017 | Lost tablet | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ยึดเครื่องที่มีข้อมูลค้าง พยายามอ่าน IndexedDB โดยไม่มี PIN | อ่านไม่ได้ (ciphertext) และเมื่อ revoke แล้วข้อมูลจากเครื่องถูกปฏิเสธ | P1 | Security |
+| TC-R1-293 | ความปลอดภัย | NFR-R1-018 | SoD matrix test | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | สำหรับแต่ละ SoD ในรายการ ให้ผู้ใช้คนเดียวทำทั้ง maker และ checker | ถูกปฏิเสธทุกกรณีด้วย `SOD-MAKER-CHECKER` และ audit | P1 | Security |
+| TC-R1-294 | PDPA | NFR-R1-019 | Go-live privacy gate | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ตรวจ checklist ใน PRIV ก่อน go/no-go | ทุกกิจกรรม R1 มี lawful basis ที่อนุมัติ, DPIA D-01/D-02 อนุมัติ, cross-border register ครบ | P1 | PDPA review + test |
+| TC-R1-295 | PDPA | NFR-R1-020 | Consent matrix ตามอายุ | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ผู้สมัครอายุ 15, 17, 19, 20 ปี ทำกิจกรรม: ผูก LINE, ส่งใบรับรองแพทย์, ยินยอมเผยแพร่ภาพ | ผู้ให้ consent ตรงตาราง 10 §2.4 ทุกกรณี | P1 | PDPA review + test |
+| TC-R1-296 | PDPA | NFR-R1-021 | Vault boundary | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | สแกน schema core + ทดสอบ role analytics เชื่อม `hlt_vault` | ไม่พบข้อมูลสุขภาพใน core; การเชื่อมถูกปฏิเสธ | P1 | PDPA review + test |
+| TC-R1-297 | PDPA | NFR-R1-022 | Outbound minimisation | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ดักข้อความที่ส่งไป LINE/SMS ใน E2E ทั้งชุด | ไม่มีคะแนน ผลรายบุคคล ยอดเงิน สุขภาพ หรือเลขประจำตัว | P1 | PDPA review + test |
+| TC-R1-298 | PDPA | NFR-R1-023 | Retention job dry-run | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ตั้งเวลาระบบข้ามไป 2 ปีหลังปิดรอบใน staging | ใบสมัครที่ไม่ได้รับเข้าถูกลบ/ทำให้ไม่ระบุตัวตน ยกเว้นที่มี LEGAL_HOLD; สถิติรวมยังอยู่ | P1 | PDPA review + test |
+| TC-R1-299 | การเข้าถึง | NFR-R1-024 | axe-core ทุกหน้า R1 | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | รัน axe ใน Playwright ทุกหน้าจอ S-R1-01..58 | 0 critical, serious ≤ ที่ยอมรับใน baseline | P1 | axe + manual |
+| TC-R1-300 | การเข้าถึง | NFR-R1-024 | Keyboard-only application | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | สมัครจนชำระโดยใช้คีย์บอร์ดอย่างเดียว | ทำได้ครบ focus เห็นชัด ไม่มี keyboard trap | P1 | axe + manual |
+| TC-R1-301 | การเข้าถึง | NFR-R1-024 | Screen reader ภาษาไทย | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ผู้ทดสอบใช้ NVDA/TalkBack/VoiceOver ทำ flow สมัคร–ชำระ–ดูผล–ยืนยัน | task success ≥ 90%; label/ข้อความ error อ่านได้ถูกต้อง | P1 | axe + manual |
+| TC-R1-302 | การเข้าถึง | NFR-R1-024 | PDF/UA | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ตรวจ PDF ประกาศ บัตรผู้สอบ ใบเสร็จ ด้วย veraPDF (PDF/UA) | ผ่าน | P1 | axe + manual |
+| TC-R1-303 | Thai typography | NFR-R1-025 | Typography corpus บน UI | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | render corpus T1–T9 ใน component library บน Chrome Android, Samsung Internet, Safari iOS, LINE in-app (Android/iOS), Chrome/Edge desktop × 14/16/18 px × 200% | ผ่านเกณฑ์ 14 §5.2 ทุก cell | P1 | visual regression + veraPDF |
+| TC-R1-304 | Thai typography | NFR-R1-025 | Typography corpus บน PDF | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | สร้างบัตรผู้สอบ ใบเสร็จ ประกาศ ด้วยชื่อจาก corpus | pixel diff ≤ 0.1%, text extraction ตรง 100% | P1 | visual regression + veraPDF |
+| TC-R1-305 | Usability | NFR-R1-026 | Buddhist date round-trip | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | กรอกวันเกิด 03/02/2554 และ 03/02/2011 ใน date picker | ทั้งสองแบบถูกตีความถูกต้องหลังยืนยัน และเก็บเป็น 2011-02-03 | P1 | usability/E2E |
+| TC-R1-306 | Usability | NFR-R1-027 | Moderated usability R1 | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | 5–8 คนต่อ persona (ม.6, ผู้สมัครนักกีฬา, ผู้สมัครพิการ ≥ 3, ผู้ปกครอง, เจ้าหน้าที่รับเข้า, กรรมการ) | task success ≥ 90%, SUS ≥ 70 | P1 | usability/E2E |
+| TC-R1-307 | Usability | NFR-R1-028 | Offline confirm guard | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ปิดเครือข่ายแล้วกดยืนยันสิทธิ์ | แอปแสดง "ต้องเชื่อมต่ออินเทอร์เน็ตเพื่อยืนยันสิทธิ์" ไม่ queue คำสั่งไว้ส่งภายหลัง | P1 | usability/E2E |
+| TC-R1-308 | ความปลอดภัย | NFR-R1-029 | Audit chain integrity | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | แก้ 1 แถวใน partition audit ใน test DB | การตรวจ chain รายวันรายงานจุดที่ขาดและเกิด anomaly | P1 | Security |
+| TC-R1-309 | ความปลอดภัย | NFR-R1-029 | UEBA bulk read | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | `admission` เปิดรายละเอียดใบสมัคร 800 ใบใน 10 นาที | เกิด finding ให้ security_admin ทบทวน | P1 | Security |
+| TC-R1-310 | ปฏิบัติการ | NFR-R1-030 | Alert drill | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | หยุด worker ของ J-04 30 นาทีใน staging | on-call ได้ alert ≤ 10 นาที, status page อัปเดต | P2 | ops drill |
+| TC-R1-311 | ปฏิบัติการ | NFR-R1-031 | Helpdesk readiness | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ตรวจรายชื่อ agent, ตารางเวร, routing LINE OA, FAQ ก่อน go/no-go | ครบตาม staffing model | P1 | ops drill |
+| TC-R1-312 | API contract | NFR-R1-032 | OpenAPI lint + contract | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | validate r1-api.yaml และรัน Pact ระหว่าง PWA กับ core | spec ถูกต้อง, contract ผ่าน 100% | P1 | spec lint + Pact |
+| TC-R1-313 | API contract | NFR-R1-032 | Idempotency | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | ส่ง POST ทุก operation ที่บังคับ Idempotency-Key ซ้ำด้วย key เดิม/ต่าง payload | key เดิม payload เดิม = ผลเดิม; key เดิม payload ต่าง = 422 `IDEMPOTENCY-KEY-REUSED`; ไม่มี key = 428 | P1 | spec lint + Pact |
+| TC-R1-314 | ปฏิบัติการ | NFR-R1-033 | Onboard rehearsal | สภาพแวดล้อม staging/perf ตามเล่ม 11 §4 | onboard วิทยาเขตจำลองที่ 3 ใน staging จาก template | เปิดรอบและรับสมัครได้โดยไม่ deploy โค้ดใหม่ | P2 | ops drill |
+| TC-R1-315 | การเข้าถึง | S-R1-01, NFR-R1-024, FR-R1-019, FR-R1-092 | การเข้าถึงหน้าจอ S-R1-01 หน้าแรกผู้สมัคร: ค้นหารอบที่เปิด | หน้าจอ S-R1-01 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-316 | การเข้าถึง | S-R1-02, NFR-R1-024, FR-R1-011, FR-R1-012, FR-R1-013 | การเข้าถึงหน้าจอ S-R1-02 สร้างบัญชี / เข้าสู่ระบบ | หน้าจอ S-R1-02 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-317 | การเข้าถึง | S-R1-04, NFR-R1-024, FR-R1-020, FR-R1-023, FR-R1-026 | การเข้าถึงหน้าจอ S-R1-04 ใบสมัคร ขั้น 1: เลือกช่องทาง รอบ และอันดับ | หน้าจอ S-R1-04 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-318 | การเข้าถึง | S-R1-05, NFR-R1-024, FR-R1-020, FR-R1-021, FR-R1-022 | การเข้าถึงหน้าจอ S-R1-05 ใบสมัคร ขั้น 2: การศึกษา GPAX และตรวจคุณสมบัติ | หน้าจอ S-R1-05 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-319 | การเข้าถึง | S-R1-07, NFR-R1-024, FR-R1-020, FR-R1-030, FR-R1-036 | การเข้าถึงหน้าจอ S-R1-07 ใบสมัคร ขั้น 4: อัปโหลดเอกสาร | หน้าจอ S-R1-07 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-320 | การเข้าถึง | S-R1-09, NFR-R1-024, FR-R1-020, FR-R1-029, FR-R1-033 | การเข้าถึงหน้าจอ S-R1-09 ใบสมัคร ขั้นสุดท้าย: ตรวจทานและยื่น | หน้าจอ S-R1-09 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-321 | การเข้าถึง | S-R1-10, NFR-R1-024, FR-R1-044, FR-R1-045, FR-R1-048 | การเข้าถึงหน้าจอ S-R1-10 ชำระเงิน Thai QR และสถานะ | หน้าจอ S-R1-10 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-322 | การเข้าถึง | S-R1-12, NFR-R1-024, FR-R1-034, FR-R1-048 | การเข้าถึงหน้าจอ S-R1-12 Application tracker | หน้าจอ S-R1-12 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-323 | การเข้าถึง | S-R1-14, NFR-R1-024, FR-R1-064, FR-R1-065, FR-R1-109 | การเข้าถึงหน้าจอ S-R1-14 แบบคัดกรองสุขภาพและใบรับรองแพทย์ | หน้าจอ S-R1-14 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-324 | การเข้าถึง | S-R1-15, NFR-R1-024, FR-R1-058, FR-R1-059, FR-R1-062 | การเข้าถึงหน้าจอ S-R1-15 เลือก/ยืนยัน slot และบัตรประจำตัวผู้สอบ | หน้าจอ S-R1-15 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-325 | การเข้าถึง | S-R1-16, NFR-R1-024, FR-R1-084 | การเข้าถึงหน้าจอ S-R1-16 ผลคัดเลือกและคะแนนรายสถานี | หน้าจอ S-R1-16 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-326 | การเข้าถึง | S-R1-17, NFR-R1-024, FR-R1-026, FR-R1-051, FR-R1-086 | การเข้าถึงหน้าจอ S-R1-17 Offer และยืนยัน/สละสิทธิ์ | หน้าจอ S-R1-17 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-327 | การเข้าถึง | S-R1-24, NFR-R1-024, FR-R1-107, FR-R1-108 | การเข้าถึงหน้าจอ S-R1-24 รับคำเชิญและผูกบัญชีผู้ปกครอง | หน้าจอ S-R1-24 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-328 | การเข้าถึง | S-R1-25, NFR-R1-024, FR-R1-027, FR-R1-109, FR-R1-112 | การเข้าถึงหน้าจอ S-R1-25 ให้ความยินยอม (dual consent) | หน้าจอ S-R1-25 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-329 | การเข้าถึง | S-R1-26, NFR-R1-024, FR-R1-044, FR-R1-051, FR-R1-108 | การเข้าถึงหน้าจอ S-R1-26 ภาพรวมผู้สมัครในความดูแล | หน้าจอ S-R1-26 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-330 | การเข้าถึง | S-R1-27, NFR-R1-024, FR-R1-057, FR-R1-069 | การเข้าถึงหน้าจอ S-R1-27 Judge: เข้าสู่ระบบ ดาวน์โหลด session และประกาศ COI | หน้าจอ S-R1-27 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-331 | การเข้าถึง | S-R1-28, NFR-R1-024, FR-R1-035, FR-R1-065, FR-R1-067 | การเข้าถึงหน้าจอ S-R1-28 Judge: เช็คอินผู้สอบด้วย QR | หน้าจอ S-R1-28 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-332 | การเข้าถึง | S-R1-29, NFR-R1-024, FR-R1-071, FR-R1-072 | การเข้าถึงหน้าจอ S-R1-29 Judge: ให้คะแนน station | หน้าจอ S-R1-29 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-333 | การเข้าถึง | S-R1-30, NFR-R1-024, FR-R1-073 | การเข้าถึงหน้าจอ S-R1-30 Judge: สถานะ sync และความขัดแย้ง | หน้าจอ S-R1-30 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-334 | การเข้าถึง | S-R1-31, NFR-R1-024, FR-R1-072, FR-R1-074, FR-R1-075 | การเข้าถึงหน้าจอ S-R1-31 ประธาน station: moderation และยืนยันผล | หน้าจอ S-R1-31 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-335 | การเข้าถึง | S-R1-33, NFR-R1-024, FR-R1-001, FR-R1-003, FR-R1-004 | การเข้าถึงหน้าจอ S-R1-33 BO: Round wizard | หน้าจอ S-R1-33 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-336 | การเข้าถึง | S-R1-35, NFR-R1-024, FR-R1-022, FR-R1-035, FR-R1-038 | การเข้าถึงหน้าจอ S-R1-35 BO: คิวตรวจเอกสาร | หน้าจอ S-R1-35 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-337 | การเข้าถึง | S-R1-37, NFR-R1-024, FR-R1-054, FR-R1-055, FR-R1-056 | การเข้าถึงหน้าจอ S-R1-37 BO: ตารางสอบ จองสนาม และแต่งตั้งกรรมการ | หน้าจอ S-R1-37 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-338 | การเข้าถึง | S-R1-38, NFR-R1-024, FR-R1-075, FR-R1-079, FR-R1-080 | การเข้าถึงหน้าจอ S-R1-38 BO: จัดอันดับ อนุมัติ และประกาศผล | หน้าจอ S-R1-38 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-339 | การเข้าถึง | S-R1-39, NFR-R1-024, FR-R1-091, FR-R1-093, FR-R1-094 | การเข้าถึงหน้าจอ S-R1-39 BO: Clearing dashboard | หน้าจอ S-R1-39 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-340 | การเข้าถึง | S-R1-45, NFR-R1-024, FR-R1-007, FR-R1-009, FR-R1-017 | การเข้าถึงหน้าจอ S-R1-45 Inbox ผู้อนุมัติและ role switcher | หน้าจอ S-R1-45 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+| TC-R1-341 | การเข้าถึง | S-R1-47, NFR-R1-024, FR-R1-083, FR-R1-130 | การเข้าถึงหน้าจอ S-R1-47 ตรวจผลรายบุคคลและ waiting room | หน้าจอ S-R1-47 พร้อมข้อมูลสังเคราะห์ | ผู้ตรวจอิสระใช้ NVDA/TalkBack/VoiceOver, คีย์บอร์ดอย่างเดียว, ขยาย 200% และ LINE in-app browser (ถ้าเปิดผ่าน LIFF) | ไม่มีปัญหาระดับ critical/serious ตาม WCAG 2.1 AA; label/สถานะ/ข้อความ error ภาษาไทยถูกอ่าน; target ≥ 44×44 px; line-height ไทย ≥ 1.6 | P1 | axe-core + manual screen reader |
+
+## 9. UAT ที่วิทยาเขต pilot (ชลบุรี / มหาสารคาม)
+
+**รอบเวลา:** UAT รอบ RC มิ.ย.–ก.ค. 2571 (คู่กับ usability รอบ 2, เล่ม 14 §14) → แก้ไข → UAT ยืนยัน ต้น ส.ค. 2571 → go/no-go 15 ส.ค. 2571 (เล่ม 12 §1.2); scenario ที่ขึ้นกับปฏิทินปีถัดไป (UAT-R1-10, 11) ใช้ time travel บน namespace `uat`
+**ผู้ทดสอบ:** champion 2 คน + key user งานรับสมัคร/ทะเบียน/การเงินของแต่ละวิทยาเขต, กรรมการจริง (ภายในและภายนอก), พยาบาล/แพทย์ที่จะประจำสนาม, นักเรียน ม.6 และผู้ปกครองอาสาสมัคร (consent), ผู้สมัครพิการ ≥ 3 คน
+**ลงนามออก:** นายทะเบียนและหัวหน้าการเงินของแต่ละวิทยาเขต + `campusvp` (เล่ม 11 §4.4)
+
+### UAT-R1-01 ตั้งและเผยแพร่รอบโควตาเรียนดี + โควตานักกีฬา
+
+- **วิทยาเขต:** ชลบุรี
+- **ผู้ทดสอบ/บทบาท:** `admission`, `head`, `dean`, `campusvp`, `pr`, `module_admin`
+- **ขั้นตอน:**
+  1. clone รอบปีก่อน แก้วันที่ ตั้ง seat matrix (รวม sub-bucket ฟุตบอล/มวยไทย)
+  2. ใส่ DMN เกณฑ์และทดสอบกับชุด 20 ราย
+  3. ตั้ง scoring/rubric และกำหนดการ แก้ linter error L-15
+  4. ส่งอนุมัติตามสาย → campusvp ลงนาม
+  5. pr เผยแพร่ ตรวจหน้าสาธารณะและ OIT
+- **FR ที่ครอบคลุม:** FR-R1-001, FR-R1-002, FR-R1-003, FR-R1-004, FR-R1-005, FR-R1-006, FR-R1-007, FR-R1-008, FR-R1-129, FR-R1-138
+- **เกณฑ์ผ่าน:** รอบเผยแพร่ ≥ 7 วันก่อนเปิดรับ ประกาศ PDF ผ่าน golden file และไม่มี Sev-1/2
+
+### UAT-R1-02 ค่าตั้งราย OrgUnit และ 4-eyes
+
+- **วิทยาเขต:** มหาสารคาม
+- **ผู้ทดสอบ/บทบาท:** `module_admin`, `finance` (checker)
+- **ขั้นตอน:**
+  1. เสนอ FeeSchedule ค่าสมัครของวิทยาเขต
+  2. checker อนุมัติ มีผลวันที่กำหนด
+  3. ตรวจใบแจ้งหนี้ก่อน/หลังวันที่มีผล
+  4. ทดลองให้ maker อนุมัติเอง
+- **FR ที่ครอบคลุม:** FR-R1-006, FR-R1-123, FR-R1-124
+- **เกณฑ์ผ่าน:** ค่าใหม่มีผลตามวันที่, maker อนุมัติเองไม่ได้
+
+### UAT-R1-03 "เอ" อายุ 17 ปี สมัครโควตานักกีฬาวอลเลย์บอลชลบุรี + โควตาเรียนดีมหาสารคาม
+
+- **วิทยาเขต:** ชลบุรี + มหาสารคาม
+- **ผู้ทดสอบ/บทบาท:** `candidate` (ผู้เยาว์), `guardian` (มารดา), ผู้ชำระแทน
+- **ขั้นตอน:**
+  1. สร้างบัญชีด้วย ThaID บน Android ระดับล่าง
+  2. เชิญผู้ปกครอง มารดาผูกบัญชีผ่าน LINE (ThaID + สูติบัตร)
+  3. กรอกใบสมัคร 2 รอบ อัปโหลดวิดีโอ 150 MB บน 4G (สัญญาณหลุดกลางทาง)
+  4. ตรวจคุณสมบัติทันที ยื่น ได้ใบรับ
+  5. ชำระ QR บนมือถือเครื่องเดียว (บันทึกรูป QR) อีกรอบให้มารดาชำระผ่านลิงก์
+  6. ทำแบบคัดกรอง dual consent
+- **FR ที่ครอบคลุม:** FR-R1-011, FR-R1-012, FR-R1-014, FR-R1-019, FR-R1-020, FR-R1-021, FR-R1-024, FR-R1-033, FR-R1-036, FR-R1-044, FR-R1-045, FR-R1-048, FR-R1-064, FR-R1-107, FR-R1-108, FR-R1-109, FR-R1-110
+- **เกณฑ์ผ่าน:** task success ≥ 90%, ใบเสร็จออก ≤ 5 นาทีหลังชำระ, consent ครบทั้งสองฝ่าย
+
+### UAT-R1-04 ตรวจเอกสาร ขอเพิ่ม และประกาศผู้มีสิทธิ์สอบ
+
+- **วิทยาเขต:** ชลบุรี
+- **ผู้ทดสอบ/บทบาท:** `admission` 4 คน + หัวหน้างาน, `sportshead`, `federation`
+- **ขั้นตอน:**
+  1. กระจายคิว 400 ใบ ตรวจด้วยคีย์ลัด
+  2. ขอเอกสารเพิ่ม 10 ราย (ส่งทัน 8 / ไม่ทัน 2)
+  3. ส่งหนังสือขอยืนยันผลงานถึงสมาคม และบันทึกผลผ่าน magic link
+  4. ผู้ตรวจคนที่ 2 สุ่มตรวจ
+  5. เผยแพร่รายชื่อผู้มีสิทธิ์สอบ (DLP ผ่าน)
+- **FR ที่ครอบคลุม:** FR-R1-025, FR-R1-037, FR-R1-038, FR-R1-039, FR-R1-040, FR-R1-041, FR-R1-043
+- **เกณฑ์ผ่าน:** ตรวจเสร็จภายใน SLA ≤ 3 วันทำการ/ใบ, KPI-19 วัดได้
+
+### UAT-R1-05 ตารางสอบ จองสนาม แต่งตั้งกรรมการภายนอก และ COI
+
+- **วิทยาเขต:** ชลบุรี
+- **ผู้ทดสอบ/บทบาท:** `admission`, `facility`, `head`, กรรมการภายนอกจากสมาคม
+- **ขั้นตอน:**
+  1. สร้าง session/station จองสนามผ่าน FAC (มี 1 ช่วงชนการซ้อม)
+  2. เปิดบัญชีกรรมการภายนอก (W-139)
+  3. กรรมการประกาศ COI และระบบตรวจ COI อัตโนมัติ
+  4. จัด slot (มีผู้ได้ accommodation และผู้ยังไม่มี clearance)
+  5. ประกาศตาราง ผู้สอบได้บัตร QR
+- **FR ที่ครอบคลุม:** FR-R1-018, FR-R1-054, FR-R1-055, FR-R1-056, FR-R1-057, FR-R1-058, FR-R1-059, FR-R1-060
+- **เกณฑ์ผ่าน:** ตารางประกาศ ≥ 7 วันก่อนสอบ, ไม่มีกรรมการที่มี COI ให้คะแนนผู้สอบที่เกี่ยวข้อง
+
+### UAT-R1-06 วันสอบทักษะแบบ offline ทั้งวัน
+
+- **วิทยาเขต:** ชลบุรี (สนามกลางแจ้ง)
+- **ผู้ทดสอบ/บทบาท:** `judge` 9 คน, ประธาน station, `nurse`, `physician`, `admission`
+- **ขั้นตอน:**
+  1. ปิดเครือข่ายสนามทั้งวัน
+  2. nurse คัดกรองหน้าสนาม 1 รายไม่ผ่าน → slot สำรอง
+  3. WBGT ถึงระดับหยุดช่วงบ่าย → ระงับ station วิ่ง
+  4. ผู้สอบกีฬาต่อสู้สงสัย concussion → ถอดออกและโทรผู้ปกครอง
+  5. tablet 1 เครื่องเสีย → ใบให้คะแนนสำรอง + นำเข้า 4-eyes
+  6. ออนไลน์ตอนเย็น sync / conflict / moderation / ล็อกผล
+- **FR ที่ครอบคลุม:** FR-R1-061, FR-R1-065, FR-R1-066, FR-R1-067, FR-R1-069, FR-R1-070, FR-R1-071, FR-R1-072, FR-R1-073, FR-R1-074, FR-R1-075, FR-R1-076, FR-R1-077
+- **เกณฑ์ผ่าน:** ไม่มีคะแนนหาย/ซ้ำ, moderation ปิด ≤ 1 วันทำการ, session ล็อกพร้อม hash
+
+### UAT-R1-07 จัดอันดับ อนุมัติ override และประกาศผล
+
+- **วิทยาเขต:** ชลบุรี
+- **ผู้ทดสอบ/บทบาท:** `admission`, `head`, `dean`, `campusvp`, ผู้สมัคร 50 คน (ทดสอบ waiting room)
+- **ขั้นตอน:**
+  1. คำนวณอันดับ ตรวจ tie-break และคำนวณซ้ำได้ hash เดิม
+  2. เสนอ override 1 ราย → ผู้อนุมัติคนที่ 2
+  3. อนุมัติตามสาย และประกาศ (ทดลองยกเลิกใน hold window 1 ครั้ง)
+  4. ผู้สมัครตรวจผลผ่าน CDN และดูคะแนนรายสถานี
+- **FR ที่ครอบคลุม:** FR-R1-079, FR-R1-080, FR-R1-081, FR-R1-082, FR-R1-083, FR-R1-084, FR-R1-085, FR-R1-130, FR-R1-139
+- **เกณฑ์ผ่าน:** ประกาศได้ ≤ 24 ชม. หลังอนุมัติ, PDF mask ผ่าน DLP
+
+### UAT-R1-08 Clearing ข้ามสองวิทยาเขต
+
+- **วิทยาเขต:** ชลบุรี + มหาสารคาม
+- **ผู้ทดสอบ/บทบาท:** "เอ" และผู้สมัครสำรอง, `admission` ทั้งสองวิทยาเขต, `registrar` ส่วนกลาง
+- **ขั้นตอน:**
+  1. เอ ยืนยันชลบุรีจาก 2 อุปกรณ์พร้อมกัน
+  2. offer มหาสารคามถูกสละอัตโนมัติ → สำรองได้ offer ≤ 15 นาที
+  3. ผู้ปกครองได้แจ้งเตือน และชำระค่ายืนยันสิทธิ์
+  4. ผู้สมัครอีกคนสละหลังยืนยัน (นับ C-5)
+  5. ขอขยายเวลา 1 ราย (2 คนอนุมัติ)
+  6. registrar ตรวจ dashboard (aggregate)
+- **FR ที่ครอบคลุม:** FR-R1-086, FR-R1-087, FR-R1-088, FR-R1-089, FR-R1-090, FR-R1-091, FR-R1-092, FR-R1-093, FR-R1-094, FR-R1-098, FR-R1-111
+- **เกณฑ์ผ่าน:** invariant C-3 ไม่ถูกละเมิด, ที่นั่งคืน ≤ 15 นาที, C-11 ผ่าน
+
+### UAT-R1-09 ขอทบทวนผลแบบเร่งด่วน + appeal_hold + เพดานคุรุสภา
+
+- **วิทยาเขต:** มหาสารคาม
+- **ผู้ทดสอบ/บทบาท:** ผู้สมัคร 2 ราย, `admission`, `judge` ชุดเดิม, `head`, `campusvp`
+- **ขั้นตอน:**
+  1. ยื่นภายใน window (อีกรายยื่นหลัง window)
+  2. ระบบตั้ง appeal_hold และขยาย deadline ของผู้ยื่น
+  3. กรรมการชุดเดิมพบการกรอกผิด → override
+  4. campusvp อนุมัติ (ชนเพดาน 1 ราย)
+  5. ผู้ยื่นได้หนังสือแจ้งผล
+- **FR ที่ครอบคลุม:** FR-R1-099, FR-R1-100, FR-R1-101, FR-R1-102, FR-R1-103
+- **เกณฑ์ผ่าน:** ตัดสินก่อนปิดยืนยันสิทธิ์ ≥ 1 วันทำการ, ไม่เกิน AccreditedIntakeCap
+
+### UAT-R1-10 รอบทั่วไป 5: ประกาศแล้วรายงานตัวภายใน 24 ชม.
+
+- **วิทยาเขต:** ชลบุรี
+- **ผู้ทดสอบ/บทบาท:** ผู้สมัคร, `registrar`, `finance` (เคาน์เตอร์)
+- **ขั้นตอน:**
+  1. ประกาศผล 8 มิ.ย. 2572 (จำลอง) ผู้ผ่านยืนยัน ชำระ เลือกที่จุดบริการ
+  2. ระบบล่ม 20 นาทีที่จุดบริการ → ใบรับเงินชั่วคราว + คีย์ย้อนหลัง T+1
+  3. registrar ยืนยันตัวตน IN_PERSON และบันทึก reported
+  4. ตรวจธง late-admit และส่งออก handoff (ถ้าก่อน R2) หรือรอ REC
+- **FR ที่ครอบคลุม:** FR-R1-026, FR-R1-053, FR-R1-114, FR-R1-115, FR-R1-116, FR-R1-117, FR-R1-118
+- **เกณฑ์ผ่าน:** ทุกผู้ผ่านมี handoff READY/REPORTED, ใบรับเงินชั่วคราวกระทบยอดครบ
+
+### UAT-R1-11 ยืนยันสิทธิ์ซ้ำและผู้ไม่มารายงานตัว
+
+- **วิทยาเขต:** ชลบุรี + มหาสารคาม
+- **ผู้ทดสอบ/บทบาท:** ผู้ยืนยันรอบโควตา 30 ราย (จำลอง), `admission`
+- **ขั้นตอน:**
+  1. เปิด window 1–15 พ.ค. 2572 (time travel)
+  2. เตือน 2 ครั้ง เจ้าหน้าที่โทรตามรายชื่อ
+  3. 25 รายยืนยัน 5 รายไม่ยืนยัน → waived ไม่นับ C-5
+  4. 1 รายไม่มารายงานตัวแต่แจ้งเหตุภายใน 7 วัน
+- **FR ที่ครอบคลุม:** FR-R1-095, FR-R1-096
+- **เกณฑ์ผ่าน:** สถานะถูกต้องทุกราย, ที่นั่งเข้า cascade ก่อน cutoff
+
+### UAT-R1-12 ผู้สมัครพิการ
+
+- **วิทยาเขต:** มหาสารคาม
+- **ผู้ทดสอบ/บทบาท:** ผู้สมัครใช้รถเข็น 1, ผู้สมัครตาบอดใช้ screen reader 1, ผู้สมัครหูหนวก 1, `dss`, `head`
+- **ขั้นตอน:**
+  1. ยื่นคำขอ accommodation (1 รายยื่นช้า → provisional)
+  2. dss อนุมัติ/ปฏิเสธ 1 รายการ → ขอทบทวน
+  3. สมัคร–ชำระ–ดูผลด้วย NVDA/TalkBack/VoiceOver
+  4. วันสอบ: กรรมการเห็นเฉพาะรายการปรับ
+- **FR ที่ครอบคลุม:** FR-R1-028, FR-R1-058, FR-R1-106
+- **เกณฑ์ผ่าน:** task success ≥ 90% สำหรับผู้ใช้พิการ, ไม่มีข้อมูลการวินิจฉัยหลุดถึง ADM/กรรมการ
+
+### UAT-R1-13 ผู้ปกครองไม่มีสมาร์ตโฟน + ผู้อุปการะ + walk-in
+
+- **วิทยาเขต:** มหาสารคาม
+- **ผู้ทดสอบ/บทบาท:** ผู้สมัครไม่มีสมาร์ตโฟน, ย่า (CAREGIVER), ผู้ปกครองไม่มี LINE, `admission`/`helpdesk`
+- **ขั้นตอน:**
+  1. เจ้าหน้าที่เปิด assisted session กรอกใบสมัครแทน + OTP
+  2. ย่าผูกบัญชีเป็น CAREGIVER (สิทธิ์จำกัด)
+  3. บันทึก consent ของผู้ปกครองแบบ assisted OTP
+  4. ผู้ปกครองดูภาพรวมด้วยโหมดตัวอักษร 18 px
+- **FR ที่ครอบคลุม:** FR-R1-016, FR-R1-108, FR-R1-110, FR-R1-112
+- **เกณฑ์ผ่าน:** ทุกขั้นมี audit actor/on_behalf_of, consent ถูกต้องตามตาราง
+
+### UAT-R1-14 การเงินค่าสมัคร: callback หาย ชำระซ้ำ ยกเว้น
+
+- **วิทยาเขต:** ชลบุรี
+- **ผู้ทดสอบ/บทบาท:** `finance` (officer, head), ผู้สมัคร
+- **ขั้นตอน:**
+  1. ปิด callback 1 รายการ → statement T+1 สร้าง Payment
+  2. ชำระซ้ำ → refund (maker ≠ checker)
+  3. คำขอยกเว้นค่าสมัคร → admission ตรวจ → finance อนุมัติ
+  4. rehearsal 1,000 รายการ reconcile
+- **FR ที่ครอบคลุม:** FR-R1-046, FR-R1-047, FR-R1-049, FR-R1-050
+- **เกณฑ์ผ่าน:** reconcile ค่าสมัครใน rehearsal ตรง 100% (MS-1), KPI-21 ≥ 99%
+
+### UAT-R1-15 ร้องเรียนไม่ระบุตัวตนและเผยแพร่ OIT
+
+- **วิทยาเขต:** ส่วนกลาง
+- **ผู้ทดสอบ/บทบาท:** ประชาชน, `complaint`, `planner`, `rector`, `pr`
+- **ขั้นตอน:**
+  1. ร้องเรียนการรับสมัครแบบไม่ระบุตัวตน ติดตามด้วยรหัส
+  2. สร้างทะเบียน OIT ปีงบ 2572 ผูกเจ้าของ
+  3. สร้างสถิติรับสมัคร/ร้องเรียนแบบ aggregate (cell < 5 ซ่อน)
+  4. อนุมัติและเผยแพร่ snapshot
+- **FR ที่ครอบคลุม:** FR-R1-104, FR-R1-119, FR-R1-120, FR-R1-121, FR-R1-122
+- **เกณฑ์ผ่าน:** snapshot มี hash, หน้า OIT แสดงผล
+
+### UAT-R1-16 ปฏิบัติการช่วงฤดูรับสมัคร
+
+- **วิทยาเขต:** ส่วนกลาง
+- **ผู้ทดสอบ/บทบาท:** `itadmin`, `security_admin`, `vp`, `dpo`, `dba_sre`
+- **ขั้นตอน:**
+  1. J-04 ล้มเหลวจำลอง → alert + replay
+  2. ซ้อม break-glass (2 ผู้อนุมัติ) + ทบทวน 24 ชม.
+  3. ขอ JIT read-only
+  4. deploy ระหว่าง freeze ถูกบล็อก
+- **FR ที่ครอบคลุม:** FR-R1-125, FR-R1-126, FR-R1-127, FR-R1-131
+- **เกณฑ์ผ่าน:** ทุกขั้นมี audit/WORM, SOC ได้ alert
+
+### UAT-R1-17 โควตาภายในจากโรงเรียนกีฬา (ถ้าเปิด)
+
+- **วิทยาเขต:** ชลบุรี (รับจากโรงเรียนกีฬาสุพรรณบุรี)
+- **ผู้ทดสอบ/บทบาท:** นักเรียน ม.6, ผู้ปกครอง, `sschool_dir`, `coach`, `admission`
+- **ขั้นตอน:**
+  1. ผู้ปกครองยินยอมส่งข้อมูล
+  2. sschool_dir อัปโหลดเอกสารรับรองที่ลงนาม
+  3. admission ตรวจและส่งเข้ารอบสัมภาษณ์
+- **FR ที่ครอบคลุม:** FR-R1-027
+- **เกณฑ์ผ่าน:** ไม่ต้องอัปโหลดซ้ำ, consent มีหลักฐาน
+
+### UAT-R1-18 Dedupe กับวิทยาเขตที่ยังใช้ระบบเดิม (BR-01)
+
+- **วิทยาเขต:** ชลบุรี + กรุงเทพ (ระบบเดิม)
+- **ผู้ทดสอบ/บทบาท:** `admission`, `registrar`
+- **ขั้นตอน:**
+  1. นำเข้าไฟล์ HMAC จากระบบเดิม
+  2. ตรวจงานติดตามที่สร้าง
+  3. นำเข้าไฟล์ซ้ำ
+- **FR ที่ครอบคลุม:** FR-R1-097
+- **เกณฑ์ผ่าน:** พบรายการซ้อนครบ ไม่มีการเปลี่ยนสถานะอัตโนมัติ
+
+
+
+---
+
+<!-- ไฟล์ต้นฉบับ: docs/r1/r1-traceability.md -->
+# R1 "รับสมัคร" — Traceability matrix
+
+> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · Release R1 "รับสมัคร" (go-live 1 ก.ย. 2571 = M18; ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือน — เล่ม 12 §1.3) · ภาษา: ไทย (ศัพท์เทคนิค/โค้ดเป็นภาษาอังกฤษ)
+> **ขอบเขต:** FR/NFR → โมดูล → workflow → entity → หน้าจอ → API → test → สมมติฐาน/คำถาม
+> **อ่านคู่กับ:** [README](README.md) · [00-blueprint](../00-blueprint.md) · [00-fix-decisions-v1.1](../00-fix-decisions-v1.1.md) (D-03, D-06, D-08) · [02 §2](../02-student-journey.md) · [05](../05-workflows.md) · [06](../06-modules.md) · [08](../08-data.md) · [10](../10-security-compliance.md) · [14](../14-ux-adoption.md) · [r1-requirements](r1-requirements.md) · [r1-test-plan](r1-test-plan.md)
+
+## 1. FR matrix
+
+| FR | Pri | โมดูล | Workflow | Entities | หน้าจอ | API (operationId) | Test | UAT | A/Q |
+|---|---|---|---|---|---|---|---|---|---|
+| FR-R1-001 | M | ADM ORG | W-69 | AdmissionCycle, AdmissionChannel, AdmissionRound | S-R1-33 | createRound, listRounds, getRound, updateRound | TC-R1-001, TC-R1-002, TC-R1-335 | UAT-R1-01 | A-49, A-85, Q-13 |
+| FR-R1-002 | M | ADM CUR | W-69 | SeatQuota, AdmissionPlan, AccreditedIntakeCap, ProgramOffering | S-R1-34 | putSeatMatrix | TC-R1-003, TC-R1-004 | UAT-R1-01 | A-48, Q-22 |
+| FR-R1-003 | M | ADM | W-69 W-70 W-71 | EligibilityRuleSet, AdmissionRound | S-R1-33 | putEligibilityRules, testEligibilityRules | TC-R1-005, TC-R1-006, TC-R1-335 | UAT-R1-01 | Q-13 |
+| FR-R1-004 | M | ADM | W-69 W-76 | ScoringScheme, Rubric, RubricItem | S-R1-33, S-R1-46 | putScoringScheme, getPublicRound | TC-R1-007, TC-R1-008, TC-R1-009, TC-R1-335 | UAT-R1-01 | A-52, Q-14 |
+| FR-R1-005 | M | ADM ORG | W-69 W-117 | AdmissionRound, CalendarEvent | S-R1-33 | putRoundSchedule | TC-R1-010, TC-R1-011 | UAT-R1-01 | A-36, Q-25, Q-96 |
+| FR-R1-006 | M | ADM FIN DOC | W-69 W-79 | AdmissionRound, FeeSchedule, DocumentTemplate | S-R1-33 | updateRound | TC-R1-012, TC-R1-013 | UAT-R1-01, UAT-R1-02 | A-57, Q-34 |
+| FR-R1-007 | M | ADM DOC IAM | W-69 | AdmissionRound, AdminChangeRequest, GeneratedDocument, SignatureRecord | S-R1-33, S-R1-45 | submitRoundForApproval, decideRoundApproval | TC-R1-014, TC-R1-015, TC-R1-016, TC-R1-340 | UAT-R1-01 | Q-13 |
+| FR-R1-008 | M | ADM ENG ORG FIN | W-69 W-36 | AdmissionRound, Announcement, CalendarEvent | S-R1-46, S-R1-56 | publishRound, listPublicRounds | TC-R1-017, TC-R1-018, TC-R1-258 | UAT-R1-01 | — |
+| FR-R1-009 | M | ADM ORG | W-72 | SeatQuota, AdmissionRound | S-R1-34, S-R1-45 | proposeCarryOverRound | TC-R1-019, TC-R1-340 | — | A-49 |
+| FR-R1-010 | S | ADM ENG DOC | W-69 W-36 | AdmissionRound, Announcement | S-R1-33, S-R1-56 | amendRound | TC-R1-020, TC-R1-259 | — | Q-13 |
+| FR-R1-011 | M | IAM ADM | W-41 | UserAccount, IdentityLink, Person | S-R1-02 | getMyApplicantProfile | TC-R1-021, TC-R1-022, TC-R1-316 | UAT-R1-03 | A-71, Q-65 |
+| FR-R1-012 | M | REC ADM IAM | W-41 W-74 | Person, PersonIdentifier | S-R1-02, S-R1-03 | updateMyApplicantProfile | TC-R1-023, TC-R1-024, TC-R1-025, TC-R1-316 | UAT-R1-03 | A-56, KPI-20 |
+| FR-R1-013 | M | IAM ADM | W-41 W-78 W-80 | IdentityLink, UserAccount | S-R1-02, S-R1-42 | startIdentityVerification, verifyReportingIdentity | TC-R1-026, TC-R1-027, TC-R1-316 | — | A-71, A-119, Q-65 |
+| FR-R1-014 | M | REC ADM PRIV | W-41 | Person, ContactPoint, EmergencyContact | S-R1-03 | getMyApplicantProfile, updateMyApplicantProfile | TC-R1-028, TC-R1-029 | UAT-R1-03 | A-17 |
+| FR-R1-015 | M | IAM | W-41 | UserAccount, CredentialBinding | S-R1-02 | — | TC-R1-030, TC-R1-031 | — | — |
+| FR-R1-016 | S | ADM IAM AUD | W-41 | AssistedSession, Application | S-R1-55 | createAssistedSession | TC-R1-032, TC-R1-033 | UAT-R1-13 | — |
+| FR-R1-017 | S | IAM | W-69 W-76 | RoleAssignment | S-R1-45 | — | TC-R1-034, TC-R1-340 | — | — |
+| FR-R1-018 | M | IAM ADM | W-139 W-75 | ExternalPerson, RoleAssignment | S-R1-57 | createExternalPerson | TC-R1-035, TC-R1-036 | UAT-R1-05 | — |
+| FR-R1-019 | M | ADM | W-41 | AdmissionRound, SeatQuota | S-R1-01, S-R1-46 | listPublicRounds, getPublicRound | TC-R1-037, TC-R1-038, TC-R1-315 | UAT-R1-03 | A-49, A-51 |
+| FR-R1-020 | M | ADM | W-41 | Application, ApplicationChoice | S-R1-04, S-R1-05, S-R1-06, S-R1-07, S-R1-09 | createApplication, updateApplication, putApplicationChoices, getApplication, listApplications | TC-R1-039, TC-R1-040, TC-R1-317, TC-R1-318, TC-R1-319, TC-R1-320 | UAT-R1-03 | — |
+| FR-R1-021 | M | ADM | W-41 W-70 | Application, EligibilityRuleSet | S-R1-05 | previewEligibility | TC-R1-041, TC-R1-042, TC-R1-318 | UAT-R1-03 | Q-13 |
+| FR-R1-022 | S | ADM | W-41 W-70 W-77 | ApplicationDocument, Application | S-R1-05, S-R1-35 | completeDocumentUpload | TC-R1-043, TC-R1-318, TC-R1-336 | — | — |
+| FR-R1-023 | M | ADM | W-70 W-42 | Application, AdmissionRound | S-R1-04, S-R1-05 | createApplication, submitApplication | TC-R1-044, TC-R1-317 | — | Q-13 |
+| FR-R1-024 | M | ADM | W-71 | Application, SportAchievement | S-R1-06 | addSportAchievement, listSportAchievements | TC-R1-045, TC-R1-046, TC-R1-047 | UAT-R1-03 | Q-14 |
+| FR-R1-025 | M | ADM | W-71 | VerificationTask, SportAchievement, Application | S-R1-36 | decideVerificationTask, recordFederationResponse | TC-R1-048, TC-R1-049 | UAT-R1-04 | Q-50 |
+| FR-R1-026 | M | ADM FIN | W-72 W-43 W-78 | Application, Offer | S-R1-04, S-R1-17 | createApplication, confirmOffer | TC-R1-050, TC-R1-051, TC-R1-317, TC-R1-326 | UAT-R1-10 | A-53 |
+| FR-R1-027 | S | ADM PRIV | W-144 | Application, ApplicationDocument, Consent | S-R1-04, S-R1-25 | createApplication, grantConsent | TC-R1-052, TC-R1-053, TC-R1-328 | UAT-R1-17 | Q-17 |
+| FR-R1-028 | M | ADM HLT | W-79 | AccommodationRequest, AccommodationPlan, DisabilityEvidence | S-R1-08, S-R1-41 | createAccommodationRequest, decideAccommodationRequest | TC-R1-054, TC-R1-055, TC-R1-056 | UAT-R1-12 | A-31, Q-18, Q-45 |
+| FR-R1-029 | S | ADM DOC FIN | W-80 | QualificationEquivalence, Application, GeneratedDocument | S-R1-04, S-R1-09 | createApplication | TC-R1-057, TC-R1-320 | — | A-30, Q-18, Q-46, Q-108 |
+| FR-R1-030 | C | ADM CUR | W-82 | Application, ApplicationDocument | S-R1-04, S-R1-07 | createApplication | TC-R1-058, TC-R1-319 | — | Q-18 |
+| FR-R1-031 | C | ADM FIN | W-84 | AdmissionRound, Application | S-R1-04, S-R1-33 | createRound, createApplication | TC-R1-059 | — | A-29, A-55, Q-21 |
+| FR-R1-032 | C | ADM ADMIN | W-73 | TcasSyncRecord, FeatureFlag, Application | S-R1-51 | listJobRuns | TC-R1-060, TC-R1-061 | — | A-50, Q-11 |
+| FR-R1-033 | M | ADM DOC SVC | W-41 | Application, RequestReceipt, GeneratedDocument | S-R1-09 | submitApplication, getApplicationReceipt | TC-R1-062, TC-R1-063, TC-R1-064, TC-R1-258, TC-R1-320 | UAT-R1-03 | — |
+| FR-R1-034 | S | ADM FIN | W-41 W-81 | Application, ApplicationChoice | S-R1-12 | withdrawApplication | TC-R1-065, TC-R1-322 | — | — |
+| FR-R1-035 | S | ADM CASE | W-41 W-42 | TestIncident, CaseFile, Application | S-R1-35, S-R1-28 | recordTestIncident | TC-R1-066, TC-R1-331, TC-R1-336 | — | — |
+| FR-R1-036 | M | ADM DOC | W-41 W-77 | ApplicationDocument, UploadSession | S-R1-07, S-R1-13 | createUploadSession, completeDocumentUpload, listApplicationDocuments, deleteApplicationDocument | TC-R1-067, TC-R1-068, TC-R1-069, TC-R1-319 | UAT-R1-03 | — |
+| FR-R1-037 | M | ADM | W-77 W-41 | ApplicationDocument, AdmissionRound | S-R1-07 | listApplicationDocuments | TC-R1-070 | UAT-R1-04 | — |
+| FR-R1-038 | M | ADM | W-77 | VerificationTask, ApplicationDocument | S-R1-35 | listVerificationTasks, decideVerificationTask | TC-R1-071, TC-R1-072, TC-R1-336 | UAT-R1-04 | KPI-19 |
+| FR-R1-039 | M | ADM NOTI | W-77 | VerificationTask, DocumentRequest | S-R1-13, S-R1-35 | requestMoreDocuments, completeDocumentUpload | TC-R1-073, TC-R1-074 | UAT-R1-04 | — |
+| FR-R1-040 | S | ADM | W-77 | VerificationTask | S-R1-35 | listVerificationTasks, decideVerificationTask | TC-R1-075 | UAT-R1-04 | — |
+| FR-R1-041 | M | ADM DOC | W-71 | VerificationTask, SportAchievement, GeneratedDocument | S-R1-36, S-R1-54 | listVerificationTasks, recordFederationResponse, decideVerificationTask | TC-R1-076, TC-R1-077, TC-R1-249 | UAT-R1-04 | Q-50 |
+| FR-R1-042 | S | ADM REC | W-77 W-78 | ApplicationDocument, ReportingHandoff | S-R1-42 | listReportingHandoffs | TC-R1-078 | — | — |
+| FR-R1-043 | M | ADM ENG DOC NOTI | W-42 W-70 W-71 W-72 | EligibleList, Announcement, GeneratedDocument | S-R1-35, S-R1-46 | publishEligibleList | TC-R1-079, TC-R1-080 | UAT-R1-04 | — |
+| FR-R1-044 | M | FIN ADM | W-41 | Invoice, InvoiceLine, PaymentIntent, FeeSchedule | S-R1-10, S-R1-26 | getOrCreateApplicationInvoice, getInvoice, getInvoiceQrImage | TC-R1-081, TC-R1-082, TC-R1-321, TC-R1-329 | UAT-R1-03 | A-58, Q-35 |
+| FR-R1-045 | M | FIN | W-41 W-43 | PaymentIntent, Invoice | S-R1-10 | getInvoiceQrImage, getPaymentStatus, getOrCreateApplicationInvoice | TC-R1-083, TC-R1-084, TC-R1-085, TC-R1-252, TC-R1-321 | UAT-R1-03 | Q-114 |
+| FR-R1-046 | M | FIN | W-41 W-43 | PaymentCallback, Payment, Invoice, ReconciliationException | S-R1-43 | receiveBankPaymentNotification, listReconciliationExceptions, resolveReconciliationException | TC-R1-086, TC-R1-087, TC-R1-088 | UAT-R1-14 | A-58, Q-35 |
+| FR-R1-047 | M | FIN | W-41 W-43 | BankStatementLine, Reconciliation, Payment | S-R1-43 | listReconciliationExceptions | TC-R1-089, TC-R1-090 | UAT-R1-14 | KPI-21, KPI-22 |
+| FR-R1-048 | M | FIN DOC | W-41 W-43 | Receipt, GeneratedDocument, SignatureRecord | S-R1-10, S-R1-12 | getReceiptDocument | TC-R1-091, TC-R1-092, TC-R1-321, TC-R1-322 | UAT-R1-03 | A-79 |
+| FR-R1-049 | M | FIN ADM SVC | W-81 | FeeWaiverRequest, Waiver, ServiceRequest | S-R1-11, S-R1-44 | createFeeWaiverRequest, decideFeeWaiverRequest | TC-R1-093, TC-R1-094 | UAT-R1-14 | — |
+| FR-R1-050 | M | FIN | W-81 | Refund, Payment, Invoice | S-R1-44 | createRefund, approveRefund | TC-R1-095, TC-R1-096, TC-R1-259 | UAT-R1-14 | Q-35 |
+| FR-R1-051 | M | FIN ADM | W-43 | Invoice, Offer | S-R1-17, S-R1-10, S-R1-26 | confirmOffer, getInvoice, getPaymentStatus | TC-R1-097, TC-R1-098, TC-R1-326, TC-R1-329 | — | A-57, Q-34 |
+| FR-R1-052 | C | FIN | W-80 | PaymentCallback, Payment | S-R1-10 | receivePspWebhook | TC-R1-099 | — | Q-108 |
+| FR-R1-053 | S | FIN | W-43 | Payment, Receipt, ImportBatch | S-R1-43 | — | TC-R1-100 | UAT-R1-10 | — |
+| FR-R1-054 | M | ADM FAC ORG | W-75 W-42 | AdmissionTestSession, TestStation, Facility | S-R1-37 | createTestSession, listTestSessions, putTestStations, publishTestSchedule | TC-R1-101, TC-R1-102, TC-R1-337 | UAT-R1-05 | Q-14 |
+| FR-R1-055 | M | ADM FAC | W-75 | Booking, Facility, AdmissionTestSession | S-R1-37 | requestVenueBooking | TC-R1-103, TC-R1-104, TC-R1-337 | UAT-R1-05 | — |
+| FR-R1-056 | M | ADM IAM DOC | W-75 W-139 | JudgePanel, JudgeAssignment, GeneratedDocument | S-R1-37 | assignJudges | TC-R1-105, TC-R1-106, TC-R1-337 | UAT-R1-05 | A-52, Q-14 |
+| FR-R1-057 | M | ADM | W-75 W-76 | ConflictDeclaration, JudgeAssignment | S-R1-27, S-R1-37 | declareConflicts | TC-R1-107, TC-R1-108, TC-R1-330 | UAT-R1-05 | — |
+| FR-R1-058 | M | ADM HLT | W-75 W-42 | TestSlot, AdmissionTestSession, MedicalClearance | S-R1-15, S-R1-37 | allocateSlots, listMyTestSlots, confirmTestSlot | TC-R1-109, TC-R1-110, TC-R1-324 | UAT-R1-05, UAT-R1-12 | — |
+| FR-R1-059 | M | ADM DOC NOTI | W-42 W-75 | TestSlot, GeneratedDocument | S-R1-15 | getAdmissionCard | TC-R1-111, TC-R1-112, TC-R1-324 | UAT-R1-05 | — |
+| FR-R1-060 | S | ADM FAC HLT | W-75 W-153 | VenueEmergencyPlan, AdmissionTestSession | S-R1-37 | publishTestSchedule | TC-R1-113 | UAT-R1-05 | — |
+| FR-R1-061 | S | FAC ADM | W-153 W-42 | HeatReading, AdmissionTestSession, TestSlot | S-R1-32 | recordHeatReading | TC-R1-114 | UAT-R1-06 | Q-99 |
+| FR-R1-062 | S | ADM | W-42 W-80 | TestSlot | S-R1-15, S-R1-37 | allocateSlots | TC-R1-115, TC-R1-324 | — | A-119, Q-75 |
+| FR-R1-063 | S | ADM ORG DOC | W-42 W-72 | AdmissionTestSession, TestSlot, Room | S-R1-37 | createTestSession, allocateSlots | TC-R1-116 | — | — |
+| FR-R1-064 | M | HLT ADM PRIV | W-42 W-71 | HealthSubject, ScreeningResult, MedicalClearance | S-R1-14 | submitHealthScreening, getMyClearanceStatus | TC-R1-117, TC-R1-118, TC-R1-119, TC-R1-323 | UAT-R1-03 | Q-23, Q-103 |
+| FR-R1-065 | M | HLT ADM | W-42 W-71 | MedicalClearance, TestSlot | S-R1-14, S-R1-15, S-R1-28 | getMyClearanceStatus, getClearanceRoster | TC-R1-120, TC-R1-121, TC-R1-323, TC-R1-331 | UAT-R1-06 | — |
+| FR-R1-066 | M | HLT ADM | W-42 W-71 W-85 | ScreeningResult, TestIncident, TestSlot | S-R1-32 | recordPretestCheck, recordTestIncident | TC-R1-122, TC-R1-123 | UAT-R1-06 | — |
+| FR-R1-067 | M | HLT ADM NOTI | W-85 W-39 W-152 | InjuryRecord, TestIncident | S-R1-32, S-R1-28 | recordTestIncident | TC-R1-124, TC-R1-125, TC-R1-331 | UAT-R1-06 | Q-103 |
+| FR-R1-068 | M | HLT PRIV | W-42 | HealthSubject, MedicalClearance, ScreeningResult | — | — | TC-R1-126, TC-R1-127 | — | A-118 |
+| FR-R1-069 | M | ADM IAM | W-76 | JudgeDevice, JudgeAssignment, AdmissionTestSession | S-R1-27 | listMyJudgeSessions, downloadOfflinePack | TC-R1-128, TC-R1-129, TC-R1-130, TC-R1-247, TC-R1-248, TC-R1-330 | UAT-R1-06 | — |
+| FR-R1-070 | M | ADM | W-42 W-76 | CheckIn, TestSlot | S-R1-28 | syncJudgeBatch | TC-R1-131, TC-R1-132 | UAT-R1-06 | — |
+| FR-R1-071 | M | ADM | W-76 | JudgeScore, TestStation | S-R1-29 | syncJudgeBatch | TC-R1-133, TC-R1-134, TC-R1-332 | UAT-R1-06 | — |
+| FR-R1-072 | M | ADM AUD | W-76 | JudgeScore, RubricItem | S-R1-29, S-R1-31 | syncJudgeBatch, reopenScore | TC-R1-135, TC-R1-136, TC-R1-332, TC-R1-334 | UAT-R1-06 | — |
+| FR-R1-073 | M | ADM | W-76 | JudgeScore, ScoreSyncConflict, JudgeDevice | S-R1-30 | syncJudgeBatch, listSyncConflicts, resolveSyncConflict | TC-R1-137, TC-R1-138, TC-R1-139, TC-R1-333 | UAT-R1-06 | — |
+| FR-R1-074 | M | ADM | W-76 | ModerationFlag, ScoreModeration | S-R1-31 | listModerationFlags, recordModeration | TC-R1-140, TC-R1-141, TC-R1-247, TC-R1-334 | UAT-R1-06 | A-52, Q-14 |
+| FR-R1-075 | M | ADM | W-76 | CompositeScore, ScoringScheme | S-R1-31, S-R1-38 | confirmSessionResults | TC-R1-142, TC-R1-334, TC-R1-338 | UAT-R1-06 | A-52 |
+| FR-R1-076 | M | ADM AUD | W-76 W-42 | ScoreLock, CompositeScore | S-R1-31 | confirmSessionResults | TC-R1-143, TC-R1-144 | UAT-R1-06 | — |
+| FR-R1-077 | S | ADM | W-76 | ImportBatch, JudgeScore | S-R1-58 | importPaperScores, approvePaperImport | TC-R1-145, TC-R1-146 | UAT-R1-06 | — |
+| FR-R1-078 | C | ADM | W-75 | JudgeAssignment | S-R1-37 | requestStandardExport | TC-R1-147 | — | — |
+| FR-R1-079 | M | ADM | W-76 W-42 W-70 W-71 W-72 | CompositeScore, RankList, ReserveListEntry | S-R1-38 | computeRankList, getRankList | TC-R1-148, TC-R1-149, TC-R1-253, TC-R1-338 | UAT-R1-07 | — |
+| FR-R1-080 | M | ADM | W-42 W-74 | RankList, ReserveListEntry, Application | S-R1-38 | computeRankList | TC-R1-150, TC-R1-338 | UAT-R1-07 | — |
+| FR-R1-081 | M | ADM AUD | W-42 W-70 W-71 W-72 W-18 | RankList, ResultOverride | S-R1-38, S-R1-45 | decideRankListApproval, createResultOverride, approveResultOverride | TC-R1-151, TC-R1-152, TC-R1-253 | UAT-R1-07 | — |
+| FR-R1-082 | M | ADM ENG DOC NOTI | W-42 W-70 W-71 W-72 | ResultPublication, Announcement, GeneratedDocument | S-R1-38, S-R1-46 | publishResults | TC-R1-153, TC-R1-262 | UAT-R1-07 | A-53 |
+| FR-R1-083 | M | ADM ADMIN | W-42 | ResultPublication | S-R1-47 | getPublicResultShard | TC-R1-154, TC-R1-155, TC-R1-341 | UAT-R1-07 | A-34 |
+| FR-R1-084 | M | ADM | W-42 W-18 | CompositeScore, JudgeScore | S-R1-16 | getMyResults | TC-R1-156, TC-R1-157, TC-R1-325 | UAT-R1-07 | — |
+| FR-R1-085 | M | ENG DOC ADM | W-42 W-36 | Announcement, GeneratedDocument | S-R1-46, S-R1-56 | publishResults, publishEligibleList | TC-R1-158 | UAT-R1-07 | Q-69 |
+| FR-R1-086 | M | ADM NOTI | W-74 W-43 | Offer | S-R1-17 | listMyOffers | TC-R1-159, TC-R1-263, TC-R1-326 | UAT-R1-08 | A-93 |
+| FR-R1-087 | M | ADM | W-74 W-43 | Offer | S-R1-17 | listMyOffers, confirmOffer, declineOffer | TC-R1-160, TC-R1-161 | UAT-R1-08 | — |
+| FR-R1-088 | M | ADM | W-74 W-43 | Offer, ConfirmationLock | S-R1-17 | confirmOffer | TC-R1-162, TC-R1-163, TC-R1-254 | UAT-R1-08 | A-51, Q-12 |
+| FR-R1-089 | M | ADM FIN | W-43 W-74 | Offer, Invoice, Payment | S-R1-17, S-R1-10 | confirmOffer, getPaymentStatus | TC-R1-164, TC-R1-165 | UAT-R1-08 | — |
+| FR-R1-090 | M | ADM FIN | W-74 | Offer, ServiceRequest | S-R1-17 | waiveConfirmedSeat | TC-R1-166, TC-R1-167 | UAT-R1-08 | A-51, Q-12 |
+| FR-R1-091 | M | ADM ORG | W-74 | Offer, ReserveListEntry, SeatQuota, AppealHold | S-R1-39 | getClearingDashboard | TC-R1-168, TC-R1-169, TC-R1-170, TC-R1-260, TC-R1-339 | UAT-R1-08 | A-110, Q-95 |
+| FR-R1-092 | M | ADM | W-72 W-74 | Offer, Application | S-R1-01, S-R1-04 | createApplication | TC-R1-171, TC-R1-315 | UAT-R1-08 | A-51, Q-12 |
+| FR-R1-093 | M | ADM | W-74 | Offer | S-R1-39, S-R1-35 | getApplication, getClearingDashboard | TC-R1-172, TC-R1-251, TC-R1-254, TC-R1-339 | UAT-R1-08 | — |
+| FR-R1-094 | M | ADM ORG | W-74 | GateOverride, Offer | S-R1-39, S-R1-45 | extendOfferDeadline, approveDeadlineExtension | TC-R1-173, TC-R1-174, TC-R1-339 | UAT-R1-08 | — |
+| FR-R1-095 | M | ADM NOTI | W-163 | Offer, Reconfirmation | S-R1-18, S-R1-39 | reconfirmOffer, getReconfirmationRiskDashboard | TC-R1-175, TC-R1-176, TC-R1-177, TC-R1-261 | UAT-R1-11 | A-110, Q-95 |
+| FR-R1-096 | M | ADM | W-78 W-74 | Offer, NoShowNotice | S-R1-39, S-R1-17 | recordNoShowNotice | TC-R1-178, TC-R1-179 | UAT-R1-11 | — |
+| FR-R1-097 | S | ADM | W-74 | LegacyConfirmationFile, Offer | S-R1-39 | importLegacyConfirmations | TC-R1-180, TC-R1-181 | UAT-R1-18 | A-51, Q-12, Q-60 |
+| FR-R1-098 | M | ADM ANA | W-74 | SeatQuota, Offer | S-R1-39 | getClearingDashboard | TC-R1-182, TC-R1-251 | UAT-R1-08 | KPI-01, KPI-02 |
+| FR-R1-099 | M | CASE ADM | W-18 | CaseFile, Appeal, RequestReceipt | S-R1-19 | fileAdmissionAppeal, getAppeal | TC-R1-183, TC-R1-184 | UAT-R1-09 | Q-19, Q-96 |
+| FR-R1-100 | M | ADM CASE ORG | W-18 W-74 | AppealHold, GateOverride, Offer | S-R1-40, S-R1-39 | fileAdmissionAppeal, getClearingDashboard | TC-R1-185, TC-R1-186, TC-R1-260 | UAT-R1-09 | Q-96 |
+| FR-R1-101 | M | CASE ADM | W-18 | Appeal, CaseDecision, ScoreRecheck | S-R1-40, S-R1-45 | listAppeals, recordAppealRecheck, decideAppeal, approveAppealDecision | TC-R1-187, TC-R1-188 | UAT-R1-09 | Q-19, Q-96 |
+| FR-R1-102 | M | ADM CASE CUR | W-18 W-74 | AppealHold, SeatQuota, AccreditedIntakeCap, Offer | S-R1-40 | decideAppeal, approveAppealDecision | TC-R1-189, TC-R1-190, TC-R1-191, TC-R1-260 | UAT-R1-09 | A-48, Q-96 |
+| FR-R1-103 | M | CASE DOC NOTI | W-18 W-19 | CaseDecision, GeneratedDocument | S-R1-19 | getAppeal | TC-R1-192 | UAT-R1-09 | Q-19 |
+| FR-R1-104 | M | CASE RPT | W-19 | CaseFile, RequestReceipt | S-R1-20 | createComplaint, getComplaintByTrackingCode | TC-R1-193, TC-R1-194, TC-R1-250, TC-R1-256 | UAT-R1-15 | — |
+| FR-R1-105 | M | ADM | W-85 | TestIncident, RetestRequest, TestSlot | S-R1-21, S-R1-37 | requestRetest, decideRetest | TC-R1-195, TC-R1-196 | — | — |
+| FR-R1-106 | S | CASE ADM | W-79 W-18 | Appeal, AccommodationPlan | S-R1-19, S-R1-41 | fileAdmissionAppeal | TC-R1-197 | UAT-R1-12 | Q-18 |
+| FR-R1-107 | M | PRIV REC IAM | W-41 W-127 | GuardianInvitation, GuardianRelation | S-R1-03, S-R1-24 | createGuardianInvitation | TC-R1-198, TC-R1-199, TC-R1-327 | UAT-R1-03 | A-17, A-26 |
+| FR-R1-108 | M | REC PRIV IAM | W-127 W-41 | GuardianRelation, GuardianInvitation, IdentityLink | S-R1-24, S-R1-26 | acceptGuardianInvitation, listMyWards | TC-R1-200, TC-R1-201, TC-R1-202, TC-R1-327, TC-R1-329 | UAT-R1-03, UAT-R1-13 | A-26 |
+| FR-R1-109 | M | PRIV ADM HLT | W-41 W-42 | ConsentPolicyRule, Consent, GuardianConsent, PrivacyNotice, ConsentRequest | S-R1-23, S-R1-25, S-R1-14 | listConsentRequests, grantConsent, withdrawConsent, listMyConsents | TC-R1-203, TC-R1-204, TC-R1-205, TC-R1-255, TC-R1-323, TC-R1-328 | UAT-R1-03 | A-17, Q-103 |
+| FR-R1-110 | M | REC PRIV ADM FIN | W-41 W-74 | GuardianRelation, Application, Offer, Invoice | S-R1-26 | listMyWards, getWardAdmissionSummary | TC-R1-206, TC-R1-207, TC-R1-208 | UAT-R1-03, UAT-R1-13 | A-26 |
+| FR-R1-111 | M | NOTI PRIV ADM | W-74 W-163 W-43 | Message, GuardianRelation | S-R1-26, S-R1-22 | listMyNotifications | TC-R1-209 | UAT-R1-08 | — |
+| FR-R1-112 | S | PRIV | W-41 W-42 | GuardianConsent, ConsentRequest | S-R1-25, S-R1-55 | recordAssistedGuardianApproval | TC-R1-210, TC-R1-328 | UAT-R1-13 | — |
+| FR-R1-113 | S | PRIV IAM | W-127 | Consent, GuardianRelation | S-R1-23 | listConsentRequests | TC-R1-211 | — | — |
+| FR-R1-114 | M | ADM REC | W-78 W-43 | ReportingHandoff, Offer, Person | S-R1-42 | listReportingHandoffs | TC-R1-212, TC-R1-213, TC-R1-257 | UAT-R1-10 | — |
+| FR-R1-115 | M | ADM REC | W-78 | ReportingHandoff, StandardExport | S-R1-42 | exportReportingHandoffs, listReportingHandoffs | TC-R1-214, TC-R1-215 | UAT-R1-10 | A-69, Q-67 |
+| FR-R1-116 | S | ADM SVC | W-78 | ReportingHandoff, Appointment | S-R1-17, S-R1-42 | chooseReportingMode | TC-R1-216 | UAT-R1-10 | — |
+| FR-R1-117 | M | ADM IAM | W-78 | ReportingHandoff, IdentityLink, Offer | S-R1-42 | verifyReportingIdentity | TC-R1-217 | UAT-R1-10 | A-71 |
+| FR-R1-118 | S | ADM REC | W-78 W-148 | ReportingHandoff | S-R1-42 | listReportingHandoffs | TC-R1-218 | UAT-R1-10 | A-110 |
+| FR-R1-119 | M | RPT | W-136 | OitItem | S-R1-53 | listOitItems, updateOitItem | TC-R1-219 | UAT-R1-15 | A-47, Q-71, KPI-13 |
+| FR-R1-120 | M | RPT ADM CASE | W-136 W-19 | OitItem, OitSnapshot | S-R1-53, S-R1-48 | listOitItems, createOitSnapshot | TC-R1-220 | UAT-R1-15 | A-47 |
+| FR-R1-121 | M | RPT DOC | W-136 | OitItem, OitSnapshot | S-R1-53, S-R1-48 | approveOitPublication, createOitSnapshot, listOitItemsPublic | TC-R1-221 | UAT-R1-15 | A-47 |
+| FR-R1-122 | S | RPT SVC CASE | W-136 | OitItem | S-R1-53 | listOitItems | TC-R1-222 | UAT-R1-15 | KPI-15 |
+| FR-R1-123 | M | ADMIN ORG FIN PRIV DOC | W-69 W-81 | AdminChangeRequest | S-R1-50 | createChangeRequest, decideChangeRequest | TC-R1-223, TC-R1-224 | UAT-R1-02 | — |
+| FR-R1-124 | M | ADMIN ORG | W-69 | OrgUnit, OrgSetting, ReleaseRing | S-R1-50 | createChangeRequest | TC-R1-225 | UAT-R1-02 | A-85, Q-59 |
+| FR-R1-125 | M | ADMIN | W-74 | JobRun, IntegrationRun | S-R1-51 | listJobRuns, retryJobRun | TC-R1-226, TC-R1-227 | UAT-R1-16 | — |
+| FR-R1-126 | M | ADMIN AUD | W-125 | BreakGlassSession, AuditEvent | S-R1-52 | requestBreakGlass, approveBreakGlass | TC-R1-228, TC-R1-229 | UAT-R1-16 | — |
+| FR-R1-127 | M | ADMIN | W-124 | JitGrant | S-R1-52 | — | TC-R1-230 | UAT-R1-16 | — |
+| FR-R1-128 | M | AUD | W-76 W-74 W-18 | AuditEvent | S-R1-50 | — | TC-R1-231, TC-R1-232 | — | — |
+| FR-R1-129 | M | DOC | W-69 W-42 W-41 | DocumentTemplate, GeneratedDocument | S-R1-50 | createChangeRequest | TC-R1-233 | UAT-R1-01 | — |
+| FR-R1-130 | M | ADMIN | W-41 W-74 | WaitingRoomPolicy | S-R1-47, S-R1-49 | getStatus | TC-R1-234, TC-R1-235, TC-R1-341 | UAT-R1-07 | A-34 |
+| FR-R1-131 | S | ADMIN ORG | W-69 | ReleaseRing, CalendarEvent | S-R1-51 | — | TC-R1-236 | UAT-R1-16 | — |
+| FR-R1-132 | S | ADM DOC ANA | W-75 W-78 | StandardExport | S-R1-37, S-R1-42 | requestStandardExport | TC-R1-237 | — | A-115 |
+| FR-R1-133 | M | NOTI ADM | W-41 W-42 W-43 W-74 W-77 W-18 W-163 | NotificationRule, MessageTemplate, Message | S-R1-22 | listMyNotifications | TC-R1-238 | — | A-80 |
+| FR-R1-134 | M | NOTI | W-74 W-43 | Message, Delivery, ChannelPreference | S-R1-22 | updateNotificationPreferences | TC-R1-239, TC-R1-240, TC-R1-263 | — | A-80, A-93 |
+| FR-R1-135 | M | NOTI PRIV | W-42 W-74 | Message, MessageTemplate | S-R1-22 | — | TC-R1-241 | — | A-18 |
+| FR-R1-136 | M | NOTI | W-41 | InboxItem, ChannelPreference | S-R1-22 | listMyNotifications, acknowledgeNotification, updateNotificationPreferences | TC-R1-242 | — | — |
+| FR-R1-137 | M | NOTI PRIV | W-41 | ChannelBinding, Consent | S-R1-22 | bindLineAccount, unbindLineAccount | TC-R1-243 | — | — |
+| FR-R1-138 | M | ENG NOTI DOC | W-36 W-69 W-42 | Announcement, AudienceSegment, RecipientSnapshot | S-R1-56 | createAnnouncement, approveAnnouncement | TC-R1-244, TC-R1-245 | UAT-R1-01 | — |
+| FR-R1-139 | S | NOTI ADM | W-42 | Message | S-R1-38, S-R1-56 | publishResults | TC-R1-246, TC-R1-262 | UAT-R1-07 | — |
+
+## 2. NFR matrix
+
+| NFR | หมวด | Test | A/Q |
+|---|---|---|---|
+| NFR-R1-001 | Performance | TC-R1-264, TC-R1-265 | A-23, A-34 |
+| NFR-R1-002 | Performance | TC-R1-266 | — |
+| NFR-R1-003 | Performance | TC-R1-267 | — |
+| NFR-R1-004 | Performance | TC-R1-268 | — |
+| NFR-R1-005 | Performance | TC-R1-269 | — |
+| NFR-R1-006 | Performance | TC-R1-270, TC-R1-271 | — |
+| NFR-R1-007 | Performance | TC-R1-272, TC-R1-273 | — |
+| NFR-R1-008 | Availability | TC-R1-274 | A-103, Q-90 |
+| NFR-R1-009 | Availability | TC-R1-275, TC-R1-276 | — |
+| NFR-R1-010 | Availability | TC-R1-277, TC-R1-278 | — |
+| NFR-R1-011 | Security | TC-R1-250, TC-R1-279, TC-R1-280 | — |
+| NFR-R1-012 | Security | TC-R1-247, TC-R1-251, TC-R1-254, TC-R1-281, TC-R1-282, TC-R1-283 | — |
+| NFR-R1-013 | Security | TC-R1-284, TC-R1-285 | — |
+| NFR-R1-014 | Security | TC-R1-248, TC-R1-286, TC-R1-287 | — |
+| NFR-R1-015 | Security | TC-R1-288, TC-R1-289 | — |
+| NFR-R1-016 | Security | TC-R1-252, TC-R1-290, TC-R1-291 | — |
+| NFR-R1-017 | Security | TC-R1-292 | — |
+| NFR-R1-018 | Security | TC-R1-293 | — |
+| NFR-R1-019 | PDPA | TC-R1-256, TC-R1-294 | Q-69, Q-103 |
+| NFR-R1-020 | PDPA | TC-R1-255, TC-R1-295 | A-17 |
+| NFR-R1-021 | PDPA | TC-R1-296 | — |
+| NFR-R1-022 | PDPA | TC-R1-257, TC-R1-297 | — |
+| NFR-R1-023 | PDPA | TC-R1-298 | A-118 |
+| NFR-R1-024 | Accessibility | TC-R1-299, TC-R1-300, TC-R1-301, TC-R1-302, TC-R1-315, TC-R1-316, TC-R1-317, TC-R1-318, TC-R1-319, TC-R1-320, TC-R1-321, TC-R1-322, TC-R1-323, TC-R1-324, TC-R1-325, TC-R1-326, TC-R1-327, TC-R1-328, TC-R1-329, TC-R1-330, TC-R1-331, TC-R1-332, TC-R1-333, TC-R1-334, TC-R1-335, TC-R1-336, TC-R1-337, TC-R1-338, TC-R1-339, TC-R1-340, TC-R1-341 | — |
+| NFR-R1-025 | Thai typography | TC-R1-303, TC-R1-304 | — |
+| NFR-R1-026 | Usability | TC-R1-305 | — |
+| NFR-R1-027 | Usability | TC-R1-306 | A-95 |
+| NFR-R1-028 | Usability | TC-R1-307 | — |
+| NFR-R1-029 | Audit | TC-R1-253, TC-R1-308, TC-R1-309 | — |
+| NFR-R1-030 | Operations | TC-R1-310 | — |
+| NFR-R1-031 | Operations | TC-R1-311 | A-121, Q-110 |
+| NFR-R1-032 | Interoperability | TC-R1-312, TC-R1-313 | — |
+| NFR-R1-033 | Scalability | TC-R1-314 | — |
+
+## 3. Coverage check
+
+### 3.1 ทุก workflow ของ R1 มี FR ≥ 1
+
+ชุด workflow ของ R1 = ทุก workflow ที่ `stage = pre` ใน `data/workflows.json` (21 รายการ) + workflow platform ที่ R1 ต้องใช้ตาม D-03 และ 06 §11 (11 รายการ)
+
+| Workflow | stage | โมดูล | ชื่อ | FR | ผล |
+|---|---|---|---|---|---|
+| W-18 | pre | CASE | ขอทบทวนผลคัดเลือก (แบบเร่งด่วน ให้จบก่อนกำหนดยืนยันสิทธิ์) | FR-R1-081, FR-R1-084, FR-R1-099, FR-R1-100, FR-R1-101, FR-R1-102, FR-R1-103, FR-R1-106, FR-R1-128, FR-R1-133 | ✓ |
+| W-41 | pre | ADM | สมัครเรียนออนไลน์ | FR-R1-011, FR-R1-012, FR-R1-013, FR-R1-014, FR-R1-015, FR-R1-016, FR-R1-019, FR-R1-020, FR-R1-021, FR-R1-022, FR-R1-033, FR-R1-034, FR-R1-035, FR-R1-036, FR-R1-037, FR-R1-044, FR-R1-045, FR-R1-046, FR-R1-047, FR-R1-048, FR-R1-107, FR-R1-108, FR-R1-109, FR-R1-110, FR-R1-112, FR-R1-129, FR-R1-130, FR-R1-133, FR-R1-136, FR-R1-137 | ✓ |
+| W-42 | pre | ADM | สอบคัดเลือก สอบทักษะกีฬา และสัมภาษณ์ | FR-R1-023, FR-R1-035, FR-R1-043, FR-R1-054, FR-R1-058, FR-R1-059, FR-R1-061, FR-R1-062, FR-R1-063, FR-R1-064, FR-R1-065, FR-R1-066, FR-R1-068, FR-R1-070, FR-R1-076, FR-R1-079, FR-R1-080, FR-R1-081, FR-R1-082, FR-R1-083, FR-R1-084, FR-R1-085, FR-R1-109, FR-R1-112, FR-R1-129, FR-R1-133, FR-R1-135, FR-R1-138, FR-R1-139 | ✓ |
+| W-43 | pre | ADM | ยืนยันสิทธิ์และชำระค่าแรกเข้า | FR-R1-026, FR-R1-045, FR-R1-046, FR-R1-047, FR-R1-048, FR-R1-051, FR-R1-053, FR-R1-086, FR-R1-087, FR-R1-088, FR-R1-089, FR-R1-111, FR-R1-114, FR-R1-133, FR-R1-134 | ✓ |
+| W-69 | pre | ADM | ตั้งค่าและประกาศรอบรับสมัครรายวิทยาเขต | FR-R1-001, FR-R1-002, FR-R1-003, FR-R1-004, FR-R1-005, FR-R1-006, FR-R1-007, FR-R1-008, FR-R1-010, FR-R1-017, FR-R1-123, FR-R1-124, FR-R1-129, FR-R1-131, FR-R1-138 | ✓ |
+| W-70 | pre | ADM | รับสมัครประเภทโควตาเรียนดี | FR-R1-003, FR-R1-021, FR-R1-022, FR-R1-023, FR-R1-043, FR-R1-079, FR-R1-081, FR-R1-082 | ✓ |
+| W-71 | pre | ADM | รับสมัครประเภทโควตานักกีฬา | FR-R1-003, FR-R1-024, FR-R1-025, FR-R1-041, FR-R1-043, FR-R1-064, FR-R1-065, FR-R1-066, FR-R1-079, FR-R1-081, FR-R1-082 | ✓ |
+| W-72 | pre | ADM | รับสมัครประเภททั่วไปรายรอบ (รอบ 1…n) | FR-R1-009, FR-R1-026, FR-R1-043, FR-R1-063, FR-R1-079, FR-R1-081, FR-R1-082, FR-R1-092 | ✓ |
+| W-73 | pre | ADM | TCAS adapter (ทางเลือก) | FR-R1-032 | ✓ |
+| W-74 | pre | ADM | Clearing ภายใน มกช. (ยืนยันสิทธิ์ได้ที่เดียว) และเรียกสำรอง | FR-R1-012, FR-R1-080, FR-R1-086, FR-R1-087, FR-R1-088, FR-R1-089, FR-R1-090, FR-R1-091, FR-R1-092, FR-R1-093, FR-R1-094, FR-R1-096, FR-R1-097, FR-R1-098, FR-R1-100, FR-R1-102, FR-R1-110, FR-R1-111, FR-R1-125, FR-R1-128, FR-R1-130, FR-R1-133, FR-R1-134, FR-R1-135 | ✓ |
+| W-75 | pre | ADM | จัดตารางสอบทักษะ / สัมภาษณ์ และแต่งตั้งกรรมการ | FR-R1-018, FR-R1-054, FR-R1-055, FR-R1-056, FR-R1-057, FR-R1-058, FR-R1-059, FR-R1-060, FR-R1-078, FR-R1-132 | ✓ |
+| W-76 | pre | ADM | ให้คะแนนสอบทักษะหลายกรรมการ และ moderation | FR-R1-004, FR-R1-017, FR-R1-057, FR-R1-069, FR-R1-070, FR-R1-071, FR-R1-072, FR-R1-073, FR-R1-074, FR-R1-075, FR-R1-076, FR-R1-077, FR-R1-079, FR-R1-128 | ✓ |
+| W-77 | pre | ADM | ตรวจเอกสารผู้สมัคร | FR-R1-022, FR-R1-036, FR-R1-037, FR-R1-038, FR-R1-039, FR-R1-040, FR-R1-042, FR-R1-133 | ✓ |
+| W-78 | pre | ADM | วันรายงานตัว (ออกรหัสนักศึกษา) | FR-R1-013, FR-R1-026, FR-R1-042, FR-R1-096, FR-R1-114, FR-R1-115, FR-R1-116, FR-R1-117, FR-R1-118, FR-R1-132 | ✓ |
+| W-79 | pre | ADM | จัด accommodation ในการสอบคัดเลือกสำหรับผู้สมัครพิการ | FR-R1-006, FR-R1-028, FR-R1-106 | ✓ |
+| W-80 | pre | ADM | ผู้สมัครต่างชาติ: เทียบวุฒิและเอกสารวีซ่า | FR-R1-013, FR-R1-029, FR-R1-052, FR-R1-062 | ✓ |
+| W-81 | pre | FIN | ยกเว้น / คืนค่าสมัคร | FR-R1-034, FR-R1-049, FR-R1-050, FR-R1-123 | ✓ |
+| W-82 | pre | ADM | รับโอน / เทียบโอนจาก ปวส. หรือสถาบันอื่น | FR-R1-030 | ✓ |
+| W-85 | pre | ADM | เหตุการณ์วันสอบทักษะ (บาดเจ็บ / ขาดสอบ / ขอเลื่อน) | FR-R1-066, FR-R1-067, FR-R1-105 | ✓ |
+| W-144 | pre | ADM | นักเรียนโรงเรียนกีฬาสมัครต่อ มกช. (โควตาภายใน) | FR-R1-027 | ✓ |
+| W-163 | pre | ADM | ยืนยันสิทธิ์ซ้ำก่อนเปิดภาค (pre-term reconfirmation) สำหรับผู้ยืนยันสิทธิ์รอบต้น | FR-R1-095, FR-R1-111, FR-R1-133 | ✓ |
+| W-19 | problem | CASE | ร้องเรียน / แจ้งเบาะแส | FR-R1-103, FR-R1-104, FR-R1-120 | ✓ |
+| W-36 | admin | ENG | ประกาศ / ประกาศฉุกเฉิน | FR-R1-008, FR-R1-010, FR-R1-085, FR-R1-138 | ✓ |
+| W-39 | sport | HLT | บันทึกการบาดเจ็บ | FR-R1-067 | ✓ |
+| W-117 | admin | ORG | ปฏิทินการศึกษา: สร้าง / อนุมัติ / เผยแพร่ | FR-R1-005 | ✓ |
+| W-124 | admin | ADMIN | ขอสิทธิ์ privileged แบบ Just-in-Time (PAM) | FR-R1-127 | ✓ |
+| W-125 | admin | ADMIN | ใช้บัญชี break-glass ของระบบ | FR-R1-126 | ✓ |
+| W-127 | first | REC | ผูกบัญชีผู้ปกครองและยืนยันความสัมพันธ์ (ระดับการยืนยัน 2 ระดับ + ช่องทางเจ้าหน้าที่ช่วย) | FR-R1-107, FR-R1-108, FR-R1-113 | ✓ |
+| W-136 | admin | RPT | เผยแพร่ข้อมูล ITA / OIT | FR-R1-119, FR-R1-120, FR-R1-121, FR-R1-122 | ✓ |
+| W-139 | admin | IAM | เปิดบัญชีบุคคลภายนอก (กรรมการสอบ อาจารย์พิเศษ ครูพี่เลี้ยง โค้ชสัญญาจ้าง) | FR-R1-018, FR-R1-056 | ✓ |
+| W-152 | sport | HLT | สงสัยกระทบกระเทือนสมอง (suspected concussion): ถอดออกทันที → ประเมิน → กลับเรียน → กลับเล่น | FR-R1-067 | ✓ |
+| W-153 | sport | FAC | ความร้อน (heat stress): วัด WBGT ปรับกิจกรรม และรับมือ heat illness | FR-R1-060, FR-R1-061 | ✓ |
+
+**ผล:** 32/32 workflow มี FR (workflow `pre` ที่ไม่ได้อยู่ในชุด: ไม่มี)
+
+### 3.2 workflow ที่เกี่ยวข้องแต่ไม่อยู่ในชุด R1
+
+| Workflow | ชื่อ | เหตุผล |
+|---|---|---|
+| W-83 | รับนักเรียนโรงเรียนกีฬา ม.1/ม.4 | ไม่อยู่ใน R1: ช่องทางโรงเรียนกีฬาเปิดที่ SS1-ADM (1 ธ.ค. 2572) / Wave 1 (เล่ม 12 §2.1, 06 §11) — กติกา clearing และโมเดล guardian ของ R1 ออกแบบให้ใช้ซ้ำได้ |
+| W-84 | รับสมัคร ป.โท/ป.เอก | อยู่ใน R1 แบบมีเงื่อนไข ("ถ้าผ่าน go/no-go" — เล่ม 12 §2.1) จึงมี FR ระดับ Could (FR-R1-031) |
+| W-148 | Fast-track late-admit | workflow ของ REC ใน R2; R1 ทำเพียงติดธง late_admit ใน handoff (FR-R1-118) |
+| W-160 | ผู้อุปการะ (CAREGIVER) | workflow ของ REC/SSC; R1 รองรับเพียงความสัมพันธ์ CAREGIVER ที่สิทธิ์จำกัดตอนผูกบัญชี (FR-R1-108) |
+| W-28 | ยกเลิกใบเสร็จ | FIN เต็มอยู่ R2; R1 บังคับเพียงกติกา SoD-11 เมื่อจำเป็นต้องยกเลิกใบเสร็จค่าสมัคร (FR-R1-048) |
+| W-21 | DSR (PDPA) | DSR execution อยู่ R2 (06 §5.8); R1 รับเรื่องหมวด PDPA ผ่านช่องร้องเรียนและส่งคิว DPO (FR-R1-104) |
+
+### 3.3 ทุก FR มี test ≥ 1
+
+**ผล:** 139/139 FR มี test case (ขาด: ไม่มี); จำนวน TC ต่อ FR: ต่ำสุด 1 สูงสุด 6 เฉลี่ย 2.5
+
+**NFR:** 33/33 มี test case (ขาด: ไม่มี)
+
+### 3.4 หน้าจอ API และ entity
+
+- หน้าจอที่ไม่มี FR: ไม่มี (58 หน้าจอ)
+- operation ใน r1-api.yaml ที่ไม่มี FR อ้าง: ไม่มี (146 operation)
+- entity ในพจนานุกรมที่ไม่มี FR อ้าง: ไม่มี (127 entity)
+
+### 3.5 ความครอบคลุมตามโมดูล R1 (D-03)
+
+| โมดูล | FR |
+|---|---|
+| ADM | 106 (FR-R1-001, FR-R1-002, FR-R1-003, FR-R1-004, FR-R1-005, FR-R1-006, FR-R1-007, FR-R1-008 …) |
+| IAM | 14 (FR-R1-007, FR-R1-011, FR-R1-012, FR-R1-013, FR-R1-015, FR-R1-016, FR-R1-017, FR-R1-018 …) |
+| ORG | 12 (FR-R1-001, FR-R1-005, FR-R1-008, FR-R1-009, FR-R1-054, FR-R1-063, FR-R1-091, FR-R1-094 …) |
+| NOTI | 16 (FR-R1-039, FR-R1-043, FR-R1-059, FR-R1-067, FR-R1-082, FR-R1-086, FR-R1-095, FR-R1-103 …) |
+| ENG | 6 (FR-R1-008, FR-R1-010, FR-R1-043, FR-R1-082, FR-R1-085, FR-R1-138) |
+| SVC | 4 (FR-R1-033, FR-R1-049, FR-R1-116, FR-R1-122) |
+| CASE | 10 (FR-R1-035, FR-R1-099, FR-R1-100, FR-R1-101, FR-R1-102, FR-R1-103, FR-R1-104, FR-R1-106 …) |
+| DOC | 20 (FR-R1-006, FR-R1-007, FR-R1-010, FR-R1-029, FR-R1-033, FR-R1-036, FR-R1-041, FR-R1-043 …) |
+| PRIV | 14 (FR-R1-014, FR-R1-027, FR-R1-064, FR-R1-068, FR-R1-107, FR-R1-108, FR-R1-109, FR-R1-110 …) |
+| AUD | 6 (FR-R1-016, FR-R1-072, FR-R1-076, FR-R1-081, FR-R1-126, FR-R1-128) |
+| FIN | 20 (FR-R1-006, FR-R1-008, FR-R1-026, FR-R1-029, FR-R1-031, FR-R1-034, FR-R1-044, FR-R1-045 …) |
+| REC | 9 (FR-R1-012, FR-R1-014, FR-R1-042, FR-R1-107, FR-R1-108, FR-R1-110, FR-R1-114, FR-R1-115 …) |
+| CUR | 3 (FR-R1-002, FR-R1-030, FR-R1-102) |
+| HLT | 9 (FR-R1-028, FR-R1-058, FR-R1-060, FR-R1-064, FR-R1-065, FR-R1-066, FR-R1-067, FR-R1-068 …) |
+| FAC | 4 (FR-R1-054, FR-R1-055, FR-R1-060, FR-R1-061) |
+| ADMIN | 9 (FR-R1-032, FR-R1-083, FR-R1-123, FR-R1-124, FR-R1-125, FR-R1-126, FR-R1-127, FR-R1-130 …) |
+| RPT | 5 (FR-R1-104, FR-R1-119, FR-R1-120, FR-R1-121, FR-R1-122) |
+
+## 4. การพึ่งพาสมมติฐาน/คำถาม → FR
+
+| A/Q/KPI | FR/NFR |
+|---|---|
+| A-17 | FR-R1-014, FR-R1-107, FR-R1-109, NFR-R1-020 |
+| A-18 | FR-R1-135 |
+| A-23 | NFR-R1-001 |
+| A-26 | FR-R1-107, FR-R1-108, FR-R1-110 |
+| A-29 | FR-R1-031 |
+| A-30 | FR-R1-029 |
+| A-31 | FR-R1-028 |
+| A-34 | FR-R1-083, FR-R1-130, NFR-R1-001 |
+| A-36 | FR-R1-005 |
+| A-47 | FR-R1-119, FR-R1-120, FR-R1-121 |
+| A-48 | FR-R1-002, FR-R1-102 |
+| A-49 | FR-R1-001, FR-R1-009, FR-R1-019 |
+| A-50 | FR-R1-032 |
+| A-51 | FR-R1-019, FR-R1-088, FR-R1-090, FR-R1-092, FR-R1-097 |
+| A-52 | FR-R1-004, FR-R1-056, FR-R1-074, FR-R1-075 |
+| A-53 | FR-R1-026, FR-R1-082 |
+| A-55 | FR-R1-031 |
+| A-56 | FR-R1-012 |
+| A-57 | FR-R1-006, FR-R1-051 |
+| A-58 | FR-R1-044, FR-R1-046 |
+| A-69 | FR-R1-115 |
+| A-71 | FR-R1-011, FR-R1-013, FR-R1-117 |
+| A-79 | FR-R1-048 |
+| A-80 | FR-R1-133, FR-R1-134 |
+| A-85 | FR-R1-001, FR-R1-124 |
+| A-93 | FR-R1-086, FR-R1-134 |
+| A-95 | NFR-R1-027 |
+| A-103 | NFR-R1-008 |
+| A-110 | FR-R1-091, FR-R1-095, FR-R1-118 |
+| A-115 | FR-R1-132 |
+| A-118 | FR-R1-068, NFR-R1-023 |
+| A-119 | FR-R1-013, FR-R1-062 |
+| A-121 | NFR-R1-031 |
+| KPI-01 | FR-R1-098 |
+| KPI-02 | FR-R1-098 |
+| KPI-13 | FR-R1-119 |
+| KPI-15 | FR-R1-122 |
+| KPI-19 | FR-R1-038 |
+| KPI-20 | FR-R1-012 |
+| KPI-21 | FR-R1-047 |
+| KPI-22 | FR-R1-047 |
+| Q-11 | FR-R1-032 |
+| Q-12 | FR-R1-088, FR-R1-090, FR-R1-092, FR-R1-097 |
+| Q-13 | FR-R1-001, FR-R1-003, FR-R1-007, FR-R1-010, FR-R1-021, FR-R1-023 |
+| Q-14 | FR-R1-004, FR-R1-024, FR-R1-054, FR-R1-056, FR-R1-074 |
+| Q-17 | FR-R1-027 |
+| Q-18 | FR-R1-028, FR-R1-029, FR-R1-030, FR-R1-106 |
+| Q-19 | FR-R1-099, FR-R1-101, FR-R1-103 |
+| Q-21 | FR-R1-031 |
+| Q-22 | FR-R1-002 |
+| Q-23 | FR-R1-064 |
+| Q-25 | FR-R1-005 |
+| Q-34 | FR-R1-006, FR-R1-051 |
+| Q-35 | FR-R1-044, FR-R1-046, FR-R1-050 |
+| Q-45 | FR-R1-028 |
+| Q-46 | FR-R1-029 |
+| Q-50 | FR-R1-025, FR-R1-041 |
+| Q-59 | FR-R1-124 |
+| Q-60 | FR-R1-097 |
+| Q-65 | FR-R1-011, FR-R1-013 |
+| Q-67 | FR-R1-115 |
+| Q-69 | FR-R1-085, NFR-R1-019 |
+| Q-71 | FR-R1-119 |
+| Q-75 | FR-R1-062 |
+| Q-90 | NFR-R1-008 |
+| Q-95 | FR-R1-091, FR-R1-095 |
+| Q-96 | FR-R1-005, FR-R1-099, FR-R1-100, FR-R1-101, FR-R1-102 |
+| Q-99 | FR-R1-061 |
+| Q-103 | FR-R1-064, FR-R1-067, FR-R1-109, NFR-R1-019 |
+| Q-108 | FR-R1-029, FR-R1-052 |
+| Q-110 | NFR-R1-031 |
+| Q-114 | FR-R1-045 |
+
+## 5. ช่องว่าง (G-xx) → FR
+
+| G | FR |
+|---|---|
+| G-01 | FR-R1-028, FR-R1-106 |
+| G-02 | FR-R1-050 |
+| G-03 | FR-R1-115 |
+| G-04 | FR-R1-027 |
+| G-05 | FR-R1-007, FR-R1-082 |
+| G-06 | FR-R1-043, FR-R1-085 |
+| G-07 | FR-R1-061 |
+| G-08 | FR-R1-064 |
+| G-09 | FR-R1-083, FR-R1-094 |
+| G-10 | FR-R1-108 |
+| G-11 | FR-R1-060, FR-R1-066, FR-R1-067 |
+| G-12 | FR-R1-008, FR-R1-044 |
+| G-13 | หลาย FR |

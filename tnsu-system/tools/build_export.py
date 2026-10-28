@@ -71,7 +71,9 @@ def main() -> None:
     (OUT / "02-ALL-WORKFLOWS.md").write_text(workflows_md(), encoding="utf-8")
     (OUT / "03-UX-SCREENS-KPI.md").write_text(ux_md(), encoding="utf-8")
     (OUT / "04-FULL-DESIGN-DOCS.md").write_text(full_md(), encoding="utf-8")
-    files = ["01-DESIGN-BRIEF.md", "02-ALL-WORKFLOWS.md", "03-UX-SCREENS-KPI.md", "04-FULL-DESIGN-DOCS.md"]
+    (OUT / "05-R1-SCREENS.md").write_text((DOCS / "r1" / "r1-screens.md").read_text(encoding="utf-8"), encoding="utf-8")
+    (OUT / "05-R1-API.yaml").write_text((DOCS / "r1" / "r1-api.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    files = ["01-DESIGN-BRIEF.md", "02-ALL-WORKFLOWS.md", "03-UX-SCREENS-KPI.md", "04-FULL-DESIGN-DOCS.md", "05-R1-SCREENS.md", "05-R1-API.yaml"]
     with zipfile.ZipFile(OUT / "TNSU-design-export.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for f in files:
             z.write(OUT / f, f)
