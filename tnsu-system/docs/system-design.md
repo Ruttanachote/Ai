@@ -123,6 +123,8 @@
 | Academic core | Admissions, Curriculum & Course Catalogue, Timetable & Course Registration, Assessment & Grading, Student Records & Academic Standing, Graduation & Credentials, LMS integration, Teaching Practicum & Licence |
 | Student services | Finance & Billing, Scholarships & Student Loans, Housing/Dormitory, Student Affairs, Alumni & Career |
 | Sports | Athlete Management, Sports Facilities Booking, Sports School (basic-ed profile) |
+| Administration | Admin Console / Platform Operations (4.25) และบทบาท/สิทธิ์ทั้งหมด (3A) |
+| ส่วนขยาย (Phase 5–6) | HR วิชาการ/ภาระงาน, payroll interface, แผนและงบประมาณ, procurement/assets interface, งานวิจัยและจริยธรรมการวิจัยในมนุษย์, ห้องสมุด, การจัดสอบ, บัณฑิตศึกษา, e-Office/e-Meeting, CMS/เว็บไซต์ ITA, helpdesk, ห้องพยาบาลและประกัน, นักศึกษาต่างชาติ (4.26) |
 
 ### 1.4 นอกขอบเขต (Out of scope: เชื่อมต่ออย่างเดียว)
 
@@ -690,6 +692,16 @@ flowchart TB
     AUD["Audit"]
     ANA["Analytics, QA & ITA"]
     WF["Workflow (Flowable)"]
+    ADMC["Admin Console / Platform Ops"]
+  end
+  subgraph EXT["Extended university modules - Phase 5-6"]
+    XHR["HR academic / Payroll IF"]
+    XLIB["Library - Koha"]
+    XEXM["Exam mgmt"]
+    XGRS["Graduate school"]
+    XOFF["e-Office / e-Meeting"]
+    XRES["Research + Ethics"]
+    XOTH["CMS, Helpdesk, Clinic, Intl, Budget, Assets IF"]
   end
   subgraph ACAD["Academic core"]
     ADM["Admissions"]
