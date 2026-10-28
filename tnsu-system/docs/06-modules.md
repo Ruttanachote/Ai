@@ -627,7 +627,9 @@ flowchart TB
 **Workflow:** W-44, W-57, W-10, W-11, W-17 (ผล), W-24, W-25 (ย้ายสาขา), W-26, W-15
 **Integrations:** สป.อว. (ผ่าน RPT), โรงเรียนเดิม (หนังสือตรวจวุฒิผ่าน DOC/e-Saraban), ทะเบียนราษฎร (ทางเลือกผ่าน MOU **[ต้องตรวจสอบ]**)
 **แนวทาง:** **Build**
-**Release:** R2 (ดูคำถามเปิดใน ADM เรื่องการออกรหัสก่อน R2) · Wave 1 (BASIC_ED)
+**Release:** R1 ขั้นต่ำ (**Person master** + GuardianRelation สำหรับผู้สมัครผู้เยาว์ เพราะ ADM/IAM/PRIV ใน R1 อ้าง Person ที่ REC เป็นเจ้าของ) · R2 เต็ม (ดูคำถามเปิดใน ADM เรื่องการออกรหัสก่อน R2) · Wave 1 (BASIC_ED)
+
+> **หมายเหตุถึงเล่ม 12:** blueprint ระบุ REC ใน R2 แต่ Person master เป็นส่วนของ REC ตามกฎเจ้าของเดียว จึงต้องส่งส่วนนี้ใน R1
 
 ### 6.8 GRD — Graduation & Credentials
 
@@ -1302,7 +1304,7 @@ flowchart TB
 | ATT | | ✓ | | + โรงเรียนกีฬา | | |
 | EXM | | ✓ | | | | คลังข้อสอบเข้ารหัส |
 | ASM | | ✓ | | + BASIC_ED | | |
-| REC | (คำถามเปิด: ออกรหัสก่อน R2) | ✓ | | + BASIC_ED | | |
+| REC | ◐ Person master + GuardianRelation (เสนอ); คำถามเปิดเรื่องออกรหัสก่อน R2 | ✓ | | + BASIC_ED | | |
 | GRD | | | ✓ | + CLR เต็ม | | |
 | GRAD | | | ✓ | | | |
 | PRA | | | ✓ | | | |
