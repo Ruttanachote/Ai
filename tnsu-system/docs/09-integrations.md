@@ -224,18 +224,18 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-  participant S as "ผู้ชำระ"
-  participant FIN as "FIN"
-  participant BANK as "ธนาคาร"
-  participant REC as "Reconciliation job"
-  FIN->>S: "ใบแจ้งหนี้ + Thai QR (Biller ID, Ref1=invoice_no, Ref2=payer_code)"
-  S->>BANK: "ชำระผ่าน mobile banking"
-  BANK->>FIN: "payment notification (mTLS + signature, bank_txn_ref)"
-  FIN->>FIN: "inbox: unique(bank_txn_ref) ป้องกันซ้ำ, จับคู่ Ref1"
-  FIN-->>BANK: "HTTP 200 (ack เสมอเมื่อบันทึก inbox แล้ว)"
-  FIN->>S: "e-Receipt (PDF/A + PAdES) ผ่าน NOTI"
-  BANK->>REC: "statement file รายวัน (SFTP, T+1)"
-  REC->>FIN: "เทียบ callback vs statement; สร้าง exception queue"
+  participant S as ผู้ชำระ
+  participant FIN as FIN
+  participant BANK as ธนาคาร
+  participant REC as Reconciliation job
+  FIN->>S: ใบแจ้งหนี้ + Thai QR (Biller ID, Ref1=invoice_no, Ref2=payer_code)
+  S->>BANK: ชำระผ่าน mobile banking
+  BANK->>FIN: payment notification (mTLS + signature, bank_txn_ref)
+  FIN->>FIN: inbox: unique(bank_txn_ref) ป้องกันซ้ำ, จับคู่ Ref1
+  FIN-->>BANK: HTTP 200 (ack เสมอเมื่อบันทึก inbox แล้ว)
+  FIN->>S: e-Receipt (PDF/A + PAdES) ผ่าน NOTI
+  BANK->>REC: statement file รายวัน (SFTP, T+1)
+  REC->>FIN: เทียบ callback vs statement, สร้าง exception queue
 ```
 
 - **ไม่เชื่อ callback อย่างเดียว:** สถานะ "ชำระแล้ว" ตั้งจาก callback แต่ปิดยอดบัญชีจาก statement; รายการที่มีใน statement แต่ไม่มี callback ให้ระบบสร้างรายการรับเงินอัตโนมัติพร้อม flag ตรวจ
