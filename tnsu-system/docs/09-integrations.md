@@ -1,6 +1,6 @@
 # 09 — Integrations: ระบบภายนอก รูปแบบการเชื่อมต่อ ปฏิทินรายงาน และการโอนข้อมูลข้ามประเทศ
 
-> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · ผู้เขียน: F · ภาษา: ไทย (ศัพท์เทคนิคเป็นภาษาอังกฤษ)
+> **สถานะ:** v1.1-draft · 28 ต.ค. 2569 (v1.0 → v1.1 ตาม [00-fix-decisions-v1.1](./00-fix-decisions-v1.1.md): D-02 เดือนสัมพัทธ์, D-03 ขอบเขต R1/R2, D-04 `hlt_vault`, D-06 wearable เหลือ CSV/มาตรฐานกลาง, D-07 Wave 2a/2b, D-09 cross-border X-11..X-16 + TSA) · ผู้เขียน: F · ภาษา: ไทย (ศัพท์เทคนิคเป็นภาษาอังกฤษ)
 > **อ่านคู่กับ:** [00-blueprint](./00-blueprint.md) · [06-modules](./06-modules.md) (เจ้าของรายการ event และ module) · [07-architecture](./07-architecture.md) (gateway, outbox, OpenBao) · [08-data](./08-data.md) (identifiers, classification, retention) · [10-security-compliance](./10-security-compliance.md) (PDPA, ฐานทางกฎหมาย, DPIA) · [11-operations](./11-operations.md) (runbook, support) · [government-relations.md](./government-relations.md) (ภาคผนวก: บทบาทของหน่วยงาน, ภาระรายงาน และกฎหมาย)
 >
 > **ป้ายสถานะหลักฐาน**
@@ -14,7 +14,7 @@
 ## สารบัญ
 
 1. [ภาพรวมและการจัดกลุ่ม](#1-ภาพรวมและการจัดกลุ่ม)
-2. [Integration catalogue (I-01..I-52)](#2-integration-catalogue)
+2. [Integration catalogue (I-01..I-58)](#2-integration-catalogue)
 3. [รายละเอียดเชิงออกแบบของ integration สำคัญ](#3-รายละเอียดเชิงออกแบบของ-integration-สำคัญ)
 4. [Integration patterns](#4-integration-patterns)
 5. [Manual fallback procedures](#5-manual-fallback-procedures)
@@ -22,7 +22,8 @@
 7. [Cross-border data transfer register](#7-cross-border-data-transfer-register)
 8. [ลำดับการส่งมอบตาม release](#8-ลำดับการส่งมอบตาม-release)
 9. [คำถามที่ต้องยืนยัน](#9-คำถามที่ต้องยืนยันใน-p0-discovery)
-10. [ผลการปิด review](#10-ผลการปิด-review)
+10. [ผลการปิด review](#10-ผลการปิด-review) (v1.1: 10.6)
+11. [สมมติฐาน/คำถามใหม่ที่เสนอ](#สมมติฐานคำถามใหม่ที่เสนอ)
 
 ---
 
@@ -44,13 +45,14 @@ flowchart LR
     G4["กรมบัญชีกลาง: GFMIS, e-Payment, e-GP"]
     G5["กรมสรรพากร"]
     G6["สตม., สัสดี, คุรุสภา, สพฐ., สทศ."]
-    G7["ป.ป.ช. ITAS, สกมช., สคส."]
+    G7["สำนักงาน ป.ป.ช. ITAS, สกมช., สคส."]
   end
   subgraph PRIV["เอกชน / เครือข่าย"]
     P1["ธนาคาร: Bill Payment, Thai QR, payout"]
     P2["LINE, FCM/APNs, Email, SMS"]
     P3["M365/Google, Turnitin, Wearables"]
-    P4["ประกัน, CA/TSA, UniNet/eduroam"]
+    P4["ประกัน, CA/TSA (ETDA e-Timestamping), UniNet/eduroam"]
+    P5["Video call, payment บัตรต่างประเทศ, bot/breached-password check, Web Push, SOC/SIEM (X-11..X-15)"]
   end
   subgraph SPORT["ระบบนิเวศกีฬา"]
     S1["กกท., สมาคมกีฬา, ก.ก.ม.ท., DCAT"]
@@ -68,6 +70,7 @@ flowchart LR
   ACL --> P2
   ACL <--> P3
   ACL <--> P4
+  ACL <--> P5
   ACL -.->|"file"| S1
   CORE --> RPT
 ```
@@ -86,7 +89,7 @@ flowchart LR
 
 ## 2. Integration catalogue
 
-> คอลัมน์ "Release" ใช้แผนในหัวข้อ 7 ของ blueprint: R1 = ก.ย. 2571, R2 = พ.ค. 2572, R3 = พ.ย. 2572, W1 = Wave 1 (มิ.ย. 2573, โรงเรียนกีฬานำร่อง พ.ค. 2573), W2 = Wave 2, X = สัญญาแยก
+> คอลัมน์ "Release" ใช้แผนในหัวข้อ 7 ของ blueprint (เดือนสัมพัทธ์ M1 = เม.ย. 2570 ตาม D-02): R1 = ก.ย. 2571 (M18), R2 = พ.ค. 2572 (M26), R3 = พ.ย. 2572 (M32), W1 = Wave 1 (มิ.ย. 2573 = M39, โรงเรียนกีฬานำร่อง พ.ค. 2573 = M38), W2 = Wave 2a มิ.ย. 2574 (M51) / Wave 2b พ.ย. 2574 (M56) ตาม D-07, X = สัญญาแยก; **ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือนตามรอบรับสมัคร (เล่ม 12 §1.3)**
 > ทิศทาง: **In** = เข้าระบบ มกช., **Out** = ออก, **In/Out** = สองทาง
 
 ### 2.1 ตัวตนและการรับเข้า
@@ -167,7 +170,7 @@ flowchart LR
 | I-37 | **e-Saraban** (ระบบสารบรรณอิเล็กทรอนิกส์ของ มกช. และการรับส่งกับหน่วยงานภายนอก) | มกช. (ระบบเดิม/ระบบใหม่) + ระบบกลางของรัฐ (ถ้ามี) | In/Out | หนังสือราชการ, เลขทะเบียนรับ/ส่ง, ชั้นความลับ/ความเร็ว, prefix "ที่ ..." แบบ effective-dated ต่อ OrgUnit | API (ถ้าระบบเดิมมี) / e-mail-in / upload; ระบบกลางรับส่งหนังสือระหว่างหน่วยงาน 🟡 | SSO / service account | ต่อเอกสาร | DOC | R2 | ✅ ระเบียบสารบรรณ ฉบับที่ 4 2564 [Chula](https://www.arch.chula.ac.th/arch-cu/files/formcontentepost/ระเบียบงานสารบรรณ%20ฉบับที่%204%20พ.ศ.%202564.pdf); 🟡 ระบบ e-Saraban ปัจจุบันของแต่ละวิทยาเขตและมาตรฐานกลาง |
 | I-38 | **Digital Transcript (ขมธอ. 25-2563)** + บริการตรวจสอบ ETDA | อว./DGA/ETDA/ก.พ.ร. | Out | XML ตาม ขมธอ. 25-2563 (UN/CEFACT + PESC) ฝังใน PDF/A-3 ลงลายมือชื่อ PAdES; ลงทะเบียนเพื่อให้ตรวจสอบได้ | FILE/API ตามช่องทางของโครงการ 🟡 | ใบรับรองนิติบุคคลจาก CA | ต่อการออกเอกสาร | GRD, DOC | R3 | ✅ 98 มหาวิทยาลัย ณ 31 ก.ค. 2567 [DGA](https://www.dga.or.th/en/our-services/digital-platform-services/dga-digital-transcript/) · มาตรฐาน [NU Journal](https://www.journal.nu.ac.th/NUJST/article/view/Vol-31-No-3-2023-113-128) · ตรวจผ่าน ETDA [KMUTT](https://regis.kmutt.ac.th/web/verify/); 🟡 ช่องทางส่ง/ลงทะเบียนปัจจุบัน |
 | I-39 | **Public verification endpoint ของ มกช.** (W-67 นายจ้างตรวจสอบวุฒิ) | มกช. | Out (สาธารณะ) | doc id + hash → สถานะ (valid/revoked/expired) ไม่แสดงข้อมูลส่วนบุคคลเกินจำเป็น | API + หน้าเว็บ (QR บนเอกสาร) | ไม่มี (rate limit + CAPTCHA) | real-time | GRD, DOC | R2 (ใบรับรอง) / R3 (transcript) | ✅ แนวปฏิบัติ [RBRU](https://e-transcript.rbru.ac.th/) |
-| I-40 | **CA / TSA** (ผู้ออกใบรับรองและประทับเวลา ภายใต้ Thailand NRCA) และ HSM | ผู้ให้บริการ CA/TSA ที่ ETDA รับรอง | In | ใบรับรองนิติบุคคล/บุคคล, timestamp token, OCSP/CRL | API (RFC 3161 TSA, OCSP) | ใบรับรอง/สัญญา | ต่อการลงนาม + job re-timestamp | DOC (signing service) | R2 | ✅ หลักการ T/LT/LTA [ETDA LTV](https://www.etda.or.th/getattachment/Useful-Resource/knowledge-sharing/articles/e-Standard/Long-Term-Digital-Signature/20241022_หลกการ-Long-term-digital-signature_V01-05.pdf.aspx?lang=th-TH); 🟡 ผู้ให้บริการที่เลือก |
+| I-40 | **CA / TSA** (ผู้ออกใบรับรองและประทับเวลา ภายใต้ Thailand NRCA) และ HSM — v1.1: **TSA หลัก = ETDA e-Timestamping (TEDA)**, TSA สำรอง = TSA เชิงพาณิชย์ที่ต่อสายถึง NRCA, trust anchor = NRCA ใน EU DSS; ใบรับรองหน่วยงานสำหรับ organisational e-seal (S2) + remote signing ของ CA สำหรับลายมือชื่อบุคคล (S3) | ETDA (TSA หลัก); ผู้ให้บริการ CA/TSA ที่ ETDA รับรอง | In | ใบรับรองนิติบุคคล/บุคคล, timestamp token, OCSP/CRL | API (RFC 3161 TSA 🟡 สำหรับ TEDA, OCSP); signing path: DOC → PKCS#11 → HSM (OpenBao ไม่อยู่ใน path) | ใบรับรอง/สัญญา | ต่อการลงนาม + job re-timestamp | DOC (signing service) | **R1** (e-Receipt ค่าสมัคร/ใบเสร็จ, D-03 DOC) / R2 (ครบ) | ✅ หลักการ T/LT/LTA [ETDA LTV](https://www.etda.or.th/getattachment/Useful-Resource/knowledge-sharing/articles/e-Standard/Long-Term-Digital-Signature/20241022_หลกการ-Long-term-digital-signature_V01-05.pdf.aspx?lang=th-TH) · บริการ [ETDA e-Timestamping](https://www.etda.or.th/en/Our-Service/Digital-Trusted-services-Infrastructure/TEDA/e-Timestamping.aspx); 🟡 RFC 3161/SLA ของ TEDA และ TSA สำรองที่เลือก (เล่ม 10 §7.4) |
 
 ### 2.9 การสื่อสาร และ productivity
 
@@ -176,7 +179,7 @@ flowchart LR
 | I-41 | **LINE Official Account (Messaging API) + LIFF** | LY Corporation | Out (ข้อความ) / In (ผูกบัญชีผ่าน LIFF) | LINE userId ↔ บัญชี มกช., **หัวข้อแจ้งเตือน + ลิงก์เท่านั้น** (ไม่ส่งเกรด/สุขภาพ/การเงิน/วินัยในเนื้อข้อความ) | API | channel access token (rotate) ใน OpenBao | real-time | NOTI (และ LIFF front-end) | R1 | 🟡 ที่ตั้งข้อมูล: แหล่งรองระบุ server หลักที่ญี่ปุ่น [RSF](https://resources.rsf.org/line-a-messaging-app-to-use-with-caution/); นโยบาย [LY Corp TH](https://www.lycorp.co.jp/th/company/privacypolicy/) ไม่ระบุประเทศใน snippet; ค่าบริการตามจำนวนข้อความ 🟡 |
 | I-42 | **FCM / APNs** (push ของ PWA/แอป) | Google / Apple | Out | device token, หัวข้อ + ลิงก์ | API | service account key / APNs key | real-time | NOTI | R1 | 🟡 |
 | I-43 | **E-mail (SMTP relay / transactional e-mail)** | ผู้ให้บริการที่จัดหา (แนะนำในประเทศ หรือ relay ของ M365/Google) | Out | อีเมล, หัวข้อ + ลิงก์ | SMTP (TLS) + DKIM/SPF/DMARC | credential ใน OpenBao | real-time | NOTI | R1 | 🟡 |
-| I-44 | **SMS gateway** (OTP สำรอง, แจ้งเหตุฉุกเฉินผู้ปกครอง) | ผู้ให้บริการในประเทศ | Out | เบอร์โทร, ข้อความสั้น | API | API key | real-time | NOTI, IAM (OTP สำรอง; ไม่ใช่ MFA หลักของบุคลากร) | R1 | 🟡 |
+| I-44 | **SMS gateway** (OTP สำรอง, แจ้งเหตุฉุกเฉินผู้ปกครอง) | ผู้ให้บริการในประเทศ | Out | เบอร์โทร, ข้อความสั้น | API | API key | real-time | NOTI, IAM (OTP สำรอง; ไม่ใช่ MFA หลักของบุคลากร) | R1 | 🟡; **กัน SMS pumping (v1.1):** rate limit ต่อเบอร์/IP/prefix ประเทศ, ส่งเฉพาะเบอร์ไทยเป็นค่าเริ่มต้น, เพดานงบ + alert รายวัน (เล่ม 10 T-04) |
 | I-45 | **Microsoft 365 / Google Workspace** (อีเมล/ปฏิทิน/ไดรฟ์ของนักศึกษาและบุคลากร) | Microsoft / Google | Out (provisioning) / In (สถานะบัญชี) | ชื่อ, อีเมล, OrgUnit, สถานะบัญชี | API: SCIM / Graph / Directory API; SSO ผ่าน Keycloak (SAML/OIDC) | OAuth2 client credentials | real-time + nightly | IAM | R1 | 🟡 ระบบที่แต่ละวิทยาเขตใช้อยู่; **โรงเรียนกีฬา (ผู้เยาว์) พิจารณาทางเลือกที่ host ในประเทศ** |
 | I-46 | UniNet / **eduroam** | สำนักงาน UniNet (NRO) | In | RADIUS authentication | API: RADIUS (FreeRADIUS → Keycloak/LDAP) | RADIUS shared secret / RadSec | real-time | IAM | R2 | ✅ UniNet เป็น NRO ของ eduroam [UniNet](https://www.uni.net.th/wp-content/uploads/2023/05/nayobai-join-eduroam.pdf); 🟡 สถานะสมาชิกของ มกช. |
 
@@ -186,15 +189,28 @@ flowchart LR
 |---|---|---|---|---|---|---|---|---|---|---|
 | I-47 | **Moodle (LTI 1.3 Advantage + Web Services)** | มกช. (self-hosted) | In/Out | course/section, enrolment roster (NRPS), เกรด (AGS) กลับเข้า ASM เป็น draft | API: LTI 1.3 (OIDC launch, JWT), Moodle WS | JWKS / OAuth2 client credentials | real-time + reconcile nightly | LMS, REG, ASM | R3 | 🟡 LMS ปัจจุบันของแต่ละวิทยาเขต; มาตรฐาน LTI 1.3 เป็นมาตรฐานเปิด |
 | I-48 | **Turnitin / อักขราวิสุทธิ์** (ตรวจการคัดลอก) | Turnitin LLC / ผู้พัฒนาไทย | Out | ไฟล์วิทยานิพนธ์/รายงาน, ชื่อผู้ส่ง (ขั้นต่ำ) | API/LTI | API key | ต่อการส่งเล่ม | GRAD, LMS | R3 | 🟡 ต้องเลือก **no-repository** ได้สำหรับงานที่มีข้อมูลส่วนบุคคลของผู้ร่วมวิจัย |
-| I-49 | **Wearable / AMS imports** (Catapult, Polar, Garmin, force plate/lab devices) | ผู้ให้บริการ (vendor cloud) / อุปกรณ์ในห้องแล็บ | In | training load, HR, GPS (ช่วงซ้อมเท่านั้น), ผลทดสอบ | API (OAuth2, บัญชีทีมของ มกช.) / FILE (CSV จากซอฟต์แวร์อุปกรณ์) | OAuth2 / upload โดย `sci` | รายวัน/ต่อ session | ATH, LAB, HLT (เฉพาะข้อมูลสุขภาพที่จำแนกแล้ว) | R3 | ✅ Catapult มี API [Catapult](https://www.catapult.com/blog/ams-catapult-api-integration); 🟡 ประเทศที่เก็บข้อมูลของแต่ละ vendor; **ห้ามให้นักกีฬาผูกบัญชีส่วนตัวโดยไม่มี notice และ DPIA** |
+| I-49 | **Wearable / AMS imports** (Catapult, Polar, Garmin, force plate/lab devices) — v1.1 ตาม D-06: **ใน core เหลือเพียงนำเข้า CSV/รูปแบบมาตรฐานกลาง**; vendor-specific API adapter เลื่อนไปสัญญาแยก | ผู้ให้บริการ (vendor cloud) / อุปกรณ์ | In | training load, HR, GPS (ช่วงซ้อมเท่านั้น), ผลทดสอบ | FILE (CSV export จากซอฟต์แวร์อุปกรณ์ตาม template กลาง); API (OAuth2, บัญชีทีมของ มกช.) = สัญญาแยก | upload โดย `sci` | รายวัน/ต่อ session | ATH, HLT (เฉพาะข้อมูลสุขภาพที่จำแนกแล้ว เก็บใน `hlt_vault`) | R3 (CSV) / X (API) | ✅ Catapult มี API [Catapult](https://www.catapult.com/blog/ams-catapult-api-integration); 🟡 ประเทศที่เก็บข้อมูลของแต่ละ vendor; **ห้ามให้นักกีฬาผูกบัญชีส่วนตัวโดยไม่มี notice และ DPIA** |
 
 ### 2.11 ระบบนิเวศกีฬา
 
 | # | ระบบ | หน่วยงานเจ้าของ | ทิศทาง | ข้อมูล | Interface | Auth | ความถี่ | โมดูล | Release | สถานะ + แหล่ง |
 |---|---|---|---|---|---|---|---|---|---|---|
 | I-50 | **กกท. / สมาคมกีฬาแห่งประเทศไทย** (ทะเบียนนักกีฬา, ตรวจหลักฐานผลงาน, ตัวแทนทีมชาติ) | กกท., สมาคมกีฬา | In/Out | หลักฐานผลงานกีฬา (ADM โควตานักกีฬา), หนังสือขอตัว, รายชื่อทีมชาติ | MANUAL/FILE (ยังไม่พบ API สาธารณะ) + `PartnerAgreement` (MOU/DSA) | — | ตามรายการแข่ง/รอบรับสมัคร | ADM (verification), ATH | R1 (ตรวจหลักฐาน) / R3 | ✅ MOU กับสมาคม [Khaosod](https://www.khaosod.co.th/sports/news_8114787); 🟡 ช่องทางตรวจหลักฐาน |
-| I-51 | **กีฬามหาวิทยาลัยแห่งประเทศไทย (ก.ก.ม.ท./เจ้าภาพ)** และ **พลศึกษาเกมส์** (ภายใน มกช.) | ก.ก.ม.ท. / เจ้าภาพแต่ละปี; มกช. | Out | รายชื่อนักกีฬา + ใบรับรองสถานภาพ/ผลการเรียน (eligibility), delegation roster | FILE + PORTAL ของเจ้าภาพ / ภายใน: API | บัญชีเจ้าภาพ | รายปี (รอบคัดเลือก พ.ย., มหกรรม ม.ค.; พลศึกษาเกมส์ ก.ย.) | ATH (eligibility engine, roster), REC (หนังสือรับรอง), ATT/EXM (ลาแข่งแบบยกคณะ) | R3 | ✅ ระเบียบ 2559 [มทร.ล้านนา](https://webs.rmutl.ac.th/assets/upload/files/2024/03/20240321133409_80477.pdf) · ตุมปังเกมส์ 21–30 ม.ค. 2570 [WU](https://csp.wu.ac.th/?p=49343) · พลศึกษาเกมส์ครั้งที่ 49, 1–10 ก.ย. 2569 [TNSU MK](https://www.tnsumk.ac.th/web/index.php/component/content/article/19-news-campus/1128-49-17?Itemid=437); 🟡 เกณฑ์ eligibility ปัจจุบัน |
-| I-52 | **DCAT / WADA ADAMS** | กกท./DCAT, WADA | REF | ไม่เก็บ whereabouts; เก็บเพียงหลักฐานการอบรม anti-doping และ flag (ถ้ามี TUE ต้องเก็บใน health vault) | REF | — | — | ATH, HLT | R3 | ✅ DCAT ปฏิบัติตาม Code 2021 [Thansettakij](https://www.thansettakij.com/insights/507312) |
+| I-51 | **กีฬามหาวิทยาลัยแห่งประเทศไทย (ก.ก.ม.ท./เจ้าภาพ)** และ **พลศึกษาเกมส์** (ภายใน มกช.) | ก.ก.ม.ท. / เจ้าภาพแต่ละปี; มกช. | Out | รายชื่อนักกีฬา + ใบรับรองสถานภาพ/ผลการเรียน (eligibility), delegation roster | FILE + PORTAL ของเจ้าภาพ / ภายใน: API | บัญชีเจ้าภาพ | รายปี (รอบคัดเลือก พ.ย., มหกรรม ม.ค.; พลศึกษาเกมส์ ก.ย.) | ATH (eligibility engine, roster), REC (หนังสือรับรอง), ATT/EXM (ลาแข่งแบบยกคณะ) | **R2** (v1.1 ตาม D-03: ATH eligibility + team travel ทันพลศึกษาเกมส์ ก.ย. 2572) | ✅ ระเบียบ 2559 [มทร.ล้านนา](https://webs.rmutl.ac.th/assets/upload/files/2024/03/20240321133409_80477.pdf) · ตุมปังเกมส์ 21–30 ม.ค. 2570 [WU](https://csp.wu.ac.th/?p=49343) · พลศึกษาเกมส์ครั้งที่ 49, 1–10 ก.ย. 2569 [TNSU MK](https://www.tnsumk.ac.th/web/index.php/component/content/article/19-news-campus/1128-49-17?Itemid=437); 🟡 เกณฑ์ eligibility ปัจจุบัน |
+| I-52 | **DCAT / WADA ADAMS** | กกท./DCAT, WADA | REF | ไม่เก็บ whereabouts; เก็บเพียงหลักฐานการอบรม anti-doping และ flag (ถ้ามี TUE ต้องเก็บใน `hlt_vault`) | REF | — | — | ATH, HLT | R3 | ✅ DCAT ปฏิบัติตาม Code 2021 [Thansettakij](https://www.thansettakij.com/insights/507312) |
+
+### 2.12 บริการสนับสนุนที่อาจอยู่ต่างประเทศ (v1.1 เพิ่มตาม D-09)
+
+> บริการกลุ่มนี้ไม่ได้เป็น "หน่วยงาน" แต่ส่งข้อมูลส่วนบุคคลออกนอกระบบ จึงต้องอยู่ใน catalogue และทะเบียน cross-border (หัวข้อ 7, X-11..X-16) ค่าเริ่มต้นของทุกแถวคือ **เลือกทางเลือกในประเทศ/self-hosted ก่อน**
+
+| # | ระบบ | หน่วยงานเจ้าของ | ทิศทาง | ข้อมูล | Interface | Auth | ความถี่ | โมดูล | Release | สถานะ + แหล่ง |
+|---|---|---|---|---|---|---|---|---|---|---|
+| I-53 | **Video conferencing** สำหรับสัมภาษณ์ออนไลน์ (ADM), identity proofing ของผู้ไม่มีเลข 13 หลัก (3.1), สอบป้องกันวิทยานิพนธ์ออนไลน์ (GRAD) | ผู้ให้บริการที่ มกช. มีสัญญา (M365 Teams / Google Meet / Zoom) หรือ self-hosted (Jitsi/BigBlueButton) | Out | ชื่อแสดง, อีเมล, ภาพ/เสียงระหว่างประชุม, ลิงก์นัด | MANUAL (ระบบสร้างนัด + ลิงก์ + บันทึกผล); API ของผู้ให้บริการถ้ามี | บัญชีหน่วยงาน | ต่อรอบสัมภาษณ์/ต่อนัด | ADM, IAM, GRAD | R1 | 🟡 ผู้ให้บริการที่แต่ละวิทยาเขตใช้; **ค่าเริ่มต้นห้ามบันทึกวิดีโอ** (ถ้าต้องบันทึกเพื่อหลักฐานการสัมภาษณ์ ให้แจ้งก่อนและเก็บในประเทศ) |
+| I-54 | **Payment gateway บัตร/การโอนจากต่างประเทศ** (ผู้สมัครต่างชาติ, ค่าธรรมเนียมจากต่างประเทศ) | PSP/acquirer ที่ธนาคารผู้ให้บริการกำหนด | Out (redirect) / In (callback) | invoice no., จำนวนเงิน, อีเมล; **ข้อมูลบัตรไม่ผ่านระบบ มกช.** (hosted payment page + 3-D Secure) | API (hosted checkout + webhook ลงลายเซ็น) | API key + webhook secret ใน OpenBao | ต่อการชำระ | FIN | R1 (ค่าสมัครผู้สมัครต่างชาติ ถ้าเปิดรับ) / R2 | 🟡 ผู้ให้บริการ/ที่ตั้งข้อมูล; ใช้รูปแบบเดียวกับ 3.3 (callback + reconcile) |
+| I-55 | **Bot challenge / CAPTCHA** | ค่าเริ่มต้น **self-hosted proof-of-work** (ไม่มีผู้ให้บริการภายนอก); ทางเลือก SaaS | Out (ถ้า SaaS) | IP, user agent, สัญญาณพฤติกรรมของ browser | JS widget + server verify | site/secret key | ต่อการ login/สมัคร/verification ที่เสี่ยง | IAM, ADM, GRD (I-39) | R1 | 🟡 (เล่ม 10 T-04; เล่ม 07 ไม่ใช้ CAPTCHA SaaS เป็นค่าเริ่มต้น) |
+| I-56 | **Breached-password check** | ค่าเริ่มต้น: ชุดข้อมูล hash ที่ดาวน์โหลดมาเก็บในประเทศ; ทางเลือก: range API ภายนอก (k-anonymity) | Out (ถ้า API) | prefix 5 ตัวอักษรของ SHA-1 ของรหัสผ่าน (ไม่ส่งรหัสผ่าน/ชื่อผู้ใช้) | API / FILE (อัปเดตชุดข้อมูลรายไตรมาส) | — | ต่อการตั้ง/เปลี่ยนรหัสผ่าน | IAM (Keycloak) | R1 | 🟡 |
+| I-57 | **Web Push services ของ browser** (สำหรับ PWA): Chrome → FCM, Firefox → Mozilla push service, Edge → Microsoft (WNS), Safari → Apple | Google / Mozilla / Microsoft / Apple | Out | push subscription endpoint, payload เข้ารหัส (VAPID + RFC 8291) ที่มีเพียงหัวข้อทั่วไป | Web Push protocol (RFC 8030) | VAPID key ใน OpenBao | real-time | NOTI | R1 | 🟡 ประเทศที่ประมวลผลขึ้นกับ browser ของผู้ใช้ — ไม่อยู่ในการควบคุมของ มกช. (แจ้งใน notice) |
+| I-58 | **SOC / MSSP / SIEM ภายนอก** (ถ้า มกช. จ้าง) | ผู้ให้บริการ SOC | Out | security log, IP, user id, เหตุการณ์ (อาจมีข้อมูลส่วนบุคคล) | log forwarding (syslog/OTLP over TLS) | mTLS | ต่อเนื่อง | ADMIN, AUD | R1 (ถ้าจ้าง) | 🟡 **ค่าเริ่มต้น: SIEM/log pipeline อยู่ในประเทศ** (เล่ม 07); SOC ที่ใช้ SIEM บน cloud ต่างประเทศต้องลงทะเบียน X-15 ก่อนส่ง log |
 
 **ระบบภายในที่เชื่อมด้วยรูปแบบเดียวกัน (ไม่นับเป็น I-xx ภายนอก):** HR (X-HR, nightly), payroll IF (X-PAY), พัสดุ (X-PROC), ห้องสมุด Koha (X-LIB, SIP2/REST), e-Meeting สภา (X-MEET: ระหว่างยังไม่มีให้บันทึกเลขที่/วันที่มติแบบ manual ใน W-06/W-08), CMS/OIT web (X-CMS), helpdesk (X-HELP), SIEM/log pipeline
 
@@ -207,7 +223,7 @@ flowchart LR
 - ใช้ Authorization Code + PKCE ผ่าน Keycloak เป็น **identity brokering** (Keycloak เป็นผู้คุย OIDC กับ ThaID) แอปภายในไม่เชื่อม ThaID ตรง
 - ขอ scope ขั้นต่ำต่อกรณี: สมัครเรียน = `openid pid name birthdate`; step-up = `openid pid` เท่านั้น ไม่ขอ `address` ถ้าไม่จำเป็น (data minimisation)
 - `pid` เก็บแบบ encrypted column + blind index (HMAC) สำหรับค้นหา และ dedupe ผู้สมัครข้ามวิทยาเขต ไม่ใช้ `pid` เป็น primary key (ใช้ `person_id` ภายในตามเล่ม 08)
-- กรณีไม่มีเลข 13 หลัก (ต่างชาติ, รหัส G) ใช้เส้นทางยืนยันตัวตนทางเลือก: ตรวจหนังสือเดินทาง/เอกสารโดยเจ้าหน้าที่ + video call หรือมาแสดงตน (บันทึกเป็น `identity_proofing_method`)
+- กรณีไม่มีเลข 13 หลัก (ต่างชาติ, รหัส G) ใช้เส้นทางยืนยันตัวตนทางเลือก: ตรวจหนังสือเดินทาง/เอกสารโดยเจ้าหน้าที่ + video call (I-53, X-11) หรือมาแสดงตน (บันทึกเป็น `identity_proofing_method`)
 - **การใช้เป็น step-up ที่บังคับ:** เปลี่ยนบัญชีรับเงิน, ขอ reset MFA ด้วยตนเอง, ศิษย์เก่าขอเอกสาร, ผู้ปกครองผูกสิทธิ์กับบุตร (ร่วมกับการตรวจเอกสารความสัมพันธ์)
 
 ### 3.2 TCAS adapter (I-03) — ทางเลือก
@@ -227,20 +243,21 @@ sequenceDiagram
   participant S as ผู้ชำระ
   participant FIN as FIN
   participant BANK as ธนาคาร
-  participant REC as Reconciliation job
+  participant RCN as Reconciliation job (FIN worker)
   FIN->>S: ใบแจ้งหนี้ + Thai QR (Biller ID, Ref1=invoice_no, Ref2=payer_code)
   S->>BANK: ชำระผ่าน mobile banking
   BANK->>FIN: payment notification (mTLS + signature, bank_txn_ref)
   FIN->>FIN: inbox: unique(bank_txn_ref) ป้องกันซ้ำ, จับคู่ Ref1
   FIN-->>BANK: HTTP 200 (ack เสมอเมื่อบันทึก inbox แล้ว)
-  FIN->>S: e-Receipt (PDF/A + PAdES) ผ่าน NOTI
-  BANK->>REC: statement file รายวัน (SFTP, T+1)
-  REC->>FIN: เทียบ callback vs statement, สร้าง exception queue
+  FIN->>S: e-Receipt (สร้างและลงนามโดย DOC: PDF/A + PAdES) ผ่าน NOTI
+  BANK->>RCN: statement file รายวัน (SFTP, T+1)
+  RCN->>FIN: เทียบ callback vs statement, สร้าง exception queue
 ```
 
 - **ไม่เชื่อ callback อย่างเดียว:** สถานะ "ชำระแล้ว" ตั้งจาก callback แต่ปิดยอดบัญชีจาก statement; รายการที่มีใน statement แต่ไม่มี callback ให้ระบบสร้างรายการรับเงินอัตโนมัติพร้อม flag ตรวจ
 - ชำระเกิน/ชำระซ้ำ/ชำระหลังใบแจ้งหนี้ถูกยกเลิก → เข้า exception queue ของ `finance` พร้อม SLA 2 วันทำการ และนำไปสู่ W-09 (คืนเงิน) หรือเครดิตยกไป
 - **Payout (I-17):** ชื่อบัญชีปลายทางต้องตรงกับผู้มีสิทธิ์ (นักศึกษา หรือผู้ปกครองที่มีอำนาจกรณีผู้เยาว์) ตรวจผ่าน name-inquiry ของธนาคารถ้ามี 🟡; การเปลี่ยนบัญชีต้อง step-up ด้วย ThaID และมี cooling-off 24 ชม. ก่อนใช้จ่ายจริง; ไฟล์ bulk payment ต้องผ่าน maker-checker (คนละคน) และ hash ของไฟล์ที่อนุมัติต้องตรงกับไฟล์ที่ส่ง
+- **บัตร/การโอนจากต่างประเทศ (I-54, v1.1):** ใช้ hosted payment page ของ PSP (ข้อมูลบัตรไม่ผ่านระบบ มกช.) + webhook ลงลายเซ็นเข้า inbox เดียวกัน และ reconcile กับรายงาน settlement ของ PSP; อยู่ในทะเบียน X-12
 - ปีงบประมาณใหม่ (1 ต.ค.) เปลี่ยนชุดเลขใบเสร็จ; การยกเลิกใบเสร็จใช้ W-28 (ห้ามลบ ออกเลขใหม่ อ้างฉบับเดิม)
 
 ### 3.4 กยศ. DSL (I-25) — portal-assist เต็มรูปแบบ
@@ -270,7 +287,9 @@ sequenceDiagram
 | Public / Internal | ข้อความเต็มได้ | ได้ | ได้ |
 | Confidential (เกรด, ยอดหนี้, สถานภาพ, วินัย) | **หัวข้อทั่วไป + ลิงก์** ("มีผลการเรียนใหม่") | หัวข้อ + ลิงก์ | เต็ม (หลัง login) |
 | Sensitive (สุขภาพ, safeguarding, ความพิการ) | **ห้ามระบุประเภท** ("มีข้อความใหม่จาก มกช.") | ห้าม | เต็ม (หลัง login + purpose check) |
-| ผู้เยาว์ | ส่งถึงผู้ปกครองตาม guardian model; ข้อความจากบุคลากรถึงผู้เยาว์แบบ 1:1 ต้อง cc ผู้ปกครองหรือครูหอ (two-adult rule ดูเล่ม 10) | เหมือนกัน | เหมือนกัน |
+| ผู้เยาว์ | ส่งถึงผู้ปกครองตาม guardian model; ข้อความจากบุคลากรถึงผู้เยาว์แบบ 1:1 ต้อง cc ผู้ปกครองหรือครูหอ (two-adult rule ดูเล่ม 10 §4.2) | เหมือนกัน | เหมือนกัน |
+
+> **ขอบเขตที่บังคับได้ (v1.1 ตาม D-08):** กติกาในตารางนี้บังคับได้เฉพาะช่องทางที่ระบบส่งเอง กลุ่ม LINE ที่โค้ช/อาจารย์ตั้งเองอยู่นอก LINE OA (I-41) ระบบมองไม่เห็นและไม่เก็บเนื้อหา ใช้นโยบายช่องทางสื่อสารและทะเบียนกลุ่มที่รับรองในเล่ม 10 §4.6 แทน; ช่องทางทีมในระบบ (team channel ใน PWA/LIFF) เป็นทางเลือกหลักที่ส่งผ่าน NOTI ตามกติกาเดียวกับตารางนี้
 
 ---
 
@@ -348,7 +367,7 @@ flowchart LR
 | HEdata (I-07) | portal ไม่รับไฟล์ | ส่งไฟล์เดียวกันตามช่องทางที่ สป.อว. กำหนด (หนังสือ/อีเมล) พร้อม hash; หลักฐานใน RPT | — |
 | ITAS (I-32) | ระบบช้าช่วงใกล้ปิด | กำหนดเป้าภายใน **15 มิ.ย.** (ก่อนปิด 30 มิ.ย.) และเตรียมคำตอบใน RPT ล่วงหน้า | — |
 | ตม.30 (I-30) | ระบบ สตม. ใช้ไม่ได้ | แจ้งด้วยแบบกระดาษที่ ตม. ในพื้นที่ภายใน 24 ชม.; ระบบพิมพ์แบบฟอร์มที่กรอกข้อมูลแล้ว | บันทึกเลขรับย้อนหลัง |
-| Digital Transcript/CA/TSA (I-38, I-40) | CA/TSA ล่ม | ออกเอกสารลงนามเฉพาะ B-B (ไม่มี timestamp) ไม่ได้สำหรับ transcript → **คิวรอลงนาม** และออกฉบับกระดาษลงนามจริงกรณีเร่งด่วน; ใบรับรองทั่วไปลงนามได้แล้ว timestamp ภายหลัง | job ลงนาม/ประทับเวลาย้อน |
+| Digital Transcript/CA/TSA (I-38, I-40) | TSA หลัก (ETDA e-Timestamping) ล่ม | (1) สลับไป **TSA สำรอง** อัตโนมัติ (2) ถ้าล่มทั้งคู่: ใบเสร็จ/หนังสือรับรอง **ลงนาม B-B แล้วเข้าคิว timestamp** (ไม่ block การชำระเงิน) (3) transcript/ปริญญา (ถาวร) → **คิวรอลงนาม** และออกฉบับกระดาษลงนามจริงกรณีเร่งด่วน; CA/HSM ล่ม → คิวรอลงนามทุกประเภท | job ลงนาม/ประทับเวลาย้อน; alert ถ้าคิวค้าง > 4 ชม. (เล่ม 10 §7.4) |
 | LINE/FCM (I-41, I-42) | ส่งไม่สำเร็จ | NOTI fallback chain: in-app → e-mail → SMS (เฉพาะเรื่องเร่งด่วน/ฉุกเฉิน) | — |
 | Moodle (I-47) | LTI launch ล้มเหลว | ใช้ Moodle login ตรง (Keycloak SSO) ; เกรดกรอกใน ASM โดยตรง | reconcile roster |
 | e-Saraban (I-37) | adapter ใช้ไม่ได้ | ออกเลขหนังสือจากทะเบียนสำรอง (ช่วงเลขที่จองไว้ต่อ OrgUnit) แล้วบันทึกย้อน | ตรวจเลขซ้ำ/ข้าม |
@@ -399,8 +418,14 @@ flowchart LR
 | X-08 | E-mail relay / SMS gateway (I-43, I-44) | อีเมล/เบอร์โทร, ข้อความ | เลือกผู้ให้บริการในประเทศเป็นค่าเริ่มต้น; ถ้าต่างประเทศต้องลงทะเบียน | public task | DPA | หัวข้อ + ลิงก์ | 🟡 |
 | X-09 | ผู้ให้บริการ AI/LLM (เลื่อนไปสัญญาแยก) | — | — | ต้องตัดสินใจก่อนใช้ (blueprint 9.12) | — | ห้ามส่งข้อมูลส่วนบุคคลโดยไม่ผ่าน DPIA; โปรไฟล์โรงเรียนกีฬา (ผู้เยาว์) ไม่ใช้ใน ML จนกว่าแนวปฏิบัติข้อมูลเด็กยุค AI ของ สคส. จะออก | ไม่อยู่ในขอบเขต R1–W2 |
 | X-10 | Developer tooling ของผู้รับจ้าง (repo hosting, CI, error tracking) | ห้ามมีข้อมูลจริง | — | — | สัญญาจ้าง | non-prod ใช้ข้อมูลสังเคราะห์/tokenised เท่านั้น; error tracking ต้อง scrub PII | บังคับในสัญญา |
+| X-11 | **Video conferencing** (I-53) — สัมภาษณ์ออนไลน์, identity proofing, สอบวิทยานิพนธ์ (v1.1) | ชื่อแสดง, อีเมล, ภาพ/เสียงสด, metadata การประชุม; identity proofing: ภาพบัตร/หนังสือเดินทางที่แสดงต่อกล้อง | ตามผู้ให้บริการ (สหรัฐฯ/ภูมิภาคที่เลือก) 🟡; self-hosted = ไม่โอน | ประมวลผล: PT (การคัดเลือก/การยืนยันตัวตน); โอน: มาตรการตามประกาศ/SCC ของผู้ให้บริการ 🟡 | DPA ของผู้ให้บริการ (มักรวมใน education agreement ของ X-03) | ไม่บันทึกวิดีโอเป็นค่าเริ่มต้น; ไม่ส่งเลขบัตรในแชต; ผู้สมัครผู้เยาว์ให้ผู้ปกครองอยู่ร่วมได้ | 🟡 |
+| X-12 | **Payment gateway บัตร/การโอนต่างประเทศ** (I-54) (v1.1) | invoice no., จำนวนเงิน, อีเมล, ประเทศของบัตร; ข้อมูลบัตรอยู่ที่ PSP (PCI DSS) | ตาม PSP/เครือข่ายบัตร 🟡 | ประมวลผล: CT (การชำระค่าธรรมเนียม); โอน: จำเป็นเพื่อปฏิบัติตามสัญญาตามคำขอของเจ้าของข้อมูล 🟡 | สัญญา PSP + PCI DSS attestation | hosted page; ไม่ส่งข้อมูลการศึกษา/เลข 13 หลัก | 🟡 |
+| X-13 | **Bot challenge/CAPTCHA SaaS และ breached-password API** (I-55, I-56) (v1.1) | IP, user agent, สัญญาณ browser; hash prefix 5 ตัวอักษร | ตามผู้ให้บริการ 🟡 | PT/LI (ความมั่นคงปลอดภัย) | DPA/ToS ของผู้ให้บริการ | **ค่าเริ่มต้นไม่ใช้** (self-hosted PoW + ชุดข้อมูล hash ในประเทศ); ถ้าใช้ API ส่งเพียง k-anonymity prefix | ไม่ใช้ (ค่าเริ่มต้น) |
+| X-14 | **Web Push services ของ browser** (I-57): Mozilla, Microsoft (WNS), Apple, Google (v1.1; แยกจาก X-02 ที่เป็น FCM/APNs ของแอป) | push endpoint, payload เข้ารหัส end-to-end (RFC 8291) ที่มีเพียงหัวข้อทั่วไป | ตามผู้ให้บริการ browser 🟡 | ประมวลผล: C (ผู้ใช้เปิด push เอง, L-26); โอน: consent ที่แจ้งประเทศ/มาตรการ 🟡 | ToS ของผู้ให้บริการ browser (ต่อรองไม่ได้) → TIA | payload เข้ารหัสและมีเพียง "มีข้อความใหม่จาก มกช."; เนื้อหาเต็มดึงหลัง login (3.6) | 🟡 |
+| X-15 | **SOC/MSSP/SIEM บน cloud ต่างประเทศ** (I-58) — เฉพาะถ้า มกช. จ้าง (v1.1) | security log (IP, user id, การกระทำ) | ตามผู้ให้บริการ 🟡 | PT/LI (ความมั่นคงปลอดภัย) + LO (ข้อมูลจราจรฯ) | DPA + ข้อกำหนดแจ้งเหตุ ≤ 24 ชม. + สิทธิ audit | pseudonymise user id ก่อนส่ง ถ้าทำได้; ไม่ส่ง log ของ `hlt_vault`/SAFE ที่มีเนื้อหา; **ค่าเริ่มต้น SIEM อยู่ในประเทศ** | ไม่ใช้ (ค่าเริ่มต้น) |
+| X-16 | **ผู้รับ credential/การตรวจสอบวุฒิในต่างประเทศ** (WES, มหาวิทยาลัย/นายจ้างต่างประเทศ ผ่าน I-38/I-39) (v1.1) | transcript/ปริญญาที่ลงนาม, ผลการตรวจสอบ | ตามผู้รับ | ตาม **คำขอของเจ้าของข้อมูล** (CT/C) | — (เจ้าของข้อมูลเป็นผู้สั่งส่ง) | ส่งเฉพาะเอกสารที่ขอ; verification endpoint แสดงเพียงสถานะ | 🟡 |
 
-**การดูแลทะเบียน:** owner = `dpo`; ทบทวนทุก 12 เดือนหรือเมื่อผู้ให้บริการเปลี่ยนเงื่อนไข/ประเทศ; การเพิ่มแถวต้องผ่าน change request ที่แนบ TIA; ทะเบียนนี้ส่งออกเป็นส่วนหนึ่งของ ROPA (เล่ม 10 §2.5)
+**การดูแลทะเบียน:** owner = `dpo`; (v1.1) ทุกแถวที่ค่าเริ่มต้นเป็น "ไม่ใช้" (X-07, X-13, X-15) ถ้าจะเปิดใช้ต้องผ่าน change request + TIA ก่อน; ทบทวนทุก 12 เดือนหรือเมื่อผู้ให้บริการเปลี่ยนเงื่อนไข/ประเทศ; การเพิ่มแถวต้องผ่าน change request ที่แนบ TIA; ทะเบียนนี้ส่งออกเป็นส่วนหนึ่งของ ROPA (เล่ม 10 §2.5)
 
 ---
 
@@ -408,11 +433,12 @@ flowchart LR
 
 | Release | Integrations |
 |---|---|
-| R1 ก.ย. 2571 | I-01 ThaID, I-03 TCAS (ปิด flag), I-15/I-16 ธนาคาร (ค่าสมัคร/ค่ายืนยันสิทธิ์), I-22 e-GP ref (OIT), I-32 ITAS/OIT, I-33/I-34 แจ้งเหตุ, I-41..I-45 การสื่อสาร/M365-Google, I-50 ตรวจหลักฐานผลงานกีฬา |
-| R2 พ.ค. 2572 | I-02 (ทางเลือก), I-06 CHECO, I-07 HEdata, I-17 payout, I-18 GFMIS, I-19 (ทางเลือก), I-20 WHT, I-24 กองทุนกีฬา, I-25 กยศ., I-26 ประกัน, I-27 ทุนภายนอก, I-28/I-29 ทหาร, I-30/I-31 สตม., I-37 e-Saraban, I-39 verification (ใบรับรอง), I-40 CA/TSA, I-46 eduroam |
-| R3 พ.ย. 2572 | I-08 ภาวะการมีงานทำ, I-09 คุรุสภา, I-10 ThaiLIS, I-14 สมศ. (อุดมศึกษา), I-21 e-Tax (ถ้าจำเป็น), I-35 open data, I-38 Digital Transcript, I-47 Moodle, I-48 Turnitin, I-49 wearables, I-51 กีฬามหาวิทยาลัย, I-52 DCAT ref |
-| Wave 1 (โรงเรียนนำร่อง พ.ค. 2573) | I-12 DMC (ถ้าต้องส่ง), I-13 O-NET, I-14 สมศ. (ขั้นพื้นฐาน) |
-| สัญญาแยก | I-05 ทะเบียนราษฎร, I-11 Thai MOOC/NCBS, I-23 สำนักงบประมาณ, I-36 DGA exchange/ทางรัฐ, X-INTL เต็ม |
+| R1 ก.ย. 2571 (M18) | I-01 ThaID, I-03 TCAS (ปิด flag), I-15/I-16 ธนาคาร (ค่าสมัคร/ค่ายืนยันสิทธิ์), I-22 e-GP ref (OIT), I-32 ITAS/OIT (RPT ส่วน OIT ตาม D-03), I-33/I-34 แจ้งเหตุ, **I-40 CA/TSA (e-Receipt/บัตรประจำตัวผู้สอบ, DOC ตาม D-03)**, I-41..I-45 การสื่อสาร/M365-Google, I-50 ตรวจหลักฐานผลงานกีฬา, **I-53 video call, I-54 บัตรต่างประเทศ (ถ้าเปิดรับผู้สมัครต่างชาติ), I-55/I-56 bot/breached-password (self-hosted), I-57 Web Push, I-58 SOC (ถ้าจ้าง)** |
+| R2 พ.ค. 2572 (M26) | I-02 (ทางเลือก), I-06 CHECO, I-07 HEdata, I-17 payout (รวม per diem team travel ตาม D-03), I-18 GFMIS, I-19 (ทางเลือก), I-20 WHT, I-24 กองทุนกีฬา, I-25 กยศ., I-26 ประกัน, I-27 ทุนภายนอก, I-28/I-29 ทหาร, I-30/I-31 สตม., I-37 e-Saraban, I-39 verification (ใบรับรอง), I-40 CA/TSA (ครบ), I-46 eduroam, **I-51 กีฬามหาวิทยาลัย/พลศึกษาเกมส์ (ย้ายจาก R3 ตาม D-03)** |
+| R3 พ.ย. 2572 (M32) | I-08 ภาวะการมีงานทำ, I-09 คุรุสภา, I-10 ThaiLIS, I-14 สมศ. (อุดมศึกษา), I-21 e-Tax (ถ้าจำเป็น), I-35 open data, I-38 Digital Transcript, I-47 Moodle, I-48 Turnitin, I-49 wearables (CSV เท่านั้น ตาม D-06), I-52 DCAT ref |
+| Wave 1 (มิ.ย. 2573 = M39; โรงเรียนนำร่อง พ.ค. 2573 = M38) | I-12 DMC (ถ้าต้องส่ง), I-13 O-NET, I-14 สมศ. (ขั้นพื้นฐาน) |
+| Wave 2a (มิ.ย. 2574 = M51) / 2b (พ.ย. 2574 = M56) ตาม D-07 | ไม่มี integration ใหม่; เปิด adapter เดิมให้ OrgUnit ที่ go-live (บัญชีธนาคาร/Biller ID, บัญชี portal, prefix สารบรรณต่อ OrgUnit) |
+| สัญญาแยก | I-05 ทะเบียนราษฎร, I-11 Thai MOOC/NCBS, I-23 สำนักงบประมาณ, I-36 DGA exchange/ทางรัฐ, I-49 vendor API adapters (D-06), X-INTL เต็ม |
 
 ---
 
@@ -443,10 +469,10 @@ flowchart LR
 |---|---|---|
 | #1 | ไม่มี พ.ร.บ.ข้อมูลข่าวสารฯ 2540 | **แก้** ในเล่ม 10 §3 (CASE รับคำขอ W-20, ชั้นความลับราชการ); integration ที่เกี่ยวข้อง: หน้า OIT/ศูนย์ข้อมูลข่าวสารออนไลน์ดึงข้อมูลจาก RPT (I-32) |
 | #2 | ไม่มี Regulatory Reporting Hub | **แก้**: RPT เป็นเจ้าของ obligation registry, snapshot, evidence (หัวข้อ 3.5, 4.2, 6) |
-| #3 | Cross-border ขัดกับนโยบายของ design เอง | **แก้**: นโยบายใหม่ + ทะเบียน X-01..X-10 (หัวข้อ 7) + กติกาเนื้อหาข้อความ (3.6) |
+| #3 | Cross-border ขัดกับนโยบายของ design เอง | **แก้**: นโยบายใหม่ + ทะเบียน X-01..X-10 (หัวข้อ 7; v1.1 ขยายเป็น X-16) + กติกาเนื้อหาข้อความ (3.6) |
 | #4 | License OSS ไม่ถูกต้อง | **แก้** ในเล่ม 07 (OpenBao/Valkey/OpenTofu/S3-compatible ตาม blueprint 9.3) และเล่ม 10 §11 (licence policy + SBOM); adapter ในเล่มนี้ใช้ OpenBao |
 | #5 | ผู้เสนอราคาร่าง design ระบุยี่ห้อ | **แก้** ในเล่ม 10 §11 (brand-neutral capability spec, COI) |
-| #6 | ฐานทางกฎหมายข้อมูลสุขภาพพึ่ง consent | **แก้** ในเล่ม 10 §2.2; integration: wearable (X-05) ใช้ consent เฉพาะการใช้งานเสริม ส่วนการบาดเจ็บ (W-39) ไม่ส่งออกนอก health vault |
+| #6 | ฐานทางกฎหมายข้อมูลสุขภาพพึ่ง consent | **แก้** ในเล่ม 10 §2.2; integration: wearable (X-05) ใช้ consent เฉพาะการใช้งานเสริม ส่วนการบาดเจ็บ (W-39) ไม่ส่งออกนอก `hlt_vault` |
 | #7 | ไม่มี safeguarding | **แก้** ในเล่ม 10 §4 + กติกา two-adult rule ใน NOTI (หัวข้อ 3.6) |
 | #8 | e-signature ไม่แยกระดับ/ไม่มี LTV | **แก้** ในเล่ม 10 §7; integration CA/TSA (I-40) + fallback (หัวข้อ 5) |
 | #9 | TM30 มาช้า | **แก้**: I-30/I-31 อยู่ใน R2 พร้อม HOU check-in → task ภายใน 24 ชม. + reconcile รายวัน |
@@ -529,7 +555,7 @@ flowchart LR
 | C-40 | **แก้**: I-30, I-31 (R2) |
 | C-41 | เล่ม 10 §4 |
 | C-42 | เล่ม 10 §12 |
-| C-43 | **แก้**: I-52 (ไม่เก็บ whereabouts; TUE ใน health vault) |
+| C-43 | **แก้**: I-52 (ไม่เก็บ whereabouts; TUE ใน `hlt_vault`) |
 
 ### 10.4 ข้อสังเกตความสอดคล้องภายใน (หัวข้อ 4 ของ review)
 
@@ -551,6 +577,40 @@ flowchart LR
 - v0.9 I-31 สตม. อยู่ Phase 6 → v1.0 R2
 - government-relations.md ระบุ OIT "ภายใน เม.ย./ตรวจ พ.ค." → v1.0 ใช้ 2 มี.ค.–30 มิ.ย. (แก้ในภาคผนวกของเอกสารนั้น)
 
+### 10.6 ผลการปิด review v1.0 (รอบแก้ v1.1)
+
+> แหล่ง: `research_notes/.../v1-review/` — **AC** = architecture_compliance.md, **CS** = consistency.md, **FS** = functional_sports.md, **UX** = ux_exec_change.md; `D-xx` = [00-fix-decisions-v1.1](./00-fix-decisions-v1.1.md)
+
+| ข้อ review | ประเด็น | การจัดการ | ที่ |
+|---|---|---|---|
+| AC Top-10 / C-04 | cross-border register ขาด video call, payment ต่างประเทศ, CAPTCHA/breached-password, Web Push Mozilla/Microsoft, SOC/SIEM ต่างประเทศ, ผู้รับ credential ต่างประเทศ | **แก้** (D-09): I-53..I-58 (หัวข้อ 2.12) + X-11..X-16 | §2.12, §7 |
+| AC S-03 | SMS pumping | **แก้**: control ใน I-44 | §2.9 |
+| AC S-09 | CAPTCHA SaaS ขัดกับเล่ม 07 | **แก้**: I-55 ค่าเริ่มต้น self-hosted; SaaS ต้องผ่าน X-13 | §2.12 |
+| AC Top-9 / C-06 | TSA/trust anchor/fallback และ signing path | **แก้** (D-09): I-40 ระบุ ETDA e-Timestamping เป็นหลัก + TSA สำรอง + NRCA; fallback ไม่ block ใบเสร็จ; path DOC → PKCS#11 → HSM | §2.8 I-40, §5; เล่ม 10 §7.4 |
+| CS OWN-03 | participant `REC` ชนกับรหัสโมดูล | **แก้**: `RCN` (Reconciliation job, FIN worker) | §3.3 |
+| CS OWN-04 | e-Receipt ไม่แสดงว่า DOC เป็นผู้สร้าง/ลงนาม | **แก้** | §3.3 |
+| CS TERM-02 | "ป.ป.ช." ใน diagram | **แก้**: "สำนักงาน ป.ป.ช." | §1 |
+| CS OWN-02 | ชื่อ health vault | **แก้** (D-04): `hlt_vault` | I-49, I-52, §10 |
+| CS (REL, ตาม D-03) | ATH eligibility/travel ต้องทันพลศึกษาเกมส์ | **แก้**: I-51 → R2; I-40 เริ่ม R1 สำหรับ DOC ขั้นต่ำ | §2.11, §8 |
+| AC O-05 / D-07 | Wave 2 แยก 2a/2b | **แก้**: §8 และคำอธิบายคอลัมน์ Release พร้อมเดือนสัมพัทธ์ (D-02) | §2, §8 |
+| D-06 (over-engineering) | vendor-specific wearable adapters | **แก้**: I-49 เหลือ CSV/template กลางใน core; API adapter → สัญญาแยก | §2.10, §8 |
+| FS S-06 / UX Top-7 / UXR-07 | กลุ่ม LINE ของโค้ช/อาจารย์อยู่นอกการควบคุมของ NOTI | **แก้** (D-08): หมายเหตุขอบเขตที่บังคับได้ใน 3.6 → นโยบายในเล่ม 10 §4.6 | §3.6 |
+| UX UXR-04 | LINE OA กลาง/route ตามวิทยาเขต | **ไม่แก้ในเล่มนี้** (เป็น operating model ของ helpdesk/NOTI; เล่ม 11/14 ตาม D-07) — I-41 คงเป็น channel เดียว | — |
+| UX UXR-24 | นิยาม "เปิดอ่าน" ของ LINE/SMS | **ไม่แก้ในเล่มนี้** (นิยามอยู่ใน 06 NOTI/14); integration ไม่มี read receipt ต่อข้อความตามที่ review ระบุ 🟡 | — |
+
+---
+
+## สมมติฐาน/คำถามใหม่ที่เสนอ
+
+> เลข `F2-` เป็น placeholder ให้ผู้รวบรวมเล่ม 01/13 ออกเลขจริง (A-103+ / Q-90+ ตาม D-11); ต่อเลขจากชุดในเล่ม 10
+
+| รหัสชั่วคราว | ประเภท | ข้อความ | ผลกระทบถ้าคำตอบต่าง |
+|---|---|---|---|
+| F2-A6 | สมมติฐาน | สัมภาษณ์ออนไลน์และ identity proofing ใช้บริการ video call ที่ มกช. มีสัญญาอยู่แล้ว (M365/Google) โดยไม่บันทึกวิดีโอ | ถ้าต้องบันทึกเป็นหลักฐาน: ต้องเก็บในประเทศ + เพิ่ม retention class + แจ้งผู้สมัคร |
+| F2-A7 | สมมติฐาน | มกช. ไม่จ้าง SOC/MSSP ที่ใช้ SIEM ต่างประเทศ (log อยู่ในประเทศ) | ถ้าจ้าง: เปิด X-15 พร้อม TIA, pseudonymisation และ DPA ก่อนส่ง log |
+| F2-Q6 | คำถาม (มกช./การเงิน) | จะเปิดรับชำระค่าสมัคร/ค่าธรรมเนียมด้วยบัตรต่างประเทศหรือไม่ และธนาคารผู้ให้บริการมี PSP/hosted page อะไร | ถ้าไม่: ตัด I-54/X-12 ออกจาก R1 (ผู้สมัครต่างชาติใช้การโอนผ่านธนาคาร) |
+| F2-Q7 | คำถาม (ETDA) | เงื่อนไข ค่าบริการ SLA และรูปแบบ (RFC 3161) ของ ETDA e-Timestamping สำหรับหน่วยงานรัฐ และมี TSA สำรองที่ ETDA แนะนำหรือไม่ | กำหนด TSA หลัก/สำรองใน I-40 |
+
 ---
 
 ## แหล่งอ้างอิงเพิ่มเติมที่ค้นในรอบ v1.0
@@ -559,3 +619,8 @@ flowchart LR
 - ETDA หลักการ Long-term digital signature (22 ต.ค. 2567): [ETDA](https://www.etda.or.th/getattachment/Useful-Resource/knowledge-sharing/articles/e-Standard/Long-Term-Digital-Signature/20241022_หลกการ-Long-term-digital-signature_V01-05.pdf.aspx?lang=th-TH)
 - กฎกระทรวงการเปิดเผยและการส่งข้อมูลการอุดมศึกษา 2566 (หมวด 3): [Thai Post](https://www.thaipost.net/news-update/621314/) · [ICCS](https://www.iccs.ac.th/wp-content/uploads/2026/01/การเปิดเผยและการส่งข้อมูลการอุดมศึกษา-พ.ศ-2568-1.pdf)
 - ประกาศการแจ้งเหตุภัยคุกคามไซเบอร์ (2566): [MUIT](https://muit.mahidol.ac.th/downloads/act-policy/140D107S0000000003900.pdf)
+
+## แหล่งอ้างอิงที่ค้นเพิ่มในรอบ v1.1
+
+- ETDA e-Timestamping (TEDA): [ETDA](https://www.etda.or.th/en/Our-Service/Digital-Trusted-services-Infrastructure/TEDA/e-Timestamping.aspx) · [คู่มือบริการ](https://etda.or.th/getattachment/2ed37fe4-fa72-4126-8f57-221f3a25c6f6/คมอบรการ-TEDA-e-Timestamping.aspx) (ไม่ระบุ RFC 3161 ใน snippet 🟡) · [RFC 3161](https://rfc-editor.org/rfc/rfc3161)
+- Web Push (RFC 8030/8291) และ push service ต่อ browser: ความรู้ผู้เขียน 🟡

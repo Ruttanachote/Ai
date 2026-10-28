@@ -1,6 +1,6 @@
 # 04 — บทบาท ลำดับชั้นองค์กร และสิทธิ์ (Roles, Organisation & Permissions)
 
-> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · ผู้เขียน: C · ภาษา: ไทย (ศัพท์เทคนิคเป็นภาษาอังกฤษ)
+> **สถานะ:** v1.1-draft · 28 ต.ค. 2569 (แก้ตาม [00-fix-decisions-v1.1](00-fix-decisions-v1.1.md) D-05, D-08, D-09; ปิด v1-review ดูหัวข้อ 14) · ผู้เขียน: C · ภาษา: ไทย (ศัพท์เทคนิคเป็นภาษาอังกฤษ)
 > **อ่านคู่กับ:** [00-blueprint](00-blueprint.md) · [05-workflows](05-workflows.md) + [`data/workflows.json`](data/workflows.json) (ใช้รหัสบทบาทชุดเดียวกับเล่มนี้) · [06-modules](06-modules.md) (IAM, PRIV, AUD, ADMIN) · [07-architecture](07-architecture.md) (Keycloak, PAM, RLS) · [08-data](08-data.md) (data classification, GuardianRelation) · [10-security-compliance](10-security-compliance.md) (PDPA lawful basis, consent ผู้เยาว์, threat model)
 > **เล่มนี้เป็นเจ้าของ:** รายการรหัสบทบาทสุดท้าย (blueprint หัวข้อ 5), scope model, permission matrix, กฎ SoD, การรักษาราชการแทน/การมอบอำนาจลงนาม, บทบาทผู้ดูแลระบบ, break-glass
 
@@ -80,7 +80,9 @@ flowchart TB
     SP["ผอ.ศูนย์กีฬา<br/>sportshead"] --> CO["โค้ช<br/>coach"]
     SP --> SC["นักวิทยาศาสตร์การกีฬา<br/>sci"]
     SP --> LB["ห้องปฏิบัติการ<br/>lab_staff"]
-    MD["แพทย์ พยาบาล นักกายภาพ<br/>medical"]
+    MD["แพทย์<br/>physician"]
+    NS["พยาบาล<br/>nurse"]
+    PT["นักกายภาพบำบัด / athletic trainer<br/>physio"]
     NU["นักโภชนาการ / นักจิตวิทยาการกีฬา<br/>nutritionist / sport_psych"]
   end
   subgraph GOV["กำกับ ตรวจสอบ และไอที"]
@@ -92,7 +94,7 @@ flowchart TB
   end
 ```
 
-**ข้อกำหนดเชิงโครงสร้างที่ต้องรักษา:** (ก) `safeguard` และ `dpo` รายงานตรงผู้บริหารสูงสุดและไม่อยู่ใต้สายของหน่วยที่ตนกำกับ (ความเป็นอิสระ — review C-13) (ข) `auditor` read-only และ time-boxed (ค) `medical` ผูกกับ "ความสัมพันธ์ดูแล" ไม่ใช่สายบังคับบัญชาของโค้ช
+**ข้อกำหนดเชิงโครงสร้างที่ต้องรักษา:** (ก) `safeguard` และ `dpo` รายงานตรงผู้บริหารสูงสุดและไม่อยู่ใต้สายของหน่วยที่ตนกำกับ (ความเป็นอิสระ — review C-13) (ข) `auditor` read-only และ time-boxed (ค) บทบาทวิชาชีพสุขภาพ (`physician`, `nurse`, `physio`) ผูกกับ "ความสัมพันธ์ดูแล" ไม่ใช่สายบังคับบัญชาของโค้ช และ `safeguard.athlete_welfare_officer` ไม่อยู่ใต้สายของหัวหน้างานกีฬา
 
 ## 3. Role catalogue (รายการสุดท้าย)
 
@@ -106,7 +108,7 @@ flowchart TB
 |---|---|---|---|---|---|
 | `candidate` | ผู้สมัคร | นักศึกษาและครอบครัว | own | SELF | บัญชีระดับมหาวิทยาลัย 1 คน 1 บัญชี (dedupe ด้วยเลขบัตร/passport/รหัส G) |
 | `student` | นักศึกษา / นักเรียนโรงเรียนกีฬา | นักศึกษาและครอบครัว | own | SELF (สถานะ REC) | profile `HIGHER_ED` / `BASIC_ED` เป็น attribute; step-up (passkey/OTP) สำหรับถอนวิชา คืนเงิน เปลี่ยนบัญชี |
-| `guardian` | ผู้ปกครอง | นักศึกษาและครอบครัว | child | REL | ชนิดความสัมพันธ์ `LEGAL` (ผู้แทนโดยชอบธรรมของผู้เยาว์) หรือ `OBSERVER` (ผู้ปกครองของนักศึกษาที่บรรลุนิติภาวะ ตาม consent) — หัวข้อ 7 |
+| `guardian` | ผู้ปกครอง / ผู้อุปการะ | นักศึกษาและครอบครัว | child | REL | ชนิดความสัมพันธ์ `LEGAL` (ผู้แทนโดยชอบธรรมของผู้เยาว์), `CAREGIVER` (ผู้อุปการะ เช่น ปู่ย่าตายาย/ญาติที่ดูแลจริง สิทธิ์เฉพาะที่กำหนด — W-160), `LOCAL_GUARDIAN` (ผู้ปกครองในประเทศของผู้เยาว์ต่างชาติ — W-160) หรือ `OBSERVER` (ผู้ปกครองของนักศึกษาที่บรรลุนิติภาวะ ตาม consent) + `verification_level` — หัวข้อ 7 |
 | `alumni` | ศิษย์เก่า / ผู้สำเร็จการศึกษา | นักศึกษาและครอบครัว | own | SYS (DegreeConferred) | รวมผู้จบโรงเรียนกีฬา |
 | `former_student` | อดีตนักศึกษาที่ไม่สำเร็จการศึกษา | นักศึกษาและครอบครัว | own | SYS (W-133) | ขอเอกสาร/คืนสภาพได้ (แก้ review G-17) |
 | `applicant` | บุคคลภายนอก / ประชาชน / ผู้แจ้งเรื่อง | ภายนอก | own (เรื่องที่ตนยื่น) | SELF | ร้องเรียนแบบไม่ระบุตัวตนได้ ติดตามด้วยรหัส |
@@ -142,10 +144,12 @@ flowchart TB
 | `pr` | ประชาสัมพันธ์ | เจ้าหน้าที่ | OrgUnit ของตน | HR | สร้างประกาศ (ENG) ไม่เห็นข้อมูลรายบุคคล |
 | `legal` | นิติกร | เจ้าหน้าที่ | assigned (เรื่อง) | HR | อุทธรณ์ คำขอข้อมูลข่าวสาร คำสั่งศาล เพิกถอนปริญญา |
 | `facility` | งานอาคารสถานที่ / สนามกีฬา | เจ้าหน้าที่ | campus | HR | |
-| `coach` | โค้ช / ผู้จัดการทีม | กีฬาและสุขภาพ | squad | TERM / ORDER | เห็น **สถานะความพร้อม** ไม่เห็นการวินิจฉัย ยกเว้นนักกีฬายินยอม; ต้องมี StaffClearance ถ้าทีมมีผู้เยาว์ |
+| `coach` | โค้ช / ผู้จัดการทีม | กีฬาและสุขภาพ | squad | TERM / ORDER | เห็น **สถานะความพร้อม FULL / MODIFIED (+ ข้อจำกัดเชิงกิจกรรม) / UNAVAILABLE เสมอโดยไม่ต้องขอ consent** (D-05; ฐานใน lawful-basis matrix เล่ม 10) แต่ไม่เห็นการวินิจฉัย/การรักษา ยกเว้นนักกีฬายินยอม; เสนอ SelectionDecision (W-150) และถอดนักกีฬาเมื่อสงสัย concussion (W-152); ต้องมี StaffClearance ถ้าทีมมีผู้เยาว์ |
 | `sci` | นักวิทยาศาสตร์การกีฬา | กีฬาและสุขภาพ | squad, assigned | TERM | |
 | `sportshead` | หัวหน้างานกีฬา / ผอ.ศูนย์กีฬา | กีฬาและสุขภาพ | campus | ORDER | อนุมัติทริป, delegation roster, talent pathway |
-| `medical` | แพทย์ / พยาบาล / นักกายภาพ | กีฬาและสุขภาพ | care | HR + REL | qualifier `lead` (แพทย์หัวหน้า = ผู้อนุมัติคนที่ 1 ของ W-14); MFA แบบ WebAuthn |
+| `physician` | แพทย์ (รวมแพทย์เวชศาสตร์การกีฬา/แพทย์ประจำทีม) | กีฬาและสุขภาพ | care | HR + REL | ผู้เดียวที่ออก `MedicalClearance` / `RtpClearance` / clearance หลัง concussion และสั่งแผนยา; qualifier `lead` (แพทย์หัวหน้า = ผู้อนุมัติคนที่ 1 ของ W-14), `team_physician`; ต้องมี `ProfessionalLicence` ที่ยังไม่หมดอายุ (X-HR); MFA แบบ WebAuthn |
+| `nurse` | พยาบาล (คลินิก ห้องพยาบาลหอ จุดปฐมพยาบาลวันสอบ) | กีฬาและสุขภาพ | care | HR + REL | คัดกรองหน้าสนาม ปฐมพยาบาล บันทึก medical alert/การบาดเจ็บ ทบทวน MAR; qualifier `clinic`, `boarding`; ไม่ออก clearance; ใบอนุญาตตาม X-HR; MFA แบบ WebAuthn |
+| `physio` | นักกายภาพบำบัด / athletic trainer | กีฬาและสุขภาพ | care | HR + REL | บันทึกการบาดเจ็บหน้างาน ดูแลขั้นฟื้นฟูและ return-to-sport ตามแผนของ `physician`; qualifier `athletic_trainer`; ใบอนุญาตตาม X-HR; MFA แบบ WebAuthn |
 | `nutritionist` | นักโภชนาการการกีฬา | กีฬาและสุขภาพ | care (referral) | HR | |
 | `sport_psych` | นักจิตวิทยาการกีฬา | กีฬาและสุขภาพ | care (referral) | HR | บันทึกลับระดับเดียวกับ counsellor |
 | `lab_staff` | เจ้าหน้าที่ห้องปฏิบัติการวิทยาศาสตร์การกีฬา | กีฬาและสุขภาพ | lab | HR | calibration, booking |
@@ -153,10 +157,10 @@ flowchart TB
 | `sschool_teacher` | ครูผู้สอนโรงเรียนกีฬา | โรงเรียนกีฬา | section (ห้อง/วิชา) | TERM | ต้องมี StaffClearance + ใบอนุญาตประกอบวิชาชีพที่ยังไม่หมดอายุ |
 | `homeroom` | ครูประจำชั้น | โรงเรียนกีฬา | homeroom | TERM | ช่องทางหลักกับผู้ปกครอง; ร่วมในกลุ่มข้อความทุกกลุ่มของห้อง (two-adult rule) |
 | `gradschool` | บัณฑิตวิทยาลัย / งานบัณฑิตศึกษา | บัณฑิตศึกษาและฝึกประสบการณ์ | university (หลักสูตรบัณฑิตศึกษา) | ORDER / HR | |
-| `thesis_committee` | อาจารย์ที่ปรึกษาวิทยานิพนธ์ / กรรมการสอบ | บัณฑิตศึกษาและฝึกประสบการณ์ | assigned (นักศึกษาที่ได้รับแต่งตั้ง) | ROUND (คำสั่ง W-95/W-97) | qualifier `main_advisor`, `co_advisor`, `chair`, `external` |
+| `thesis_committee` | อาจารย์ที่ปรึกษาวิทยานิพนธ์ / IS / กรรมการสอบ (รวมสอบประมวลความรู้) | บัณฑิตศึกษาและฝึกประสบการณ์ | assigned (นักศึกษาที่ได้รับแต่งตั้ง) | ROUND (คำสั่ง W-95/W-97/W-158/W-159) | qualifier `main_advisor`, `co_advisor`, `chair`, `external`, `comprehensive_exam`; การแต่งตั้ง `main_advisor` ตรวจ `AdvisorLoadRule` (เพดานต่ออาจารย์ [ต้องตรวจสอบ]); เปลี่ยนที่ปรึกษาผ่าน W-159 ปิดบทบาทเดิมทันที |
 | `practicum` | ศูนย์ฝึกประสบการณ์วิชาชีพ | บัณฑิตศึกษาและฝึกประสบการณ์ | faculty, campus | ORDER | จับคู่ placement, ตรวจ RatioRule |
 | `supervisor` | อาจารย์นิเทศก์ | บัณฑิตศึกษาและฝึกประสบการณ์ | assigned (placement) | TERM | สัดส่วน ≤ 1:10 |
-| `safeguard` | ผู้รับผิดชอบด้านคุ้มครองเด็ก | กำกับดูแล | school, campus (เคสที่มอบหมาย) | ORDER | qualifier `lead`, `deputy`; ถูกตัดสิทธิ์อัตโนมัติจากเคสที่ตนเกี่ยวข้อง |
+| `safeguard` | ผู้รับผิดชอบด้านคุ้มครองเด็ก และ safe sport | กำกับดูแล | school, campus (เคสที่มอบหมาย) | ORDER | qualifier `lead`, `deputy`, `athlete_welfare_officer` (เคสนักกีฬาผู้ใหญ่ W-155); ถูกตัดสิทธิ์อัตโนมัติจากเคสที่ตนเกี่ยวข้อง |
 | `complaint` | ศูนย์รับเรื่องร้องเรียน / ศูนย์ข้อมูลข่าวสาร | กำกับดูแล | university (intake) | ORDER | เห็นเนื้อหาเพื่อคัดแยก; เคสเด็กส่ง SAFE ทันที |
 | `dpo` | DPO | กำกับดูแล | university (metadata + DSR) | ORDER | เห็น metadata ของการเข้าถึง sensitive ไม่ใช่เนื้อหา (ยกเว้นในเคส DSR/breach ที่ต้องใช้) |
 | `auditor` | ผู้ตรวจสอบภายใน / สตง. | กำกับดูแล | ตามหนังสือขอ / แผนตรวจ | ORDER (time-boxed) | read-only; export ได้เฉพาะชุดที่อนุมัติ (CSV + hash + data dictionary) |
@@ -189,16 +193,18 @@ Qualifier เขียนเป็น `role.qualifier` (เช่น `finance.he
 | `loan` | `superuser`, `admin`, `maker`, `checker` | W-48, W-119 |
 | `registrar` | `university`, `campus`, `school`, `officer`, `exam_office` | W-01, W-54, W-74, W-117 |
 | `head` | `dept_head`, `program_chair`, `selection_chair` | W-01, W-18, W-76 |
-| `medical` | `lead` | W-14 |
-| `safeguard` | `lead`, `deputy` | W-22, W-93 |
+| `physician` | `lead`, `team_physician` | W-14, W-39, W-152 |
+| `nurse` | `clinic`, `boarding` | W-42, W-91, W-148 |
+| `physio` | `athletic_trainer` | W-39, W-152 |
+| `safeguard` | `lead`, `deputy`, `athlete_welfare_officer` | W-22, W-93, W-149, W-155 |
 | `dorm` | `manager`, `officer`, `boarding` | W-13, W-46, W-90, W-91 |
-| `thesis_committee` | `main_advisor`, `co_advisor`, `chair`, `external` | W-95..W-98 |
+| `thesis_committee` | `main_advisor`, `co_advisor`, `chair`, `external`, `comprehensive_exam` | W-95..W-98, W-158, W-159 |
 | `vp` | `academic`, `student_affairs`, `admin_finance`, `digital` | W-15, W-117, W-125 |
 | `council` | `academic_council`, `university_council`, `secretary` | W-06, W-08 |
-| `advisor` | `dc_tutor` | W-04, W-114 |
+| `advisor` | `dc_tutor` | W-04, W-114, W-146 |
 | `affairs` | `discipline_committee` | W-12 |
 
-### 3.4 ตารางแปลงรหัสจาก v0.9 (ปิด review I-11 / IC-10)
+### 3.4 ตารางแปลงรหัสจาก v0.9 และ v1.0 (ปิด review RF I-11 / IC-10)
 
 | รหัส v0.9 | รหัส v1.0 |
 |---|---|
@@ -214,7 +220,8 @@ Qualifier เขียนเป็น `role.qualifier` (เช่น `finance.he
 | `scholarship_committee` | `scholar` |
 | `affairs_director` / `affairs_officer` / `discipline_committee` | `affairs` (+ qualifier) |
 | `dorm_manager` / `dorm_officer` / `boarding_staff` | `dorm` + qualifier |
-| `sports_director` / `sport_scientist` / `physio` / `medical_officer` / `dc_tutor` | `sportshead` / `sci` / `medical` / `medical` / `advisor.dc_tutor` |
+| `sports_director` / `sport_scientist` / `physio` / `medical_officer` / `dc_tutor` | `sportshead` / `sci` / `physio` / `physician` / `advisor.dc_tutor` |
+| **v1.0** `medical` (แพทย์/พยาบาล/นักกายภาพรวมกัน) | **v1.1** `physician` / `nurse` / `physio` ตามวิชาชีพและใบอนุญาต (D-08, v1-review S-10) — ไม่คงรหัส `medical` ไว้เป็น alias; ข้อความที่หมายถึง "ทีมสุขภาพ" รวมให้เขียน `physician`/`nurse`/`physio` |
 | `ss_director` / `ss_deputy` / `ss_teacher` / `homeroom_teacher` | `sschool_dir` / `sschool_dir` / `sschool_teacher` / `homeroom` |
 | `practicum_supervisor` / `practicum_coordinator` / `mentor_teacher` / `school_principal` / `internship_host` | `supervisor` / `practicum` / `mentor` / `host_principal` / `employer` |
 | `internal_auditor` / `external_auditor` / `auditor_ro` | `auditor` + attribute `org = INTERNAL / OAG` |

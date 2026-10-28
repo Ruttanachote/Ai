@@ -1,6 +1,8 @@
 # 07 — สถาปัตยกรรมระบบ (Architecture, Minimum Operable Stack, ADR, NFR)
 
-> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · ผู้เขียน: E · ภาษา: ไทย (ศัพท์เทคนิคและชื่อผลิตภัณฑ์เป็นภาษาอังกฤษ)
+> **สถานะ:** v1.1-draft · 28 ต.ค. 2569 (v1.0 → v1.1 ตาม [00-fix-decisions-v1.1](00-fix-decisions-v1.1.md): D-04 กุญแจ/`hlt_vault`/`hlt_keys`/HSM ไซต์ B, D-06 นับ component ใหม่และตัดของเกิน, D-09 RLS scope token + analytics แบบ physical replica + ตราประทับอิเล็กทรอนิกส์/TSA, SLO chain ที่นับ PgBouncer และ load balancer) · ผู้เขียน: E · ภาษา: ไทย (ศัพท์เทคนิคและชื่อผลิตภัณฑ์เป็นภาษาอังกฤษ)
+>
+> **เปลี่ยนใน v1.1 (สรุป):** หัวข้อ 1, 4, 5 (นับใหม่ 35 → 32), 6, ADR-004/005/010/011/012/013/016/017/018/023 แก้, **ADR-026..031 ใหม่**, 9 (sequence), 10.2–10.8 (SLO chain คำนวณใหม่), 11.2/11.8/11.11, 12 (seal model ใหม่), 13 (STRIDE เพิ่ม), 14.1 (ข้อเสนอ A/Q ใหม่), 15.10 (ผลการปิด v1-review)
 >
 > **อ่านคู่กับ:** [00-blueprint](00-blueprint.md) (ข้อตกลงกลาง ข้อ 7–9) · [01-overview](01-overview.md) (Assumptions register A-xx) · [04-roles-permissions](04-roles-permissions.md) · [06-modules](06-modules.md) (เจ้าของรายการ event) · [08-data](08-data.md) · [09-integrations](09-integrations.md) · [10-security-compliance](10-security-compliance.md) (รายละเอียด STRIDE, PDPA, ระดับลายมือชื่อ) · [11-operations](11-operations.md) · [12-roadmap-cost-risk](12-roadmap-cost-risk.md)
 >
@@ -19,7 +21,7 @@
 5. [จำนวน component: v0.9 เทียบ v1.0](#5-จำนวน-component-v09-เทียบ-v10)
 6. [ตาราง Technology stack ฉบับเต็ม](#6-ตาราง-technology-stack-ฉบับเต็ม)
 7. [Licence policy, allow-list และ SBOM](#7-licence-policy-allow-list-และ-sbom)
-8. [Architecture Decision Records (ADR-001..025)](#8-architecture-decision-records-adr-001025)
+8. [Architecture Decision Records (ADR-001..031)](#8-architecture-decision-records-adr-001031)
 9. [Sequence diagram หลัก](#9-sequence-diagram-หลัก)
 10. [NFR: capacity ที่คำนวณใหม่, SLO, RPO/RTO](#10-nfr-capacity-ที่คำนวณใหม่-slo-rporto)
 11. [Cross-cutting concerns](#11-cross-cutting-concerns)
@@ -34,16 +36,18 @@
 
 | ประเด็น | v0.9 | v1.0 (เล่มนี้) |
 |---|---|---|
-| Runtime component ที่ต้องดูแล | 53 รายการ (นับในหัวข้อ 5; review ประเมิน 45–50) | **28** (แกน 26 + แอป adopt 2) ลดลงราว 47% |
+| Runtime component ที่ต้องดูแล | 53 รายการ (นับในหัวข้อ 5; review ประเมิน 45–50) | v1.0 ประกาศ 28 แต่**นับต่ำ** (ไม่นับ etcd ของ Patroni, PostgreSQL 3 cluster, Valkey Sentinel, FreeRADIUS, cert-manager, waiting-room plugin) → นับจริง **35**; **v1.1 = 32** หลังตัด Tempo, ย้าย waiting room เข้า Next.js และรวม apps DB เข้า analytics cluster (หัวข้อ 5.3) |
 | Event bus | Kafka + Strimzi + MirrorMaker 2 + Apicurio + Debezium | **Transactional outbox + PostgreSQL event publication registry + PG job queue**; Kafka เป็นทางเลือกเมื่อถึงเกณฑ์ (ADR-003) |
 | Registration engine | Redis DECR → Kafka → worker (dual-write ข้าม 3 ระบบ) | **Transaction แบบ synchronous บน PostgreSQL** หลัง virtual waiting room ที่ gateway (ADR-004) |
-| Analytics | ClickHouse + Keeper + Debezium + Superset + Metabase + OpenMetadata | **PostgreSQL logical replica (column allow-list) + dbt Core + Superset ตัวเดียว** (ADR-017) |
+| Analytics | ClickHouse + Keeper + Debezium + Superset + Metabase + OpenMetadata | **v1.1: physical read replica (ELT source) + view แบบ `security_invoker` (column allow-list) + `postgres_fdw` เข้า analytics DB + dbt Core + Superset ตัวเดียว** (ADR-017; เลิก logical replication เข้าตาราง RLS ตาม D-09) |
 | Secrets / IaC / cache / object | Vault (BSL), Terraform (BSL), Redis, MinIO | **OpenBao, OpenTofu, Valkey, S3 ของผู้ให้บริการ หรือ Ceph RGW/SeaweedFS** (ADR-012..015) |
 | Environments | 8 | **5** ([11-operations](11-operations.md) หัวข้อ 1) |
 | Peak ลงทะเบียน (worst case ไม่ stagger) | 3,000 RPS เป้า, ไม่นับ polling | **origin ≈ 1,050 RPS คาด / 2,100 RPS ออกแบบ**; command 60/s burst, ออกแบบ 120/s, ทดสอบยืนยัน 300/s |
 | P0 broadcast | เป้า 200 msg/s แต่ต้องส่ง 417 msg/s (ขัดกันเอง) | **≈ 800 delivery/s** ในนาทีแรก, dispatcher ออกแบบ 1,000/s, SMS เป็นคอขวด (ครบ ≤ 5 นาที) |
-| SLO ช่วงวิกฤต | 99.95% แต่ dependency ต่ออนุกรมได้จริง ≈ 99.70–99.80% | **99.95% เฉพาะ journey ลงทะเบียนที่ตัด Keycloak และ Valkey ออกจาก critical path แล้ว** (4 ตัวอนุกรม: 99.99³ × 99.98 = 99.950%) |
+| SLO ช่วงวิกฤต | 99.95% แต่ dependency ต่ออนุกรมได้จริง ≈ 99.70–99.80% | v1.0 อ้าง 99.950% จาก 4 ตัวอนุกรม แต่**ไม่ได้นับ PgBouncer และ cloud load balancer**; นับครบ 6 ตัว = **99.930%** (7.1 นาที/7 วัน) ไม่ถึงเป้า → **v1.1:** ย้าย PgBouncer เป็น sidecar ใน pod ของ core (ADR-027) เหลือ 5 ตัว = **99.940%** (6.0 นาที/7 วัน) และ**ปรับเป้าภายในช่วงวิกฤตเป็น 99.94%** โดยเสนอแก้ blueprint ข้อ 8 (Q-90); SLA สัญญา 99.9% ไม่เปลี่ยน (หัวข้อ 10.7) |
 | Ransomware | RTO 4 ชม. | แยก 2 กรณี: logical corruption RTO ≤ 4 ชม. / platform compromise **RTO 48–72 ชม.** จาก immutable backup |
+| Key management (v1.1) | Vault + Shamir unseal | OpenBao **auto-unseal ด้วย HSM ทั้งสองไซต์** (ไซต์ B มี HSM และ seal key ของตนเอง); Shamir 3-of-5 เป็น **recovery key** สำหรับ authorization เท่านั้น (ถอดรหัส root key ไม่ได้); ทางกู้จริงเมื่อ HSM หายคือ **escrow ของ transit key** ที่ซ้อมกรณี "HSM สูญหาย"; wrapped DEK ต่อ **บุคคล × ประเภทระเบียน** อยู่ใน DB `hlt_keys` (หัวข้อ 12) |
+| RLS (v1.1) | `SET LOCAL app.org_scope` จาก app role | scope ตั้งผ่าน **`SECURITY DEFINER` function ที่ตรวจ scope token ที่ลงนามและผูกกับ transaction** — SQL injection ที่เรียก `set_config` เองไม่ขยาย scope ได้ (ADR-005) |
 
 ---
 
@@ -55,7 +59,7 @@
 | AP-02 | **Boring technology:** ใช้ PostgreSQL ให้สุดก่อนเพิ่ม datastore ใหม่ ทุก datastore ใหม่ต้องมี ADR ที่มีเกณฑ์เชิงตัวเลข | ไม่มี Kafka, ClickHouse, OpenSearch ใน R1–R3 |
 | AP-03 | **Modular monolith ที่บังคับ boundary:** โมดูลตามรหัสใน blueprint ข้อ 4 แยก schema, สื่อสารผ่าน published API/event เท่านั้น, ตรวจใน CI | ADR-002 |
 | AP-04 | **Configuration ราย OrgUnit ไม่ใช่ fork ของโค้ด:** ค่าธรรมเนียม ผู้ลงนาม ปฏิทิน รอบรับสมัคร template เป็นข้อมูลที่มีเวอร์ชันและผ่าน maker-checker | ADR-005, ADR-006 |
-| AP-05 | **Defence-in-depth ข้ามวิทยาเขต:** RLS ที่ DB + ABAC ที่แอป + scope ใน BI/replica | ADR-005, ADR-017 |
+| AP-05 | **Defence-in-depth ข้ามวิทยาเขต:** RLS ที่ DB + ABAC ที่แอป + scope ใน BI/replica; ชั้น DB ต้อง**เป็นอิสระจากแอป** คือ scope ที่ policy ใช้ต้องผ่านการตรวจลายเซ็นใน DB (v1.1) ไม่ใช่ค่าที่ app role ตั้งเองได้ | ADR-005, ADR-017 |
 | AP-06 | **ลด serial dependency บน journey สำคัญ** และออกแบบให้ degrade ได้ (fail-open สำหรับ cache, fail-static สำหรับประกาศ) | หัวข้อ 10.5 |
 | AP-07 | **Open standards และ licence allow-list:** OIDC, S3 API, BPMN/DMN 2.0, OpenAPI 3.1, AsyncAPI, PDF/A, PAdES, ขมธอ. 25-2563; ห้าม licence BSL/SSPL/RSAL/ELv2 ในแกน | ADR-019 |
 | AP-08 | **ข้อมูลอยู่ในประเทศไทยโดยค่าเริ่มต้น** บริการต่างประเทศต้องอยู่ใน cross-border transfer register และส่งเฉพาะหัวข้อ + ลิงก์ (blueprint ข้อ 9.10) | NOTI payload policy, หัวข้อ 11 |
@@ -151,7 +155,8 @@ flowchart TB
 
   subgraph EDGE["Edge"]
     E1["CDN / WAF ของผู้ให้บริการ"]
-    E2["Apache APISIX<br/>JWT, rate limit, waiting room plugin"]
+    E0["Cloud L4 load balancer<br/>ของผู้ให้บริการ"]
+    E2["Apache APISIX<br/>jwt-auth มาตรฐาน, rate limit<br/>ไม่มี custom plugin"]
   end
 
   subgraph IDP["Identity"]
@@ -165,15 +170,19 @@ flowchart TB
     A4["Thai PDF renderer<br/>HTML/CSS to PDF/A, HarfBuzz shaping"]
     A5["Flowable engine + DMN<br/>embedded ใน core"]
     A6["ClamAV clamd"]
+    A7["PgBouncer sidecar<br/>ในทุก pod ของ core - transaction pooling"]
+    A8["Next.js portal<br/>รวม waiting room route + ออก admission JWT"]
   end
 
   subgraph DATA["Data"]
-    D1[("PostgreSQL 16 core - Patroni<br/>db core, db health_vault, db keycloak<br/>RLS, pgaudit")]
-    D2["PgBouncer<br/>transaction pooling"]
-    D3[("Valkey<br/>cache, waiting room, rate limit")]
+    D1[("PostgreSQL 16 core cluster - Patroni<br/>db core, hlt_vault, hlt_keys, keycloak<br/>RLS + scope token, pgaudit")]
+    D7["etcd 3 nodes<br/>Patroni DCS ต่อไซต์"]
+    D8[("ELT physical replica<br/>สมาชิก nofailover ของ core cluster")]
+    D3[("Valkey + Sentinel<br/>cache, คิว waiting room, rate limit")]
     D4[("S3-compatible object storage<br/>quarantine, clean, documents, WORM")]
-    D5["OpenBao + HSM<br/>KEK, HMAC, signing via PKCS#11"]
-    D6[("PostgreSQL analytics<br/>logical replica + dbt marts")]
+    D5["OpenBao<br/>transit KEK, HMAC, auto-unseal ด้วย HSM"]
+    D9["HSM ไซต์ A และไซต์ B<br/>seal key ของ OpenBao + กุญแจลงนาม"]
+    D6[("PostgreSQL analytics and apps cluster<br/>dbt marts ผ่าน postgres_fdw<br/>Moodle, Zammad, Superset meta")]
   end
 
   subgraph BI["Analytics"]
@@ -191,25 +200,31 @@ flowchart TB
   C3 --> E1
   C4 --> E1
   C5 --> E1
-  E1 --> E2
+  E1 --> E0
+  E0 --> E2
   E2 --> K1
+  E2 --> A8
   E2 --> A1
   E2 --> A2
+  A8 --> D3
   A1 --> A5
-  A1 --> D2
-  A2 --> D2
-  A3 --> D2
-  D2 --> D1
+  A1 --> A7
+  A2 --> A7
+  A3 --> A7
+  A7 --> D1
+  D7 --- D1
   A1 --> D3
   A2 --> D3
-  E2 --> D3
   A1 --> D4
   A3 --> A6
   A6 --> D4
   A1 --> A4
   A1 --> D5
   A3 --> D5
-  D1 -->|"logical replication<br/>column allow-list"| D6
+  D5 --> D9
+  A1 -->|"PKCS11 ลงนามโดยตรง"| D9
+  D1 -->|"physical streaming"| D8
+  D8 -->|"view security_invoker<br/>ผ่าน postgres_fdw"| D6
   B1 --> D6
   B2 --> D6
   A1 <--> M1
@@ -224,9 +239,11 @@ flowchart TB
 | Core profile `registration` | image `core` (deployment แยก) | endpoint ลงทะเบียน/ที่นั่ง เท่านั้น | แยกเพื่อ bulkhead และ scale ช่วง peak (ADR-004) ไม่ใช่ service แยก |
 | Core profile `worker` | image `core` | outbox relay, PG job queue, NOTI dispatcher, integration adapters (ไฟล์/API/SFTP), scheduled jobs จากปฏิทิน (ORG) | leader election ผ่าน PG advisory lock |
 | Thai PDF renderer | image `doc-render` | แปลง HTML/CSS template เป็น PDF/A (ไม่มีกุญแจลงนาม) | การลงนาม PAdES ทำใน core ผ่าน PKCS#11 (ADR-010) |
-| Next.js | image `web` (2 deployment: portal, backoffice) | SSR หน้า public/portal, CSR back-office, service worker | LIFF ใช้ portal เดียวกัน |
-| Keycloak | 3 replicas | OIDC, ThaID broker, LDAP, passkey/OTP | DB แยกใน Patroni ชุดเดียวกัน |
-| APISIX | 3 replicas (peak 6) | routing, JWT, rate limit, waiting room | ใช้โหมด standalone/declarative จาก Git เพื่อไม่ต้องดูแล etcd **[ต้องตรวจสอบ: ingress controller เวอร์ชันที่เลือกต้องรองรับโหมดนี้]** |
+| Next.js | image `web` (2 deployment: portal, backoffice) | SSR หน้า public/portal, CSR back-office, service worker; **v1.1: route `/queue` ของ waiting room** (ลำดับคิวใน Valkey, ออก admission JWT ที่ลงนามด้วยกุญแจ K5) | LIFF ใช้ portal เดียวกัน; waiting room เขียนด้วย TypeScript ซึ่งเป็นภาษาเดียวกับทีม frontend (ADR-028) |
+| PgBouncer | sidecar ในทุก pod ของ `core` (v1.1, ADR-027) | transaction pooling ต่อ pod | PgBouncer ≥ 1.21 พร้อม `max_prepared_statements` (หรือ JDBC `prepareThreshold=0`); ล่มพร้อม pod ของตน จึงไม่เป็น tier อนุกรมแยก |
+| Keycloak | 3 replicas | OIDC, ThaID broker, LDAP, passkey/OTP | DB แยกใน Patroni ชุดเดียวกัน (เชื่อมผ่าน pool ของ Keycloak เอง) |
+| APISIX | 3 replicas (peak 6) | routing, ตรวจ JWT ผู้ใช้และ admission JWT ด้วย plugin มาตรฐาน (`jwt-auth`/`openid-connect`), rate limit | ใช้โหมด standalone/declarative จาก Git เพื่อไม่ต้องดูแล etcd ของ APISIX **[ต้องตรวจสอบ: ingress controller เวอร์ชันที่เลือกต้องรองรับโหมดนี้]**; v1.1 ไม่มี custom Lua plugin |
+| etcd (Patroni DCS) | 3 members ต่อไซต์ (ADR-026) | leader election ของ Patroni | ไซต์ A วางบน 3 node ของ data zone (primary, sync standby, ELT replica) บน volume แยก; ไซต์ B 3 members (node PG + VM เล็ก 2 ตัว) สำหรับ standby cluster |
 
 โมดูล IAM (provisioning), ORG, ENG, NOTI, AUD, ANA, RPT และ ADMIN อยู่ใน core ทั้งหมด (ปิดประเด็น IC-25) ส่วน X-* อยู่นอกขอบเขตสัญญานี้และเชื่อมผ่าน adapter
 
@@ -296,40 +313,55 @@ flowchart TB
 | 52 | Next.js web | คง |
 | 53 | Flutter app | เลื่อนไปสัญญาแยก |
 
-### 5.3 v1.0 Minimum Operable Stack (28 รายการ)
+### 5.3 Minimum Operable Stack: นับใหม่ v1.0 (35) และ v1.1 (32 รายการ)
 
-| # | Component | กลุ่ม | ผู้ดูแลฝั่ง มกช. (role ตามเล่ม 04) | Tier |
-|---|---|---|---|---|
-| 1 | Kubernetes (managed ของผู้ให้บริการ หรือ RKE2) | Platform | `itadmin` | Must |
-| 2 | Apache APISIX (gateway + waiting room + rate limit) | Edge | `itadmin` | Must |
-| 3 | Keycloak | Identity | `itadmin` + `security_admin` | Must |
-| 4 | Core modular monolith (profiles web/registration/worker) | App | vendor L3 + `itadmin` | Must |
-| 5 | Next.js web tier (portal PWA + back-office) | App | vendor L3 | Must |
-| 6 | Thai PDF renderer | App | vendor L3 | Must |
-| 7 | PostgreSQL 16 + Patroni (core, analytics, apps) | Data | `dba_sre` | Must |
-| 8 | PgBouncer | Data | `dba_sre` | Must |
-| 9 | pgBackRest | Data | `dba_sre` | Must |
-| 10 | Valkey | Data | `dba_sre` | Must |
-| 11 | S3-compatible object storage (บริการของผู้ให้บริการ; สำรอง Ceph RGW/SeaweedFS) | Data | `itadmin` | Must |
-| 12 | OpenBao | Security | `security_admin` | Must |
-| 13 | ClamAV | Security | `security_admin` | Must |
-| 14 | Kyverno (baseline + verify image signature) | Security | `security_admin` | Must |
-| 15 | Dependency-Track | Security | `security_admin` | Must |
-| 16 | PAM/bastion ที่ licence ชัด (บริการของ GDCC/MSSP หรือ JumpServer) | Security | `security_admin` | Must |
-| 17 | dbt Core (batch job) | Analytics | `data_steward` + vendor | Must |
-| 18 | Apache Superset | Analytics | `data_steward` | Must |
-| 19 | OpenTelemetry Collector | Observability | `dba_sre` | Must |
-| 20 | Prometheus + Alertmanager | Observability | `dba_sre` | Must |
-| 21 | Grafana | Observability | `dba_sre` | Must |
-| 22 | Loki | Observability | `dba_sre` | Must |
-| 23 | Tempo | Observability | `dba_sre` | Should (ปิดได้ถ้าทีมไม่พร้อม) |
-| 24 | Argo CD | Delivery | `itadmin` | Must |
-| 25 | Git forge + CI runners (GitLab CE หรือ Forgejo) | Delivery | `itadmin` | Must |
-| 26 | Harbor (รวม Trivy scanner) | Delivery | `itadmin` | Must |
-| 27 | Zammad (X-HELP) | Adopted | `helpdesk` | Must ตั้งแต่ R1 |
-| 28 | Moodle | Adopted | `itadmin` (หรือ instance เดิม) | ใช้เมื่อ มกช. ไม่มี instance เดิม |
+**ที่มาของการนับใหม่ (D-06, review v1-review architecture_compliance A-01..A-04, Top-7):** ตาราง v1.0 ประกาศ 28 รายการ แต่ไม่นับ 7 รายการที่ต้อง install/patch/monitor แยกจริง ได้แก่ (1) **etcd** ซึ่งเป็น DCS ของ Patroni (v1.0 ไม่กล่าวถึงเลยทั้งชุด) (2–3) PostgreSQL มี **3 cluster** (core, analytics, apps) แต่นับเป็นแถวเดียว ทั้งที่แต่ละ cluster มี backup stanza, upgrade และ monitoring ของตน (4) **Valkey Sentinel** (5) **FreeRADIUS** สำหรับ eduroam (09 I-46) (6) **cert-manager** (7) **APISIX waiting-room plugin** ที่ต้องเขียนเองด้วย Lua (bespoke code บน critical path) → **v1.0 นับจริง = 35**
 
-**ผลลัพธ์:** แกน 26 + แอป adopt 2 = **28** (ถ้า มกช. ใช้ Moodle เดิมและ PAM เป็นบริการของ GDCC/MSSP เหลือ **26**) เทียบกับ 53 ใน v0.9 ลดลง 25 รายการ (47%) ส่วนบริการ managed ที่ไม่นับแต่ต้องอยู่ในสัญญา: CDN/WAF, HSM, SOC/SIEM 24×7, SMS/email gateway, ปลายทาง backup แบบ offline
+**สิ่งที่ตัด/ย้ายใน v1.1 (−3):** (ก) **Tempo** ตัดออกจาก R1–Wave 2 (trace id อยู่ใน log ของ Loki และ OTel Collector sampling ส่งไป Loki; เกณฑ์นำกลับในหัวข้อ 5.4) (ข) **waiting-room plugin** เลิกใช้ ย้ายเป็น route ใน Next.js + Valkey และให้ APISIX ตรวจ admission JWT ด้วย plugin มาตรฐาน (ADR-028) จึงไม่ใช่ runtime component แยก (ค) **apps DB รวมเข้า analytics cluster** (Moodle, Zammad, Superset metadata) เหลือ PostgreSQL 2 cluster (ADR-026) → **v1.1 = 32**
+
+| # | Component | กลุ่ม | ผู้ดูแลหลัก / สำรอง ฝั่ง มกช. (role ตามเล่ม 04) | Tier | v1.0 นับ? |
+|---|---|---|---|---|---|
+| 1 | Kubernetes (managed ของผู้ให้บริการ หรือ RKE2) รวม CNI/CoreDNS/CSI ของ distribution | Platform | `itadmin` / `campus_itadmin` ส่วนกลาง | Must | ✓ |
+| 2 | **cert-manager** (ใบรับรองภายใน, mTLS ไป PostgreSQL/OpenBao) | Platform | `itadmin` / `security_admin` | Must | ✗ เพิ่ม |
+| 3 | Apache APISIX (gateway + rate limit + ตรวจ admission JWT) | Edge | `itadmin` / `dba_sre` | Must | ✓ |
+| 4 | Keycloak | Identity | `security_admin` / `itadmin` | Must | ✓ |
+| 5 | **FreeRADIUS** (eduroam IdP → Keycloak/LDAP; ใช้ของเดิมถ้าวิทยาเขตมีอยู่แล้ว — Q-68) | Identity | `itadmin` / `campus_itadmin` | Should (R2) | ✗ เพิ่ม |
+| 6 | Core modular monolith (profiles web/registration/worker) | App | vendor L3 + `itadmin` / `dba_sre` | Must | ✓ |
+| 7 | Next.js web tier (portal PWA + back-office + waiting room route) | App | vendor L3 / `itadmin` | Must | ✓ |
+| 8 | Thai PDF renderer | App | vendor L3 / `itadmin` | Must | ✓ |
+| 9 | PostgreSQL 16 + Patroni — **cluster core** (core, `hlt_vault`, `hlt_keys`, keycloak + ELT replica) | Data | `dba_sre` / `itadmin` | Must | ✓ (รวมแถวเดียว) |
+| 10 | PostgreSQL 16 + Patroni — **cluster analytics+apps** (marts, Moodle, Zammad, Superset meta) | Data | `dba_sre` / `data_steward` | Must | ✗ แยกนับ |
+| 11 | **etcd** (Patroni DCS, 3 members ต่อไซต์) | Data | `dba_sre` / `itadmin` | Must | ✗ เพิ่ม |
+| 12 | PgBouncer (sidecar ใน pod ของ core) | Data | `dba_sre` / vendor L3 | Must | ✓ |
+| 13 | pgBackRest | Data | `dba_sre` / `itadmin` | Must | ✓ |
+| 14 | Valkey | Data | `dba_sre` / `itadmin` | Must | ✓ |
+| 15 | **Valkey Sentinel** | Data | `dba_sre` / `itadmin` | Must | ✗ เพิ่ม |
+| 16 | S3-compatible object storage (บริการของผู้ให้บริการ; สำรอง Ceph RGW/SeaweedFS) | Data | `itadmin` / `dba_sre` | Must | ✓ |
+| 17 | OpenBao | Security | `security_admin` / `dba_sre` | Must | ✓ |
+| 18 | ClamAV | Security | `security_admin` / `itadmin` | Must | ✓ |
+| 19 | Kyverno (baseline + verify image signature) | Security | `security_admin` / `itadmin` | Must | ✓ |
+| 20 | Dependency-Track | Security | `security_admin` / vendor | Must | ✓ |
+| 21 | PAM/bastion ที่ licence ชัด (บริการของ GDCC/MSSP หรือ JumpServer) | Security | `security_admin` / `itadmin` | Must | ✓ |
+| 22 | dbt Core (batch job) | Analytics | `data_steward` / vendor | Must | ✓ |
+| 23 | Apache Superset | Analytics | `data_steward` / `dba_sre` | Must | ✓ |
+| 24 | OpenTelemetry Collector | Observability | `dba_sre` / `itadmin` | Must | ✓ |
+| 25 | Prometheus + Alertmanager | Observability | `dba_sre` / `itadmin` | Must | ✓ |
+| 26 | Grafana | Observability | `dba_sre` / `itadmin` | Must | ✓ |
+| 27 | Loki | Observability | `dba_sre` / `itadmin` | Must | ✓ |
+| 28 | Argo CD | Delivery | `itadmin` / `dba_sre` | Must | ✓ |
+| 29 | Git forge + CI runners (GitLab CE หรือ Forgejo) | Delivery | `itadmin` / vendor | Must | ✓ |
+| 30 | Harbor (รวม Trivy scanner) | Delivery | `itadmin` / `security_admin` | Must | ✓ |
+| 31 | Zammad (X-HELP) | Adopted | `helpdesk` / `itadmin` | Must ตั้งแต่ R1 | ✓ |
+| 32 | Moodle | Adopted | `itadmin` (หรือ instance เดิม) / vendor MA | ใช้เมื่อ มกช. ไม่มี instance เดิม | ✓ |
+| — | ~~Tempo~~ | Observability | — | **ตัด** (หัวข้อ 5.4) | ✓ (v1.0) |
+| — | ~~APISIX waiting-room plugin (Lua)~~ | Edge | — | **ตัด** → route ใน Next.js (ADR-028) | ✗ (v1.0 ไม่นับ) |
+| — | ~~PostgreSQL cluster apps~~ | Data | — | **รวม** เข้าแถว 10 | ✗ (v1.0 ไม่นับ) |
+
+**ผลลัพธ์ (ตัวเลขจริง):** v0.9 = 53 · v1.0 ประกาศ 28 / **นับจริง 35** · **v1.1 = 32** (ลดจาก v0.9 = 21 รายการ หรือ 40%) ถ้า มกช. ใช้ Moodle เดิม, PAM เป็นบริการของ GDCC/MSSP และ eduroam ใช้ RADIUS เดิมของวิทยาเขต จะเหลือ **29** — บริการ managed ที่ไม่นับแต่ต้องอยู่ในสัญญา: CDN/WAF, **cloud L4 load balancer**, **HSM 2 ไซต์** (v1.1: ไซต์ B ต้องมี HSM ของตนเอง — ผลต่อต้นทุนเป็นหมายเหตุให้เล่ม 12), SOC/SIEM 24×7, SMS/email gateway, ETDA e-Timestamping (TSA), ปลายทาง backup แบบ offline
+
+**Bus factor (A-04):** ทุกแถวมีผู้ดูแลหลักและสำรองคนละคน; KT metric ใหม่ "≥ 2 คนของ มกช. ทำ runbook วิกฤตได้เอง" สำหรับ OpenBao unseal/restore/HSM-lost, Patroni failover/PITR/etcd, Keycloak upgrade และ restore จาก backup เป็นเงื่อนไข MS-W1 ([11-operations](11-operations.md) หัวข้อ 16)
+
+**ข้อจำกัดที่ยังอยู่ (บอกตรง ๆ):** 32 component ยังมากสำหรับทีม IT มกช. 5–10 คน ถ้าไม่มี MA/MSP; สิ่งที่ลดภาระได้มากที่สุดคือใช้ **managed Kubernetes, managed object storage, HSM/KMS และ PAM ของ GDCC** ถ้ามี (ผล GDCC spike, ADR-020) ซึ่งตัดภาระ patch/upgrade ของ 4–5 แถวออกไป
 
 ### 5.4 รายการที่เลื่อน พร้อมเกณฑ์นำกลับ (บันทึกใน ADR)
 
@@ -346,6 +378,9 @@ flowchart TB
 | OpenMetadata | GD Catalog บังคับ หรือ dataset > 200 | ADR-017 |
 | Flutter app | PWA/LIFF ไม่พอสำหรับ wellness รายวัน/offline หนัก (วัดจาก adoption) | ADR-008 |
 | Velero | มี stateful workload ใน cluster ที่ไม่อยู่ใน backup ของ DB/object | [11-operations](11-operations.md) |
+| Tempo (distributed tracing store) — **ตัดใน v1.1** | incident ที่หาสาเหตุไม่ได้ด้วย log + trace id ใน Loki ≥ 2 ครั้ง/ไตรมาส **และ** มีผู้ดูแลสำรองที่ผ่าน KT | ADR-018 |
+| APISIX custom plugin (Lua) — **ตัดใน v1.1** | plugin มาตรฐานทำไม่ได้และมีผู้ดูแลภาษา Lua ≥ 2 คน | ADR-028 |
+| PostgreSQL cluster ที่ 3 (แยก apps) | Moodle/Zammad รบกวน dbt จนเกินเกณฑ์ capacity review ([11-operations](11-operations.md) หัวข้อ 11) | ADR-026 |
 
 ---
 
@@ -359,21 +394,22 @@ flowchart TB
 | Runtime | Framework | Spring Boot 3 + Spring Modulith | Apache-2.0 [ความรู้ผู้เขียน] | boundary verification + event publication registry บน JDBC ([Spring Modulith docs](https://docs.spring.io/spring-modulith/reference/1.4/events.html) [ตรวจแล้ว]) | Quarkus, Micronaut | Spring Boot major ใหม่ |
 | Runtime | Job queue | PG-backed (event publication registry + ตาราง job แบบ `FOR UPDATE SKIP LOCKED` หรือ db-scheduler) | db-scheduler: Apache-2.0 [ต้องตรวจสอบ]; ทางเลือก JobRunr OSS LGPL-3.0 [ต้องตรวจสอบ] | ไม่เพิ่ม component, transaction เดียวกับข้อมูล | Kafka, RabbitMQ | ถึงเกณฑ์ ADR-003 |
 | Workflow/rules | BPMN/DMN | Flowable 7 engine (embedded) | Apache-2.0 [ความรู้ผู้เขียน]; UI apps ถูกตัดออกตั้งแต่ v7 ([Flowable forum](https://forum.flowable.org/t/flowable-7-0-0-m1-plans-for-ui-and-content-engine/10733) [ตรวจแล้ว]) | BPMN/DMN มาตรฐาน อยู่ใน JVM | Camunda 7 CE (EOL [ต้องตรวจสอบ]), Camunda 8 (licence แยก), state machine เอง | ต้องการ CMMN จริง หรือ Flowable เปลี่ยน licence |
-| Workflow/rules | Modeler | bpmn-js / dmn-js ฝังใน ADMIN (deploy ผ่าน pipeline) | bpmn.io License (MIT-style แต่บังคับคงโลโก้ bpmn.io) **ไม่ใช่ OSI มาตรฐาน → อยู่ในทะเบียนข้อยกเว้น** [ต้องตรวจสอบ] | ไม่ต้องซื้อ Flowable Design | Flowable Design (subscription), modeler ภายนอกที่ export BPMN | ฝ่ายกฎหมายไม่รับเงื่อนไขโลโก้ |
+| Workflow/rules | Modeler | bpmn-js / dmn-js ฝังใน ADMIN (deploy ผ่าน pipeline) | bpmn.io License (MIT-style แต่บังคับคง watermark bpmn.io ให้มองเห็นเต็มที่ — review v1-review A-10 ✅ อ่าน LICENSE แล้ว) **ไม่ใช่ OSI มาตรฐาน → อยู่ในทะเบียนข้อยกเว้น; DoD ของ ADMIN ห้ามซ่อน/แก้ watermark** | ไม่ต้องซื้อ Flowable Design | Flowable Design (subscription), modeler ภายนอกที่ export BPMN | ฝ่ายกฎหมายไม่รับเงื่อนไขโลโก้ |
 | API | Style | REST + OpenAPI 3.1, AsyncAPI 3 สำหรับ event, RFC 9457 | — | มาตรฐาน, สอดคล้องแนว API ภาครัฐ | GraphQL (เฉพาะ BFF) | — |
 | Frontend | Web | React + Next.js (App Router) + TypeScript, PWA (service worker) | MIT [ความรู้ผู้เขียน] | talent pool ใหญ่, SSR สำหรับมือถือ | Vue/Nuxt | — |
 | Frontend | Design system | "TNSU DS" บน React Aria Components + Tailwind, ฟอนต์ไทยฝัง (Sarabun / IBM Plex Sans Thai) | Apache-2.0 / MIT / OFL-1.1 [ความรู้ผู้เขียน] | a11y ระดับ component | MUI | — |
 | Frontend | LINE | LINE LIFF + Messaging API | ข้อตกลงบริการของ LINE (ไม่ใช่ OSS) | ช่องทางที่ผู้ใช้ไทยเปิดจริง | — | ข้อตกลง/ราคาเปลี่ยน |
 | Frontend | Upload | Uppy + S3 multipart (presigned) | MIT [ความรู้ผู้เขียน] | resumable บน 4G ไม่ต้องมี upload server | tus (tusd) | — |
 | Identity | IdP | Keycloak 26 | Apache-2.0 [ความรู้ผู้เขียน] | OIDC/SAML, broker ThaID, passkey | Authentik, WSO2 IS | — |
-| Edge | Gateway | Apache APISIX (standalone config จาก Git) | Apache-2.0 (โครงการ ASF) [ความรู้ผู้เขียน] | plugin JWT/limit, เขียน waiting room plugin ได้ | Envoy Gateway, Kong OSS, NGINX | — |
+| Edge | Gateway | Apache APISIX (standalone config จาก Git) | Apache-2.0 (โครงการ ASF) [ความรู้ผู้เขียน] | plugin มาตรฐาน JWT/limit; **v1.1 ไม่มี custom plugin** (waiting room อยู่ใน Next.js, ADR-028) | Envoy Gateway, Kong OSS, NGINX | — |
 | Edge | WAF/CDN | บริการของผู้ให้บริการ (GDCC/CSP ในไทย) | บริการ | ไม่ต้องดูแล rule set เอง | Coraza (Apache-2.0) ใน APISIX [ต้องตรวจสอบ] | ผู้ให้บริการไม่มี WAF |
-| Data | OLTP | PostgreSQL 16 + Patroni | PostgreSQL License ([postgresql.org](https://www.postgresql.org/about/licence/) [ตรวจแล้ว]); Patroni MIT [ความรู้ผู้เขียน] | ACID, RLS, ICU collation ไทย, logical replication column list | Oracle, managed DB ของ CSP | PG major ใหม่ทุก 2 ปี |
-| Data | Pooler | PgBouncer (transaction mode) | ISC [ความรู้ผู้เขียน] | connection ต่ำ, ต้องใช้ `SET LOCAL` (ADR-005) | PgCat, Odyssey | — |
+| Data | OLTP | PostgreSQL 16 + Patroni (2 cluster: core, analytics+apps) | PostgreSQL License ([postgresql.org](https://www.postgresql.org/about/licence/) [ตรวจแล้ว]); Patroni MIT [ความรู้ผู้เขียน] | ACID, RLS, ICU collation ไทย, physical streaming replica, view `security_invoker` (PG15+) | Oracle, managed DB ของ CSP | PG major ใหม่ทุก 2 ปี |
+| Data | DCS ของ Patroni | **etcd 3.5** (3 members ต่อไซต์, ADR-026) | Apache-2.0 (CNCF) [ความรู้ผู้เขียน] | ไม่ผูก HA ของ DB กับ control plane ของ Kubernetes | Consul (BSL ตั้งแต่ 1.17 → ห้าม [ความรู้ผู้เขียน]), Kubernetes API เป็น DCS | — |
+| Data | Pooler | PgBouncer ≥ 1.21 (transaction mode) **แบบ sidecar ใน pod ของ core** (ADR-027) | ISC [ความรู้ผู้เขียน] | connection ต่ำ; `max_prepared_statements` รองรับ prepared statement ของ JDBC; ไม่เป็น tier อนุกรมแยก | PgCat, Odyssey, PgBouncer แบบ deployment แยก ≥ 2 instance | — |
 | Data | Backup | pgBackRest | MIT [ความรู้ผู้เขียน] | PITR, S3, encryption, parallel restore | Barman (GPL-3.0) | — |
 | Data | Cache/token | **Valkey** | BSD-3-Clause ([elest.io](https://blog.elest.io/valkey-vs-redis-vs-keydb-which-in-memory-store-after-the-license-change/), [InfoQ](https://www.infoq.com/news/2025/05/redis-agpl-license) [ตรวจแล้ว]) | fork ของ Redis 7.2.4 ภายใต้ Linux Foundation | Redis 8 (เลือกได้ AGPLv3/RSAL/SSPL [ตรวจแล้ว]) | — |
 | Data | Object | S3 ของผู้ให้บริการ; สำรอง Ceph RGW หรือ SeaweedFS | Ceph LGPL-2.1/3.0 [ความรู้ผู้เขียน]; SeaweedFS Apache-2.0 [ต้องตรวจสอบ]; Garage AGPL-3.0 ([SUSE](https://packagehub.suse.com/packages/garage/) [ตรวจแล้ว]) | ต้องการ Object Lock **compliance mode** | MinIO: upstream archived 25 เม.ย. 2569, หยุดแจก binary ต.ค. 2568 ([GitHub](https://github.com/minio/minio), [itsfoss](https://itsfoss.com/news/minio-moves-away-from-open-source/) [ตรวจแล้ว]) → ไม่ใช้ | ผู้ให้บริการไม่มี Object Lock |
-| Security | Secrets/keys | **OpenBao** + HSM (PKCS#11) | MPL-2.0 ([desdelinux](https://blog.desdelinux.net/en/openbao-an-open-source-fork-of-hashicorp/) [ตรวจแล้ว, แหล่งรอง]) | fork ของ Vault 1.14 ที่ยังเป็น open source; Vault เป็น BSL 1.1 ([The Register](https://www.theregister.com/2023/12/08/hashicorp_openbao_fork/)) | Vault Enterprise (มีค่าใช้จ่าย), Cloud KMS ในไทย | ฟีเจอร์ auto-unseal/PKCS#11 ที่ต้องใช้ไม่มีใน OpenBao [ต้องตรวจสอบ] |
+| Security | Secrets/keys | **OpenBao ≥ 2.2** + HSM (PKCS#11 auto-unseal) ทั้ง 2 ไซต์ | MPL-2.0 ([desdelinux](https://blog.desdelinux.net/en/openbao-an-open-source-fork-of-hashicorp/) [ตรวจแล้ว, แหล่งรอง]) | fork ของ Vault 1.14 ที่ยังเป็น open source; Vault เป็น BSL 1.1 ([The Register](https://www.theregister.com/2023/12/08/hashicorp_openbao_fork/)); **PKCS#11 seal มีตั้งแต่ 2.2 และต้องใช้ build ที่เปิด HSM (cgo); ตั้งแต่ 2.7 seal เป็น external plugin** (review v1-review A-11 ✅ จาก release notes/เอกสาร OpenBao) → จัดหา build/plugin พร้อม checksum + SBOM; **OSS ไม่มี cross-cluster DR replication** 🟡 จึงกู้ไซต์ B จาก snapshot (หัวข้อ 12) | Vault Enterprise (มีค่าใช้จ่าย), Cloud KMS ในไทย | build HSM ของเวอร์ชันที่ใช้ไม่ผ่าน bake-off P0 |
 | Security | Antivirus | ClamAV (clamd) | GPL-2.0 [ความรู้ผู้เขียน] | สแกนไฟล์อัปโหลดก่อนปล่อย | บริการสแกนของผู้ให้บริการ | — |
 | Security | Policy | Kyverno | Apache-2.0 [ความรู้ผู้เขียน] | baseline pod security + verify cosign | OPA Gatekeeper | — |
 | Security | SBOM/SCA | Dependency-Track + Trivy (ใน Harbor/CI) + cosign | Apache-2.0 [ความรู้ผู้เขียน] | SBOM CycloneDX เป็น acceptance gate | Grype | — |
@@ -386,12 +422,14 @@ flowchart TB
 | Analytics | BI | Apache Superset | Apache-2.0 (ASF) [ความรู้ผู้เขียน] | RLS filter, embed, ไทยได้ | Metabase (AGPL) | — |
 | Observability | Telemetry | OpenTelemetry SDK/Collector | Apache-2.0 [ความรู้ผู้เขียน] | มาตรฐานเปิด | — | — |
 | Observability | Metrics | Prometheus + Alertmanager | Apache-2.0 [ความรู้ผู้เขียน] | SLO burn-rate | VictoriaMetrics | ข้อมูล > 13 เดือน |
-| Observability | Dashboard/logs/traces | Grafana, Loki, Tempo | **AGPL-3.0** ([Grafana Labs](https://grafana.com/blog/2021/04/20/grafana-loki-tempo-relicensing-to-agplv3) [ตรวจแล้ว]) — ใช้ภายในโดยไม่แก้ไข ต้องผ่าน legal review | ทีมรู้จักแพร่หลาย | OpenSearch Dashboards, Jaeger (Apache-2.0) | legal ไม่รับ AGPL |
+| Observability | Dashboard/logs | Grafana, Loki (**Tempo ตัดใน v1.1**) | **AGPL-3.0** ([Grafana Labs](https://grafana.com/blog/2021/04/20/grafana-loki-tempo-relicensing-to-agplv3) [ตรวจแล้ว]) — ใช้ภายในโดยไม่แก้ไข ต้องผ่าน legal review; **ห้าม fork/แก้ source** (ถ้าแก้แล้วเปิดให้ผู้ใช้นอกทีมผ่านเครือข่าย เช่น dashboard ให้วิทยาเขต ต้องเสนอ source ส่วนที่แก้ตาม AGPL §13) — อยู่ใน DoD | ทีมรู้จักแพร่หลาย | OpenSearch Dashboards, Jaeger (Apache-2.0) | legal ไม่รับ AGPL |
 | Observability | RUM | Grafana Faro Web SDK / OTel web | Apache-2.0 [ต้องตรวจสอบ] | เห็นปัญหาผู้ใช้ต่างจังหวัด | — | — |
 | Delivery | IaC | **OpenTofu** | MPL-2.0, โครงการ CNCF ([The New Stack](https://thenewstack.io/opentofu-joins-cncf-new-home-for-open-source-iac-project/) [ตรวจแล้ว]) | Terraform เป็น BSL 1.1 | Pulumi, Ansible | — |
 | Delivery | GitOps | Argo CD | Apache-2.0 [ความรู้ผู้เขียน] | declarative, audit ผ่าน Git | Flux | — |
 | Delivery | Git + CI | GitLab CE หรือ Forgejo + runners ในไทย | GitLab CE: MIT [ความรู้ผู้เขียน]; Forgejo: GPL-3.0+ [ความรู้ผู้เขียน] | source อยู่ในประเทศ, repo ของ มกช. | GitHub + self-hosted runner | — |
 | Delivery | Registry | Harbor | Apache-2.0 (CNCF) [ความรู้ผู้เขียน] | สแกน + replication + signature | registry ของผู้ให้บริการ | — |
+| Platform | Certificates | cert-manager | Apache-2.0 (CNCF) [ความรู้ผู้เขียน] | ออก/หมุนใบรับรองภายในอัตโนมัติ | ใบรับรองจาก OpenBao PKI ด้วยมือ | — |
+| Identity | RADIUS (eduroam) | FreeRADIUS (ถ้าวิทยาเขตไม่มีของเดิม) | GPL-2.0 [ความรู้ผู้เขียน] — รันแยก ไม่ link | IdP ของ eduroam ผ่าน UniNet (09 I-46) | RADIUS เดิมของวิทยาเขต | ไม่เป็นสมาชิก eduroam (Q-68) |
 | Testing | Load | k6 | **AGPL-3.0** ([pkg.go.dev](https://pkg.go.dev/go.k6.io/k6) [ตรวจแล้ว]) — ใช้เป็นเครื่องมือภายใน ไม่แจกจ่าย | script JS, scenario ซับซ้อน | Gatling (Apache-2.0) | legal ไม่รับ AGPL |
 | Testing | อื่น | JUnit 5, Testcontainers, ArchUnit, Pact, Playwright, axe-core, PIT, ZAP, Semgrep CE, gitleaks | Apache-2.0 / MIT / EPL / LGPL-2.1 [ความรู้ผู้เขียน] | — | — | — |
 | Adopted | LMS | Moodle 4.x (LTI 1.3) | GPL-3.0 [ความรู้ผู้เขียน] | มาตรฐานในไทย | Open edX | — |
@@ -410,7 +448,7 @@ flowchart TB
 |---|---|---|
 | **อนุญาต** | Apache-2.0, MIT, BSD-2/3-Clause, ISC, PostgreSQL, MPL-2.0, EPL-2.0, LGPL-2.1/3.0 (dynamic linking), Unicode/ICU, OFL-1.1 (ฟอนต์), CC-BY-4.0 (เนื้อหา) | ใช้ได้ทุกที่ |
 | **อนุญาตแบบมีเงื่อนไข** | GPL-2.0/3.0 | เฉพาะโปรแกรมที่รันแยก (ClamAV, Moodle, JumpServer) ไม่ link กับโค้ดของ มกช. |
-| | AGPL-3.0 | ใช้ภายในโดย **ไม่แก้ไข** (Grafana, Loki, Tempo, k6, Zammad) ต้องผ่าน legal review ก่อน TOR; ถ้าแก้ไขต้องพร้อมเปิด source ส่วนที่แก้ตามเงื่อนไข network use; ห้ามใช้ใน core |
+| | AGPL-3.0 | ใช้ภายในโดย **ไม่แก้ไข** (Grafana, Loki, k6, Zammad) ต้องผ่าน legal review ก่อน TOR; **ห้าม fork** — ถ้าแก้ไขแล้วให้ผู้ใช้นอกทีมใช้ผ่านเครือข่ายต้องเสนอ source ส่วนที่แก้ (AGPL §13); ห้ามใช้ใน core; อยู่ใน DoD ของทุก release |
 | | Licence เฉพาะ (bpmn.io) | อยู่ในทะเบียนข้อยกเว้น ต้องมีความเห็นฝ่ายกฎหมาย |
 | **ห้ามใน core และ runtime** | BSL/BUSL, SSPL, RSAL, Elastic License v2, Commons Clause, "Community Edition" ที่จำกัดจำนวนพนักงาน/รายได้ (เช่น Teleport CE v16+), licence ที่เปลี่ยนเป็น proprietary ได้ฝ่ายเดียวโดยไม่มี fork ที่เป็น OSI | ถ้าจำเป็นจริงต้องซื้อ subscription เชิงพาณิชย์และระบุงบในเล่ม 12 |
 
@@ -423,9 +461,9 @@ flowchart TB
 
 ---
 
-## 8. Architecture Decision Records (ADR-001..025)
+## 8. Architecture Decision Records (ADR-001..031)
 
-> รูปแบบ: บริบท → การตัดสินใจ → ทางเลือกที่พิจารณา → ผลที่ตามมา → **ทบทวนเมื่อ** · สถานะทุกข้อ: **Accepted (รอยืนยันใน P0 Discovery)** · ADR ชุดนี้เขียนใหม่ทั้งหมดและแทน ADR-001..019 ของ v0.9
+> รูปแบบ: บริบท → การตัดสินใจ → ทางเลือกที่พิจารณา → ผลที่ตามมา → **ทบทวนเมื่อ** · สถานะทุกข้อ: **Accepted (รอยืนยันใน P0 Discovery)** · ADR ชุดนี้เขียนใหม่ทั้งหมดและแทน ADR-001..019 ของ v0.9 · **v1.1:** ADR ที่แก้มีป้าย "(แก้ v1.1)" และ ADR-026..031 เป็นข้อใหม่ (ท้ายหัวข้อนี้)
 
 ### ADR-001: Build แกนวงจรชีวิตนักศึกษา + Adopt open source สำหรับงานทั่วไป + Integrate ระบบรัฐ
 
@@ -451,34 +489,44 @@ flowchart TB
 - **ผล:** + ไม่มี dual-write, backup/DR ชุดเดียวกับ DB − throughput จำกัดโดย PG (พอสำหรับ < 500 event/s), ไม่มี replay ระยะยาวสำหรับ consumer ภายนอก
 - **ทบทวนเมื่อ:** ถึงเกณฑ์ในหัวข้อ 5.4 (event > 500/s ต่อเนื่อง, consumer ภายนอก ≥ 5, outbox lag p95 > 30 s)
 
-### ADR-004: Registration engine = synchronous PostgreSQL transaction หลัง virtual waiting room
+### ADR-004: Registration engine = synchronous PostgreSQL transaction หลัง virtual waiting room (แก้ v1.1)
 
 - **บริบท:** v0.9 ใช้ Redis DECR → Kafka → worker ทำให้เกิด seat leak/oversell และต้องพึ่ง reconcile job (review Top-4); ภาระที่คำนวณใหม่คือ 60 cmd/s burst (หัวข้อ 10.3)
 - **การตัดสินใจ:**
-  1. **Waiting room ที่ gateway:** plugin ของ APISIX เก็บคิวและ admission token ใน Valkey, หน้าคิวเป็น static บน CDN; **pre-queue randomisation** (ผู้ที่เข้ามาก่อนเวลาเปิดได้ลำดับสุ่ม เปิดเผยกติกา); ปล่อยตามอัตราที่ปรับได้อัตโนมัติจาก p95 latency และ error rate; token เป็น JWT อายุ 20 นาที ผูกกับ `sub` (กันการขาย/แชร์คิว) ใช้ได้ 1 session
+  1. **Waiting room (v1.1 ย้ายจาก APISIX plugin ไป Next.js ตาม ADR-028):** route `/queue` ของ Next.js เก็บลำดับคิวใน Valkey และออก admission JWT ที่ลงนามด้วยกุญแจ K5 ส่วน APISIX ตรวจลายเซ็นด้วย plugin มาตรฐาน, หน้าคิวเป็น static บน CDN; **pre-queue randomisation** (ผู้ที่เข้ามาก่อนเวลาเปิดได้ลำดับสุ่ม เปิดเผยกติกา); ปล่อยตามอัตราที่ปรับได้อัตโนมัติจาก p95 latency และ error rate; token เป็น JWT อายุ 20 นาที ผูกกับ `sub` (กันการขาย/แชร์คิว) ใช้ได้ 1 session
   2. **Command แบบ synchronous:** `POST /api/v1/registrations` ทำงานในธุรกรรมเดียว: ตรวจ eligibility จาก `EligibilitySnapshot` (คำนวณ T-24h, invalidate ด้วย event) → `UPDATE seat_pool SET taken = taken + 1 WHERE id = ? AND taken < capacity` เรียงตาม `section_id` เพื่อกัน deadlock → INSERT enrollment (unique `(student_id, term_id, course_id)`) → outbox → COMMIT แล้วตอบผลสุดท้ายทันที (201 หรือ 409 พร้อมกลุ่มที่เต็มและทางเลือก) **ไม่มี command status polling**
   3. Valkey ใช้เป็น **read cache** ของที่นั่งคงเหลือ (TTL 2 s) เท่านั้น ไม่ใช่ source of truth
   4. **Staggered window ราย OrgUnit/ชั้นปีเป็นค่าเริ่มต้นทางนโยบาย** ตั้งใน ORG (ปฏิทิน) ไม่ใช่ option
   5. กันบอท: quota ต่อผู้ใช้ (≤ 10 command/นาที), token ผูกอุปกรณ์/session, ไม่ใช้ CAPTCHA ที่ขัด a11y
   6. **Fallback:** ถ้า load test ที่ 300 cmd/s ไม่ผ่าน ให้เพิ่ม queue (PG job queue) หน้า transaction เดิม โดยไม่เปลี่ยน invariant ของ DB
+  7. **(v1.1) Hot row:** lock ของแถว `seat_pool` ค้างจนถึง COMMIT ซึ่งรอ synchronous standby (RTT + fsync) จึงอาจ 15–25 ms ไม่ใช่ 5 ms (ตารางความไวในหัวข้อ 10.3) → (ก) ทำ UPDATE seat **เป็นขั้นสุดท้ายก่อน COMMIT** (INSERT enrollment/outbox/audit ทำก่อน) (ข) เตรียม **seat-pool bucketing** (แบ่งที่นั่งกลุ่มยอดนิยมเป็น 4 bucket, เลือก bucket แบบสุ่ม, รวมเมื่อ bucket หมด) ไว้ตั้งแต่ R2 แต่เปิดด้วย flag (ค) วัด lock hold จริงใน spike P0; **ไม่ลด** `synchronous_commit` ของ schema `reg` เพราะเสี่ยงยืนยันผลแล้วหายเมื่อ failover
+  8. **(v1.1) กัน seat hoarding/ส่งต่อที่นั่ง:** ที่นั่งที่ถอนระหว่าง window **เข้า waitlist อัตโนมัติ** (offer ตามลำดับ) ไม่คืน pool ทันที, การถอนแล้วลงกลุ่มเดิมซ้ำมี cool-down, UEBA rule "ถอน–ลงคู่กันระหว่างสองบัญชี" ([11-operations](11-operations.md) หัวข้อ 10.3)
+  9. **(v1.1) ผลที่ไม่แน่ใจเมื่อสัญญาณหลุด (UX):** ทุก command มี `Idempotency-Key` ที่ client สร้างก่อนส่ง; หน้า **"ผลการลงทะเบียนล่าสุด"** ดึงผลด้วย key เดิมได้ซ้ำ (ไม่ส่งคำสั่งใหม่), ปุ่มยืนยันถูกปิดจนกว่าจะรู้ผล, ใบยืนยันส่งทาง in-app/LINE (หัวข้อเท่านั้น)
 - **ทางเลือก:** async queue engine (ซับซ้อน, UX ต้อง polling), Queue-it SaaS (ข้อมูลออกนอกประเทศ; เป็นแผนสำรองถ้า self-hosted ไม่ผ่าน)
 - **ผล:** + ไม่มี oversell โดยโครงสร้าง (constraint ใน DB), ผู้ใช้รู้ผลทันที, ตัด reconcile job − hot row ของกลุ่มเรียนยอดนิยม (คำนวณในหัวข้อ 10.3 ว่ารับได้), ต้องคุมความยาว transaction
 - **ทบทวนเมื่อ:** load test 300 cmd/s ไม่ผ่าน p95 ≤ 1 s หรือ lock wait p95 > 200 ms
 
-### ADR-005: Multi-campus = OrgUnit + Row-Level Security (implementation contract)
+### ADR-005: Multi-campus = OrgUnit + Row-Level Security (implementation contract) (แก้ v1.1)
 
 - **บริบท:** 17 วิทยาเขต + โรงเรียนกีฬา ที่มีงานทะเบียน ค่าธรรมเนียม ผู้ลงนามของตน (blueprint ข้อ 2.3) แต่ต้องรายงานรวม; review Top-10 ชี้ช่องโหว่ RLS ทางเทคนิค
 - **การตัดสินใจ (สัญญาการ implement ที่ตรวจใน CI):**
   1. ทุกตารางธุรกรรมมี `org_unit_id NOT NULL` (denormalised แม้ตารางลูก เช่น enrollment, grade, invoice, payment, consent, guardian_relation) และ index นำด้วย `org_unit_id`
-  2. `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + **`FORCE ROW LEVEL SECURITY`**; policy `USING (org_unit_id = ANY (current_setting('app.org_scope')::uuid[]))` และ `WITH CHECK` เดียวกัน
+  2. `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + **`FORCE ROW LEVEL SECURITY`**; policy (v1.1) `USING (org_unit_id = ANY ((SELECT sec.org_scope())))` และ `WITH CHECK` เดียวกัน — ใช้ subquery เพื่อให้ฟังก์ชันถูกประเมินครั้งเดียวต่อ statement (InitPlan) และ index นำด้วย `org_unit_id` ใช้งานได้; ส่วนการมองเห็นผ่านความสัมพันธ์ (advisor-of, coach-of ฯลฯ) แยกเป็น **policy ที่สองแบบ permissive** ที่ใช้ `EXISTS` บนตาราง relationship ที่มี index `(person_id, target_id)` แทนการเรียก `rel_visible()` ต่อแถว (review v1-review A-08)
   3. app role **ไม่เป็น owner** ของตาราง และ **ไม่มี `BYPASSRLS`**; migration ใช้ role แยก
-  4. PgBouncer ใช้ **transaction pooling** ดังนั้น scope ต้องตั้งด้วย **`SET LOCAL` / `set_config('app.org_scope', $1, true)`** ที่ต้นทุก transaction (hook ใน transaction manager ของ Spring) ห้าม `SET` ระดับ session; ถ้าไม่ได้ตั้ง `current_setting(..., true)` จะคืนค่าว่างและ policy ไม่คืนแถวใด (fail-closed)
+  4. **(v1.1, D-09) Scope ตั้งผ่าน `SECURITY DEFINER` function ที่ตรวจ claim ไม่ใช่ `set_config` จาก app role:** ใน v1.0 app role เรียก `set_config('app.org_scope', …)` เอง ผู้โจมตีที่ฉีด SQL ได้จึงขยาย scope ได้ ทำให้ RLS ไม่เป็นชั้นป้องกันอิสระ (review v1-review Top-5/S-02) กลไกใหม่:
+     - core สร้าง **scope token** ต่อ transaction = `{sub, roles, org_scope[], purpose, txid, exp}` + HMAC-SHA256 ด้วย **scope-signing key** (ดึงจาก OpenBao KV ตอนเริ่ม pod, หมุนรายวัน, มี key version); token สร้างจาก JWT ที่ตรวจแล้ว + `RoleAssignment` ที่มีผล (เล่ม 04)
+     - ต้นทุก transaction (hook ใน transaction manager ของ Spring) เรียก `SELECT sec.begin_scope($token)` ซึ่งเป็น `SECURITY DEFINER` (owner = role `sec_owner` แบบ NOLOGIN) ที่ (ก) ตรวจ HMAC ด้วย verification key ในตาราง `sec.scope_key` ที่ **app role อ่านไม่ได้** (ข) ตรวจ `txid = txid_current()` และ `exp` (กัน replay ข้าม transaction) (ค) ตรวจซ้ำว่า `org_scope` ⊆ scope จาก `iam.role_assignment` ที่มีผลของ `sub` (defence-in-depth แม้ key รั่ว) แล้วเก็บ token ไว้ใน GUC ระดับ transaction
+     - `sec.org_scope()` (`SECURITY DEFINER`, `STABLE`) อ่าน token จาก GUC แล้ว **ตรวจ HMAC + txid ซ้ำทุกครั้ง** ก่อนคืน array — ถ้า SQL injection เรียก `set_config` ใส่ค่าอื่น ลายเซ็นไม่ผ่านและคืนค่าว่าง → 0 แถว (fail-closed)
+     - PgBouncer ใช้ transaction pooling ได้ตามเดิม เพราะทุกอย่างเป็นระดับ transaction; ห้าม `SET` ระดับ session; ถ้าไม่ได้เรียก `begin_scope` policy คืน 0 แถว
+     - กันทางลัด: ห้าม dynamic SQL ใน repository (Semgrep/ArchUnit rule), ใช้ bind parameter เท่านั้น, app role ไม่มีสิทธิ์ `CREATE` ใน schema ใด และไม่มีสิทธิ์บน schema `sec`
+     - **PgBouncer + JDBC (A-07):** PgBouncer ≥ 1.21 ตั้ง `max_prepared_statements` (หรือ JDBC `prepareThreshold=0`), ArchUnit rule บังคับให้ repository ทุกตัวถูกเรียกภายใน `@Transactional` (query นอก transaction จะไม่มี scope และคืน 0 แถว ซึ่ง fail-closed แต่เป็น bug ที่หายาก)
   5. scope มาจาก JWT claim + RoleAssignment ที่มีวันเริ่ม/สิ้นสุด (เล่ม 04); งาน batch ข้าม OrgUnit ใช้ role เฉพาะที่ audit ทุกครั้ง
   6. **Tenancy rules** (ownership vs visibility) ตามหัวข้อ 11.9: ข้อมูลมี `owning_org` (ผู้รับผิดชอบทางทะเบียน) และอาจมี `serving_org` (ผู้ให้บริการ เช่น กลุ่มเรียนข้ามวิทยาเขต); PERSON เป็นข้อมูล shared ที่มองเห็นผ่าน relationship
-  7. **นอก OLTP:** logical replica และ mart ใน analytics มี `org_unit_id` และ RLS/role ต่อ OrgUnit; Superset ใช้ RLS filter ผูกกับกลุ่มใน Keycloak; **SQL Lab ปิด** สำหรับผู้ใช้ทั่วไป เปิดเฉพาะ data team ผ่าน JIT (ADR-017)
-  8. **Test:** RLS cross-tenant suite รันทุก PR: ทุก repository ถูกเรียกด้วย scope ผิดแล้วต้องได้ 0 แถว/ถูกปฏิเสธ, fuzz scope แบบสุ่ม, ทดสอบผ่าน PgBouncer จริง (Testcontainers) เพื่อจับ scope รั่วข้าม transaction
-- **ทางเลือก:** DB ต่อวิทยาเขต (ops ×30, รายงานรวมยาก), schema ต่อวิทยาเขต, กรองในแอปอย่างเดียว
-- **ผล:** + defence-in-depth, ย้ายวิทยาเขตได้ − ต้องคุม performance ของ policy และ test เข้ม
+  7. **นอก OLTP (v1.1, D-09):** ELT อ่านจาก **physical replica** ผ่าน view แบบ **`security_invoker = true`** (RLS ของ base table ทำงานในนามผู้เรียก) ด้วย service identity ที่ได้ scope token ระดับมหาวิทยาลัย — **ไม่มี role ใดมี `BYPASSRLS`** และไม่ใช้ logical replication เข้าตารางที่เปิด RLS (เพราะ subscription owner ต้อง bypass RLS); mart ใน analytics มี `org_unit_id` + RLS; Superset ใช้ RLS filter ของ Superset ผูกกับกลุ่มใน Keycloak (ไม่พึ่ง DB impersonation) และ CI ตรวจว่า dataset ทุกตัวมี filter; **SQL Lab ปิด** สำหรับผู้ใช้ทั่วไป เปิดเฉพาะ data team ผ่าน JIT (ADR-017)
+  8. **Test:** RLS cross-tenant suite รันทุก PR: ทุก repository ถูกเรียกด้วย scope ผิดแล้วต้องได้ 0 แถว/ถูกปฏิเสธ, fuzz scope แบบสุ่ม, ทดสอบผ่าน PgBouncer จริง (Testcontainers) เพื่อจับ scope รั่วข้าม transaction; **(v1.1)** test ว่า `set_config('app.ctx', <ค่าปลอม/ค่าจาก transaction อื่น>)` จาก app role ได้ 0 แถว, token หมดอายุ/ผิด txid ถูกปฏิเสธ, view ทุกตัวใน schema ที่ ELT ใช้มี `security_invoker = true` (lint `pg_class.reloptions`), และไม่มี role ที่มี `BYPASSRLS` นอกจาก superuser ที่ใช้ผ่าน break-glass
+  9. **(v1.1) Performance:** วัด p95 ของ query รายงาน/รายการใหญ่ที่มีและไม่มี policy ใน load test (เกณฑ์ทบทวน +20% เดิม); การตรวจ HMAC ต่อ statement คาดว่าเป็นระดับไมโครวินาที **[ต้องยืนยันใน spike P0]**
+- **ทางเลือก:** DB ต่อวิทยาเขต (ops ×30, รายงานรวมยาก), schema ต่อวิทยาเขต, กรองในแอปอย่างเดียว; (v1.1) `SET ROLE` ต่อ OrgUnit (role ระเบิดตามจำนวน OrgUnit × บทบาท), ตรวจ JWT RS256 ใน DB โดยตรง (ต้องใช้ extension เพิ่ม)
+- **ผล:** + defence-in-depth ที่เป็นอิสระจากแอปจริง (SQLi ไม่ขยาย scope), ย้ายวิทยาเขตได้ − ต้องคุม performance ของ policy, หมุน scope-signing key และ test เข้ม; scope-signing key เป็นความลับใหม่ที่ต้องอยู่ใน threat model (หัวข้อ 13)
 - **ทบทวนเมื่อ:** นักศึกษา > 50,000 หรือ policy ทำให้ p95 query เพิ่ม > 20%
 
 ### ADR-006: กฎวิชาการเป็น PolicySet แบบมีเวอร์ชันต่อรุ่น (DMN)
@@ -507,41 +555,57 @@ flowchart TB
 ### ADR-009: Identity = Keycloak realm เดียว + ThaID + LDAP + passkey/step-up
 
 - **การตัดสินใจ:** realm `tnsu` เดียว, organization/group ต่อ OrgUnit; IdP broker: ThaID (ผู้สมัคร นักศึกษา ผู้ปกครอง), LDAP/AD รายวิทยาเขต (บุคลากร); **MFA บังคับบุคลากรทุกคน**, passkey/WebAuthn สำหรับ admin และบทบาท sensitive; **นักศึกษาและผู้ปกครอง:** passkey หรือ OTP เป็น **step-up** สำหรับ action เสี่ยง (ถอนรายวิชา, ขอคืนเงิน, เปลี่ยนบัญชีรับเงิน/อีเมล/เบอร์); แจ้งเตือนทุกช่องทางเมื่อ credential เปลี่ยน; ไม่เก็บเลขบัตรประชาชนแบบ plain ใน Keycloak (เก็บ HMAC ด้วยกุญแจเฉพาะ context ของ IAM, ADR-012); access token 5 นาที; session เจ้าหน้าที่ re-auth ทุก 8 ชม. และ step-up เมื่อ export; ช่วง window ลงทะเบียน refresh token ต้องครอบคลุม window เพื่อตัด Keycloak ออกจาก critical path (หัวข้อ 10.5)
+- **(v1.1) เครื่องใช้ร่วม (เคาน์เตอร์, ห้องพักครู):** fast user switching ด้วย passkey บนมือถือ/บัตร (FIDO2) + session สั้นและ auto-lock 5 นาทีที่หน้าจอ back-office บนเครื่องที่ลงทะเบียนเป็น shared device, ห้าม shared account (ตรวจด้วย UEBA "หลาย session จากเครื่องเดียวสลับบัญชีผิดปกติ") เพื่อไม่ให้ MFA ทำให้เกิดการแชร์รหัสผ่าน (review v1-review UXR-41)
 - **ทางเลือก:** realm ต่อวิทยาเขต, IdP SaaS ต่างประเทศ
 - **ผล:** + SSO ทั้งระบบ, Moodle, eduroam − Keycloak สำคัญต่อ login (HA 3 nodes) แต่ไม่อยู่ใน path ของ request ทั่วไป
 - **ทบทวนเมื่อ:** ThaID เปลี่ยนเงื่อนไข RP หรือมี national federation
 
-### ADR-010: Thai PDF/document engine + PDF/A + PAdES + ระดับลายมือชื่อต่อประเภทเอกสาร
+### ADR-010: Thai PDF/document engine + PDF/A + PAdES + ระดับลายมือชื่อต่อประเภทเอกสาร (แก้ v1.1)
 
 - **บริบท:** ปพ. (โรงเรียนกีฬา), transcript, ใบรับรอง, ใบเสร็จ, คำสั่ง/ประกาศ เป็น deliverable ที่ผู้ใช้เห็นมากที่สุด ภาษาไทยมีสระบน/ล่างและวรรณยุกต์ซ้อนที่ต้อง shaping ถูกต้อง และตัดบรรทัดตามคำ (ไม่มีช่องว่างระหว่างคำ) (review Top-8)
 - **การตัดสินใจ:**
   1. **Template** = HTML/CSS (Thymeleaf/Handlebars ฝั่ง core เติมข้อมูล) เก็บใน template registry ที่มีเวอร์ชันราย OrgUnit/ParentAgency พร้อม maker-checker
-  2. **Renderer** = service แยก (ไม่มีกุญแจ) ใช้ engine ที่ทำ shaping ด้วย **HarfBuzz**: ตัวเลือกหลัก WeasyPrint (Pango + HarfBuzz) ทางเลือก Chromium headless; **ตัดคำไทยทำฝั่ง core ด้วย ICU4J BreakIterator แล้วแทรก zero-width space (U+200B) ก่อนส่งเข้า renderer** เพื่อไม่พึ่งการตัดคำของ engine; ฟอนต์ไทยฝังทั้งหมด (OFL)
+  2. **Renderer** = service แยก (ไม่มีกุญแจ) ใช้ engine ที่ทำ shaping ด้วย **HarfBuzz**: ตัวเลือกหลัก WeasyPrint (Pango + HarfBuzz) ทางเลือก Chromium headless; **ตัดคำไทยทำฝั่ง core ด้วย ICU4J BreakIterator แล้วแทรก zero-width space (U+200B) ก่อนส่งเข้า renderer** เพื่อไม่พึ่งการตัดคำของ engine; ฟอนต์ไทยฝังทั้งหมด (OFL); **(v1.1, A-09)** ZWSP ใส่**เฉพาะชั้น render** ไม่ใส่ในข้อมูล, XML ขมธอ. 25 หรือ text layer ที่ใช้ค้น (ใช้ ActualText/ลบ ZWSP ใน text layer ถ้า engine รองรับ **[ต้องตรวจสอบใน bake-off]**), golden test รวม **text extraction** (copy/คัดข้อความต้องไม่มี U+200B) และ pin เวอร์ชัน Pango/HarfBuzz/ฟอนต์ใน image เพราะ Pango มีประวัติ regression การตัดบรรทัดไทย
   3. **ผลลัพธ์:** PDF/A-3b (transcript แนบ XML ตาม ขมธอ. 25-2563 ภายใน), PDF/A-2b สำหรับเอกสารอื่น; เอกสารสาธารณะต้องผ่าน PDF/UA; ตรวจด้วย veraPDF ใน CI และสุ่มใน production
-  4. **ลงนาม** = EU DSS ใน core ผ่าน PKCS#11 ไปยัง HSM: **PAdES-B-LTA** (มี timestamp จาก TSA ที่เชื่อถือได้ + ข้อมูล revocation) สำหรับเอกสารเก็บถาวร; job **re-timestamp** ก่อนใบรับรอง/อัลกอริทึมหมดอายุ; ทะเบียน algorithm sunset
-  5. **ระดับลายมือชื่อต่อประเภทเอกสาร** (รายละเอียดและฐานกฎหมายอยู่ในเล่ม 10): approval ภายใน = ลายมือชื่ออิเล็กทรอนิกส์ทั่วไป + audit; ใบเสร็จ/คำสั่ง/ประกาศ = ลายมือชื่อที่เชื่อถือได้ (org seal); transcript/ปริญญา = ใบรับรองจาก CA ภายใต้ Thailand NRCA + TSA; ใครเป็นผู้ถือใบรับรอง (นิติบุคคล มกช. หรือรายบุคคล) เป็นคำถามเปิดในเล่ม 13
+  4. **ลงนาม (v1.1: เส้นทางเดียว)** = EU DSS ใน core → **PKCS#11 → HSM โดยตรง** (OpenBao **ไม่อยู่ใน path** ของการลงนาม; แก้ความไม่ตรงกันระหว่าง 07/08/10 ตาม review v1-review Top-9) มี HSM ทั้งไซต์ A และ B ที่ถือกุญแจลงนามชุดเดียวกัน (clone/backup ด้วยกลไกของผู้ผลิต HSM) เพื่อให้ออกเอกสารได้หลัง DR; **PAdES-B-LTA** เฉพาะเอกสารเก็บถาวรจริง (transcript, ปริญญา, คำสั่ง/ประกาศถาวร) ส่วนเอกสารอายุสั้นใช้ B-LT ตาม policy matrix ของเล่ม 10; job **re-timestamp** ก่อนใบรับรอง/อัลกอริทึมหมดอายุ; ทะเบียน algorithm sunset
+  5. **ระดับลายมือชื่อต่อประเภทเอกสาร** (ตาราง policy และฐานกฎหมายเป็นของเล่ม 10 §7.2) — **หลักของ v1.1 (D-09):** เอกสารที่ออก**จำนวนมากแบบ batch** (transcript หลังสภาอนุมัติ, หนังสือรับรอง, ใบเสร็จ, ประกาศ) ลงนามด้วย **ตราประทับอิเล็กทรอนิกส์ของหน่วยงาน (organisational e-seal)** ของ มกช./วิทยาเขต โดยระบุชื่อ/ตำแหน่งนายทะเบียนหรือผู้มีอำนาจในเนื้อเอกสาร เพราะลายมือชื่อรายบุคคลที่กุญแจอยู่ใน HSM ของสถาบันแล้วถูกใช้ลงนาม 3,000 ฉบับต่อครั้งเสี่ยงไม่ผ่านหลัก sole control (ม.26 🟡); **ลายมือชื่อรายบุคคล (S3)** ใช้เฉพาะเอกสารที่กฎหมาย/ข้อบังคับกำหนดให้บุคคลลงนาม และลงนามทีละฉบับหรือ remote signing ที่ผู้ลงนามอนุมัติ batch ด้วย 2FA ของตนเอง; นิติกรและ ETDA ยืนยันใน P0 (คำถามเล่ม 13)
+  5a. **TSA และ trust anchor (v1.1, review v1-review C-06):** TSA หลัก = **ETDA e-Timestamping** ✅ (มีบริการในประเทศ; ความเข้ากันได้กับ RFC 3161 🟡 ยืนยันใน P0) + TSA สำรองจาก CA ไทยภายใต้ NRCA **[ต้องตรวจสอบผู้ให้บริการ]**; ตั้ง **trusted certificate source ของ EU DSS = Thailand NRCA (G3 สำหรับ document signing)** เพราะไม่มี EU Trusted List ของไทย; NRCA อยู่ใน Adobe AATL ตั้งแต่ 2019 ✅ → ทดสอบ "green check" ใน Acrobat และ Foxit ใน P0; **เมื่อ TSA ล่ม:** ลงนาม PAdES-B-B ทันทีแล้วเข้าคิว augment เป็น B-T/B-LT เมื่อ TSA กลับมา (ไม่ block การออกใบเสร็จ), สลับไป TSA สำรองอัตโนมัติถ้าคิวค้าง > 1 ชม., แสดงสถานะ "รอประทับเวลา" ในหน้าตรวจสอบ
   6. **เอกสารสำคัญสร้างจาก snapshot ที่ลงนาม** (เช่น GradeSubmission snapshot, DegreeConferred record) ไม่ใช่ live query
-  7. **Batch signing** (เช่น transcript 3,000 ฉบับหลังสภาอนุมัติ) ต้องมี dual control (ผู้สั่ง ≠ ผู้อนุมัติ) และบันทึกรายการ hash
+  7. **Batch signing** (เช่น transcript 3,000 ฉบับหลังสภาอนุมัติ) ใช้ e-seal ของหน่วยงาน (ข้อ 5) ต้องมี dual control (ผู้สั่ง ≠ ผู้อนุมัติ, ผู้อนุมัติยืนยันด้วย step-up) และบันทึก manifest รายการ hash ที่ผู้อนุมัติเห็นก่อนกดยืนยัน
   8. **Golden-file visual test**: ชุดเอกสารไทยที่ยากที่สุด (ชื่อมีสระซ้อน เช่น "ปุ้ม", "ฐิติพัฒน์", ชื่อยาวล้นบรรทัด, เลขไทย, จำนวนเงินเป็นตัวอักษร) เทียบ pixel diff ทุก release; bake-off ใน P0 ระหว่าง WeasyPrint กับ Chromium ด้วยเอกสารจริงของ มกช.
 - **ทางเลือก:** JasperReports (PDF exporter ใช้ iText 2.1.7 รุ่นเก่า ปัญหา Thai shaping [ต้องตรวจสอบ]), iText 7 (AGPL/commercial), Typst (ยังไม่ตัดคำไทยตามพจนานุกรม), docx → PDF ผ่าน LibreOffice (layout ไม่แน่นอน)
 - **ผล:** + เอกสารไทยถูกต้องและตรวจสอบได้ระยะยาว − renderer เป็น Python/Chromium อีกหนึ่ง runtime (ยอมรับเพราะแยกจากกุญแจ)
 - **ทบทวนเมื่อ:** bake-off ไม่ผ่าน golden file หรือ batch 3,000 ฉบับเกิน 1 ชม.
 
-### ADR-011: Health vault = database แยก + per-person key + crypto-shredding + ฐานทางกฎหมายที่ไม่รอ consent สำหรับเหตุฉุกเฉิน
+### ADR-011: Health vault = database แยก `hlt_vault` + DEK ต่อบุคคล × ประเภทระเบียน + key store `hlt_keys` + crypto-shredding (แก้ v1.1)
 
-- **บริบท:** PostgreSQL community ไม่มี TDE (blueprint ข้อ 10); การแยก cluster เพิ่มภาระ ops (review ARCH-04); การบันทึกบาดเจ็บต้องไม่ถูก block ด้วย consent (blueprint ข้อ 9.9)
-- **การตัดสินใจ:** HLT เป็นเจ้าของข้อมูลสุขภาพแห่งเดียว เก็บใน **database `health_vault` แยก** ใน Patroni cluster เดียวกัน (credential, role, NetworkPolicy แยก, ไม่ทำ logical replication ไป analytics); ป้องกันด้วย (1) volume/disk encryption ของผู้ให้บริการ (2) **column-level encryption** ด้วย DEK ต่อบุคคล ห่อด้วย KEK ใน OpenBao transit (3) เข้าถึงผ่าน purpose-bound API ที่ตรวจ care relationship + audit ทุก read; **บันทึกการบาดเจ็บ/ปฐมพยาบาลใช้ฐานประโยชน์สำคัญต่อชีวิตหรือหน้าที่ตามกฎหมาย ไม่รอ consent**; consent ใช้เมื่อเปิดเผยต่อโค้ช/ทีม และการใช้งานเสริม; ส่งไป analytics เฉพาะ aggregate ที่ pseudonymised ผ่าน export job ที่อนุมัติ; **crypto-shredding:** ลบ DEK + บันทึก tombstone list; backup ของ health_vault เก็บ **13 เดือน** (สั้นกว่า core) และขั้นตอน restore ต้องลบ DEK ตาม tombstone ก่อนเปิดใช้ (ปิด SEC-09)
-- **ทางเลือก:** cluster แยก (ops +1/3), Postgres distribution ที่มี TDE (ค่า licence), เก็บร่วม DB หลัก
-- **ผล:** + blast radius เล็ก, ลบได้จริงภายใน 13 เดือน − ค้นหาข้อมูลเข้ารหัสไม่ได้ (ออกแบบ index เฉพาะ field ที่ไม่ sensitive)
-- **ทบทวนเมื่อ:** ผู้ตรวจ/หน่วยงานกำกับกำหนดให้แยก physical
+- **บริบท:** PostgreSQL community ไม่มี TDE (blueprint ข้อ 10); การแยก cluster เพิ่มภาระ ops (review ARCH-04); การบันทึกบาดเจ็บต้องไม่ถูก block ด้วย consent (blueprint ข้อ 9.9); review v1-review พบว่า v1.0 (ก) เล่ม 07 เก็บ wrapped DEK ใน vault แต่เล่ม 08 เก็บใน key store แยก (ข) DEK เดียวต่อคนลบตาม retention ที่ต่างกันรายประเภทไม่ได้ (ค) ชื่อ DB ไม่ตรงกัน (`health_vault` vs `hlt_vault`) — ปิดตาม D-04
+- **การตัดสินใจ:**
+  1. HLT เป็นเจ้าของข้อมูลสุขภาพแห่งเดียว เก็บใน **database `hlt_vault`** ใน Patroni cluster core (credential, role, pgBackRest stanza, NetworkPolicy แยก; role ของ ELT/analytics ไม่มีสิทธิ์ CONNECT); **v1.1: ข้อมูล wellness รายวัน (อารมณ์ การนอน ความปวด ความเมื่อยล้า) ย้ายมาอยู่ใน `hlt_vault`** ส่วน ATH เก็บเพียงสถานะความพร้อม/ข้อจำกัดการฝึกและค่าที่ได้รับอนุญาต (readiness band) (D-04, D-05)
+  2. ป้องกันด้วย (ก) volume/disk encryption (ข) **column-level encryption ด้วย DEK ต่อ (บุคคล × ประเภทระเบียน)** — ประเภทตั้งต้น: `CLINICAL` (เวชระเบียน), `MEDICATION_MINOR`, `INJURY_RTP`, `WELLNESS`, `COUNSELLING`, `DISABILITY`, `SELECTION_MEDICAL` (ใบรับรองแพทย์/ผลตรวจตอนคัดเลือก), `INSURANCE`, `TUE` (รายการสุดท้ายเป็นของเล่ม 08 §9.2) (ค) purpose-bound API ที่ตรวจ care relationship + audit ทุก read
+  3. **Wrapped DEK เก็บใน database `hlt_keys` แยก** (ไม่ใช่ใน `hlt_vault` และไม่ใช่ OpenBao KV) ห่อด้วย KEK ใน OpenBao transit; backup ของ `hlt_keys` เก็บ **≤ 35 วัน** (สั้นกว่า `hlt_vault` 13 เดือน) และไม่อยู่ในสำเนา offline ระยะยาว
+  4. **Key-before-data (RPO ≈ 0 ของกุญแจเทียบกับข้อมูล):** DEK ใหม่ต้องถูก commit ใน `hlt_keys` และ**ยืนยันว่าไปถึง standby ไซต์ B แล้ว** (ตรวจ `replay_lsn` ของ standby ≥ LSN ของ commit) ก่อนนำไปเข้ารหัสข้อมูลแถวแรก — ข้อมูลที่ไปถึงไซต์ B จึงมีกุญแจของตนอยู่ที่ไซต์ B เสมอ; การสร้าง DEK เกิดน้อย (ครั้งเดียวต่อบุคคล × ประเภท) จึงรับเวลารอได้; ถ้าไซต์ B ไม่ตอบใน 5 s ให้ queue การบันทึก (ยกเว้นบันทึกฉุกเฉินซึ่งเข้ารหัสด้วย DEK ฉุกเฉินของหน่วยบริการที่สร้างล่วงหน้าแล้ว rewrap ภายหลัง)
+  5. **Crypto-shredding:** ครบ retention ของประเภทนั้นและไม่มี legal hold/หน้าที่เก็บ → ลบทุกเวอร์ชันของ DEK ของ (บุคคล × ประเภท) นั้นใน `hlt_keys` + บันทึกใน **erasure ledger (tombstone list) ที่อยู่นอก DB ที่ถูก restore** (bucket `audit-worm`, Object Lock) → ciphertext ใน `hlt_vault` และ backup ทุกชุดอ่านไม่ได้เมื่อ backup ของ `hlt_keys` ที่มี DEK นั้นหมดอายุ (≤ 35 วัน) ซึ่งเป็นกรอบที่ประกาศใน privacy notice
+  6. **Restore-then-reapply-erasure:** ทุกการ restore (`hlt_vault`, `hlt_keys` หรือ core) ต้องเปิดใน maintenance mode → ใช้ erasure ledger ลบ DEK/แถวที่อยู่ใน ledger ซ้ำ → ตรวจ → จึงเปิดใช้งาน (runbook [11-operations](11-operations.md) หัวข้อ 6–7)
+  7. **ฐานทางกฎหมาย (เป็นของเล่ม 10):** บันทึกการบาดเจ็บ/การรักษาตามปกติโดยผู้ประกอบวิชาชีพใช้ ม.26(5)(ก) 🟡; ประโยชน์สำคัญต่อชีวิตใช้เฉพาะเหตุฉุกเฉินที่ขอ consent ไม่ได้; โค้ชเห็น **สถานะความพร้อม (พร้อม/จำกัด/ไม่พร้อม) + ข้อจำกัดการฝึก** โดยไม่ต้องขอ consent ส่วนรายละเอียดการวินิจฉัย/การรักษาต้องมี consent (D-05)
+  8. ส่งไป analytics เฉพาะ aggregate ที่ pseudonymised ผ่าน export job ที่อนุมัติและตรวจ k-anonymity
+- **ทางเลือก:** cluster แยก (ops +1/3), Postgres distribution ที่มี TDE (ค่า licence), เก็บร่วม DB หลัก, wrapped DEK ใน OpenBao KV (RPO ของ OpenBao ข้ามไซต์ = รอบ snapshot ซึ่งยาวกว่า DB → แถวที่สร้างก่อน failover ถอดรหัสไม่ได้; ปฏิเสธ), DEK เดียวต่อคน (ลบรายประเภทไม่ได้; ปฏิเสธ)
+- **ผล:** + blast radius เล็ก, ลบได้จริงภายใน ≤ 35 วันหลังลบ DEK ทั้งใน DB และ backup, ลบตาม retention รายประเภทได้ − จำนวน DEK เพิ่มราว 9 เท่าต่อคน (ยังเป็นหลักแสนแถว), ค้นหาข้อมูลเข้ารหัสไม่ได้ (index เฉพาะ field ที่ไม่ sensitive), ขั้นตอน restore ยาวขึ้น
+- **ทบทวนเมื่อ:** ผู้ตรวจ/หน่วยงานกำกับกำหนดให้แยก physical หรือสถานะห้องพยาบาลเป็นสถานพยาบาลที่มีหน้าที่เก็บเวชระเบียนยาวกว่า (คำถามเล่ม 13, review v1-review K-06)
 
-### ADR-012: Key management = OpenBao + HSM + KEK escrow แบบ Shamir + ซ้อมกู้รายไตรมาส
+### ADR-012: Key management = OpenBao auto-unseal ด้วย HSM ทั้งสองไซต์ + recovery key แบบ Shamir + escrow ของ transit key + ซ้อม "HSM สูญหาย" (แก้ v1.1)
 
-- **บริบท:** ถ้ากุญแจหาย ข้อมูลเลขบัตรและ health vault กู้ไม่ได้ถาวร (review Top-2)
-- **การตัดสินใจ:** รายละเอียดในหัวข้อ 12; สรุป: OpenBao 3 nodes (Raft) ต่อ site + DR; seal/unseal ผูก HSM (หรือ Cloud HSM ในไทย) **[ต้องตรวจสอบ: OpenBao รุ่นที่ใช้รองรับ PKCS#11 auto-unseal]**; recovery key แบบ **Shamir 3-of-5 ถือโดยผู้บริหาร มกช. (ไม่ใช่ vendor)**; KEK ทุกตัวสำรองแบบ **escrow** (ไฟล์ backup ของ transit key เข้ารหัสด้วย escrow key ที่แบ่ง Shamir 3-of-5) เก็บ offline 2 สถานที่; Raft snapshot รายชั่วโมงเข้ารหัสไปยัง object storage แบบ Object Lock; **ซ้อมกู้รายไตรมาส** (restore ใน environment แยกแล้วถอดรหัส canary) และ "restore จากศูนย์" ปีละ 2 ครั้งเป็น exit criteria ของ go-live ([11-operations](11-operations.md) หัวข้อ 8); HMAC key ของเลขบัตรแยก context (IAM vs core) เก็บใน transit แบบ non-exportable และมี key version สำหรับ rotate
-- **ทางเลือก:** HashiCorp Vault (BSL), Cloud KMS ต่างประเทศ (cross-border), Kubernetes Secrets อย่างเดียว
-- **ผล:** + ไม่มี single point of key loss, vendor ไม่ถือกุญแจ − ต้องมีพิธีกุญแจ (key ceremony) และผู้ถือกุญแจที่หมุนเวียนตามตำแหน่ง
-- **ทบทวนเมื่อ:** ซ้อมกู้ล้มเหลว 2 ไตรมาสติด หรือ GDCC มี KMS/HSM ในไทยที่ผ่านการประเมิน
+- **บริบท:** ถ้ากุญแจหาย ข้อมูลเลขบัตรและ health vault กู้ไม่ได้ถาวร (review Top-2); review v1-review Top-1/K-01 (Critical): v1.0 เขียนว่า recovery key แบบ Shamir ใช้ unseal ได้ ซึ่ง**ผิด** — ในโหมด auto-unseal ด้วย HSM, recovery key **ถอดรหัส root key ไม่ได้** ใช้เพื่อ authorization (เช่น generate root, rekey, seal migration) เท่านั้น และถ้ากุญแจ seal ใน HSM หาย snapshot ทุกชุดก็กู้ไม่ได้ ✅ (เอกสาร seal ของ Vault ซึ่ง OpenBao fork มา)
+- **การตัดสินใจ:** (รายละเอียดหัวข้อ 12)
+  1. **Seal model เดียวทั้งชุดเอกสาร:** OpenBao ≥ 2.2 ใช้ **PKCS#11 auto-unseal** กับ HSM; **ไซต์ A และไซต์ B มี HSM ของตนเอง** ที่ถือ seal key ชุดเดียวกัน (clone/backup แบบเข้ารหัสด้วยกลไกของผู้ผลิต HSM หรือ Cloud HSM ในไทยที่ replicate ข้ามไซต์) — ผลต่อต้นทุน: HSM ชุดที่สองเป็นหมายเหตุให้เล่ม 12 (ไม่คำนวณราคาใหม่ในเล่มนี้)
+  2. **Recovery keys** แบบ Shamir 3-of-5 ถือโดยตำแหน่งผู้บริหาร มกช. (ไม่ใช่ vendor) ใช้สำหรับ authorization เท่านั้น จึง**ไม่อยู่บนเส้นทางวิกฤตของ DR** (การ unseal ทำอัตโนมัติด้วย HSM ของไซต์นั้น)
+  3. **ทางกู้จริงเมื่อ HSM หาย = escrow ของ transit key:** transit key ทุกตัว (KEK ต่อโดเมน, HMAC key) ตั้งค่าให้ backup ได้ และ**ถูก export เฉพาะใน key ceremony บนเครื่อง air-gapped** แล้วเข้ารหัสด้วย escrow public key ทันที (ไม่มีขั้นตอนอัตโนมัติ, ไม่เรียกว่า "non-exportable" อีกต่อไป — review v1-review K-02); escrow private key แบ่ง Shamir 3-of-5 เก็บ offline 2 สถานที่
+  4. **RPO ของ OpenBao ข้ามไซต์:** OpenBao OSS ไม่มี DR replication 🟡 → ไซต์ B กู้จาก Raft snapshot ที่ถี่ขึ้นเป็น **ทุก 15 นาที** (เดิมรายชั่วโมง) ดังนั้น **RPO ของ OpenBao = 15 นาที**; กติกา **snapshot-before-use:** การสร้าง transit key ใหม่, rotate KEK หรือ HMAC ต้องทำ snapshot ทันทีและยืนยันว่าถึงไซต์ B (และอยู่ใน escrow ถ้าเป็น key ใหม่) ก่อนใช้งานกับข้อมูลจริง → ข้อมูลไม่ขึ้นกับ secret ที่อาจหายใน 15 นาที; wrapped DEK ไม่อยู่ใน OpenBao (อยู่ใน `hlt_keys`, ADR-011) จึงไม่ได้รับผลจาก RPO นี้
+  5. **ซ้อม:** รายไตรมาส (restore escrow + snapshot ใน environment แยก แล้วถอดรหัส canary), ปีละ 2 ครั้ง "restore จากศูนย์", และ **ปีละ 1 ครั้ง "HSM สูญหาย"** (ไม่มี HSM เดิม: ตั้ง OpenBao ใหม่ด้วย seal ใหม่, import transit key จาก escrow, ถอดรหัส canary ของ `hlt_keys` และ HMAC) เป็น exit criteria ของ go-live ([11-operations](11-operations.md) หัวข้อ 8)
+  6. HMAC key ของเลขบัตร **2 context** (core, IAM) — v1.1 ตัด context "migration" ออก (migration ใช้ HMAC ของ core ผ่าน API ใน enclave; review v1-review หัวข้อ 2.7) — มี key version สำหรับ rotate
+- **ทางเลือก:** HashiCorp Vault (BSL; DR replication อยู่ใน Enterprise), Cloud KMS ต่างประเทศ (cross-border), Kubernetes Secrets อย่างเดียว, Shamir seal (ไม่ใช้ HSM: ต้องประกอบ quorum ทุกครั้งที่ restart → RTO ขึ้นกับผู้บริหารที่อาจไม่อยู่นอกเวลาราชการ)
+- **ผล:** + ไม่มี single point of key loss (HSM 2 ไซต์ + escrow), DR ไม่ต้องรอผู้ถือ share, vendor ไม่ถือกุญแจ − ต้องมี HSM 2 ชุด, พิธีกุญแจ, ผู้ถือที่หมุนเวียนตามตำแหน่ง และการซ้อม HSM-lost ที่ใช้เวลาครึ่งวัน
+- **ทบทวนเมื่อ:** ซ้อมกู้ล้มเหลว 2 ไตรมาสติด, OpenBao มี DR replication ใน OSS, หรือ GDCC มี KMS/HSM ในไทยที่ผ่านการประเมิน
 
 ### ADR-013: Cache, waiting room และ rate-limit store = Valkey
 
