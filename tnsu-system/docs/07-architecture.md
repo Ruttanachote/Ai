@@ -1011,48 +1011,71 @@ sequenceDiagram
 
 ### 10.7 SLO ราย journey และคณิตศาสตร์ความพร้อมใช้แบบอนุกรม
 
-**ปัญหาเดิม:** ถ้า journey ลงทะเบียนต้องผ่าน CDN/WAF → APISIX → Keycloak → core → PostgreSQL → Valkey และแต่ละตัว 99.95% ความพร้อมใช้รวม = 0.9995⁶ = **99.70%** (≈ 30 นาทีใน 7 วัน) ไม่ใช่ 99.95% (review NFR-04)
+> คำนวณใหม่ใน v1.1 (review v1-review Top-6, N-01, N-06)
+
+**ปัญหาเดิม (v0.9):** ถ้า journey ลงทะเบียนต้องผ่าน CDN/WAF → APISIX → Keycloak → core → PostgreSQL → Valkey และแต่ละตัว 99.95% ความพร้อมใช้รวม = 0.9995⁶ = **99.70%** (≈ 30 นาทีใน 7 วัน) ไม่ใช่ 99.95% (review NFR-04)
 
 **การลด serial dependency (blueprint ข้อ 8):**
 1. **Keycloak ออกจาก path:** JWT ตรวจในเครื่องที่ APISIX และ core (JWKS cache), ผู้ใช้ login ล่วงหน้า, refresh token ครอบคลุม window, Keycloak ใช้เฉพาะ login ใหม่ (journey "login" แยก SLO)
 2. **Valkey ออกจาก path:** cache fail-open ไปอ่าน PG; waiting room fallback เป็น fixed-rate signed token แบบ stateless; rate limit fallback เป็น local limiter
-3. **เหลือ 4 ตัวอนุกรม:** edge (CDN/WAF) → APISIX → core → PostgreSQL
+3. **OpenBao ไม่อยู่ใน path ของ command ลงทะเบียน** (ไม่มีการถอดรหัส PII หรือค้น HMAC ใน transaction ลงทะเบียน; eligibility มาจาก snapshot) — แต่**อยู่ใน path** ของ journey ที่ถอดรหัส PII/สุขภาพหรือค้นด้วย HMAC (ผูกบัญชี ThaID ครั้งแรก, ดูข้อมูลส่วนตัว, HLT, บัญชีรับเงิน) จึงนับใน journey เหล่านั้น และลดผลด้วย **cache ของ DEK ที่ unwrap แล้วในหน่วยความจำของ pod อายุ 10 นาที** (ไม่เขียนลงดิสก์, ล้างเมื่อ pod หยุด) ทำให้ OpenBao ล่ม < 10 นาทีไม่กระทบการอ่าน (review v1-review Top-6)
+4. **v1.0 นับขาด:** PgBouncer และ cloud load balancer อยู่บน path จริงแต่ไม่ได้นับ (review v1-review N-01)
 
-| Component | เป้าภายในช่วงวิกฤต | budget ใน 7 วัน (10,080 นาที) | เหตุที่ทำได้ |
+**ผลการคำนวณใหม่อย่างตรงไปตรงมา (ช่วงวิกฤต, หน้าต่าง 7 วัน = 10,080 นาที):**
+
+| แบบ | Component อนุกรม | ความพร้อมใช้รวม | budget ใน 7 วัน | ผล |
+|---|---|---|---|---|
+| v1.0 ตามที่เขียน | edge, APISIX, core, PostgreSQL | 0.9999³ × 0.9998 = 0.99950 | 5.0 นาที | **นับไม่ครบ** |
+| v1.0 นับครบ | edge, **LB**, APISIX, core, **PgBouncer**, PostgreSQL | 0.9999⁵ × 0.9998 = **0.99930** | **7.1 นาที** | ไม่ถึง 99.95% |
+| **v1.1** (PgBouncer เป็น sidecar ใน pod ของ core, ADR-027) | edge, LB, APISIX, core(+sidecar), PostgreSQL | 0.9999⁴ × 0.9998 = **0.99940** | **6.0 นาที** | ยังไม่ถึง 99.95% |
+| ถ้าจะถึง 99.95% | ต้องให้ edge และ LB ≥ 99.995% ในช่วงวิกฤต | 0.99995² × 0.9999² × 0.9998 = 0.99950 | 5.0 นาที | ขึ้นกับ SLA ผู้ให้บริการที่ยังไม่ยืนยัน (A-105) |
+
+| Component (v1.1) | เป้าภายในช่วงวิกฤต | budget ใน 7 วัน | เหตุที่ทำได้ |
 |---|---|---|---|
 | Edge CDN/WAF | 99.99% | 1.0 นาที | SLA ของผู้ให้บริการ [ต้องตรวจสอบ] |
+| Cloud L4 load balancer | 99.99% | 1.0 นาที | SLA ของผู้ให้บริการ [ต้องตรวจสอบ]; health check ไปยัง APISIX ทุก 5 s |
 | APISIX | 99.99% | 1.0 นาที | 3–6 replicas, config freeze |
-| Core registration | 99.99% | 1.0 นาที | ≥ 4 pods, PDB, ไม่มี deploy ระหว่าง freeze |
-| PostgreSQL (Patroni) | 99.98% | 2.0 นาที | failover 1 ครั้ง (≈ 30–60 s รวม reconnect) ใช้ budget ได้ |
-| **รวม** | 0.9999³ × 0.9998 = **0.99950 (99.950%)** | **5.0 นาที** | |
+| Core registration (+ PgBouncer sidecar) | 99.99% | 1.0 นาที | ≥ 4 pods, PDB, ไม่มี deploy ระหว่าง freeze |
+| PostgreSQL (Patroni + etcd) | 99.98% | 2.0 นาที | failover 1 ครั้ง (≈ 30–60 s รวม reconnect) ใช้ budget ได้ |
+| **รวม** | **0.99940 (99.94%)** | **6.0 นาที** | |
 
-**รายเดือน 99.9% (43.8 นาที):** 4 ตัวอนุกรมที่ 99.975% เท่ากัน → 0.99975⁴ = **99.900%** ดังนั้นเป้าภายในต่อ component รายเดือน = 99.975%
+**การตัดสินใจ v1.1:** (1) แก้สถาปัตยกรรมเท่าที่คุ้ม (PgBouncer sidecar ลดได้ 1 ตัว) (2) **ปรับเป้าภายในช่วงวิกฤตของ journey ลงทะเบียนเป็น 99.94%** (≈ 6 นาที/7 วัน) ซึ่งเป็นค่าที่คณิตศาสตร์รองรับ และ**เสนอแก้ blueprint ข้อ 8** จาก 99.95% (Q-90) — ถ้า GDCC spike ยืนยัน SLA ของ edge และ LB ≥ 99.995% จึงคง 99.95% ได้ (3) **SLA ในสัญญา MA ไม่เปลี่ยน** (99.9% รายเดือนและช่วงวิกฤต) เพราะต่ำกว่าทั้งสองค่า
 
-| Journey (วัดด้วย synthetic ภายนอก + RUM) | SLO รายเดือน | SLO ช่วงวิกฤต | หมายเหตุ |
-|---|---|---|---|
-| ลงทะเบียน (ไม่นับ login) | 99.9% | **99.95%** | ตามตารางข้างบน |
-| Login (Keycloak + ThaID) | 99.9% | 99.9% | ThaID ล่ม → ใช้รหัสผ่าน + OTP ของ Keycloak; ไม่นับเวลาที่ ThaID ล่ม |
-| ดูเกรด/ตารางเรียน | 99.9% | 99.9% | |
-| ชำระเงิน | 99.9% (หน้าใบแจ้งหนี้ + QR) | 99.9% | **callback ไม่สัญญา 99.95%** ใช้ bank retry + statement reconcile ไม่มีเงินหาย |
-| ประกาศผลรับสมัคร / ประกาศ P0 | 99.95% | 99.95% | static บน CDN, fail-static |
-| Back-office เจ้าหน้าที่ | 99.5% (เวลาทำการ 99.9%) | 99.9% | |
-| ตรวจสอบเอกสาร (public verify) | 99.5% | — | |
-| BI | 99.0% | — | |
+**รายเดือน 99.9% (43.8 นาที):** 5 ตัวอนุกรมที่ 99.98% เท่ากัน → 0.9998⁵ = **99.900%** ดังนั้นเป้าภายในต่อ component รายเดือน = 99.98% (v1.0 ใช้ 4 ตัวที่ 99.975%)
 
-**Error budget policy:** ใช้ budget > 50% ในช่วงวิกฤต → freeze ทุก change ยกเว้นแก้เหตุ; หมด budget → postmortem ภายใน 10 วันทำการ + งานแก้ reliability อยู่หน้า feature **SLA ในสัญญา MA** แยกจาก SLO ภายใน: เสนอ 99.9% รายเดือนสำหรับ journey นักศึกษา และ 99.9% ในช่วงวิกฤต (≈ 10 นาที/7 วัน) พร้อม service credit ส่วน 99.95% เป็นเป้าภายใน **DR failover ทั้ง site (ชั่วโมงระดับ) จะทำให้ไม่ถึงเป้าทั้งสองแบบ** และนับรวมอย่างเปิดเผย ไม่ซ่อนเป็นข้อยกเว้น
+| Journey (SLI หลักเป็น request-based จาก log ของ APISIX; synthetic + RUM เป็นสัญญาณเสริม) | Chain อนุกรม | SLO รายเดือน | SLO ช่วงวิกฤต | หมายเหตุ |
+|---|---|---|---|---|
+| ลงทะเบียน (ไม่นับ login) | edge, LB, APISIX, core, PG | 99.9% | **99.94%** (เดิม 99.95%) | ตามตารางข้างบน |
+| Login (Keycloak + ThaID) | edge, LB, APISIX, Keycloak 99.98, PG 99.98, OpenBao (ผูกบัญชีครั้งแรก) | 99.9% | 99.9% (คำนวณได้ 0.9999⁴ × 0.9998² = 99.92%) | ThaID ล่ม → ใช้รหัสผ่าน + OTP ของ Keycloak; ไม่นับเวลาที่ ThaID ล่ม |
+| ดูเกรด/ตารางเรียน | edge, LB, APISIX, core, PG | 99.9% | 99.9% | |
+| ข้อมูลส่วนตัว/บัญชีรับเงิน/HLT | + OpenBao 99.99% (ลดผลด้วย DEK cache 10 นาที) | 99.9% | 99.9% | OpenBao อยู่ใน game day ([11-operations](11-operations.md) หัวข้อ 4.2) |
+| ชำระเงิน | edge, LB, APISIX, core, PG | 99.9% (หน้าใบแจ้งหนี้ + QR) | 99.9% | **callback ไม่สัญญา 99.95%** ใช้ bank retry + statement reconcile ไม่มีเงินหาย |
+| ประกาศผลรับสมัคร / ประกาศ P0 | CDN อย่างเดียว | 99.95% | 99.95% | static บน CDN, fail-static |
+| Back-office เจ้าหน้าที่ | — | 99.5% (เวลาทำการ 99.9%) | 99.9% | |
+| ตรวจสอบเอกสาร (public verify) | — | 99.5% | — | |
+| BI | — | 99.0% | — | |
+
+**Error budget policy:** ใช้ budget > 50% ในช่วงวิกฤต → freeze ทุก change ยกเว้นแก้เหตุ; หมด budget → postmortem ภายใน 10 วันทำการ + งานแก้ reliability อยู่หน้า feature **SLA ในสัญญา MA** แยกจาก SLO ภายใน: เสนอ 99.9% รายเดือนสำหรับ journey นักศึกษา และ 99.9% ในช่วงวิกฤต (≈ 10 นาที/7 วัน) พร้อม service credit **DR failover ทั้ง site (ชั่วโมงระดับ) จะทำให้ไม่ถึงเป้าทั้งสองแบบ** และนับรวมอย่างเปิดเผย ไม่ซ่อนเป็นข้อยกเว้น; ค่า SLI รายวันส่งเข้า ANA เป็น `fct_slo_daily` (ADR-017)
 
 ### 10.8 RPO / RTO (รวม ransomware)
+
+> แก้ใน v1.1: OpenBao, `hlt_keys`, etcd, HSM, degraded mode, DB ↔ object reconciliation
 
 | สถานการณ์ | RPO | RTO | กลไก |
 |---|---|---|---|
 | Pod/node ล้ม | 0 | < 1 นาที | replicas, PDB, anti-affinity |
-| PG primary ล้มใน site | **0** (synchronous standby) | ≤ 1 นาที | Patroni auto-failover; ถ้า sync standby ล้มด้วยจะลดเป็น async พร้อม alert |
-| OpenBao node / Valkey node ล้ม | 0 / ยอมเสีย cache | < 1 นาที | Raft 3 nodes / Sentinel + fail-open |
-| Site A ล้มทั้งหมด | **≤ 5 นาที** | **≤ 4 ชม.** (เป้ายืดในช่วงวิกฤต ≤ 2 ชม. เมื่อ pre-scale DR) | async standby ที่ site B + WAL archive, Argo CD sync, DNS/GSLB |
-| Logical corruption (deploy ผิด, data-fix ผิด) | ≤ 5 นาทีก่อนเหตุ (WAL archive ทุก ≤ 60 s) | ≤ 4 ชม. | pgBackRest PITR (restore ขนาน), ตรวจ integrity ด้วย hash ของ snapshot เกรด/ลำดับเลขใบเสร็จ |
-| **Ransomware: platform ถูกยึด** (K8s/OpenBao/Keycloak/Git/credential) | ≤ 15 นาที ถ้า WORM (compliance mode, tenant แยก) ไม่ถูกแตะ; กรณีเลวร้ายสุด **≤ 7 วัน** จากสำเนา offline รายสัปดาห์ | **48–72 ชม.** | สร้าง platform ใหม่ใน clean room จาก IaC + Git mirror offline, กู้ OpenBao จาก snapshot + escrow, restore DB, หมุนทุก credential (ขั้นตอนใน [11-operations](11-operations.md) หัวข้อ 7) |
-| Health vault | ≤ 5 นาที | ≤ 4 ชม. | เหมือน core + escrow ของ KEK |
-| Analytics | 24 ชม. | 24 ชม. | rebuild จาก replica + dbt |
+| PG primary ล้มใน site | **0** (synchronous standby) | ≤ 1 นาที | Patroni auto-failover (etcd quorum, ADR-026); ถ้า sync standby ล้มด้วยจะลดเป็น async พร้อม alert |
+| etcd เสีย 1 member / เสีย quorum | 0 | 0 / primary เป็น read-only จนกว่า quorum กลับ | ADR-026; อยู่ใน game day |
+| Valkey node ล้ม | ยอมเสีย cache | < 1 นาที | Sentinel + fail-open |
+| OpenBao node ล้มในไซต์ | 0 | < 1 นาที | Raft 3 nodes + auto-unseal ด้วย HSM ของไซต์ |
+| OpenBao ทั้ง cluster ล้มในไซต์ | 0 (Raft data อยู่) | ≤ 30 นาที (restart + auto-unseal); การอ่าน PII ไม่สะดุดถึง 10 นาทีจาก DEK cache | game day รายภาค |
+| Site A ล้มทั้งหมด | DB **≤ 5 นาที**; **`hlt_keys` ≈ 0 เทียบกับข้อมูล** (key-before-data, ADR-011); **OpenBao ≤ 15 นาที** (snapshot-before-use ทำให้ไม่มีข้อมูลที่พึ่ง secret ในช่วงนั้น); object storage ตามรอบ replication | **≤ 4 ชม.** (เป้ายืดในช่วงวิกฤต ≤ 2 ชม. เมื่อ pre-scale DR) | async standby cluster ที่ site B + WAL archive, promote ด้วยมือ, OpenBao ที่ site B กู้จาก snapshot และ unseal ด้วย **HSM ของไซต์ B**, Argo CD sync, DNS/GSLB, **DB ↔ object reconciliation** (เทียบ hash ที่ DB อ้างกับ object ที่มีจริง; เอกสารที่หายสร้างใหม่จาก snapshot) — เอกสารลงนามใช้ **write-both** (เขียนทั้งสองไซต์ก่อน commit สถานะ "issued") |
+| หลัง failover ไป site B | — | — | **Degraded mode:** มี PG node เดียวที่ไซต์ B (ไม่มี HA) → สร้าง standby ใหม่ที่ไซต์ B ภายใน ≤ 8 ชม. และวัดเวลานี้ใน DR drill (review v1-review N-05) |
+| Logical corruption (deploy ผิด, data-fix ผิด) | ≤ 5 นาทีก่อนเหตุ (WAL archive ทุก ≤ 60 s) | ≤ 4 ชม. | pgBackRest PITR (restore ขนาน), ตรวจ integrity ด้วย hash ของ snapshot เกรด/ลำดับเลขใบเสร็จ, **reapply erasure ledger ก่อนเปิดใช้** |
+| **Ransomware: platform ถูกยึด** (K8s/OpenBao/Keycloak/Git/credential) | ≤ 15 นาที ถ้า WORM (compliance mode, tenant แยก) ไม่ถูกแตะ; กรณีเลวร้ายสุด **≤ 7 วัน** จากสำเนา offline รายสัปดาห์ | **48–72 ชม.** | สร้าง platform ใหม่ใน clean room จาก IaC + Git mirror offline, กู้ OpenBao จาก snapshot (unseal ด้วย HSM ที่ไม่ถูกแตะ หรือถ้าสงสัยว่า HSM ถูกใช้โดยมิชอบ ใช้ escrow ตั้ง seal ใหม่), restore DB, reapply erasure ledger, หมุนทุก credential (ขั้นตอนใน [11-operations](11-operations.md) หัวข้อ 7) |
+| HSM สูญหาย/ใช้ไม่ได้ทั้งสองไซต์ | transit key ณ escrow ล่าสุด (ทุก key ใหม่เข้า escrow ก่อนใช้) | ≤ 24 ชม. | ตั้ง OpenBao ใหม่ด้วย seal ใหม่ + import จาก escrow ([11-operations](11-operations.md) หัวข้อ 8) |
+| Health vault (`hlt_vault`) | ≤ 5 นาที | ≤ 4 ชม. | เหมือน core + `hlt_keys` + escrow ของ KEK |
+| Analytics | 24 ชม. | 24 ชม. | rebuild จาก ELT replica + dbt |
 
 **บริการขั้นต่ำระหว่าง ransomware recovery:** หน้า status/ประกาศ static ที่โฮสต์แยกจาก platform, ประกาศขยายกำหนดเวลา (ลงทะเบียน/ชำระเงิน) ตามปฏิทิน, ธนาคารยังรับชำระได้และ reconcile ย้อนหลังจาก statement, ช่องทางคำร้องกระดาษที่นำเข้าภายหลัง
 
@@ -1074,7 +1097,8 @@ sequenceDiagram
 
 - APISIX: per IP (กัน flood), per `sub` (กันสคริปต์), per route (endpoint แพง เช่น export, PDF); ค่าเริ่ม: API ทั่วไป 20 req/s ต่อผู้ใช้, registration command ≤ 10/นาที, login ตาม brute-force detection ของ Keycloak (backoff + แจ้งเตือน)
 - Waiting room: pre-queue randomisation, token ผูก `sub` และใช้ได้ 1 session, ตรวจ pattern ผิดปกติ (หลาย token จาก IP เดียว)
-- ไม่ใช้ CAPTCHA ที่ขัด WCAG; ถ้าจำเป็นใช้ทางเลือกที่ accessible (เช่น proof-of-work ฝั่ง client) **[ต้องตรวจสอบเครื่องมือ]**
+- **(v1.1 ให้ตรงกับเล่ม 09/10)** กันบอทค่าเริ่มต้น = **self-hosted challenge** แบบ proof-of-work/ไม่ต้องแก้ภาพ (09 I-55; เครื่องมือเช่น ALTCHA 🟡) ที่ใช้แบบปรับตามความเสี่ยงบน endpoint สมัคร/login/ลืมรหัส ไม่ใช่ CAPTCHA SaaS ต่างประเทศ; **ตรวจรหัสผ่านที่รั่ว** ตอนตั้งรหัส (09 I-56 แบบ k-anonymity range query ส่งเฉพาะ hash prefix); ทางเลือกที่ accessible คือ step-up OTP
+- **SMS pumping/OTP toll fraud (review v1-review S-03):** rate limit ต่อเบอร์/IP/prefix, ส่ง SMS เฉพาะเบอร์ไทยโดยค่าเริ่มต้น, ใช้ OTP ทาง LINE/อีเมลก่อน SMS, alert เมื่อยอด SMS รายวันเกินงบ
 - Response 429 มี `Retry-After` และข้อความภาษาไทยที่เข้าใจได้
 
 ### 11.3 API versioning
@@ -1122,11 +1146,11 @@ sequenceDiagram
 ### 11.8 Offline และเครือข่ายไม่ดีที่วิทยาเขตต่างจังหวัด
 
 - **PWA caching:** shell + ข้อมูลอ่านบ่อย (ตารางเรียน, ตารางสอบ/ที่นั่ง, บัตรนักศึกษาดิจิทัลที่เป็น signed QR ตรวจได้ offline ภายในอายุที่กำหนด, ประกาศล่าสุด)
-- **งาน offline-first** (กรรมการสอบทักษะ, นิเทศ PRA, เช็คชื่อ ATT ภาคสนาม): IndexedDB เข้ารหัสด้วยกุญแจ session, ทุกรายการมี **UUIDv7 ที่สร้างฝั่ง client**, sync แบบ idempotent, server ตรวจ validation อีกครั้ง, ความขัดแย้ง (แก้รายการเดียวกันจากสองเครื่อง) เข้า **conflict queue** ให้ประธาน/ผู้รับผิดชอบตัดสิน (ไม่ใช้ last-writer-wins กับคะแนน), ข้อมูลบนเครื่องล้างหลัง sync สำเร็จ
+- **งาน offline-first** (กรรมการสอบทักษะ, นิเทศ PRA, เช็คชื่อ ATT ภาคสนาม): IndexedDB เข้ารหัสด้วย **WebCrypto key แบบ non-extractable ที่ปลดด้วย PIN ของกรรมการ** (v1.1, review v1-review S-05) และ tablet ของ มกช. อยู่ใน MDM/kiosk mode, ทะเบียนอุปกรณ์ที่ **revoke จากระยะไกล** ได้ (ข้อมูลที่ยังไม่ sync ของเครื่องที่ถูก revoke ถูกปฏิเสธเมื่อ sync), ทุกรายการมี **UUIDv7 ที่สร้างฝั่ง client**, sync แบบ idempotent, server ตรวจ validation อีกครั้ง, ความขัดแย้ง (แก้รายการเดียวกันจากสองเครื่อง) เข้า **conflict queue** ให้ประธาน/ผู้รับผิดชอบตัดสิน (ไม่ใช้ last-writer-wins กับคะแนน), ข้อมูลบนเครื่องล้างหลัง sync สำเร็จ
 - **Upload resumable** ตามหัวข้อ 11.4
 - **งบ performance:** JS ≤ 200 KB gzip ต่อ route, รูปปรับขนาดอัตโนมัติ, LCP ≤ 2.5 s บนโปรไฟล์ Android ระดับล่าง + 3G ใน CI (Lighthouse)
 - **RUM แยกตาม OrgUnit/ISP** เพื่อเห็นปัญหาเฉพาะพื้นที่
-- **WAN ของวิทยาเขตล่ม:** ระบบอยู่บน cloud จึงใช้ 4G/5G เป็นเส้นทางสำรองได้; มี **manual fallback** (แบบฟอร์มกระดาษมาตรฐาน + ช่อง import CSV ที่มี 4-eyes) สำหรับ check-in, คะแนนสอบทักษะ และการรับชำระที่ counter
+- **WAN ของวิทยาเขตล่ม:** ระบบอยู่บน cloud จึงใช้ 4G/5G เป็นเส้นทางสำรองได้; มี **manual fallback** (แบบฟอร์มกระดาษมาตรฐาน + ช่อง import CSV ที่มี 4-eyes) สำหรับ check-in, คะแนนสอบทักษะ และการรับชำระที่ counter — ชุดอุปกรณ์/SOP/การซ้อม (business continuity kit) อยู่ใน [11-operations](11-operations.md) หัวข้อ 7.4
 - LINE เป็นช่องทางสำรองเมื่อ Web Push ไม่ถึง (ส่งเฉพาะหัวข้อ + ลิงก์)
 
 ### 11.9 Tenancy rules (กรณีขอบของหลายวิทยาเขต)
@@ -1142,6 +1166,11 @@ sequenceDiagram
 
 ทุกกรณีมี test case ใน RLS suite (ADR-005)
 
+### 11.11 Import/Export ไฟล์ของเจ้าหน้าที่ (v1.1)
+
+- **Export:** ใช้กติกาเดียวของ ADR-017 ข้อ 5 (standard export ต่อบทบาทไม่ต้องอนุมัติรายครั้ง; ad-hoc > 500 แถว/ครั้งหรือ > 2,000 แถว/วันต้องอนุมัติ; ทุก export มี audit + watermark) และ CSV ออกเป็น **UTF-8 with BOM** ให้เปิดใน Excel ภาษาไทยได้
+- **Import (review v1-review UXR-38):** ตรวจ encoding อัตโนมัติ (UTF-8/UTF-8 BOM/TIS-620/Windows-874), รับปี พ.ศ. ในเซลล์วันที่ (ปี > 2400 แปลงเป็น ค.ศ. พร้อมเตือนให้ยืนยัน), แสดง preview + รายการแถวที่ผิดก่อน commit, import ที่กระทบเกรด/การเงินต้องผ่าน 4-eyes; ทั้งหมดเป็น test case ตรวจรับ ([11-operations](11-operations.md) หัวข้อ 4.1)
+
 ### 11.10 Audit (ระดับการบันทึก)
 
 | ชั้นข้อมูล | Write | Read |
@@ -1156,47 +1185,61 @@ Audit ระดับแอปเขียนผ่าน outbox ไปยัง
 
 ## 12. Key management
 
+> เขียนใหม่ใน v1.1 ตาม D-04 และ review v1-review Top-1/Top-2, K-01..K-08
+
 ```mermaid
 flowchart TB
-  HSM["HSM หรือ Cloud HSM ในไทย<br/>root of trust, signing keys"]
-  SEAL["OpenBao seal / unseal<br/>ผูกกับ HSM"]
-  REC["Recovery keys<br/>Shamir 3-of-5 ผู้บริหาร มกช."]
+  HSMA["HSM ไซต์ A<br/>seal key + กุญแจลงนาม"]
+  HSMB["HSM ไซต์ B<br/>seal key + กุญแจลงนาม ชุดเดียวกัน"]
+  SEALA["OpenBao ไซต์ A<br/>auto-unseal PKCS11"]
+  SEALB["OpenBao ไซต์ B<br/>กู้จาก snapshot ทุก 15 นาที<br/>auto-unseal ด้วย HSM B"]
+  RK["Recovery keys Shamir 3-of-5<br/>authorization เท่านั้น ไม่ใช่ unseal"]
   TR["OpenBao transit"]
-  K1["KEK health_vault"]
-  K2["KEK PII columns"]
+  K1["KEK hlt_vault"]
+  K2["KEK PII core"]
   K3["HMAC pid - core"]
   K4["HMAC pid - IAM"]
-  K5["Waiting room token key"]
-  DEK["DEK ต่อบุคคล<br/>เก็บแบบห่อใน health_vault"]
-  ESC["Escrow package<br/>transit backup เข้ารหัสด้วย escrow key"]
-  SPL["Escrow private key<br/>Shamir 3-of-5 เก็บ offline 2 สถานที่"]
-  SIG["ใบรับรองลงนาม มกช.<br/>PKCS11 ใน HSM"]
+  K5["Admission token key"]
+  K6["Scope-signing key<br/>OpenBao KV"]
+  DEK[("hlt_keys<br/>wrapped DEK ต่อบุคคล x ประเภทระเบียน<br/>backup ไม่เกิน 35 วัน")]
+  LED[("Erasure ledger<br/>audit-worm นอก DB ที่ถูก restore")]
+  ESC["Escrow package<br/>transit key export ใน key ceremony<br/>เข้ารหัสด้วย escrow public key"]
+  SPL["Escrow private key<br/>Shamir 3-of-5 offline 2 สถานที่"]
+  SIG["DOC ใน core - EU DSS<br/>PKCS11 ไป HSM โดยตรง"]
 
-  HSM --> SEAL
-  REC --> SEAL
-  SEAL --> TR
+  HSMA --> SEALA
+  HSMB --> SEALB
+  SEALA -->|"Raft snapshot"| SEALB
+  RK -.->|"generate root, rekey, seal migration"| SEALA
+  SEALA --> TR
   TR --> K1
   TR --> K2
   TR --> K3
   TR --> K4
   TR --> K5
+  SEALA --> K6
   K1 --> DEK
+  DEK -.-> LED
   TR --> ESC
   SPL --> ESC
-  HSM --> SIG
+  SIG --> HSMA
+  SIG --> HSMB
 ```
 
-| หัวข้อ | การออกแบบ |
+| หัวข้อ | การออกแบบ (v1.1) |
 |---|---|
-| ลำดับชั้นกุญแจ | HSM → seal ของ OpenBao → transit KEK ต่อ domain → DEK ต่อบุคคล (health) / ต่อคอลัมน์ (PII) |
-| แยก context | HMAC เลขบัตรของ IAM กับของ core เป็นคนละกุญแจ, non-exportable, มี key version (rotate โดยเก็บ lookup ของเวอร์ชันเก่าจนกว่าจะ re-hash ครบ) |
-| Recovery | Shamir 3-of-5: ผู้ถือคือตำแหน่ง (เช่น รองอธิการบดีที่กำกับ IT, ผอ.สำนักคอมพิวเตอร์, DPO, ผู้อำนวยการกองคลัง, ผู้ตรวจสอบภายใน) **[ต้องยืนยันรายชื่อตำแหน่งกับ มกช. — คำถามเล่ม 13]**; vendor ไม่ถือ share |
-| Escrow ของ KEK | transit key ตั้งค่าให้ backup ได้ (ไม่ export plaintext ในงานปกติ) → แพ็กเกจ backup เข้ารหัสด้วย escrow public key; escrow private key แบ่ง Shamir 3-of-5 เก็บบนสื่อ offline (smartcard/กระดาษใน sealed envelope) ในตู้นิรภัย 2 สถานที่ **[ต้องตรวจสอบชื่อ feature ของ OpenBao รุ่นที่ใช้]** |
-| Snapshot | OpenBao Raft snapshot รายชั่วโมง → เข้ารหัส → `backup-openbao` (Object Lock) ทั้ง 2 sites + สำเนา offline รายสัปดาห์ |
-| ซ้อมกู้ | **รายไตรมาส:** restore escrow + snapshot ใน environment แยก แล้วถอดรหัส canary ciphertext ที่รู้คำตอบ; **ปีละ 2 ครั้ง:** "restore from zero" (ไม่มี OpenBao เดิม) เป็นเงื่อนไข go-live ของแต่ละ release |
-| Signing | ใบรับรองของ มกช. อยู่ใน HSM; batch signing ต้อง dual control; การใช้กุญแจลงนามมี audit แยก |
-| Rotation | KEK หมุนรายปี (rewrap DEK แบบ lazy), HMAC ตามเหตุการณ์, token key รายเดือน |
-| Crypto-shredding | ADR-011 (tombstone + backup health_vault 13 เดือน) |
+| Seal model (แบบเดียวทั้งชุดเอกสาร) | OpenBao ≥ 2.2 **auto-unseal ด้วย PKCS#11 กับ HSM ของไซต์ตนเอง**; ไซต์ B มี HSM ที่ถือ seal key ชุดเดียวกัน (clone/backup ด้วยกลไกของผู้ผลิต HSM หรือ Cloud HSM ในไทยที่ replicate ข้ามไซต์) — ไม่มีการ unseal ด้วย Shamir ในงานปกติหรือ DR |
+| ลำดับชั้นกุญแจ | HSM → seal ของ OpenBao → transit KEK ต่อโดเมน (core-PII, vault, safeguarding, finance-bank) → DEK ต่อ (บุคคล × ประเภทระเบียน) สำหรับ health ซึ่งเก็บแบบห่อใน **`hlt_keys`** / DEK ต่อโดเมนหรือตารางสำหรับ PII ใน core |
+| Recovery keys | Shamir 3-of-5 ผู้ถือคือตำแหน่ง (เช่น รองอธิการบดีที่กำกับ IT, ผอ.สำนักคอมพิวเตอร์, DPO, ผู้อำนวยการกองคลัง, ผู้ตรวจสอบภายใน) **[ต้องยืนยันรายชื่อตำแหน่งกับ มกช. — คำถามเล่ม 13]** + ผู้แทนสำรองต่อ share; vendor ไม่ถือ share; **ใช้ authorization เท่านั้น** (generate root token, rekey, seal migration) **ถอดรหัส root key ไม่ได้** จึงไม่ใช่ทางกู้เมื่อ HSM หาย |
+| Escrow ของ transit key (ทางกู้จริงเมื่อ HSM หาย) | transit key ตั้งค่าให้ backup ได้ (`exportable`/`allow_plaintext_backup` 🟡 ตามพฤติกรรม Vault transit) แต่**ถูก export เฉพาะใน key ceremony บนเครื่อง air-gapped** แล้วเข้ารหัสด้วย escrow public key ทันที; escrow private key แบ่ง Shamir 3-of-5 บนสื่อ offline (smartcard/กระดาษใน sealed envelope) ในตู้นิรภัย 2 สถานที่; กติกา: **key ใหม่/เวอร์ชันใหม่ต้องเข้า escrow ก่อนใช้กับข้อมูลจริง** |
+| แยก context ของ HMAC | **2 context** (core, IAM) — ตัด context migration (migration เรียก HMAC ของ core ผ่าน API ใน enclave); key version สำหรับ rotate (เก็บ lookup ของเวอร์ชันเก่าจนกว่าจะ re-hash ครบ); ไม่เรียกว่า "non-exportable" เพราะมี escrow |
+| Snapshot และ RPO ข้ามไซต์ | Raft snapshot **ทุก 15 นาที** → เข้ารหัส → `backup-openbao` (Object Lock) ทั้ง 2 sites; **RPO ของ OpenBao = 15 นาที** (OSS ไม่มี DR replication 🟡) + กติกา **snapshot-before-use** (สร้าง/rotate key แล้ว snapshot + ยืนยันถึงไซต์ B ก่อนใช้) → ไม่มีข้อมูลที่พึ่ง secret ที่อาจหาย; สำเนา offline รายสัปดาห์ (retention ตาราง offline ใน [11-operations](11-operations.md) หัวข้อ 6) |
+| `hlt_keys` (key store ของ health vault) | database แยกใน cluster core; replicate พร้อม Patroni; **key-before-data** (DEK ต้องถึง standby ไซต์ B ก่อนใช้เข้ารหัส) จึง RPO ของกุญแจ ≈ 0 เทียบกับข้อมูล; backup ≤ 35 วัน; ไม่อยู่ในสำเนา offline เกิน 35 วัน |
+| Crypto-shredding | ลบ DEK ของ (บุคคล × ประเภท) ใน `hlt_keys` + บันทึก erasure ledger ใน `audit-worm` → ข้อมูลใน DB และ backup ทุกชุดอ่านไม่ได้เมื่อ backup ของ `hlt_keys` หมดอายุ (≤ 35 วัน); ทุกการ restore ต้อง reapply ledger ก่อนเปิดใช้ (ADR-011) |
+| ซ้อมกู้ | **รายไตรมาส:** restore escrow + snapshot ใน environment แยก แล้วถอดรหัส canary; **ปีละ 2 ครั้ง:** "restore from zero"; **ปีละ 1 ครั้ง: "HSM สูญหาย"** (ไม่มี HSM เดิม → seal ใหม่ + import จาก escrow → ถอดรหัส canary ของ `hlt_keys` และ HMAC); **ปีละ 1 ครั้งนอกเวลาราชการ:** ประกอบ quorum escrow ด้วยผู้แทนสำรอง ([11-operations](11-operations.md) หัวข้อ 8) |
+| Signing | กุญแจลงนาม (e-seal ของหน่วยงาน) อยู่ใน HSM ทั้ง 2 ไซต์; core เรียกผ่าน PKCS#11 โดยตรง (OpenBao ไม่อยู่ใน path); batch ต้อง dual control; การใช้กุญแจมี audit แยก; S3 รายบุคคลใช้ remote signing ของ CA (ADR-029) |
+| Rotation | KEK หมุนรายปี (rewrap DEK แบบ lazy), HMAC ตามเหตุการณ์, admission token key รายเดือน, scope-signing key รายวัน (DB เก็บ verification key 2 เวอร์ชันซ้อนกันระหว่างหมุน) |
+| Exit/ย้ายผู้ให้บริการ | การย้าย GDCC ↔ CSP ต้องทำ **seal migration** (ใช้ recovery keys authorize) และออกใบรับรองลงนามใหม่ถ้า HSM เปลี่ยน; อยู่ใน exit plan ([11-operations](11-operations.md) หัวข้อ 18) |
 
 ---
 
@@ -1208,12 +1251,17 @@ flowchart TB
 |---|---|---|
 | **เกรดและสถานภาพ** | **T** DBA/ผู้มีสิทธิ์แก้เกรดตรงใน DB; **R** ปฏิเสธว่าไม่ได้แก้; **E** อาจารย์แก้เกรดนอก workflow | workflow อนุมัติ + SoD (เล่ม 04); **GradeSubmission snapshot ที่ลงนาม** + job รายคืนเทียบ hash; pgaudit + trigger ไป WORM; DBA JIT read-only ค่าเริ่มต้น, เขียนผ่าน data-fix 4-eyes; transcript สร้างจาก snapshot |
 | **การเงิน/คืนเงิน** | **S** QR ปลอมใน phishing, callback ปลอม; **T** แก้ Biller ID/บัญชีรับเงิน; **E** waiver/คืนเงินโดยไม่มี SoD | callback mTLS + ลายเซ็น + IP allow-list + idempotency; reconcile 3 ทาง; SoD ผู้ให้ waiver ≠ ผู้อนุมัติ + เพดานวงเงิน (SoD-10 ในเล่ม 04); คืนเงินเฉพาะบัญชีที่ยืนยันชื่อบัญชีตรงกับผู้เรียน/ผู้ปกครอง หรือช่องทางเดิม + cooling period เมื่อเปลี่ยนบัญชี; config การเงินเปลี่ยนแบบ maker-checker; anomaly rules (คืนเงินสูง/ถี่) |
-| **ข้อมูลสุขภาพ/safeguarding** | **I** รั่วไหลจากการอ่านเกินจำเป็น หรือ export; **I** ส่งออกต่างประเทศผ่าน LINE/push | health_vault แยก + DEK ต่อบุคคล; ABAC ตาม care relationship + purpose; audit ทุก read; SAFE case ปิดลับแยกสิทธิ์; ไม่มีข้อมูลสุขภาพใน event, analytics, หรือข้อความแจ้งเตือน |
+| **ข้อมูลสุขภาพ/safeguarding** | **I** รั่วไหลจากการอ่านเกินจำเป็น หรือ export; **I** ส่งออกต่างประเทศผ่าน LINE/push | `hlt_vault` แยก + DEK ต่อบุคคล × ประเภทระเบียนใน `hlt_keys`; ABAC ตาม care relationship + purpose; audit ทุก read; SAFE case ปิดลับแยกสิทธิ์; ไม่มีข้อมูลสุขภาพใน event, analytics, หรือข้อความแจ้งเตือน |
 | **บัญชีผู้ดูแลระบบ** | **S** phishing/ขโมย session; **E** สิทธิ์ถาวรเกินจำเป็น; **R** การกระทำไม่ถูกบันทึก | passkey บังคับ; JIT + PAM + session recording; break-glass 2 คน; ไม่มี standing access; audit ของ Keycloak/K8s/PG/OpenBao ส่ง SOC; แจ้งเตือน login จาก ASN ต่างประเทศ |
 | **ข้อมูลผู้เยาว์** | **S** ปลอมเป็นผู้ปกครอง; **I** การสื่อสาร 1:1 ระหว่างผู้ใหญ่กับเด็ก (grooming); **I** ภาพมี GPS | guardian linking 2 ช่องทาง (เอกสาร + ยืนยันจากโรงเรียน) + cooling period; **two-adult rule** ใน NOTI/messaging (ไม่มี DM ส่วนตัวระหว่างผู้ใหญ่กับผู้เยาว์ ต้อง cc ผู้ปกครองหรือครูประจำชั้น) + ปุ่มรายงาน; ลบ EXIF; ไม่ส่งข้อมูลส่วนบุคคลของผู้เยาว์ไป LINE |
 | **บัญชีนักศึกษา/ผู้ปกครอง** | **S** account takeover แล้วถอน/ขอคืนเงิน; **S** social engineering helpdesk ให้ reset MFA | step-up passkey/OTP สำหรับ action เสี่ยง; แจ้งเตือนเมื่อ credential เปลี่ยน; reset MFA ต้องยืนยัน ThaID หรือแสดงตัว + ผู้อนุมัติคนที่สอง ([11-operations](11-operations.md) หัวข้อ 15) |
 | **Credential / e-Transcript** | **S** ปลอมเอกสาร; **T** แก้ PDF | PAdES-B-LTA + QR ตรวจสอบ + ลงทะเบียน DGA/ETDA; batch signing dual control |
-| **ข้อมูลรวม (insider/bulk)** | **I** ดึงข้อมูลจำนวนมากผ่าน BI/export | SQL Lab ปิด; export > 500 แถวต้องอนุมัติ + watermark; UEBA rules ขั้นต่ำ ([11-operations](11-operations.md) หัวข้อ 10) |
+| **ข้อมูลรวม (insider/bulk)** | **I** ดึงข้อมูลจำนวนมากผ่าน BI/export | SQL Lab ปิด; standard export ต่อบทบาท + ad-hoc > 500 แถว/ครั้งหรือ > 2,000 แถว/วันต้องอนุมัติ + watermark (ADR-017); UEBA rules ขั้นต่ำ ([11-operations](11-operations.md) หัวข้อ 10) |
+| **(v1.1) ขอบเขตข้อมูลข้ามวิทยาเขต — RLS bypass ผ่าน SQL injection** | **E/I** ผู้โจมตีที่ฉีด SQL ผ่าน app role เรียก `set_config` ขยาย `org_scope` เป็นทุก OrgUnit แล้วอ่านข้อมูลทั้งมหาวิทยาลัย; **E** scope-signing key รั่ว | scope ผ่าน `sec.begin_scope()` แบบ `SECURITY DEFINER` ที่ตรวจ HMAC + txid + ตรวจซ้ำกับ `role_assignment` (ADR-005 ข้อ 4); ห้าม dynamic SQL (Semgrep/ArchUnit); app role ไม่มีสิทธิ์บน schema `sec`; test ว่า `set_config` ปลอมได้ 0 แถว; UEBA: การตรวจ token ล้มเหลวซ้ำ = สัญญาณ SQLi; หมุน scope-signing key รายวัน |
+| **(v1.1) Supply chain / CI-CD / GitOps** | **T/E** merge env repo แล้ว deploy prod; ขโมย secret ของ runner; ยึด Argo CD admin | ADR-031: 2 reviewers + signed commits บน env repo, Argo CD SSO + RBAC แยก prod, runner prod แยกไม่มี secret ถาวร (OIDC → OpenBao), cosign + Kyverno |
+| **(v1.1) Vendor insider** | **I/T** ทีม vendor ที่มี JIT ใน prod/migration enclave ดึงหรือแก้ข้อมูล | background check, JIT ≤ 8 ชม. อนุมัติโดย มกช., session recording สุ่มตรวจรายเดือน, DataFixRequest ช่องทางเดียว (ADR-023) |
+| **(v1.1) กุญแจ (availability)** | **D** HSM หรือ seal key หาย → ข้อมูลเข้ารหัสทั้งหมดกู้ไม่ได้ | HSM 2 ไซต์ + escrow ของ transit key + ซ้อม "HSM สูญหาย" รายปี (ADR-012) |
+| **(v1.1) ที่นั่งและผลรับสมัคร** | **E** seat hoarding/ส่งต่อที่นั่ง; **I** scrape ผลประกาศจาก static shard ที่เดา key ได้; **I** tablet กรรมการหายก่อน sync | waitlist อัตโนมัติ + cool-down (ADR-004 ข้อ 8); shard key = HMAC(เลขผู้สมัคร + วันเกิด) ไม่มีชื่อเต็ม/เลขบัตร; WebCrypto non-extractable key + PIN + MDM + remote revoke (หัวข้อ 11.8) |
 | **ความพร้อมใช้ช่วงวิกฤต** | **D** บอท/flood วันลงทะเบียน, ransomware | waiting room + rate limit + WAF; immutable backup + ขั้นตอน 48–72 ชม. |
 
 ---

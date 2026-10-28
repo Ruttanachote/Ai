@@ -55,7 +55,7 @@
 3. **เอกสารราชการมีเลขควบคุม:** ใบเสร็จ (gapless) คำร้อง และคำสั่ง ถ้าเปลี่ยนกลางภาคจะเกิดเลขสองชุดในงวดเดียวกัน ซึ่ง สตง. ตรวจยาก
 4. **ผู้ใช้ไม่ต้องเรียนรู้ระบบใหม่ในช่วงพีค:** ต้นภาคมีช่วงว่างให้ฝึกอบรมและ hypercare ก่อนถึงสอบกลางภาค
 5. **มีจุด rollback ที่ชัด:** ก่อนวันลงทะเบียนวันแรก ยังย้อนกลับไปใช้ระบบเดิมได้ทั้งภาค (ดู 2.3)
-6. **R1 ยกเว้นเพียงข้อเดียว:** R1 (ก.ย. 2571) อยู่กลางภาค 1 แต่ไม่แตะนักศึกษาปัจจุบันเลย จึงยึดรอยต่อของ **รอบรับสมัคร** แทนรอยต่อภาค ส่วน R3 (พ.ย.) และ wave ทุก wave (มิ.ย. / 16 พ.ค.) อยู่ที่ต้นภาคพอดี และ **ไม่มี wave ใด go-live กลางภาค** (แก้ IC-06/I-16 ของ v0.9)
+6. **R1 ยกเว้นเพียงข้อเดียว:** R1 (ก.ย. 2571) อยู่กลางภาค 1 แต่ไม่แตะนักศึกษาปัจจุบันเลย จึงยึดรอยต่อของ **รอบรับสมัคร** แทนรอยต่อภาค ส่วน R3 (พ.ย.) และ wave ทุก wave (มิ.ย. / 16 พ.ค.) อยู่ที่ต้นภาคพอดี และ **ไม่มี wave ใด go-live กลางภาค** (แก้ IC-06/RF I-16 ของ v0.9); Wave 2b (1 พ.ย.) เป็นต้นภาค 2
 
 ### 1.3 กติกาการเลื่อน (slip rule) และ scenario ตามวันเริ่มสัญญา
 
@@ -81,26 +81,32 @@
 | Release | Go-live | ขอบเขต (รหัสโมดูลตาม blueprint หัวข้อ 4) | ใช้ที่ไหน | งานเตรียมที่ซ่อนอยู่ |
 |---|---|---|---|---|
 | **P0 Discovery** | เม.ย.–มิ.ย. 2570 (M1–M3) | ยืนยันสมมติฐาน (ปฏิทินจริงรายวิทยาเขต ปีการศึกษา 2571–2573, รอบรับสมัคร, สถานะ TCAS), data profiling ระบบเดิมทุกวิทยาเขต + โรงเรียน, threat model v1, licence register, ตัดสินใจ hosting (GDCC/CSP), ยืนยัน pilot และ wave, ร่าง PolicySet, เริ่มยื่น ThaID RP/ธนาคาร | — | ตั้งทีม มกช. (PO, champion pilot), ลงนาม MoU ของรองอธิการบดีประจำวิทยาเขต pilot |
-| **R1 "รับสมัคร"** | **1 ก.ย. 2571** (M18) | IAM, ORG + ปฏิทิน, NOTI, ENG, SVC (บางส่วน), CASE (ร้องเรียน/อุทธรณ์ผลคัดเลือก), ADM, FIN (ค่าสมัคร/ค่ายืนยันสิทธิ์), PRIV, AUD, ADMIN (ขั้นต่ำ), X-HELP, ITA disclosure (X-CMS ส่วน OIT) | 2 วิทยาเขต pilot รับสมัคร ป.ตรี ปีการศึกษา 2572 ทุกช่องทาง (โควตา ต.ค. 2571, ทั่วไป ก.พ.–มิ.ย. 2572); ช่องทางบัณฑิตศึกษาของชลบุรี (เปิดราว 1 ต.ค.–พ.ย.) เข้าได้ถ้าผ่าน go/no-go ไม่เช่นนั้นใช้ระบบเดิม 1 ปี; หน้า OIT ใช้ได้ทั้งมหาวิทยาลัย | สร้าง platform ทั้งชุด (Minimum Operable Stack ในเล่ม 07), KEK escrow ceremony + ซ้อมกู้, DR test, DPIA สำหรับผู้สมัครผู้เยาว์ |
-| **R2 "เปิดภาค"** | **1 พ.ค. 2572** (M26) | onboarding นักศึกษาใหม่, REC, CUR, REG (+ waiting room), ATT, EXM, ASM, FIN เต็ม, SCH/กยศ., HOU (+ ตม.30), AFF, HLT (พื้นฐาน), ATH core, RPT core, ANA พื้นฐาน, DOC (เอกสารมาตรฐาน: ใบรับรอง, transcript ฉบับกระดาษ/PDF, ใบเสร็จ), CASE เต็ม, SAFE (โครงสร้าง + `StaffClearance` สำหรับนักศึกษาฝึกสอน) | pilot: นักศึกษาใหม่ 2572 + ย้ายนักศึกษาปัจจุบันที่รอยต่อปีการศึกษา + **parallel run ตลอดภาค 1/2572** | migration rehearsal ≥ 3 รอบ, mock registration day บน staging, ซ้อม fiscal rollover |
-| **R3 "ครบวงจร pilot"** | **1 พ.ย. 2572** (M32, ภาค 2/2572) | GRD (degree audit, e-Transcript ขมธอ.25-2563, e-Degree), PRA, GRAD, ALU, FAC, ATH เต็ม (eligibility, travel), LMS, ANA dashboard ผู้บริหาร | pilot ครบวงจร; ระบบเดิมของ pilot เป็น read-only สำหรับโมดูลที่ถูกแทน (หลังผ่าน MS-2b) | ทดสอบ e-Transcript กับ DGA/ETDA, degree audit golden cases ทุกหลักสูตรของ pilot |
+| **R1 "รับสมัคร"** | **1 ก.ย. 2571** (M18) | IAM (รวมผู้ปกครองผู้สมัครผู้เยาว์), ORG + ปฏิทิน, NOTI, ENG, SVC (บางส่วน), CASE (ร้องเรียน/อุทธรณ์ผลคัดเลือก), ADM, **REC ขั้นต่ำ** (Person master + GuardianRelation; ADM สร้าง Person ผ่าน API ของ REC; ยังไม่ออกรหัสนักศึกษา), **CUR ขั้นต่ำ** (ProgramOffering + AccreditedIntakeCap ของ pilot), FIN (ค่าสมัคร/ค่ายืนยันสิทธิ์), **DOC ขั้นต่ำ** (e-Receipt ค่าสมัคร, บัตรประจำตัวผู้สอบ, PDF ประกาศผล; template + PAdES ตราหน่วยงาน), PRIV, AUD, ADMIN ขั้นต่ำ (4-eyes config, job monitor, break-glass), **HLT ขั้นต่ำ** (`hlt_vault` + medical clearance ก่อนสอบทักษะ + บันทึกบาดเจ็บวันสอบ; ADM เห็นเฉพาะสถานะ), **FAC ขั้นต่ำ** (ทะเบียน facility + จองสนามสอบทักษะ), **RPT ขั้นต่ำ** (OIT registry W-136 ทั้งมหาวิทยาลัย), X-HELP, X-CMS ส่วน OIT (แสดงผล) — ทุกส่วนอยู่ในโมดูลเจ้าของ ไม่ฝังใน ADM/FIN (D-03) | 2 วิทยาเขต pilot รับสมัคร ป.ตรี ปีการศึกษา 2572 ทุกช่องทาง (โควตา ต.ค. 2571, ทั่วไป ก.พ.–มิ.ย. 2572); ช่องทางบัณฑิตศึกษาของชลบุรี (เปิดราว 1 ต.ค.–พ.ย.) เข้าได้ถ้าผ่าน go/no-go ไม่เช่นนั้นใช้ระบบเดิม 1 ปี; หน้า OIT ใช้ได้ทั้งมหาวิทยาลัย | สร้าง platform ทั้งชุด (Minimum Operable Stack ในเล่ม 07), KEK escrow ceremony + ซ้อมกู้, DR test, DPIA สำหรับผู้สมัครผู้เยาว์ |
+| **R2 "เปิดภาค"** | **1 พ.ค. 2572** (M26) | onboarding นักศึกษาใหม่, REC เต็ม, CUR เต็ม, REG (+ waiting room), ATT, EXM, ASM, FIN เต็ม, SCH/กยศ., HOU (+ ตม.30), AFF, HLT (พื้นฐาน), **ATH core + eligibility engine + team travel/per diem/เงินยืม (W-30/W-31)** ทันพลศึกษาเกมส์ ก.ย. 2572, **GRD ขั้นต่ำ** (ยื่นขอสำเร็จการศึกษา, holistic pre-audit, clearance) เพื่อรับคำร้องจบช่วง มิ.ย.–ต.ค. 2572, **FAC เต็ม** (ห้องเรียน/ห้องสอบสำหรับ REG/EXM, ตารางซ้อม), RPT core, ANA พื้นฐาน + legacy analytics feed (BR-10), DOC (เอกสารมาตรฐาน: ใบรับรอง, transcript ฉบับกระดาษ/PDF, ใบเสร็จ), CASE เต็ม, SAFE (โครงสร้าง + `StaffClearance` สำหรับนักศึกษาฝึกสอน) (D-03) | pilot: นักศึกษาใหม่ 2572 + ย้ายนักศึกษาปัจจุบันที่รอยต่อปีการศึกษา + **parallel run แบบ shadow comparison ตลอดภาค 1/2572** (ระบบใหม่เป็นหลัก ระบบเดิม read-only + รายงานเทียบ, D-07) | migration rehearsal ≥ 3 รอบ, mock registration day บน staging, ซ้อม fiscal rollover |
+| **R3 "ครบวงจร pilot"** | **1 พ.ย. 2572** (M32, ภาค 2/2572; เปิดด้วย flag ตามกติกาหัวข้อ 2.4) | GRD เต็ม (degree audit, อนุมัติจบ, e-Transcript ขมธอ.25-2563, e-Degree), PRA, GRAD, ALU, ATH ส่วนที่เหลือ (nutrition provision ระดับทีม/หอ, psychology, talent pathway), HLT sports medicine เต็ม, LMS, ANA dashboard ผู้บริหาร | pilot ครบวงจร; ระบบเดิมของ pilot เป็น read-only สำหรับโมดูลที่ถูกแทน (หลังผ่าน MS-2b) | ทดสอบ e-Transcript กับ DGA/ETDA, degree audit golden cases ทุกหลักสูตรของ pilot |
 | W1-ADM | 1 ก.ย. 2572 | ตั้งค่า ADM ให้ 5 วิทยาเขต Wave 1 (ไม่มีโค้ดใหม่) | รับสมัครปีการศึกษา 2573 ของ Wave 1 บนระบบใหม่ | อบรมงานรับเข้าของ Wave 1 |
 | SS1-ADM (ทางเลือก) | 1 ธ.ค. 2572 | ADM channel โรงเรียนกีฬา + guardian account/consent | โรงเรียนกีฬานำร่องรับ ม.1/ม.4 ปีการศึกษา 2573 | ถ้าไม่พร้อม ใช้วิธีเดิม 1 ปีและนำเข้าผลด้วยไฟล์ |
 | **โรงเรียนกีฬานำร่อง** | **16 พ.ค. 2573** (M38) | SSC + SAFE เต็ม + HOU เต็ม (หอประจำ, leave pass, ให้ยา) + HLT (medical alert/medication log) | 1 โรงเรียน (CA-11) | DPIA ผู้เยาว์บังคับก่อน go-live, แต่งตั้ง safeguarding lead |
 | **Wave 1** | **1 มิ.ย. 2573** (M39, ภาค 1/2573) | ทุกโมดูลของ R1–R3 | +5 วิทยาเขต (รวม 7) + 1 โรงเรียน | migration 5 วิทยาเขต, parallel run ภาค 1/2573 |
 | W2-ADM | 1 ก.ย. 2573 | ตั้งค่า ADM ให้ 10 วิทยาเขต Wave 2 | รับสมัครปีการศึกษา 2574 | — |
-| **โรงเรียนกีฬาที่เหลือ** | **16 พ.ค. 2574** (M50) | เหมือนโรงเรียนนำร่อง | 12 โรงเรียน (11 ที่เปิดดำเนินการ + 2 โครงการจัดตั้ง ถ้าเปิดแล้ว) | รับ ม.1/ม.4 ปีการศึกษา 2574 ผ่าน ADM ตั้งแต่ ธ.ค. 2573 |
-| **Wave 2** | **1 มิ.ย. 2574** (M51) | ทุกโมดูล | +10 วิทยาเขต (รวม 17; เป็น 16 ถ้ากระบี่ไม่ใช่วิทยาเขต — CA-12) | parallel run ภาค 1/2574 |
+| **โรงเรียนกีฬาชุด A** | **16 พ.ค. 2574** (M50) | เหมือนโรงเรียนนำร่อง | ≈ 6 โรงเรียนที่เปิดดำเนินการ (เลือกตาม readiness และใกล้ hub) จากทั้งหมดที่เหลือ 12 แห่ง (10 ที่เปิดดำเนินการ + 2 โครงการจัดตั้ง ถ้าเปิดแล้ว) | รับ ม.1/ม.4 ปีการศึกษา 2574 ผ่าน ADM ตั้งแต่ ธ.ค. 2573 |
+| **Wave 2a** | **1 มิ.ย. 2574** (M51, ภาค 1/2574) | ทุกโมดูล | +5 วิทยาเขต (รวม 12) | shadow comparison ภาค 1/2574 |
+| **Wave 2b** | **1 พ.ย. 2574** (M56, ภาค 2/2574; เปิดด้วย flag ตามหัวข้อ 2.4) | ทุกโมดูล | +5 วิทยาเขต (รวม 17; เป็น 4 แห่ง/รวม 16 ถ้ากระบี่ไม่ใช่วิทยาเขต — CA-12) | shadow comparison ภาค 2/2574 (ถึง มี.ค. 2575) |
+| **โรงเรียนกีฬาชุด B** | **16 พ.ค. 2575** (M62) เฉพาะถ้าจำเป็น | เหมือนโรงเรียนนำร่อง | โรงเรียนที่เหลือ ≈ 6 แห่ง (รวม 2 แห่งที่เพิ่งเปิด) ถ้า readiness gate ของชุด A ไม่ครอบคลุมหรือกำลังคนไม่พอ; ถ้าพร้อมให้รวมในชุด A | หลัง MS-H — ดูหมายเหตุ handover ใต้ตาราง |
 | ส่งมอบ/รับประกัน | ก.ค. 2574–มี.ค. 2575 (M52–M60) | stabilisation, knowledge transfer, **independent rebuild test**, transition assistance | ทั้งหมด | ดูเล่ม 11 (exit plan) |
-| **สัญญาแยก** | จัดหา ม.ค.–ก.ย. 2574, เริ่ม ต.ค. 2574 | X-* (ยกเว้น X-HELP และส่วน ITA ของ X-CMS ซึ่งอยู่ใน R1), REV, LAB ขั้นสูง, Flutter app, AI | — | หัวข้อ 7 |
+| **สัญญาแยก** | จัดหา ม.ค.–ก.ย. 2574 (M46–M54), เริ่ม ต.ค. 2574 (M55) | X-* (ยกเว้น X-HELP และส่วน ITA ของ X-CMS ซึ่งอยู่ใน R1), REV, LAB (พื้นฐาน + ขั้นสูง รวม W-110), Flutter app, AI, และรายการที่ตัด/เลื่อนตาม D-06 (หัวข้อ 7) | — | หัวข้อ 7 |
 
-**Workflow ตาม release (แก้ I-14 ของ v0.9):** workflow ใดที่ต้องใช้โมดูลหลายตัว ให้ live ใน release ที่โมดูลสุดท้ายพร้อม เช่น W-01 ส่งเกรด และ W-10 ลาพัก/ลาออก, W-11 พ้นสภาพ อยู่ R2 · W-07 ขอทุน อยู่ R2 (พร้อม SCH) · W-06 ยื่นขอสำเร็จการศึกษา อยู่ R3 (พร้อม GRD) · W-04 ลาไปแข่งขัน อยู่ R2 (ATH core + ATT) รายการเต็มอยู่ใน `data/workflows.json` (เล่ม 05)
+**เหตุผลของ Wave 2a/2b (D-07):** v1.0 ให้ OrgUnit ราว 22 แห่ง (10 วิทยาเขต + 12 โรงเรียน) go-live ใน 2 สัปดาห์ (16 พ.ค.–1 มิ.ย. 2574) ด้วย trainer 4 FTE และ L2 3 FTE ซึ่ง floor-walker ต่อ OrgUnit ทำไม่ได้ และ rehearsal ≥ 30 รอบใน ~12 สัปดาห์เกินทีม data 4 FTE (ux_exec_change UXR-01, architecture_compliance Top-8/O-05) การแบ่งเป็น 2a (มิ.ย.) และ 2b (พ.ย. ซึ่งเป็นรอยต่อภาค) ลดจำนวน OrgUnit ต่อช่วงเหลือ ≤ 11 และใช้ FTE ตาราง 5.2 เดิมโดยกระจายภาระ T5–T6
+
+**หมายเหตุผลต่อ handover (D-07):** (1) Wave 2b parallel run (shadow) จบ มี.ค. 2575 ชนกับ MS-H 31 มี.ค. 2575 (M60) → MS-H แยกเป็น MS-H (platform + pilot + Wave 1 + 2a ตามเดิม) และ **MS-H2b ไม่เกิน 30 มิ.ย. 2575** สำหรับขอบเขต Wave 2b โดยใช้ warranty/transition assistance (≥ 6 เดือน) ที่มีอยู่แล้ว (2) โรงเรียนชุด B (M62) อยู่นอกกรอบ 60 เดือน ทำได้ 2 ทาง: เป็น **option ในสัญญา 2** (ขยาย 3 เดือนเฉพาะทีม rollout) หรือทีม มกช. + MA ทำเองด้วย template ของชุด A ภายใต้ transition assistance — เลือกใน P0 (F4-Q05) (3) ไม่คำนวณต้นทุนใหม่ในรอบนี้ (หัวข้อ 6.8)
+
+**Workflow ตาม release (แก้ RF I-14 ของ v0.9):** workflow ใดที่ต้องใช้โมดูลหลายตัว ให้ live ใน release ที่โมดูลสุดท้ายพร้อม เช่น W-01 ส่งเกรด และ W-10 ลาพัก/ลาออก, W-11 พ้นสภาพ อยู่ R2 · W-07 ขอทุน อยู่ R2 (พร้อม SCH) · W-06 ยื่นขอสำเร็จการศึกษา **ขั้นยื่นและ pre-audit อยู่ R2 (GRD ขั้นต่ำ), ขั้นอนุมัติจบอยู่ R3** · W-04 ลาไปแข่งขัน อยู่ R2 (ATH core + ATT) · W-30/W-31 (eligibility, ทริป) อยู่ R2 (D-03) รายการเต็มอยู่ใน `data/workflows.json` (เล่ม 05)
 
 ### 2.2 Gantt
 
 ```mermaid
 gantt
-  title TNSU platform roadmap v1.0 - M1 is 2027-04 - Thai year = AD + 543
+  title TNSU platform roadmap v1.1 - M1 is 2027-04 - Thai year = AD + 543
   dateFormat YYYY-MM-DD
   axisFormat %Y-%m
   section Procurement
@@ -115,7 +121,7 @@ gantt
   General rounds AY2572               :g72, 2029-02-01, 2029-06-15
   R2 build term operations            :r2b, 2028-03-01, 2029-04-30
   R2 go-live                          :crit, milestone, ms2, 2029-05-01, 0d
-  Parallel run term 1 AY2572          :pr72, 2029-06-01, 2029-11-30
+  Shadow comparison term 1 AY2572    :pr72, 2029-06-01, 2029-11-30
   MS-2b legacy read-only decision     :milestone, ms2b, 2029-12-15, 0d
   R3 build full pilot lifecycle       :r3b, 2029-01-01, 2029-10-31
   R3 go-live                          :crit, milestone, ms3, 2029-11-01, 0d
@@ -125,15 +131,20 @@ gantt
   Wave 1 go-live 5 campuses           :crit, milestone, msw1, 2030-06-01, 0d
   Wave 1 parallel run                 :w1r, 2030-06-01, 2030-11-30
   W2 admissions onboarding            :milestone, w2a, 2030-09-01, 0d
-  Wave 2 preparation and migration    :w2p, 2030-07-01, 2031-05-31
-  Wave 2 go-live 10 campuses          :crit, milestone, msw2, 2031-06-01, 0d
-  Wave 2 parallel run                 :w2r, 2031-06-01, 2031-11-30
+  Wave 2a preparation and migration   :w2p, 2030-07-01, 2031-05-31
+  Wave 2a go-live 5 campuses          :crit, milestone, msw2, 2031-06-01, 0d
+  Wave 2a shadow comparison           :w2r, 2031-06-01, 2031-10-31
+  Wave 2b preparation and migration   :w2bp, 2031-01-01, 2031-10-31
+  Wave 2b go-live 4 to 5 campuses     :crit, milestone, msw2b, 2031-11-01, 0d
+  Wave 2b shadow comparison           :w2br, 2031-11-01, 2032-03-31
   Stabilise warranty handover         :hs, 2031-07-01, 2032-03-31
+  MS-H2b Wave 2b handover             :milestone, msh2b, 2032-06-30, 0d
   section Sports schools
   Pilot school admissions AY2573      :ss1a, 2029-12-01, 2030-02-28
   Pilot school go-live                :crit, milestone, msss1, 2030-05-16, 0d
-  Other schools admissions AY2574     :ss2a, 2030-12-01, 2031-02-28
-  Other schools go-live               :crit, milestone, msss2, 2031-05-16, 0d
+  School batch A admissions AY2574    :ss2a, 2030-12-01, 2031-02-28
+  School batch A go-live              :crit, milestone, msss2, 2031-05-16, 0d
+  School batch B go-live if needed    :milestone, msss3, 2032-05-16, 0d
   section Separate contract
   Separate contract procurement       :scp, 2031-01-01, 2031-09-30
   Separate contract delivery          :scd, 2031-10-01, 2033-09-30
@@ -147,17 +158,19 @@ gantt
 |---|---|---|---|---|
 | **MS-0** Discovery sign-off | 30 มิ.ย. 2570 | 23 มิ.ย. 2570 | ปฏิทินจริงปีการศึกษา 2571–2573 ของ pilot ยืนยันเป็นลายลักษณ์อักษร; data profiling ครบ 30 OrgUnit พร้อม DQ score; ยืนยันว่าดึงข้อมูลจากระบบเดิมแต่ละ product ได้ (หรือมีแผนสำรอง); pilot + wave ได้รับความเห็นชอบ; PO และ champion pilot ได้รับแต่งตั้ง; licence register + threat model v1; ตัดสินใจ hosting แล้ว | ขยาย P0 ได้ไม่เกิน 4 สัปดาห์ (ใช้ buffer R1) |
 | MS-1a R1 integration-ready | 31 มี.ค. 2571 | — | ThaID RP อนุมัติ **หรือ** ใช้ OTP fallback; Biller ID + Thai QR ผ่าน UAT ของธนาคาร; ADM end-to-end บน staging | เปิดใช้ cut list ของ R1 |
-| **MS-1** R1 go-live | 1 ก.ย. 2571 | 15 ส.ค. 2571 | UAT ผ่าน ≥ 95% ของ business scenario และไม่มี Sev-1/Sev-2 ค้าง; load test: ผู้สมัครพร้อมกัน ≥ 2,000 ราย และหน้าประกาศผล 25,000 ครั้งใน 30 นาที (×3 ของคาดการณ์ pilot); pen test ไม่มี High/Critical ค้าง; DPIA (ผู้สมัครผู้เยาว์) อนุมัติ; reconciliation ค่าสมัครใน rehearsal ตรง 100%; **KEK escrow + ซ้อมกู้ OpenBao ผ่าน**; DR failover test ผ่าน; รอบรับสมัครของ 2 วิทยาเขตตั้งค่าและอนุมัติแล้ว; helpdesk L1 พร้อม; หน้า OIT พร้อม | pilot ใช้ระบบเดิมสำหรับรอบโควตา และ R1 go-live 1 ก.พ. 2572 สำหรับรอบทั่วไป (S2) |
-| **MS-2** R2 go-live | 1 พ.ค. 2572 | 15 เม.ย. 2572 | migration rehearsal ≥ 3 รอบ โดยรอบสุดท้าย: จำนวน record ตรง 100%, GPAX ที่คำนวณใหม่ต่างจากเดิม 0 รายการ หรือทุกรายการมีคำอธิบายที่นายทะเบียนลงนาม, ยอดค้างชำระตรง 100%; load test ลงทะเบียน 300 cmd/s และผู้ใช้พร้อมกัน 6,000 (ตาม NFR เล่ม 07); game day (ฆ่า primary DB/Keycloak ระหว่าง load test) ผ่าน; FIN reconciliation + ซ้อม fiscal rollover ผ่าน; ไฟล์ส่ง กยศ. ผ่านการตรวจ; golden files ของใบรับรอง/transcript อนุมัติ; ผู้ใช้ pilot ผ่านการอบรม ≥ 95%; นายทะเบียนและ ผอ.กองคลังของ pilot ลงนาม | **ใช้ระบบเดิมทั้งภาค 1/2572** (นักศึกษาใหม่ 2572 ถูกนำเข้าระบบเดิมด้วยไฟล์จาก ADM) และ R2 go-live ต.ค. 2572 สำหรับภาค 2 ซึ่งทำให้ R3 ไป พ.ค. 2573 |
-| Rollback window ของ R2 | 1 พ.ค. → วันลงทะเบียนวันแรก | — | ระหว่างนี้ legacy ยังรับ delta ย้อนกลับ (reverse-delta) ทุกคืน | ย้อนกลับได้โดยไม่เสียข้อมูล หลังวันลงทะเบียนวันแรกแก้ไปข้างหน้า (fix-forward) เท่านั้น |
-| **MS-2b** จบ parallel run | 15 ธ.ค. 2572 | 1 ธ.ค. 2572 | ผล GPA/สถานภาพ/ใบแจ้งหนี้ของภาค 1/2572 ระหว่างสองระบบตรงกัน 100% หรือมีคำอธิบายที่ลงนาม; snapshot 10 พ.ย. ออกจากระบบใหม่ได้; ไม่มี Sev-1 ใน 30 วันล่าสุด | ขยาย parallel run อีก 1 ภาค (เฉพาะโมดูลที่ยังไม่ผ่าน) |
-| **MS-3** R3 go-live | 1 พ.ย. 2572 | 15 ต.ค. 2572 | degree audit golden cases ผ่านทุกหลักสูตรของ pilot; e-Transcript ผ่านการตรวจ schema ขมธอ.25-2563 + ลายมือชื่อ PAdES; กฎอัตราส่วน PRA 1:3/1:10 ตั้งค่าแล้ว; PolicySet `GRAD` ผ่าน golden cases; LTI roster sync กับ LMS ผ่าน | โมดูลที่ไม่ผ่านคงอยู่บน bridge (หัวข้อ 3.2) อีก 1 ภาค |
+| **MS-1** R1 go-live | 1 ก.ย. 2571 (M18) | 15 ส.ค. 2571 | UAT ผ่าน ≥ 95% ของ business scenario และไม่มี Sev-1/Sev-2 ค้าง; load test: ผู้สมัครพร้อมกัน ≥ 2,000 ราย และหน้าประกาศผล 25,000 ครั้งใน 30 นาที (×3 ของคาดการณ์ pilot); pen test ไม่มี High/Critical ค้าง; DPIA (ผู้สมัครผู้เยาว์) อนุมัติ; reconciliation ค่าสมัครใน rehearsal ตรง 100%; **ซ้อมกู้ key ผ่านทั้งกรณี "OpenBao สูญหาย" และ "HSM สูญหาย" (HSM ไซต์ B มี seal key ของตน; Shamir shares เป็น recovery keys ไม่ใช่ unseal — D-04)**; DR failover test ผ่าน; รอบรับสมัครของ 2 วิทยาเขตตั้งค่าและอนุมัติแล้ว; helpdesk L1 พร้อมตาม staffing model หัวข้อ 5.6 (agent และ routing LINE OA ระบุชื่อ); medical clearance ใน HLT vault และจองสนามสอบทักษะผ่าน FAC พร้อม; หน้า OIT (RPT registry) พร้อม | pilot ใช้ระบบเดิมสำหรับรอบโควตา และ R1 go-live 1 ก.พ. 2572 สำหรับรอบทั่วไป (S2) |
+| **MS-2** R2 go-live | 1 พ.ค. 2572 (M26) | 15 เม.ย. 2572 | migration rehearsal ≥ 3 รอบ โดยรอบสุดท้าย: จำนวน record ตรง 100%, GPAX ที่คำนวณใหม่ต่างจากเดิม 0 รายการ หรือทุกรายการมีคำอธิบายที่นายทะเบียนลงนาม, ยอดค้างชำระตรง 100%; load test ลงทะเบียน 300 cmd/s และผู้ใช้พร้อมกัน 6,000 (ตาม NFR เล่ม 07); game day (ฆ่า primary DB/Keycloak ระหว่าง load test) ผ่าน; FIN reconciliation + ซ้อม fiscal rollover ผ่าน; ไฟล์ส่ง กยศ. ผ่านการตรวจ; golden files ของใบรับรอง/transcript อนุมัติ; ผู้ใช้ pilot ผ่านการอบรม ≥ 95%; นายทะเบียนและ ผอ.กองคลังของ pilot ลงนาม; eligibility rule set ของพลศึกษาเกมส์ 2572 และแบบฟอร์มการเงินทริปผ่าน UAT; GRD ขั้นต่ำรับคำร้องจบได้ | **ใช้ระบบเดิมทั้งภาค 1/2572** (นักศึกษาใหม่ 2572 ถูกนำเข้าระบบเดิมด้วยไฟล์จาก ADM) และ R2 go-live ต.ค. 2572 สำหรับภาค 2 ซึ่งทำให้ R3 ไป พ.ค. 2573 |
+| Rollback window ของ R2 | 1 พ.ค. → วันลงทะเบียนวันแรก | — | ระหว่างนี้ระบบเดิมยังอยู่ในสถานะพร้อมใช้ (read-only) และมี snapshot รายคืนของข้อมูลที่เกิดบนระบบใหม่เป็นไฟล์นำเข้ากลับได้ **ไม่มีการเขียนกลับอัตโนมัติ (reverse-delta) เว้นแต่ระบบเดิมของวิทยาเขตนั้นมี API ที่ผู้ขายรับรอง** (D-07) | ย้อนกลับได้โดยนำเข้า snapshot กลับด้วยไฟล์ หลังวันลงทะเบียนวันแรกแก้ไปข้างหน้า (fix-forward) เท่านั้น |
+| **MS-2b** จบ parallel run (shadow comparison) | 15 ธ.ค. 2572 (M33) | 1 ธ.ค. 2572 | ผล GPA/สถานภาพ/ใบแจ้งหนี้ของภาค 1/2572 ที่ระบบใหม่คำนวณ เทียบกับ **shadow calculation** (กฎเดิมที่ทำเป็น PolicySet) และ snapshot ของระบบเดิม ตรงกัน 100% หรือมีคำอธิบายที่ลงนาม; snapshot 10 พ.ย. ออกจากระบบใหม่ได้; ไม่มี Sev-1 ใน 30 วันล่าสุด | ขยาย parallel run อีก 1 ภาค (เฉพาะโมดูลที่ยังไม่ผ่าน) |
+| **MS-3** R3 go-live | 1 พ.ย. 2572 (M32) | 15 ต.ค. 2572 (code deploy แบบ flag ปิด ภายใน 24 ก.ย. 2572 ก่อน FZ-FY) | degree audit golden cases ผ่านทุกหลักสูตรของ pilot; e-Transcript ผ่านการตรวจ schema ขมธอ.25-2563 + ลายมือชื่อ PAdES; กฎอัตราส่วน PRA 1:3/1:10 ตั้งค่าแล้ว; PolicySet `GRAD` ผ่าน golden cases; LTI roster sync กับ LMS ผ่าน | โมดูลที่ไม่ผ่านคงอยู่บน bridge (หัวข้อ 3.2) อีก 1 ภาค |
 | MS-W1a | 1 ก.ย. 2572 | 15 ส.ค. 2572 | รอบรับสมัครของ Wave 1 ตั้งค่าและอนุมัติ; เจ้าหน้าที่รับเข้าอบรมครบ | Wave 1 รับสมัครปี 2573 ด้วยระบบเดิม (academic go-live ยังทำได้) |
 | **MS-SS1** โรงเรียนนำร่อง | 16 พ.ค. 2573 | 25 เม.ย. 2573 | DPIA ผู้เยาว์ + guardian consent flow ผ่าน; safeguarding lead แต่งตั้งและอบรมแล้ว; ทะเบียน `StaffClearance` ของครู/โค้ช/ครูหอพักครบ ≥ 95%; ปพ. templates อนุมัติ; ซ้อมเหตุฉุกเฉินกลางคืน (medical alert) ผ่าน | ใช้วิธีเดิมอีก 1 ปีการศึกษา |
 | **MS-W1** Wave 1 | 1 มิ.ย. 2573 | 10 พ.ค. 2573 | readiness gate T−6 เดือน (DQ score ≥ เกณฑ์, champion ครบ) ผ่าน; migration rehearsal 3 รอบ (เกณฑ์เดียวกับ MS-2) ต่อวิทยาเขต; อบรม ≥ 95%; **go/no-go แยกรายวิทยาเขต** | วิทยาเขตที่ไม่ผ่านย้ายไป Wave 2 (ไม่เลื่อนทั้ง wave) |
 | MS-W2a | 1 ก.ย. 2573 | 15 ส.ค. 2573 | เช่นเดียวกับ MS-W1a | — |
-| **MS-SS2** / **MS-W2** | 16 พ.ค. / 1 มิ.ย. 2574 | 25 เม.ย. / 10 พ.ค. 2574 | เช่นเดียวกับ MS-SS1 / MS-W1 | OrgUnit ที่ไม่ผ่านเลื่อนไปรอบถัดไป (ภาค 2/2574 สำหรับวิทยาเขต เฉพาะกรณีจำเป็น หรือปีการศึกษา 2575) และต้องคำนวณต้นทุนเพิ่มจาก contingency |
-| **MS-H** ส่งมอบ | 31 มี.ค. 2575 | — | independent rebuild test ผ่าน (บุคคลที่สามหรือทีม มกช. สร้าง environment จาก repo โดยผู้รับจ้างไม่ช่วย); ทีม มกช. ทำ runbook หลักได้เอง ≥ 80%; SBOM + licence report ส่งมอบ | ใช้ transition assistance ตามสัญญา (≥ 6 เดือน) |
+| **MS-SS2a** / **MS-W2a** | 16 พ.ค. 2574 (M50) / 1 มิ.ย. 2574 (M51) | 25 เม.ย. / 10 พ.ค. 2574 | เช่นเดียวกับ MS-SS1 / MS-W1 + backfill ของ champion ได้รับอนุมัติ (หัวข้อ 5.4) | วิทยาเขตที่ไม่ผ่านย้ายไป Wave 2b; โรงเรียนที่ไม่ผ่านย้ายไปชุด B |
+| **MS-W2b** | 1 พ.ย. 2574 (M56) | 10 ต.ค. 2574 (code พร้อมก่อน FZ-FY) | เช่นเดียวกับ MS-W1 | เลื่อนไปภาค 1/2575 (มิ.ย. 2575) เป็นงานหลังส่งมอบ ต้องใช้ contingency |
+| **MS-SS2b** (ถ้าใช้) | 16 พ.ค. 2575 (M62) | 25 เม.ย. 2575 | เช่นเดียวกับ MS-SS1 | ใช้วิธีเดิมอีก 1 ปีการศึกษา |
+| **MS-H** ส่งมอบ | 31 มี.ค. 2575 (M60) (ขอบเขต Wave 2b: MS-H2b ≤ 30 มิ.ย. 2575) | — | independent rebuild test ผ่าน (บุคคลที่สามหรือทีม มกช. สร้าง environment จาก repo โดยผู้รับจ้างไม่ช่วย); ทีม มกช. ทำ runbook หลักได้เอง ≥ 80%; SBOM + licence report ส่งมอบ | ใช้ transition assistance ตามสัญญา (≥ 6 เดือน) |
 
 Hypercare หลังทุก go-live: 6 สัปดาห์ โดยให้บริการ 24×7 ในวันลงทะเบียน วันครบกำหนดชำระ และวันประกาศผล
 
@@ -177,7 +190,13 @@ Hypercare หลังทุก go-live: 6 สัปดาห์ โดยให
 | FZ-RPT | ±2 วันรอบ 10 มิ.ย. และ 10 พ.ย.; สัปดาห์สุดท้ายก่อน OIT ปิด 30 มิ.ย. | RPT, REC, X-CMS (ITA) | emergency fix |
 | FZ-SS | ±7 วันรอบวันเปิดภาคโรงเรียนกีฬา (16 พ.ค., 1 พ.ย.) และช่วงออก ปพ. (มี.ค.) | ring โรงเรียนกีฬา | emergency fix |
 
-ผลต่อ roadmap: (1) ไม่มี go-live ใดอยู่ในช่วง ต.ค.–กลาง พ.ย. (ยกเว้น R3 ซึ่งเป็นต้นภาค 2 จึงต้อง go-live ก่อน FZ-REG2 ของ pilot) (2) wave go-live 1 มิ.ย. ชนกับ FZ-RPT (10 มิ.ย.) และพิธีรับปริญญา (มิ.ย.) ดังนั้น snapshot 10 มิ.ย. ของปีที่ go-live จะออกจากทั้งสองระบบแล้วรวมผ่าน bridge BR-06 (3) release train ปกติทุก 2 สัปดาห์นอกช่วง freeze
+**ข้อขัดแย้ง R3/Wave 2b กับ freeze (แก้ใน v1.1, D-07):** v1.0 กำหนด "ไม่มี go-live ใน ต.ค.–กลาง พ.ย." แต่ R3 (1 พ.ย. 2572) และ Wave 2b (1 พ.ย. 2574) ตกใน FZ-ADM/FZ-REG2/FZ-GRADE/FZ-LOAN (architecture_compliance O-02) การเลื่อนไปสัปดาห์ที่ 2 ของ พ.ย. **ไม่แก้ปัญหา** เพราะยังอยู่ใน FZ-REG2 (T0+14) และทำให้ GRD/PRA เริ่มหลังเปิดภาค จึงเลือก **ปรับกติกา freeze** ดังนี้:
+1. **แยก "deploy code" ออกจาก "เปิดใช้":** code ของ R3/Wave 2b deploy ขึ้น production แบบ **feature/configuration flag ปิด** (flag ใน ADMIN ไม่ใช้ Unleash) ภายใน **24 ก.ย.** (ก่อน FZ-FY) และผ่าน go/no-go **15 ต.ค.**; วันที่ 1 พ.ย. เป็นเพียง **การเปิด flag ของโมดูลที่ไม่อยู่ใน scope ของ freeze ที่ active** (R3: GRD, PRA, GRAD, ALU, LMS, ATH ส่วนที่เหลือ; Wave 2b: เปิด OrgUnit ใหม่ใน ring ของตน) โดย CAB อนุมัติ
+2. **FZ-REG2 และ FZ-GL เป็นราย module ใน ring** ไม่ใช่ทั้ง ring/ทั้งระบบ — การเปิด flag ข้างต้นไม่แตะ REG/FIN-payment/SCH ของ ring ที่อยู่ใน freeze
+3. **เป้า freeze ปีที่มี go-live ≤ 40%** ของปีต่อ ring (ปีปกติ ≤ 30%) เพราะ union ของ freeze ปี 2572 ประมาณ 43–45% (architecture_compliance หัวข้อ 3.5) ถ้าเกินให้ลด FZ-GL เป็นราย ring
+4. กลไกและระบบอัตโนมัติของ freeze อยู่ในเล่ม 11 (ส่งข้อเสนอให้ผู้ดูแลเล่ม 11 ปรับตามข้อ 1–3)
+
+ผลต่อ roadmap: (1) ไม่มี **code deploy** ใดอยู่ในช่วง ต.ค.–กลาง พ.ย.; R3 และ Wave 2b เปิดใช้ด้วย flag ตามข้อ 1 (2) wave go-live 1 มิ.ย. ชนกับ FZ-RPT (10 มิ.ย.) และพิธีรับปริญญา (มิ.ย.) ดังนั้น snapshot 10 มิ.ย. ของปีที่ go-live จะออกจากทั้งสองระบบแล้วรวมผ่าน bridge BR-06 (3) release train ปกติทุก 2 สัปดาห์นอกช่วง freeze
 
 ---
 
