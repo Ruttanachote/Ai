@@ -279,7 +279,7 @@ flowchart TB
 | 18 | Kafka (Strimzi) | เลื่อน |
 | 19 | MirrorMaker 2 | เลื่อน |
 | 20 | Apicurio | เลื่อน (AsyncAPI ใน Git) |
-| 21 | Debezium | เลื่อน (ใช้ PG logical replication) |
+| 21 | Debezium | เลื่อน (v1.0 ใช้ PG logical replication; v1.1 ใช้ physical replica + FDW) |
 | 22 | MinIO | ไม่ใช้ (upstream archived) |
 | 23 | OpenSearch | เลื่อน |
 | 24 | ClickHouse | เลื่อน |
@@ -368,7 +368,7 @@ flowchart TB
 | เลื่อน/ตัด | เกณฑ์นำกลับ (ต้องมีหลักฐานจาก production) | ADR |
 |---|---|---|
 | Kafka + Strimzi + MirrorMaker 2 + schema registry | event > 500/s ต่อเนื่อง 15 นาทีในช่วงปกติ **หรือ** consumer ภายนอก ≥ 5 ระบบที่ต้อง replay **หรือ** outbox lag p95 > 30 s แม้ปรับ relay แล้ว | ADR-003 |
-| Debezium CDC | ผู้ใช้จริงต้องการ freshness < 15 นาที และ logical replication ไม่พอ | ADR-017 |
+| Debezium CDC | ผู้ใช้จริงต้องการ freshness < 15 นาที และ ELT รายชั่วโมงผ่าน FDW ไม่พอ | ADR-017 |
 | ClickHouse | dashboard p95 > 3 s บนข้อมูลจริงหลังทำ partition/materialized view แล้ว | ADR-017 |
 | OpenSearch | ต้องค้น full-text ในเอกสาร/ไฟล์ปริมาณมาก หรือ PG FTS p95 > 500 ms | ADR-021 |
 | Service mesh (mTLS ภายใน) | threat model รอบทบทวนพบ lateral movement risk สูง; ระหว่างนี้ใช้ NetworkPolicy default-deny + WireGuard ของ CNI ถ้ามี | ADR-018 |
@@ -484,7 +484,7 @@ flowchart TB
 ### ADR-003: Transactional outbox + PostgreSQL event publication registry + PG job queue (Kafka/Debezium เลื่อน)
 
 - **บริบท:** ภาระ event ระดับหลักสิบต่อวินาที (หัวข้อ 10); Kafka เป็น component ที่ operate ยากที่สุดในชุดเดิม (review ARCH-01)
-- **การตัดสินใจ:** (1) event ภายในใช้ **Spring Modulith event publication registry บน JDBC** ซึ่งบันทึกใน transaction เดียวกับข้อมูลธุรกิจ และ resubmit รายการที่ยังไม่เสร็จได้ (2) งานที่ต้องส่งออกนอกระบบ (NOTI, adapter, ส่งไฟล์รัฐ) เป็น **job ใน PostgreSQL** ดึงด้วย `FOR UPDATE SKIP LOCKED`, retry แบบ exponential backoff, dead-letter table, idempotency key (3) analytics ใช้ logical replication (ADR-017) ไม่ใช้ CDC (4) ชื่อ event เป็น `<module>.<EventName>.v<n>` ตามรายการที่เล่ม 06 เป็นเจ้าของ และอธิบายใน AsyncAPI ใน Git (5) event ไม่บรรจุข้อมูล sensitive ใส่เฉพาะ id + ข้อมูลขั้นต่ำ (6) purge รายการที่เสร็จแล้วตามรอบ (completion mode DELETE หรือ archive)
+- **การตัดสินใจ:** (1) event ภายในใช้ **Spring Modulith event publication registry บน JDBC** ซึ่งบันทึกใน transaction เดียวกับข้อมูลธุรกิจ และ resubmit รายการที่ยังไม่เสร็จได้ (2) งานที่ต้องส่งออกนอกระบบ (NOTI, adapter, ส่งไฟล์รัฐ) เป็น **job ใน PostgreSQL** ดึงด้วย `FOR UPDATE SKIP LOCKED`, retry แบบ exponential backoff, dead-letter table, idempotency key (3) analytics ใช้ physical replica + FDW (ADR-017, v1.1) ไม่ใช้ CDC (4) ชื่อ event เป็น `<module>.<EventName>.v<n>` ตามรายการที่เล่ม 06 เป็นเจ้าของ และอธิบายใน AsyncAPI ใน Git (5) event ไม่บรรจุข้อมูล sensitive ใส่เฉพาะ id + ข้อมูลขั้นต่ำ (6) purge รายการที่เสร็จแล้วตามรอบ (completion mode DELETE หรือ archive)
 - **ทางเลือก:** Kafka + Debezium (ops หนัก), RabbitMQ (เพิ่ม component), NATS JetStream
 - **ผล:** + ไม่มี dual-write, backup/DR ชุดเดียวกับ DB − throughput จำกัดโดย PG (พอสำหรับ < 500 event/s), ไม่มี replay ระยะยาวสำหรับ consumer ภายนอก
 - **ทบทวนเมื่อ:** ถึงเกณฑ์ในหัวข้อ 5.4 (event > 500/s ต่อเนื่อง, consumer ภายนอก ≥ 5, outbox lag p95 > 30 s)
@@ -579,7 +579,7 @@ flowchart TB
 
 ### ADR-011: Health vault = database แยก `hlt_vault` + DEK ต่อบุคคล × ประเภทระเบียน + key store `hlt_keys` + crypto-shredding (แก้ v1.1)
 
-- **บริบท:** PostgreSQL community ไม่มี TDE (blueprint ข้อ 10); การแยก cluster เพิ่มภาระ ops (review ARCH-04); การบันทึกบาดเจ็บต้องไม่ถูก block ด้วย consent (blueprint ข้อ 9.9); review v1-review พบว่า v1.0 (ก) เล่ม 07 เก็บ wrapped DEK ใน vault แต่เล่ม 08 เก็บใน key store แยก (ข) DEK เดียวต่อคนลบตาม retention ที่ต่างกันรายประเภทไม่ได้ (ค) ชื่อ DB ไม่ตรงกัน (`health_vault` vs `hlt_vault`) — ปิดตาม D-04
+- **บริบท:** PostgreSQL community ไม่มี TDE (blueprint ข้อ 10); การแยก cluster เพิ่มภาระ ops (review ARCH-04); การบันทึกบาดเจ็บต้องไม่ถูก block ด้วย consent (blueprint ข้อ 9.9); review v1-review พบว่า v1.0 (ก) เล่ม 07 เก็บ wrapped DEK ใน vault แต่เล่ม 08 เก็บใน key store แยก (ข) DEK เดียวต่อคนลบตาม retention ที่ต่างกันรายประเภทไม่ได้ (ค) ชื่อ DB ไม่ตรงกัน (`hlt_vault` vs `hlt_vault`) — ปิดตาม D-04
 - **การตัดสินใจ:**
   1. HLT เป็นเจ้าของข้อมูลสุขภาพแห่งเดียว เก็บใน **database `hlt_vault`** ใน Patroni cluster core (credential, role, pgBackRest stanza, NetworkPolicy แยก; role ของ ELT/analytics ไม่มีสิทธิ์ CONNECT); **v1.1: ข้อมูล wellness รายวัน (อารมณ์ การนอน ความปวด ความเมื่อยล้า) ย้ายมาอยู่ใน `hlt_vault`** ส่วน ATH เก็บเพียงสถานะความพร้อม/ข้อจำกัดการฝึกและค่าที่ได้รับอนุญาต (readiness band) (D-04, D-05)
   2. ป้องกันด้วย (ก) volume/disk encryption (ข) **column-level encryption ด้วย DEK ต่อ (บุคคล × ประเภทระเบียน)** — ประเภทตั้งต้น: `CLINICAL` (เวชระเบียน), `MEDICATION_MINOR`, `INJURY_RTP`, `WELLNESS`, `COUNSELLING`, `DISABILITY`, `SELECTION_MEDICAL` (ใบรับรองแพทย์/ผลตรวจตอนคัดเลือก), `INSURANCE`, `TUE` (รายการสุดท้ายเป็นของเล่ม 08 §9.2) (ค) purpose-bound API ที่ตรวจ care relationship + audit ทุก read
@@ -1280,6 +1280,20 @@ flowchart TB
 
 **คำถามเปิด (ส่งเล่ม 13):** GDCC ให้บริการอะไรได้จริง; วันลงทะเบียน/ประกาศเกรดจริงราย OrgUnit; มกช. ยอมรับ staggered window เป็นนโยบายหรือไม่; ใครถือ recovery share และใบรับรองลงนาม (นิติบุคคล/รายบุคคล); ขนาดและทักษะทีมรับช่วง; ความเห็นฝ่ายกฎหมายต่อ AGPL/BSL/licence bpmn.io; ตัวอย่างไฟล์ ปพ./transcript/ใบรับรองจริงสำหรับ golden files; มี Moodle instance เดิมหรือไม่; มีแบบประเมินการสอนบังคับก่อนดูเกรดหรือไม่
 
+### 14.1 สมมติฐาน/คำถามใหม่ที่เสนอ (v1.1 — ให้ผู้นำรวมเข้าทะเบียน A ในเล่ม 01 และ Q ในเล่ม 13)
+
+> เลขชุดเดียวกันใช้ร่วมกับเล่ม 08 และ 11 (ไม่ซ้ำกัน); รายการที่เกี่ยวกับเล่มนี้:
+
+| รหัสเสนอ | ประเภท | ข้อความ | ผลถ้าผิด / ผลของคำตอบ | ยืนยันด้วย |
+|---|---|---|---|---|
+| A-105 | สมมติฐาน | SLA ของ CDN/WAF และ cloud L4 load balancer ของผู้ให้บริการในไทย ≥ 99.99% ในช่วงวิกฤต (ใช้คำนวณ SLO 99.94%) | ต่ำกว่านี้ → SLO ช่วงวิกฤตต้องลดอีก หรือใช้ edge/LB สองผู้ให้บริการ | Q-90, GDCC spike |
+| A-106 | สมมติฐาน | จัดหา HSM (appliance หรือ Cloud HSM ในไทย) ได้ทั้ง 2 ไซต์ โดย clone/backup seal key และกุญแจลงนามข้ามไซต์ได้ด้วยกลไกของผู้ผลิต | ไม่ได้ → ไซต์ B ต้องใช้ escrow ทุกครั้งที่ failover (RTO ของกุญแจยาวขึ้น) | Q-94 |
+| A-107 | สมมติฐาน | OpenBao OSS ไม่มี cross-cluster DR replication 🟡 และ Raft snapshot ทุก 15 นาทีไม่กระทบประสิทธิภาพ | ถ้ามี DR replication ใน OSS ให้ใช้แทน snapshot (RPO ดีขึ้น) | spike P0 |
+| A-108 | สมมติฐาน | ETDA e-Timestamping รองรับ RFC 3161 และปริมาณ (≈ 100,000 timestamp/ปี + re-timestamp) และมี TSA เชิงพาณิชย์ในไทยเป็นสำรอง (อาจซ้ำกับข้อเสนอของเล่ม 10) | ถ้าไม่รองรับ → ใช้ TSA เชิงพาณิชย์เป็นหลัก | P0 กับ ETDA |
+| A-112 | สมมติฐาน | ELT physical replica ขนาด 4 vCPU/32 GB พอสำหรับ ELT รายชั่วโมง (ข้อมูลวิชาการ ~200,000 แถว/ปี) | ต้องขยาย node (ต้นทุนเล็กน้อย) | load test |
+| Q-90 | คำถาม | ยอมรับ **SLO ภายในช่วงวิกฤตของ journey ลงทะเบียน = 99.94%** แทน 99.95% ใน blueprint ข้อ 8 หรือไม่ (SLA สัญญา 99.9% ไม่เปลี่ยน) | ไม่ยอมรับ → ต้องมีหลักฐาน SLA ของ edge/LB ≥ 99.995% หรือเพิ่มสถาปัตยกรรม edge สองชั้น | ผู้นำ/Design Authority ก่อนปิด v1.1 |
+| Q-94 | คำถาม | GDCC/ผู้ให้บริการมี HSM หรือ Cloud HSM ในไทยที่ 2 ไซต์หรือไม่ และรองรับ PKCS#11 กับ OpenBao/EU DSS หรือไม่ (ผลต่อต้นทุน HSM ชุดที่สองเป็นหมายเหตุให้เล่ม 12) | กำหนดรูปแบบจัดหา HSM | GDCC spike |
+
 ---
 
 ## 15. ผลการปิด review
@@ -1341,7 +1355,7 @@ flowchart TB
 | SEC-06 SIEM/SOC | **แก้** MSSP/SOC 24×7 (11 หัวข้อ 9–10) |
 | SEC-07 IR vs PDPA 72 ชม./NCSA | **แก้** ใน 11 หัวข้อ 9; DPA clause ส่งต่อเล่ม 10 |
 | SEC-08 Backup immutability | **แก้** compliance mode + tenant แยก + offline + ครอบคลุม Git/registry/OpenBao/state (ADR-014; 11 หัวข้อ 6) |
-| SEC-09 Crypto-shredding กับ backup | **แก้** tombstone + backup health_vault 13 เดือน (ADR-011) |
+| SEC-09 Crypto-shredding กับ backup | **แก้** (v1.1 แก้ซ้ำ: wrapped DEK ต่อบุคคล × ประเภทใน `hlt_keys` backup ≤ 35 วัน + erasure ledger นอก DB, ADR-011; ดู 15.10) |
 | SEC-10 HMAC เลขบัตร | **แก้** transit non-exportable + แยก context + versioned (หัวข้อ 12) |
 | SEC-11 Signing key governance | **แก้** dual control batch signing, HSM, TSA (ADR-010); ผู้ถือใบรับรองเป็นคำถามเปิด (เล่ม 13); ตารางระดับลายมือชื่อส่งต่อเล่ม 10 |
 | SEC-12 Cross-border ที่ซ่อนอยู่ | **แก้** หลัก AP-08 + payload หัวข้อ + ลิงก์; register ส่งต่อเล่ม 09/10 (blueprint ข้อ 9.10) |
@@ -1353,7 +1367,7 @@ flowchart TB
 | ข้อ | การจัดการ |
 |---|---|
 | DATA-01 ระดับ audit | **แก้** หัวข้อ 11.10 |
-| DATA-02 CDC ส่งทุก schema | **แก้** ไม่มี CDC; logical replication column allow-list, ไม่ส่ง health_vault (ADR-017) |
+| DATA-02 CDC ส่งทุก schema | **แก้** ไม่มี CDC; v1.1 เปลี่ยนเป็น physical replica + view `security_invoker` column allow-list, ไม่ส่ง `hlt_vault` (ADR-017) |
 | DATA-03 Legacy archive | **แก้** 11 หัวข้อ 13 |
 | DATA-04 Migration tooling | **แก้** 11 หัวข้อ 13 (factory, rehearsal ≥ 3); งบ FTE ส่งต่อเล่ม 12 |
 | DATA-05 Bitemporal | **ส่งต่อ** เล่ม 08 (จำกัด bitemporal ที่ PolicySet, FeeSchedule, OrgSetting, ParentAgency, StudentStatus) — เล่มนี้ใช้หลักเดียวกัน |
@@ -1431,3 +1445,62 @@ flowchart TB
 | ประเด็น #4 / C-28 Licence ไม่ตรงที่อ้าง | **แก้** หัวข้อ 6–7 (ตรวจซ้ำ: Teleport CE, MinIO, Grafana stack, Redis 8, Valkey, OpenBao, OpenTofu, dbt, k6, Garage, EU DSS, WeasyPrint) |
 | ข้อสังเกต 4.3 เกณฑ์ licence ไม่เท่ากัน | **แก้** ADR-019 |
 | รายการ 🟡: licence Grafana/Loki/Tempo/Redis/Zammad รุ่นที่ใช้จริง | **แก้บางส่วน** Grafana stack และ Redis ตรวจแล้ว; Zammad ยังไม่ได้ตรวจซ้ำ → SBOM gate ตอนส่งมอบ |
+
+### 15.10 ผลการปิด review v1-review (รอบ v1.1)
+
+แหล่ง: `research_notes/ออกแบบระบบการศึกษา TNSU ระดับ production/v1-review/` — **AC** = architecture_compliance.md, **CO** = consistency.md, **UX** = ux_exec_change.md, **FS** = functional_sports.md · ตาม [00-fix-decisions-v1.1](00-fix-decisions-v1.1.md)
+
+| ข้อ | สถานะ | ที่อยู่ในเล่มนี้ |
+|---|---|---|
+| AC Top-1 / K-01 recovery key ≠ unseal | **แก้** seal model เดียว (HSM auto-unseal ทั้ง 2 ไซต์), recovery key = authorization, escrow เป็นทางกู้, ซ้อม HSM สูญหาย (D-04) | ADR-012, หัวข้อ 12 |
+| AC Top-2 / K-03 / CO OWN-01 ที่เก็บ DEK ขัดกัน | **แก้** wrapped DEK ใน `hlt_keys` (ไม่ใช่ vault/OpenBao KV), key-before-data, backup ≤ 35 วัน, ledger นอก DB | ADR-011, หัวข้อ 12 |
+| AC Top-3 / K-04 DEK ต่อคน vs retention ต่อประเภท | **แก้** DEK ต่อ (บุคคล × ประเภทระเบียน) | ADR-011 ข้อ 2 |
+| AC Top-4 RLS นอก OLTP / replica ขัดกัน | **แก้** physical replica + `security_invoker` + FDW; ไม่มี BYPASSRLS; Superset RLS filter + CI (D-09) | ADR-005 ข้อ 7, ADR-017 |
+| AC Top-5 / S-02 SQLi ขยาย scope | **แก้** scope token + `SECURITY DEFINER` + เพิ่มใน STRIDE (D-09) | ADR-005 ข้อ 4, หัวข้อ 13 |
+| AC Top-6 / N-01 SLO chain ไม่นับ PgBouncer/LB, OpenBao ไม่อยู่ใน SLO | **แก้** คำนวณใหม่ (99.93% → 99.94% หลัง sidecar), ปรับเป้าเป็น 99.94% + Q-90, OpenBao ใน journey ที่เกี่ยว + DEK cache + game day | ADR-027, หัวข้อ 10.7–10.8 |
+| AC Top-7 / A-01..A-04 stack นับต่ำ, bus factor | **แก้** นับจริง 35 → v1.1 32, etcd/Sentinel/FreeRADIUS/cert-manager นับ, ตัด Tempo/Lua plugin/cluster apps, ผู้ดูแลหลัก/สำรอง (D-06) | หัวข้อ 5.3–5.4, ADR-026, ADR-028 |
+| AC Top-8 migration/parallel run | **ส่งต่อ** เล่ม 11 (shadow comparison) และ 12 (Wave 2a/2b, FTE) | [11-operations](11-operations.md) หัวข้อ 13 |
+| AC Top-9 / C-05 sole control ของ batch signing, signing path ขัดกัน | **แก้** e-seal สำหรับ batch, S3 ผ่าน remote signing 2FA ต่อ batch, path เดียว core → PKCS#11 → HSM (ตรงกับเล่ม 10 v1.1) | ADR-010, ADR-029 |
+| AC Top-10 cross-border / lawful basis | **ส่งต่อ** เล่ม 09/10 (I-53..I-58); เล่มนี้ใช้ self-hosted challenge + breached-password + SMS pumping controls | หัวข้อ 11.2 |
+| AC A-05 สรรหา IT ก่อน R2 | **ส่งต่อ** เล่ม 12 | — |
+| AC A-06 OpenBao ไม่มี DR replication | **แก้** RPO OpenBao = 15 นาที + snapshot-before-use | ADR-012 ข้อ 4, หัวข้อ 10.8 |
+| AC A-07 PgBouncer + prepared statements | **แก้** PgBouncer ≥ 1.21 `max_prepared_statements`, ArchUnit บังคับ transaction | ADR-005 ข้อ 4, ADR-027 |
+| AC A-08 `rel_visible()` ต่อแถว | **แก้** policy แยก org scope (InitPlan) + relationship แบบ EXISTS ที่ index ได้ | ADR-005 ข้อ 2 |
+| AC A-09 ZWSP | **แก้** ZWSP เฉพาะชั้น render + text-extraction test + pin เวอร์ชัน | ADR-010 ข้อ 2 |
+| AC A-10 / C-11 bpmn-js watermark, AGPL | **แก้** DoD ห้ามซ่อน watermark; ห้าม fork AGPL | หัวข้อ 6–7 |
+| AC A-11 OpenBao PKCS#11 | **แก้** ≥ 2.2, HSM build, external plugin ตั้งแต่ 2.7 | หัวข้อ 6 |
+| AC A-12 Keycloak sizing | **แก้** เป้า 40/s, ไม่ใช่คอขวด | หัวข้อ 10.3–10.4 |
+| AC N-02 hot row รวม sync commit | **แก้** ตารางความไว, UPDATE seat ท้าย transaction, bucketing พร้อมตั้งแต่ R2 | ADR-004 ข้อ 7, หัวข้อ 10.3 |
+| AC N-03 PgBouncer connection ไม่ตรง | **แก้** ตัวเลขเดียว 124 server conn (sidecar) | ADR-027, หัวข้อ 10.3 |
+| AC N-04 DB ↔ object หลัง failover | **แก้** reconciliation + write-both ของเอกสารลงนาม | หัวข้อ 10.8; runbook เล่ม 11 |
+| AC N-05 site B degraded | **แก้** degraded mode + สร้าง standby ≤ 8 ชม. วัดใน drill | หัวข้อ 10.8 |
+| AC N-06 synthetic 1 นาที | **แก้** SLI request-based จาก APISIX log | ADR-018, หัวข้อ 10.7 |
+| AC N-07 | Info — ไม่ต้องแก้ | — |
+| AC S-01 CI/CD/GitOps | **แก้** | ADR-031, หัวข้อ 13 |
+| AC S-03 SMS pumping | **แก้** | หัวข้อ 11.2 |
+| AC S-04 seat hoarding | **แก้** | ADR-004 ข้อ 8 |
+| AC S-05 judge tablet | **แก้** | หัวข้อ 11.8 |
+| AC S-06 static shard scrape | **แก้** shard key = HMAC(เลขผู้สมัคร + วันเกิด) | หัวข้อ 9.3, 10.2 |
+| AC S-07 vendor insider | **แก้** | ADR-023, หัวข้อ 13 |
+| AC S-08 integrity เกรดสองกลไก / data-fix สองช่องทาง | **แก้** โมเดลเดียว + DataFixRequest ช่องทางเดียว | ADR-030, ADR-023 |
+| AC S-09 CAPTCHA | **แก้** self-hosted challenge (09 I-55) | หัวข้อ 11.2 |
+| AC K-02 "non-exportable" ขัดกับ escrow | **แก้** export เฉพาะ key ceremony air-gapped | ADR-012 ข้อ 3, หัวข้อ 12 |
+| AC K-05 offline/backup ระยะยาว vs DSR | **แก้ส่วนสถาปัตยกรรม** (ledger + reapply); ตาราง retention ของ offline อยู่เล่ม 11 | ADR-011 ข้อ 6 |
+| AC K-06 เวชระเบียน | **เลื่อน** ไป P0 (สถานะห้องพยาบาล); รองรับด้วยประเภทระเบียน `CLINICAL` แยก | ADR-011 |
+| AC K-07 / O-08 ต้นทุน HSM 2 ไซต์, TSA | **หมายเหตุให้เล่ม 12** (ไม่คำนวณราคาใหม่ตาม D-01): เพิ่ม HSM ชุดที่สอง, ใบรับรอง e-seal, TSA สำรอง | หัวข้อ 5.3, ADR-029 |
+| AC K-08 quorum ≤ 4 ชม. บนเส้นทาง DR | **แก้** auto-unseal ไม่ต้องใช้ share; ผู้แทนสำรอง + ซ้อมนอกเวลา | หัวข้อ 12 |
+| AC C-06 TSA/trust anchor/fallback | **แก้** ETDA + สำรองเชิงพาณิชย์ + NRCA ใน DSS + B-B queue | ADR-010 ข้อ 5a |
+| AC หัวข้อ 2.7 over-engineered | **แก้บางส่วน:** ตัด Tempo, Lua plugin, HMAC 3 → 2 context, รวมกลไก integrity เกรด, B-LTA เฉพาะเอกสารถาวร; DEK ต่อบุคคลคงไว้แต่เปลี่ยนเป็นต่อประเภท (จำเป็นต่อ retention) | หัวข้อ 5, ADR-010/012/030 |
+| AC O-01 K8s upgrade cadence | **ส่งต่อ** เล่ม 11 หัวข้อ 5.1 (≥ 3 ครั้ง/ปี); ADR-020 ให้น้ำหนัก managed K8s | ADR-020 |
+| CO OWN-02 ชื่อ DB | **แก้** `hlt_vault`/`hlt_keys` ทั้งเล่ม | ทั้งเล่ม |
+| CO NUM-02 ภาระวันประกาศผล | **แก้** ใช้ A-34 (300/s burst) | หัวข้อ 10.2 |
+| CO NUM-03 ฐานวันประกาศเกรด | **แก้** ระบุฐานและผลถ้ารวม 27,450 คน | หัวข้อ 10.4 |
+| CO NUM-04 จำนวน component ใน 01 | **ส่งต่อ** เล่ม 01: ใช้ "53 → v1.0 นับจริง 35 → v1.1 32" | หัวข้อ 5.3 |
+| UX UXR-12 KPI จาก observability | **แก้** `fct_slo_daily` | ADR-017 ข้อ 6, หัวข้อ 10.7 |
+| UX UXR-27 ผลไม่แน่ใจเมื่อเน็ตหลุด | **แก้** idempotency key + หน้าผลล่าสุด | ADR-004 ข้อ 9 |
+| UX UXR-37 export threshold ไม่กำหนด/ขัดกัน | **แก้** ค่าเดียว: standard export ต่อบทบาท + ad-hoc 500 แถว/ครั้ง, 2,000 แถว/วัน (แทน 100 ใน 08 v1.0) | ADR-017 ข้อ 5, หัวข้อ 11.11 |
+| UX UXR-38 encoding/ปี พ.ศ. ใน import | **แก้** | หัวข้อ 11.11 |
+| UX UXR-40 business continuity kit | **ส่งต่อ** เล่ม 11 หัวข้อ 7.4 | หัวข้อ 11.8 |
+| UX UXR-41 เครื่องใช้ร่วม | **แก้** fast user switching | ADR-009 |
+| FS X-27 wellness อยู่ ATH | **แก้** ย้ายเข้า `hlt_vault` (D-04) | ADR-011 ข้อ 1 |
+| FS O-10 / D-06 ClearingRun อัตโนมัติ | **แก้** R1 ใช้ยืนยันสิทธิ์ได้ที่เดียว ตรวจซ้ำตอนยืนยัน | หัวข้อ 9.3 |

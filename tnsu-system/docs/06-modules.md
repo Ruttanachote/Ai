@@ -1,7 +1,7 @@
 # 06 — Module Catalogue (แคตตาล็อกโมดูล)
 
-> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · ผู้เขียน: D · ภาษา: ไทย (ศัพท์เทคนิค ชื่อผลิตภัณฑ์ และโค้ดเป็นภาษาอังกฤษ)
-> **อ่านคู่กับ:** [00-blueprint](./00-blueprint.md) (สัญญากลาง: รหัสโมดูลหัวข้อ 4, แผนเฟสหัวข้อ 7, กฎเจ้าของเดียวหัวข้อ 10) · [08-data](./08-data.md) (domain model, identifiers, RLS, health vault, migration) · `02-student-journey.md` · `03-academic-calendar.md` · `04-roles-permissions.md` (เจ้าของรหัสบทบาท) · `05-workflows.md` + `data/workflows.json` (เจ้าของ W-xx; ฟิลด์ `output` ต้องใช้ชื่อ event จากหัวข้อ 10 ของเล่มนี้) · `07-architecture.md` (ADR, stack) · `09-integrations.md` · `10-security-compliance.md` · `12-roadmap-cost-risk.md`
+> **สถานะ:** v1.1-draft · 28 ต.ค. 2569 (แก้ตาม review v1.0 และ [00-fix-decisions-v1.1](./00-fix-decisions-v1.1.md) D-03, D-04, D-05, D-06, D-10; รายการ **Workflow:** ของแต่ละโมดูลยังเป็นของ v1.0 — lead สร้างใหม่จาก `data/workflows.json`) · ผู้เขียน: D · ภาษา: ไทย (ศัพท์เทคนิค ชื่อผลิตภัณฑ์ และโค้ดเป็นภาษาอังกฤษ)
+> **อ่านคู่กับ:** [00-blueprint](./00-blueprint.md) (สัญญากลาง: รหัสโมดูลหัวข้อ 4, แผนเฟสหัวข้อ 7, กฎเจ้าของเดียวหัวข้อ 10) · [08-data](./08-data.md) (domain model, identifiers, RLS, health vault, migration) · `02-student-journey.md` · `03-academic-calendar.md` · `04-roles-permissions.md` (เจ้าของรหัสบทบาท) · `05-workflows.md` + `data/workflows.json` (เจ้าของ W-xx; `output` เป็นคำบรรยาย ส่วนชื่อ event ที่ workflow ปล่อยต้องมาจากหัวข้อ 10 ของเล่มนี้) · `07-architecture.md` (ADR, stack) · `09-integrations.md` · `10-security-compliance.md` · `12-roadmap-cost-risk.md`
 > **เล่มนี้เป็นเจ้าของ:** (1) ขอบเขตและความสามารถของทุกโมดูลตามรหัสใน blueprint หัวข้อ 4 (2) **รายการ event แบบ canonical** (หัวข้อ 10) ซึ่งทุกเล่มต้องอ้างชื่อตามนี้ (3) ตารางเจ้าของข้อมูลเพียงโมดูลเดียว (หัวข้อ 3)
 
 ---
@@ -123,7 +123,7 @@ flowchart TB
 
 ## 3. กฎเจ้าของเพียงโมดูลเดียว (single-owner matrix)
 
-ตารางนี้ปิดประเด็นเจ้าของซ้ำจาก v0.9 (review_functional R-01..R-07, I-21) และบังคับตาม blueprint หัวข้อ 10 โมดูลอื่นอ่านผ่าน API หรือ event เท่านั้น ห้ามเก็บสำเนาที่แก้ไขได้
+ตารางนี้ปิดประเด็นเจ้าของซ้ำจาก v0.9 (review_functional R-01..R-07, RF I-21) และบังคับตาม blueprint หัวข้อ 10 โมดูลอื่นอ่านผ่าน API หรือ event เท่านั้น ห้ามเก็บสำเนาที่แก้ไขได้
 
 | ข้อมูล / ความสามารถ | เจ้าของ (System of record) | โมดูลอื่นทำได้เพียง | หมายเหตุ |
 |---|---|---|---|
@@ -131,7 +131,7 @@ flowchart TB
 | ประกาศ (ข่าว, ประกาศทางการ, ประกาศเฉพาะกลุ่ม, ฉุกเฉิน) | **ENG** | NOTI ส่งออกช่องทาง; ADMIN ตั้งค่าช่องทาง/แม่แบบช่องทางเท่านั้น; DOC ลงนาม PDF | R-02 |
 | ตารางสอบ (กลางภาค/ปลายภาค/สอบชดเชย), ห้องสอบ, กรรมการคุมสอบ | **EXM** | REG ส่ง section/ผู้ลงทะเบียน; ASM รับผลขาดสอบ/ทุจริต | R-01; การสอบคัดเลือกเข้าศึกษาเป็นของ ADM (ไม่ใช่ตารางสอบรายวิชา) |
 | ชั่วโมงกิจกรรม/จิตอาสา (ledger เดียว) | **AFF** | ENG ส่ง check-in; SCH อ่านชั่วโมงจิตอาสา กยศ.; GRD อ่านเพื่อ degree audit | R-04 |
-| ข้อมูลสุขภาพทุกประเภท (คลินิก, บาดเจ็บ, RTP, ยา, จิตวิทยา/บันทึกการให้คำปรึกษา, หลักฐานความพิการ, SDQ, ประกัน) | **HLT** (health vault) | ATH/AFF/HOU/SSC ได้เฉพาะ status ที่ไม่มีการวินิจฉัย หรือเข้าถึงตาม purpose ที่ได้รับอนุญาต | R-06; AFF เป็นเจ้าของ workflow ให้คำปรึกษา/DSS แต่เนื้อหาเก็บใน HLT |
+| ข้อมูลสุขภาพทุกประเภท (คลินิก, บาดเจ็บ, RTP, ยา, **wellness**, จิตวิทยา/บันทึกการให้คำปรึกษา, หลักฐานความพิการ, SDQ, ประกัน) | **HLT** (`hlt_vault`; wrapped DEK ใน `hlt_keys`) | ATH/AFF/HOU/SSC ได้เฉพาะ status ที่ไม่มีการวินิจฉัย (โค้ชเห็นสถานะความพร้อม + ข้อจำกัดเสมอ — D-05) หรือเข้าถึงตาม purpose ที่ได้รับอนุญาต | R-06; AFF เป็นเจ้าของ workflow ให้คำปรึกษา/DSS แต่เนื้อหาเก็บใน HLT |
 | ความสัมพันธ์ผู้ปกครอง–นักเรียน, อำนาจปกครอง, คำสั่งจำกัดสิทธิ์ (custody) | **REC** (`GuardianRelation`) | PRIV เป็นเจ้าของ consent; IAM อ่านเป็น ABAC attribute (`GuardianAccessGrant` เป็นข้อมูลอนุพันธ์) | R-07; ใช้โมเดลเดียวทั้งมหาวิทยาลัยและโรงเรียนกีฬา |
 | Hold (การระงับสิทธิ์ลงทะเบียน/ขอเอกสาร/จบ) | **REC** | FIN, X-LIB, FAC, AFF แจ้งภาระผ่าน event; REG/SVC/GRD ตรวจผ่าน API | แก้ v0.9 ที่ FIN publish `HoldPlaced` |
 | PolicySet (กฎวิชาการต่อรุ่น) | **REC** | ADMIN เป็นหน้าจอจัดการ; REG/ASM/ATT/GRD/SSC/EXM consume | |
@@ -172,6 +172,8 @@ flowchart TB
 - Provisioning ไปยัง M365/Google Workspace (SCIM), eduroam (RADIUS ผ่าน UniNet) และ Moodle; ทุกปลายทางต่างประเทศอยู่ใน cross-border transfer register ของ PRIV
 - Service account / client credentials สำหรับ adapter และบัญชี break-glass ที่ต้อง **อนุมัติ 2 คน** (จัดการผ่าน ADMIN)
 
+- **Role switcher (D-08):** ผู้ใช้หลายบทบาทใช้บัญชีเดียวและ shell เดียว เลือก "บทบาท × OrgUnit ที่ใช้อยู่" ได้โดยไม่ login ใหม่; บทบาทที่ใช้อยู่ถูกส่งไปกับทุกคำขออนุมัติเพื่อตรวจ SoD และบันทึก audit (UX ในเล่ม 14 หัวข้อ 9.3)
+
 - **Entities หลัก:** `UserAccount`, `IdentityLink(provider, subject, ial)`, `CredentialBinding`, `RoleAssignment`, `ActingAssignment`, `DelegatedAuthority`, `ExternalPerson(sponsor, valid_to)`, `RelationshipGrant`, `GuardianAccessGrant` (อนุพันธ์), `ServiceAccount`, `AccessPolicy`
 
 - **Events ที่ publish:** `iam.AccountProvisioned`, `iam.IdentityVerified`, `iam.AccountSuspended`, `iam.RoleAssigned`, `iam.ExternalAccessExpired`
@@ -180,7 +182,7 @@ flowchart TB
 - **Workflow:** W-21 (ส่วนยืนยันตัวตนของผู้ยื่น), W-23 (ผลการตรวจประวัติจำกัดสิทธิ์), JML ในเล่ม 05
 - **Integrations:** ThaID, DGA Digital ID (ทางเลือก), AD/LDAP, M365/Google (SCIM), eduroam/UniNet, X-HR
 - **แนวทาง:** **Adopt** Keycloak + **Build** provisioning, relationship/ABAC service และ adapter ThaID
-- **Release:** R1 (ผู้สมัคร, เจ้าหน้าที่รับเข้า, ThaID, MFA บุคลากร, บุคคลภายนอกสำหรับกรรมการสอบทักษะ) · R2 (นักศึกษา, ผู้ปกครอง, relationship attributes ครบ)
+- **Release:** R1 (ผู้สมัคร, **ผู้ปกครองผู้สมัครผู้เยาว์**, เจ้าหน้าที่รับเข้า, ThaID, MFA บุคลากร, บุคคลภายนอกสำหรับกรรมการสอบทักษะ, role switcher) · R2 (นักศึกษา, ผู้ปกครองทั้งหมด, relationship attributes ครบ)
 
 ### 5.2 ORG — Organisation, Campus & Academic Calendar
 
@@ -220,6 +222,10 @@ flowchart TB
 - **กติกาคุ้มครองผู้เยาว์ (two-adult rule)**: ระบบไม่อนุญาตข้อความส่วนตัว 1:1 จากบุคลากร/โค้ชถึงนักเรียนผู้เยาว์ ข้อความต้องอยู่ในกลุ่มหรือ cc ผู้ปกครองหรือครูประจำชั้น และมีปุ่ม report-abuse (SEC-04, C-41)
 - **Suppression**: เคารพ `safe.ContactRestrictionApplied`, custody restriction (`rec.GuardianRelationChanged`), ธงผู้เสียชีวิต (compassionate mode จาก `rec.StudentExited` เหตุ DECEASED ระงับข้อความอัตโนมัติทั้งหมดถึงบัญชีนั้นและผู้ปกครอง ยกเว้นข้อความที่เจ้าหน้าที่ส่งเอง)
 - Rate limit ต่อช่องทาง, retry, DLQ, delivery receipt; เป้า P0 ออกครบทุกช่องทางใน 60 วินาทีถึงผู้รับ ~25,000 คน (ความจุต่อช่องทางคำนวณในเล่ม 07)
+
+- **"เปิดอ่าน" ที่วัดได้:** LINE Messaging API ไม่มี read receipt รายข้อความของ push และ SMS ก็ไม่มี 🟡 [ต้องตรวจสอบ] จึงนิยาม "เปิดอ่าน" = คลิก deep link หรือกด "รับทราบ" ใน app/LIFF; ข้อความ P1 ทุกฉบับมีปุ่มรับทราบ และกติกา fallback ข้ามช่องทางใช้นิยามนี้ (เล่ม 14 หัวข้อ 8.3)
+- **Hold window ของ bulk action:** outbox รองรับ `release_at` เพื่อระงับข้อความ/ event ปลายน้ำ 10 นาทีระหว่างที่ผู้ใช้ยังยกเลิก bulk action ได้ (เล่ม 14 หัวข้อ 9.2)
+- **ช่องทีม (team channel):** กลุ่มข้อความต่อทีม/ชั้นเรียนที่มีผู้ใหญ่ ≥ 2 คน ส่งรูป/ไฟล์ ประกาศตารางซ้อม และ read-ack ในแอป มีบันทึก; LINE OA ส่งเฉพาะหัวข้อ + deep link (นโยบายกลุ่ม LINE ส่วนตัวอยู่ในเล่ม 10 หัวข้อ 4.6)
 
 - **Entities หลัก:** `NotificationRule`, `MessageTemplate(version)`, `Message`, `Delivery`, `InboxItem`, `ChannelPreference`, `ChannelBinding` (LINE userId), `QuietHoursPolicy`, `SuppressionEntry`
 
@@ -301,7 +307,7 @@ flowchart TB
 - **Workflow:** W-16, W-17, W-18, W-19, W-20, W-21 (ส่วนรับเรื่อง)
 - **Integrations:** ThaID (ยืนยันตัวผู้ยื่น), e-Saraban (ผ่าน DOC), ช่องทางภายนอก ป.ป.ท./ผู้ตรวจการแผ่นดิน (ส่งต่อแบบเอกสาร)
 - **แนวทาง:** **Build**
-- **Release:** R1 (ร้องเรียน/แจ้งเบาะแส, อุทธรณ์ผลคัดเลือก, OIR) · R2 เต็ม (อุทธรณ์ทุกประเภท, DSR intake)
+- **Release:** R1 (ร้องเรียน/แจ้งเบาะแส, อุทธรณ์ผลคัดเลือก) · R2 เต็ม (อุทธรณ์ทุกประเภท, OIR, DSR intake) (REL-07)
 
 ### 5.7 DOC — Documents, Thai PDF engine & e-Signature
 
@@ -385,12 +391,14 @@ flowchart TB
 **ความสามารถ:**
 - สถาปัตยกรรม: **PostgreSQL read replica → ELT รายชั่วโมง (dbt) → analytics database → Superset** (BI ตัวเดียว, R-08) ตาม Minimum Operable Stack; ClickHouse/OpenSearch เป็นทางเลือกเมื่อ dashboard p95 > 3 วินาทีที่ข้อมูลจริง
 - **Column allow-list** ตั้งแต่ ingestion (ไม่ดึงที่อยู่ ผู้ปกครอง หรือเลขบัตร), `dim_student` ใช้ surrogate key และตาราง identity แยกที่ join ได้เฉพาะ role ที่ได้รับอนุญาต (DATA-02)
-- **RLS ใน mart** ด้วย `org_unit_id` + Superset row-level filter ที่ sync role จาก Keycloak; **ปิด SQL Lab** สำหรับผู้ใช้ทั่วไป (data team ใช้ผ่าน JIT); export ข้อมูลบุคคลเกิน N แถวต้องระบุ purpose + อนุมัติ + watermark (SEC-05) รายละเอียดอยู่ใน 08-data หัวข้อ 10
-- Marts: รับเข้า (ต่อรอบ/วิทยาเขต/ช่องทาง), คงอยู่/สำเร็จตามเวลา, การเงิน, กยศ., ผลการเรียน, PLO/CLO (OBE), ผลประเมินการสอน, ภาวะการมีงานทำ, ITA service stats, **athlete mart แบบ pseudonymised** (ACWR, readiness) ซึ่งรับข้อมูลจาก health vault ผ่าน pipeline แยกที่ตรวจ k-anonymity เท่านั้น
+- **RLS ใน mart** ด้วย `org_unit_id` + Superset row-level filter ที่ sync role จาก Keycloak; **ปิด SQL Lab** สำหรับผู้ใช้ทั่วไป (data team ใช้ผ่าน JIT); **standard export ต่อบทบาท** ที่ Design Authority + DPO อนุมัติล่วงหน้า (คอลัมน์คงที่, RLS ของผู้ใช้, watermark, audit) ไม่ต้องขออนุมัติรายครั้ง ส่วน ad-hoc export ข้อมูลบุคคลเกิน N แถว (ค่าเดียวตาม 08-data หัวข้อ 10) ต้องระบุ purpose + อนุมัติ + watermark (SEC-05; เล่ม 14 หัวข้อ 9.4)
+- Marts: รับเข้า (ต่อรอบ/วิทยาเขต/ช่องทาง), คงอยู่/สำเร็จตามเวลา, การเงิน, กยศ., ผลการเรียน, PLO/CLO (OBE), ผลประเมินการสอน, ภาวะการมีงานทำ, ITA service stats, **athlete mart แบบ pseudonymised** (แนวโน้มภาระฝึกแบบบรรยาย, readiness; ไม่มี ACWR injury-risk alert — D-06) ซึ่งรับข้อมูลจาก health vault ผ่าน pipeline แยกที่ตรวจ k-anonymity เท่านั้น
 - Dashboard ตามระดับ (executive, campus cockpit, คณะ, หลักสูตร) และ open data แบบ aggregate (หลักสูตร, สถิติรับเข้า/สำเร็จ) พร้อม licence และ k-anonymity (C-19)
 - **ไม่มี** ML early warning หรือ chatbot ในขอบเขตนี้ (blueprint ข้อ 9.12) ส่วนสัญญาณเตือนแบบ rule-based อยู่ใน REC (advisor workspace)
 
-**Entities หลัก (warehouse):** `fct_enrollment`, `fct_grade`, `fct_payment`, `fct_application`, `fct_activity_hours`, `fct_training_load_pseudo`, `dim_student` (pseudonymised), `dim_program`, `dim_org_unit`, `dim_term`, `mart_qa_*`, `mart_ita_*`, `ExportRequest`, `DatasetCatalogEntry` (dbt docs)
+- **KPI dictionary:** นิยาม KPI ทุกตัวเป็นของเล่ม 14 หัวข้อ 12.1 (`KPI-01..KPI-47`); ANA เป็นผู้คำนวณและแสดงรหัส/เวอร์ชันนิยามบนทุก tile; ข้อมูลก่อนระบบใหม่ (legacy analytics feed BR-10 และ cohort status history ตามเล่ม 12 TR-10) ติดป้าย "ข้อมูลก่อนระบบ" (D-10)
+
+**Entities หลัก (warehouse):** `fct_enrollment`, `fct_grade`, `fct_payment`, `fct_application`, `fct_activity_hours`, `fct_training_load_pseudo`, `dim_student` (pseudonymised), `dim_program`, `dim_org_unit`, `dim_term`, `mart_qa_*`, `mart_ita_*`, `ExportRequest`, `StandardExportDefinition`, `DatasetCatalogEntry` (dbt docs) · **เพิ่ม v1.1 สำหรับ KPI dictionary (D-10):** `dim_admission_plan`, `fct_census_snapshot`, `fct_alert`, `fct_graduation`, `fct_invoice`, `fct_loan_confirmation`, `fct_competition_result`, `fct_eligibility_check`, `agg_safeguarding_monthly` (aggregate k-anonymity จาก SAFE ไม่ replicate รายเรื่อง), `fct_case` (metadata เท่านั้น), `fct_petition`, `fct_service_feedback`, `fct_slo_daily` (export รายวันจาก observability), `fct_reconciliation`, `fct_registration_session`, `fct_document_issue`, `fct_leave_batch`, `fct_report_submission`, `fct_active_user`, `fct_counter_visit`, `fct_finops_monthly`, `fct_kt_checklist`, `fct_guardian_binding`, `fct_wellness_flag` (aggregate), `fct_ticket`, `fct_legacy_feed` (BR-10)
 
 - **Events ที่ publish:** `ana.MartRefreshed`
 - **Events ที่ consume:** `org.OrgUnitCreated`, `priv.ConsentWithdrawn`, `priv.ErasureApproved`, `rpt.CensusSnapshotTaken`, `asm.CloResultsComputed`, `lms.EngagementSnapshot`, `fin.FiscalPeriodClosed`, `alu.EmploymentSurveyCompleted`
@@ -459,20 +467,20 @@ flowchart TB
 **ความสามารถ:**
 - **โมเดลรอบ**: `AdmissionCycle` (ปีการศึกษา) → `AdmissionChannel` (QUOTA_ACADEMIC โควตาเรียนดี, QUOTA_ATHLETE โควตานักกีฬา, GENERAL ประเภททั่วไป, TCAS_R1..R4 (ทางเลือก), GRADUATE, SPORTS_SCHOOL_M1/M4, TRANSFER/เทียบโอน ปวส., INTERNATIONAL, READMISSION) → **`AdmissionRound` ที่แต่ละวิทยาเขตตั้งเอง** (ประเภททั่วไปได้ถึง 5–6 รอบ ราว ก.พ.–มิ.ย.; โควตาราว ต.ค.–พ.ย.) → seat matrix `Campus × ProgramOffering × study mode (ปกติ/พิเศษ)` และสำหรับโรงเรียนกีฬา `× Sport × Gender × ชั้น`
 - **Round wizard**: วันที่ทุก milestone (ลงทะเบียนเป็น `CalendarEvent` ของ ORG), ค่าสมัคร, เอกสารที่ต้องใช้, เกณฑ์คุณสมบัติแบบ DMN (GPAX ขั้นต่ำและจำนวนภาคเรียน, ระดับและช่วงวันที่ของผลงานกีฬา, อายุ, ชนิดกีฬา), scoring scheme (องค์ประกอบ + น้ำหนัก + tie-break), **เผยแพร่ rubric ก่อนเปิดรอบ** (C-35), ที่นั่งคงเหลือยกจากรอบก่อนอัตโนมัติ (carry-over), `AdmissionPlan` ที่ต้องอนุมัติ และ **เพดานรับตามที่คุรุสภาอนุญาต** (`AccreditedIntakeCap` จาก CUR) เป็น hard stop (G-12)
-- **Applicant master ระดับมหาวิทยาลัย**: Person ใช้เลขประจำตัวประชาชน/passport/รหัส G ร่วมกับ REC, ตรวจซ้ำข้ามวิทยาเขตและข้ามรอบ, ผู้ปกครองและ consent สำหรับผู้สมัครผู้เยาว์ (I-26), คำขอความช่วยเหลือในการสอบสำหรับผู้พิการ (ส่ง AFF ประเมิน → `aff.AccommodationGranted`), ผู้สมัครต่างชาติ (ชำระเงินผ่าน adapter ต่างประเทศของ FIN, เทียบวุฒิด้วย `QualificationEquivalence`)
+- **Applicant master ระดับมหาวิทยาลัย**: Person ใช้เลขประจำตัวประชาชน/passport/รหัส G ร่วมกับ REC, ตรวจซ้ำข้ามวิทยาเขตและข้ามรอบ, ผู้ปกครองและ consent สำหรับผู้สมัครผู้เยาว์ (RF I-26), คำขอความช่วยเหลือในการสอบสำหรับผู้พิการ (ส่ง AFF ประเมิน → `aff.AccommodationGranted`), ผู้สมัครต่างชาติ (ชำระเงินผ่าน adapter ต่างประเทศของ FIN, เทียบวุฒิด้วย `QualificationEquivalence`)
 - **ใบสมัคร**: เลือกได้หลายอันดับ (campus × program × sport), สถานะ draft → submitted → paid → verified → eligible → tested → scored → passed/reserve/failed → confirmed/declined → reported/no-show, อัปโหลดแบบ resumable (tus) + virus scan, คิวตรวจเอกสาร (verify/reject/request more), ตรวจผลงานกีฬากับสมาคม/กกท. ผ่าน `VerificationTask`, ช่วยกรอก GPAX จาก ปพ.1 (OCR + เจ้าหน้าที่ยืนยัน)
 - **ค่าสมัคร**: ใบแจ้งหนี้ Thai QR ผ่าน FIN (Ref1 = เลขใบสมัคร, Ref2 = วิทยาเขต+รอบ), คำขอยกเว้นค่าสมัคร (ยากจน) แบบมีผู้อนุมัติ, คืนเงินเมื่อยกเลิกรอบ
 - **วันสอบ**: ประกาศรายชื่อผู้มีสิทธิ์สอบแบบ mask, บัตรประจำตัวสอบพร้อม QR, check-in หน้างาน, จัดห้องสอบข้อเขียน/สัมภาษณ์ของการคัดเลือก (ADM เป็นเจ้าของ `AdmissionTestSession` ซึ่งแยกจากตารางสอบรายวิชาของ EXM)
-- **สอบทักษะหลายกรรมการ (multi-judge skill scoring)**: session ตามชนิดกีฬา × เพศ, สถานี, จองสนามผ่าน FAC; **gate ใบรับรองแพทย์/คัดกรองสุขภาพก่อนทดสอบ** (อ่านเพียงสถานะ `hlt.MedicalClearanceChanged`, G-07); กรรมการภายนอกเป็น `ExternalPerson`; **ประกาศ COI** รายผู้สมัคร (ความสัมพันธ์กับโค้ช/โรงเรียน) แล้วถอนตัวอัตโนมัติ; กรอกคะแนนบน tablet/PWA แบบ **offline-first** (UUIDv7 ฝั่ง client, sync, conflict queue, กระดาษ + import เป็น fallback); **ล็อกคะแนนเมื่อกรรมการส่ง**; กติกา aggregate ตั้งค่าได้ (เฉลี่ย, ตัดสูงสุด/ต่ำสุด, median); ตรวจความแปรปรวนระหว่างกรรมการแล้วส่ง **moderation** ให้ประธานกรรมการพร้อมเหตุผล; บันทึกเหตุการณ์วันสอบ (บาดเจ็บ, ขาดสอบ, ขอเลื่อน)
+- **สอบทักษะหลายกรรมการ (multi-judge skill scoring)**: session ตามชนิดกีฬา × เพศ, สถานี, จองสนามผ่าน FAC; **gate ใบรับรองแพทย์/คัดกรองสุขภาพก่อนทดสอบ** (ข้อมูลอยู่ใน HLT vault ตั้งแต่ R1; ADM อ่านเพียงสถานะ `hlt.MedicalClearanceChanged`, G-07); จองสนามสอบทักษะผ่าน FAC ขั้นต่ำใน R1 (D-03); กรรมการภายนอกเป็น `ExternalPerson`; **ประกาศ COI** รายผู้สมัคร (ความสัมพันธ์กับโค้ช/โรงเรียน) แล้วถอนตัวอัตโนมัติ; กรอกคะแนนบน tablet/PWA แบบ **offline-first** (UUIDv7 ฝั่ง client, sync, conflict queue, กระดาษ + import เป็น fallback); **ล็อกคะแนนเมื่อกรรมการส่ง**; กติกา aggregate ตั้งค่าได้ (เฉลี่ย, ตัดสูงสุด/ต่ำสุด, median) **ไม่มี z-score normalisation ข้ามชุดกรรมการ** (n ต่อกลุ่มเล็ก ไม่เสถียร อธิบายผู้สมัครยาก — ใช้ panel เดียวต่อ sub-bucket แทน; D-06); ตรวจความแปรปรวนระหว่างกรรมการแล้วส่ง **moderation** ให้ประธานกรรมการพร้อมเหตุผล; บันทึกเหตุการณ์วันสอบ (บาดเจ็บ, ขาดสอบ, ขอเลื่อน)
 - **จัดอันดับและคัดเลือก**: composite score, tie-break, อนุมัติโดยคณะกรรมการ, ประกาศผล (portal รายบุคคล + PDF รายชื่อแบบ mask ผ่าน DOC/ENG), override ต้องมีเหตุผล + ผู้อนุมัติ, สถิติแบบ aggregate ส่ง OIT
 - **Offer และ reserve**: ยืนยัน/สละสิทธิ์ภายในกำหนด; **reserve list cascade** (เรียกสำรองตามลำดับอัตโนมัติ เช่น ภายใน 48 ชม. หลังมีผู้สละ); ตรวจจับ no-show
-- **Clearing ภายในข้ามวิทยาเขต**: กติกาตั้งค่าได้ "ยืนยันสิทธิ์ได้ 1 ที่ทั่ว มกช. ต่อรอบ/ระดับ" (เมื่อยืนยันที่หนึ่ง offer อื่นถูกปล่อยอัตโนมัติ) และ `ClearingRun` ที่นำที่นั่งว่างไปเสนอให้ผู้สมัครที่เลือกวิทยาเขตอื่นไว้ (opt-in) ทั้งนี้นโยบายจำกัด 1 วิทยาเขตยัง **[ต้องตรวจสอบ]**
+- **Clearing ภายในข้ามวิทยาเขต**: กติกา clearing เป็นชุดเดียวที่ **เล่ม 02 หัวข้อ 2.8.1 เป็นเจ้าของ** (D-08) — เล่มนี้อ้างอิงเท่านั้น; ใน R1 ทำแบบ **"ยืนยันสิทธิ์ได้ที่เดียวทั้ง มกช. ต่อ cycle (ปีการศึกษา) ต่อระดับ" ตรวจซ้ำตอนยืนยัน** (unique constraint ข้ามวิทยาเขตบน applicant master; เมื่อยืนยันที่หนึ่ง offer อื่นถูกปล่อยอัตโนมัติ) + reserve cascade; **`ClearingRun` อัตโนมัติที่นำที่นั่งว่างไปเสนอข้ามวิทยาเขตเลื่อนออกไป** จนกว่านโยบายจะยืนยัน (Q-12) และทุกวิทยาเขตอยู่บน ADM (D-06, functional_sports O-10)
 - **ส่งต่อเข้าทะเบียน**: ค่ายืนยันสิทธิ์/ค่าแรกเข้าผ่าน FIN แล้ว `adm.OfferConfirmed` → REC ออกรหัสนักศึกษา; ต้องทำได้ภายใน 24 ชม. เพราะบางรอบประกาศผลแล้วให้รายงานตัววันถัดไป (ชลบุรีรอบ 5: ประกาศ 8 มิ.ย. รายงานตัว 9 มิ.ย. 2569 ([tnsucbi](https://www.tnsucbi.ac.th/)))
 - **TCAS adapter (ทางเลือก)**: import/export ตาม template ของ ทปอ., API ตรวจสถานะด้วยเลข 13 หลัก + secret key (เก็บใน OpenBao) ตามคู่มือ TCAS63 และ reconcile job ช่วงยืนยัน/สละสิทธิ์ (สเปกปัจจุบัน **[ต้องตรวจสอบ]**, [TCAS63 manual](https://www.admission.kmutnb.ac.th/sites/default/files/2020-02/TCAS63-University_Manual_V2_20-01.pdf)); ปิดได้ทั้ง adapter ถ้า มกช. ไม่เข้าร่วม
 - ช่องทาง **feeder จากโรงเรียนกีฬา** (ดึงผลงาน/ผลการเรียนเมื่อได้รับ consent; `ssc.BasicEdCompleted`, `ath.TalentStageChanged`), **บัณฑิตศึกษา** (rolling หลายรอบ, ภาคปกติ/พิเศษ, ทรานสคริปต์, หลักฐานภาษา, concept paper), **เทียบโอน/โอนย้าย** (ส่ง CUR ประเมินการเทียบโอน), **กลับเข้าศึกษาใหม่** (REC ผูกประวัติเดิม)
 - อุทธรณ์ผลคัดเลือกผ่าน CASE (W-18) ภายในกรอบเวลา โดยใช้ score lock และ audit เป็นหลักฐาน
 
-- **Entities หลัก:** `AdmissionCycle`, `AdmissionChannel`, `AdmissionRound`, `AdmissionPlan`, `SeatQuota`, `ScoringScheme`, `Rubric`, `RubricItem`, `Applicant` (บทบาทของ Person), `Application`, `ApplicationChoice`, `ApplicationDocument`, `VerificationTask`, `SportAchievement`, `FeeWaiverRequest`, `AdmissionTestSession`, `TestStation`, `JudgePanel`, `JudgeAssignment`, `ConflictDeclaration`, `JudgeScore`, `ScoreModeration`, `CompositeScore`, `RankList`, `Offer`, `ReserveList`, `ClearingRun`, `TestIncident`, `TcasSyncBatch`, `QualificationEquivalence`
+- **Entities หลัก:** `AdmissionCycle`, `AdmissionChannel`, `AdmissionRound`, `AdmissionPlan`, `SeatQuota`, `ScoringScheme`, `Rubric`, `RubricItem`, `Applicant` (บทบาทของ Person), `Application`, `ApplicationChoice`, `ApplicationDocument`, `VerificationTask`, `SportAchievement`, `FeeWaiverRequest`, `AdmissionTestSession`, `TestStation`, `JudgePanel`, `JudgeAssignment`, `ConflictDeclaration`, `JudgeScore`, `ScoreModeration`, `CompositeScore`, `RankList`, `Offer`, `ReserveList`, `ClearingRun` (เลื่อน — D-06), `TestIncident`, `TcasSyncBatch`, `QualificationEquivalence`
 
 - **Events ที่ publish:** `adm.RoundPublished`, `adm.ApplicationSubmitted`, `adm.ApplicationFeeWaived`, `adm.SkillTestSessionPlanned`, `adm.ResultsAnnounced`, `adm.OfferMade`, `adm.OfferConfirmed`, `adm.OfferDeclined`, `adm.AccommodationRequested`
 - **Events ที่ consume:** `iam.IdentityVerified`, `iam.ExternalAccessExpired`, `org.SettingChanged`, `org.AcademicCalendarPublished`, `org.CalendarWindowOpened`, `org.CalendarWindowClosed`, `case.AppealFiled`, `case.AppealDecided`, `priv.GuardianConsentDecided`, `priv.ErasureApproved`, `admin.ConfigChangeApproved`, `cur.ProgramOfferingOpened`, `cur.ProgramOfferingClosed`, `cur.AccreditedIntakeCapSet`, `ssc.BasicEdCompleted`, `fin.PaymentReceived`, `aff.AccommodationGranted`, `hlt.MedicalClearanceChanged`, `ath.TalentStageChanged`, `fac.BookingConfirmed`, `fac.BookingCancelled`
@@ -521,6 +529,8 @@ flowchart TB
 - Add/drop/W และลงเกิน/ต่ำกว่าเกณฑ์ผ่านคำร้องใน SVC (อนุมัติโดยอาจารย์ที่ปรึกษา/ผู้สอน), เจ้าหน้าที่ลงทะเบียนแทน, **ลงทะเบียนล่าช้าพร้อมค่าปรับ 2 แบบ (รายวัน/เหมาครั้งเดียว)** ตาม `FinePolicy` (blueprint ข้อ 2.8) ส่งให้ FIN
 - ผลต่อสิทธิ์อื่น: การถอน W ตรวจผลต่อทุน/กยศ./สิทธิ์นักกีฬา (eligibility) ก่อนยืนยัน
 
+- **ผลการลงทะเบียนที่ตรวจซ้ำได้ (D-08):** ทุก submit มี idempotency key ฝั่ง client (ส่งซ้ำได้ผลเดิม) และ API/หน้า "ผลการลงทะเบียนล่าสุด" ที่อ่านจากผล commit จริง เพื่อให้นักศึกษาที่สัญญาณหลุดรู้ว่าสำเร็จหรือไม่โดยไม่ submit ซ้ำ (UX เล่ม 14 หัวข้อ 4.1); waitlist offer หยุดนับเวลาใน quiet hours
+
 - **Entities หลัก:** `Term` (อ้าง ORG), `OfferingPlan`, `TeachingAssignment`, `Section`, `Meeting`, `SeatPool`, `SeatReservation`, `EligibilitySnapshot`, `RegistrationCart`, `Enrollment(home_org_unit_id, host_org_unit_id)`, `Waitlist`, `SectionCancellation`, `RegistrationOverride`
 
 - **Events ที่ publish:** `reg.OfferingPlanApproved`, `reg.SectionScheduled`, `reg.SectionCancelled`, `reg.EnrollmentConfirmed`, `reg.EnrollmentDropped`, `reg.WithdrawalApproved`, `reg.LateRegistrationFineAssessed`, `reg.TermRegistrationClosed`
@@ -533,7 +543,7 @@ flowchart TB
 
 ### 6.4 ATT — Attendance
 
-**วัตถุประสงค์:** บันทึกเวลาเรียน คำนวณสิทธิ์สอบตามเกณฑ์ (ค่าเริ่มต้น 80% **[ต้องตรวจสอบข้อบังคับ มกช.]**) และรองรับการลาแข่งที่ไม่นับขาด ซึ่ง v0.9 ไม่มี (G-11, I-20)
+**วัตถุประสงค์:** บันทึกเวลาเรียน คำนวณสิทธิ์สอบตามเกณฑ์ (ค่าเริ่มต้น 80% **[ต้องตรวจสอบข้อบังคับ มกช.]**) และรองรับการลาแข่งที่ไม่นับขาด ซึ่ง v0.9 ไม่มี (G-11, RF I-20)
 
 **ความสามารถ:**
 - `AttendanceSession` สร้างอัตโนมัติจาก meeting ของ REG; ผู้สอนเช็คชื่อด้วย roster หรือ **QR ที่ลงนามและหมุนเวลา** (geofence เป็นทางเลือกที่ต้องผ่าน DPIA; ไม่ใช้ biometric) และนำเข้าการเข้าเรียนออนไลน์จาก Moodle
@@ -583,7 +593,7 @@ flowchart TB
 **ความสามารถ:**
 - Grading scheme ต่อ profile: HIGHER_ED/GRAD (A–F, S/U, I, W; IP สำหรับวิทยานิพนธ์) และ BASIC_ED (8 ระดับ 4–0, ร, มส, ผ/มผ)
 - องค์ประกอบคะแนนและน้ำหนัก, grade passback จาก Moodle (LTI AGS), กรอกคะแนน/นำเข้า Excel พร้อม autosave
-- **สายอนุมัติตาม W-01**: ผู้สอน → หัวหน้าภาค/ประธานหลักสูตร → คณบดี/กรรมการวิชาการประจำคณะ → นายทะเบียนเผยแพร่ (I-27) พร้อมรายงานการกระจายเกรดและล็อกหลังอนุมัติ
+- **สายอนุมัติตาม W-01**: ผู้สอน → หัวหน้าภาค/ประธานหลักสูตร → คณบดี/กรรมการวิชาการประจำคณะ → นายทะเบียนเผยแพร่ (RF I-27) พร้อมรายงานการกระจายเกรดและล็อกหลังอนุมัติ
 - **Signed grade snapshot** (SEC-01): เมื่อเผยแพร่ ระบบสร้าง hash ของชุดเกรดและลงนามด้วย signing service (DOC) และ AUD ตรวจเทียบทุกคืน; e-Transcript ออกจาก snapshot ไม่ใช่ live query
 - แก้เกรดหลังประกาศ (W-02) ต้องมีเหตุผล + อนุมัติ; อุทธรณ์เกรดโดยนักศึกษารับผ่าน CASE (W-16) และให้ตรวจใหม่
 - Job แปลง **I → F/U** อัตโนมัติเมื่อเลยกำหนด พร้อมเตือนผู้สอนและนักศึกษา (workflow ใหม่ "ค่า I ค้าง")
@@ -645,6 +655,8 @@ flowchart TB
 - **พิธีพระราชทานปริญญาบัตรรวมทุกวิทยาเขตครั้งเดียว** (ปีการศึกษา 2567 รับเมื่อ 22 มิ.ย. 2569; blueprint ข้อ 2.2): cohort ข้ามวิทยาเขต, แจ้งความประสงค์รับ/ไม่รับ, ยืนยันการสะกดชื่อ ไทย/อังกฤษ, คำขอแต่งกายตามเพศสภาพ, ชุดครุย (ลิงก์ร้านคู่สัญญา), ถ่ายภาพ, ซ้อมย่อย/ซ้อมใหญ่ด้วย QR, ลำดับแถว/ที่นั่ง, รายชื่อส่งหน่วยงานที่เกี่ยวข้อง **[ต้องตรวจสอบ]**, การรับปริญญาบัตรสำหรับผู้ไม่เข้าพิธี (มารับ/มอบฉันทะ/EMS), นักกีฬาที่ติดแข่งขอเลื่อน
 - ส่งรายชื่อผู้สำเร็จหลักสูตรครูให้คุรุสภา (ร่วมกับ PRA ผ่าน RPT)
 
+- **GRD ขั้นต่ำใน R2 (D-03):** รับคำร้องขอสำเร็จการศึกษา (W-06 ขั้นยื่น), holistic pre-audit แบบรายงานจากข้อมูล REC/ASM ที่ migrate แล้ว และ clearance items เพื่อให้ผู้ยื่นจบภาค 1/2572 ของ pilot (window ≈ มิ.ย.–ก.ค. 2572) มีที่ยื่น; degree audit เต็ม อนุมัติจบ และ credential ใน R3
+
 - **Entities หลัก:** `DegreeAudit`, `AuditException`, `AcademicPlan`, `PlannedCourse`, `GraduationApplication`, `ClearanceItem`, `HonoursDetermination`, `ConferralBatch`, `CouncilResolution`, `Credential`, `PhysicalDiploma(serial, print_batch)`, `CredentialReissue`, `CredentialRevocation`, `BadgeClass`, `BadgeAssertion`, `LearnerRecord`, `Ceremony`, `CeremonyRegistration`
 
 - **Events ที่ publish:** `grd.GraduationApplicationSubmitted`, `grd.DegreeConferred`, `grd.CredentialIssued`, `grd.CredentialRevoked`, `grd.BadgeIssued`, `grd.CeremonyRegistrationClosed`, `grd.AcademicPlanApproved`
@@ -653,7 +665,7 @@ flowchart TB
 - **Workflow:** W-06, W-64, W-67 (ฝั่ง verify) และ workflow ใหม่ "จัดการใบประกาศนียบัตรแทน"
 - **Integrations:** DGA/ETDA Digital Transcript, CA/TSA/HSM (ผ่าน DOC), คุรุสภา, wallet ที่รองรับ OB 3.0
 - **แนวทาง:** **Build** + **Adopt** library มาตรฐาน OB/VC (ตาม licence policy)
-- **Release:** R3 (degree audit, planner, e-Transcript, e-Degree, ปริญญาบัตร, พิธี, badge กิจกรรม/อบรม) · Wave 1 (CLR เต็ม, ePortfolio)
+- **Release:** **R2 ขั้นต่ำ** (ยื่นขอจบ, pre-audit, clearance — D-03) · R3 (degree audit, planner, อนุมัติจบ, e-Transcript, e-Degree, ปริญญาบัตร, พิธี, badge กิจกรรม/อบรม) · Wave 1 (CLR เต็ม, ePortfolio)
 
 > นักศึกษา pilot ที่จบก่อน R3 ใช้ระบบเดิมผ่าน legacy bridge ตามเล่ม 11/12
 
@@ -726,7 +738,7 @@ flowchart TB
 - **Workflow:** W-13 (ร่วมกับ HOU), workflow ใหม่ "รับนักเรียนโรงเรียนกีฬา ม.1/ม.4" (ร่วมกับ ADM)
 - **Integrations:** สทศ. (O-NET), ต้นสังกัด/ศธ. (ข้อมูลรายบุคคล **[ต้องตรวจสอบ]**)
 - **แนวทาง:** **Build** (ใช้ REG/ASM/REC/ATT ร่วมผ่าน AcademicProfile strategy)
-- **Release:** Wave 1 (โรงเรียนกีฬานำร่อง 1 แห่ง พ.ค. 2573) · Wave 2 (ที่เหลือ พ.ค. 2574)
+- **Release:** Wave 1 (โรงเรียนกีฬานำร่อง 1 แห่ง พ.ค. 2573) · โรงเรียนชุด A (16 พ.ค. 2574, M50) · ชุด B (16 พ.ค. 2575, M62 ถ้าจำเป็น — เล่ม 12 หัวข้อ 4.3)
 
 ### 6.12 LMS — LMS integration
 
@@ -770,6 +782,8 @@ flowchart TB
 - tax code สำหรับรายได้เชิงพาณิชย์ (เช่าสนาม, REV) และ VAT/e-Tax invoice **[ต้องตรวจสอบสถานะภาษีของ มกช.]**; e-Donation **[ต้องตรวจสอบ]**
 - adapter ชำระเงินจากต่างประเทศ (บัตร/โอน) สำหรับผู้สมัครต่างชาติ
 - **Pocket-money ledger** แบบ closed-loop สำหรับนักเรียนโรงเรียนกีฬา (ผู้ปกครองเติมและดูรายการได้, วงเงินต่อวัน) — ต้องตรวจเกณฑ์ ธปท. ก่อน **[ต้องตรวจสอบ]**
+
+- **Thai QR บนมือถือเครื่องเดียวกับแอปธนาคาร (D-08):** สร้างรูป QR ที่บันทึกได้ (มียอด เลขอ้างอิง วันหมดอายุในรูป), Ref1/Ref2/Biller ID ที่คัดลอกได้, deep link ธนาคารเมื่อธนาคารรองรับ **[ต้องตรวจสอบ]**, สถานะ "รอยืนยันจากธนาคาร" ที่ poll ซ้ำได้ และไม่สร้างใบแจ้งหนี้ซ้ำ (เล่ม 14 หัวข้อ 4.7)
 
 - **Entities หลัก:** `PartyAccount`, `FeeSchedule`, `FeeItem`, `FinePolicy`, `Waiver`, `Invoice`, `InvoiceLine`, `PaymentIntent`, `Payment`, `PaymentCallback`, `PaymentAllocation`, `BankStatementLine`, `Reconciliation`, `Receipt`, `ReceiptVoid`, `CreditNote`, `PaymentPlan`, `Installment`, `Deferment`, `Sponsor`, `SponsorAgreement`, `SponsorInvoice`, `CashierSession`, `CashDeposit`, `RefundRule`, `Refund`, `BeneficiaryAccount`, `WriteOff`, `DunningStep`, `Payout`, `WithholdingTax`, `TaxCertificate`, `Advance`, `FundCode`, `FiscalPeriod`, `GfmisExportBatch`, `PocketMoneyLedger`
 
@@ -875,20 +889,21 @@ flowchart TB
 
 ### 7.6 HLT — Health (health vault: ที่เก็บข้อมูลสุขภาพแห่งเดียว)
 
-**วัตถุประสงค์:** เก็บและใช้ข้อมูลสุขภาพทุกประเภทในที่เดียวภายใต้ health vault (database แยก, per-person key, crypto-shredding; ดู 08-data หัวข้อ 9) และส่งให้โมดูลอื่นเฉพาะสถานะที่ไม่มีการวินิจฉัย (R-06)
+**วัตถุประสงค์:** เก็บและใช้ข้อมูลสุขภาพทุกประเภท **รวม wellness** ในที่เดียวภายใต้ health vault — ฐานข้อมูล **`hlt_vault`** (database แยก ไม่ใช่ cluster แยก) เข้ารหัสด้วย DEK **ต่อบุคคล × ประเภทระเบียน (record class: ยา/ผู้เยาว์, wellness, injury, คลินิก, จิตวิทยา ฯลฯ)** เพื่อลบตาม retention แต่ละประเภทได้ด้วย crypto-shredding; wrapped DEK เก็บใน **key store แยก `hlt_keys`** (ไม่อยู่ใน backup ของ `hlt_vault`, replicate ไปไซต์ B แบบ synchronous, backup อายุ ≤ 35 วัน) (D-04; รายละเอียด 08-data หัวข้อ 9) และส่งให้โมดูลอื่นเฉพาะสถานะที่ไม่มีการวินิจฉัย (R-06)
 
 **ความสามารถ:**
 - **Clinic EMR-lite** ของห้องพยาบาลมหาวิทยาลัย/โรงเรียน: การรักษา, การวินิจฉัย (ICD-10), การส่งต่อ, ใบรับรองแพทย์ → `hlt.SickLeaveCertified` ให้ ATT/EXM; ตรวจสุขภาพแรกเข้า/ประจำปี (W-45), วัคซีน
 - **Medical clearance** (PRE_TEST ก่อนสอบทักษะ, PPE ก่อนฤดูแข่ง, ANNUAL, PRACTICAL ก่อนวิชาภาคปฏิบัติ) พร้อมวันหมดอายุ และ gate ใน ADM/ATH/REG (G-07)
 - **Medical alert** ชุดข้อมูลขั้นต่ำ (แพ้ยา, โรคที่ต้องรู้ในเหตุฉุกเฉิน, อุปกรณ์ช่วยชีวิต) ที่มี purpose = EMERGENCY และอนุญาตล่วงหน้าให้หัวหน้าทริป/ครูหอเวรเข้าถึงได้ (ผู้ติดต่อฉุกเฉินอยู่ใน REC)
 - **Treatment consent ล่วงหน้า** จากผู้ปกครอง (ยาสามัญ, ส่งโรงพยาบาล) และ **บันทึกการให้ยา** (MAR) สำหรับผู้เยาว์ในหอประจำ
-- **Sports medicine**: injury (บันทึกได้ทันทีบนฐานประโยชน์สำคัญต่อชีวิต/หน้าที่ตามกฎหมาย โดยไม่รอ consent; W-39), การวินิจฉัย, rehab plan, **RTP clearance**, concussion/return-to-learn; ส่งเพียง `hlt.AvailabilityChanged` (FULL/MODIFIED/UNAVAILABLE) ให้ ATH/ATT/EXM; การเปิดเผยรายละเอียดต่อโค้ช/ทีมใช้ consent (blueprint ข้อ 9.9)
+- **Sports medicine**: injury (บันทึกได้ทันทีโดยผู้ประกอบวิชาชีพตามฐานกฎหมายในเล่ม 10 — ไม่รอ consent; W-39), การวินิจฉัย, rehab plan, **RTP clearance**, concussion/return-to-learn; **สถานะความพร้อม** (`AvailabilityStatus`: FULL = พร้อม / MODIFIED = จำกัด พร้อมรายการข้อจำกัดเชิงกิจกรรม เช่น "ห้ามปะทะ" / UNAVAILABLE = ไม่พร้อม) ออกโดย `physician`/`physio` เท่านั้น แล้วส่ง `hlt.AvailabilityChanged` ให้ ATH/ATT/EXM — **โค้ชของ squad เห็นสถานะและข้อจำกัดนี้เสมอโดยไม่ต้องขอ consent** (ฐาน: หน้าที่ดูแลความปลอดภัยของผู้เรียน ตาม lawful-basis matrix L-11 ในเล่ม 10); **รายละเอียดการวินิจฉัย/การรักษา** เปิดเผยต่อโค้ช/ทีมได้เฉพาะเมื่อได้ consent (`DisclosureGrant`) (D-05)
+- **Wellness self-report** (ย้ายจาก ATH ตาม D-04): `WellnessEntry` (การนอน ความปวด อารมณ์ ความล้า) เก็บใน vault record class `wellness`; ATH ได้เฉพาะคะแนน readiness/flag ที่คำนวณแล้วตามที่นักกีฬาอนุญาต; flag ส่งถึง `sci`/S&C ก่อน (เล่ม 14 AM-4)
 - **Sports psychology & counselling notes** (สิทธิ์เฉพาะนักจิตวิทยา/ผู้ให้คำปรึกษา), body composition และ dietitian consult ทางคลินิก, หลักฐานความพิการ, ผลคัดกรอง SDQ/PHQ, TUE reference (ถ้าเก็บ ตาม WADA ISPPPI **[ต้องตรวจสอบ]**, C-43)
 - **ประกันอุบัติเหตุ**: กรมธรรม์กลุ่ม, ส่งรายชื่อให้บริษัทประกัน, ประกันรายรายการสำหรับทริปแข่งขัน, เคลม (เอกสาร, สถานะ)
 - **การเข้าถึงกรณีพิเศษ** (W-14): break-glass ที่ต้องอนุมัติ 2 คน หรือเปิดใช้เองในเหตุฉุกเฉินแล้ว review โดย 2 คนภายใน 24 ชม. และ audit ทุกการอ่าน
 - Retention ผูกกับกฎหมายที่ใช้กับห้องพยาบาล (สถานะห้องพยาบาลตาม พ.ร.บ.สถานพยาบาล **[ต้องตรวจสอบใน P0]**, C-42)
 
-- **Entities หลัก:** `HealthSubject` (pseudonymous key), `Encounter`, `Diagnosis`, `Treatment`, `Referral`, `MedicalClearance`, `MedicalAlert`, `TreatmentConsent`, `MedicationOrder`, `MedicationAdministration`, `Injury`, `RehabPlan`, `RtpClearance`, `AvailabilityStatus`, `PsychSession`, `CounsellingNote`, `DisabilityEvidence`, `ScreeningResult`, `BodyComposition`, `Vaccination`, `InsurancePolicy`, `InsuranceEnrolment`, `InsuranceClaim`, `TueReference`, `DisclosureGrant`, `VaultAccessLog`
+- **Entities หลัก:** `HealthSubject` (pseudonymous key), `Encounter`, `Diagnosis`, `Treatment`, `Referral`, `MedicalClearance`, `MedicalAlert`, `TreatmentConsent`, `MedicationOrder`, `MedicationAdministration`, `Injury`, `RehabPlan`, `RtpClearance`, `AvailabilityStatus`, `WellnessEntry` (ย้ายจาก ATH), wrapped DEK ต่อบุคคล × record class (เก็บใน `hlt_keys` ตาม 08), `PsychSession`, `CounsellingNote`, `DisabilityEvidence`, `ScreeningResult`, `BodyComposition`, `Vaccination`, `InsurancePolicy`, `InsuranceEnrolment`, `InsuranceClaim`, `TueReference`, `DisclosureGrant`, `VaultAccessLog`
 
 - **Events ที่ publish:** `hlt.MedicalClearanceChanged`, `hlt.AvailabilityChanged`, `hlt.InjuryReported`, `hlt.SickLeaveCertified`, `hlt.MedicalAlertUpdated`, `hlt.InsuranceClaimSubmitted`
 - **Events ที่ consume:** `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.AgeOfMajorityReached`, `priv.ErasureApproved`, `adm.SkillTestSessionPlanned`, `rec.StudentMatriculated`, `rec.StudentExited`, `ath.AthleteProfileCreated`, `ath.TripApproved`
@@ -896,9 +911,7 @@ flowchart TB
 - **Workflow:** W-14, W-39, W-45 และ workflow ใหม่ "ประกันอุบัติเหตุ/เคลม"
 - **Integrations:** บริษัทประกัน (ไฟล์), โรงพยาบาลคู่สัญญา (ใบส่งตัว), wearable/แล็บ (ผ่าน ATH/LAB เฉพาะข้อมูลที่จัดเป็นสุขภาพ)
 - **แนวทาง:** **Build**
-- **Release:** R1 ขั้นต่ำ (vault + `MedicalClearance` สำหรับสอบทักษะของ ADM) · R2 พื้นฐาน (คลินิก, alert, ประกัน, injury, counselling notes, disability evidence) · R3 (sports medicine เต็มพร้อม ATH) · Wave 1 (MAR/treatment consent ในหอประจำ)
-
-> **หมายเหตุถึงเล่ม 12:** blueprint ไม่ได้ระบุ HLT ใน R1 แต่การคัดกรองสุขภาพก่อนสอบทักษะ (G-07) ต้องเก็บใน HLT เพราะเป็นที่เก็บข้อมูลสุขภาพแห่งเดียว จึงเสนอ vault ขั้นต่ำใน R1
+- **Release:** R1 ขั้นต่ำ (`hlt_vault` + `hlt_keys` + `MedicalClearance` ก่อนสอบทักษะ + บันทึกบาดเจ็บวันสอบ W-39 ผ่าน W-85; ADM เห็นเฉพาะสถานะ) · R2 พื้นฐาน (คลินิก, alert, ประกัน, injury, availability status ถึงโค้ช, wellness, counselling notes, disability evidence) · R3 (sports medicine เต็มพร้อม ATH) · Wave 1 (MAR/treatment consent ในหอประจำ) — ตัดสินแล้วตาม D-03 (REL-04)
 
 ### 7.7 ALU — Alumni & Career
 
@@ -928,32 +941,34 @@ flowchart TB
 
 ### 8.1 ATH — Athlete Management
 
-**วัตถุประสงค์:** ข้อมูลนักกีฬาครบวงจรที่เชื่อมกับการเรียน (dual career) ในระดับเดียวกับ AMS เชิงพาณิชย์ แต่เก็บข้อมูลในประเทศภายใต้ PDPA และไม่เก็บข้อมูลสุขภาพเอง (ใช้ HLT)
+**วัตถุประสงค์:** ข้อมูลนักกีฬาครบวงจรที่เชื่อมกับการเรียน (dual career) เน้นสิ่งที่โค้ชและนักกีฬาใช้จริง (ลดขอบเขตตาม D-06) เก็บข้อมูลในประเทศภายใต้ PDPA และไม่เก็บข้อมูลสุขภาพเอง รวมถึง wellness (ใช้ HLT `hlt_vault`; ATH เก็บเพียงสถานะ/ค่าที่ได้รับอนุญาต — D-04)
 
 **ความสามารถ:**
 - **Profile**: ชนิดกีฬา/ประเภท/ตำแหน่ง, ระดับ (ทีมชาติ/เยาวชนทีมชาติ/มหาวิทยาลัย/จังหวัด), athlete tier ที่ผูกสิทธิ์ยืดหยุ่น (จำนวนสอบชดเชย, ลดภาระหน่วยกิต) ผ่าน PolicySet, สมาคมต้นสังกัด, squad, **coach assignment** (ต้องผ่าน `StaffClearance` ถ้าดูแลผู้เยาว์ และถูกถอดทันทีเมื่อมี `safe.ContactRestrictionApplied`)
-- **Training**: periodization (macro/meso/micro), session, sRPE/training load (ACWR คำนวณใน analytics), **wellness แบบ opt-in หรือตามทีม** เฉพาะ squad ที่มีนักวิทยาศาสตร์การกีฬาดูแล (R-09) โดยใช้ consent; ผลทดสอบสมรรถภาพจาก LAB
-- **Competitions**: master ของรายการ (พลศึกษาเกมส์, กีฬามหาวิทยาลัยแห่งประเทศไทย, กีฬาแห่งชาติ, ทีมชาติ), delegation/roster ต่อวิทยาเขต, ผลแข่ง/สถิติ/เหรียญ, การเรียกตัวทีมชาติ, รายการที่ มกช. เป็นเจ้าภาพ (`HostedEvent`, accreditation พื้นฐาน)
-- **ลาแข่งแบบยกคณะ** (W-04; blueprint ข้อ 2.4): คำร้องเป็นชุดต่อรายการ → อนุมัติ → `ath.CompetitionLeaveApproved` → ATT ยกเว้นเวลาเรียน, EXM สร้างสอบชดเชยเมื่อวันสอบทับ, PRA จัดวันฝึกชดเชย
+- **Training (ลดขอบเขต D-06)**: ขั้นต่ำที่บังคับคือ **`TrainingSession` log** (วัน เวลา ประเภท ความหนัก ผู้เข้าร่วม — สร้างจาก FAC recurring booking ในแตะเดียว และใช้เป็น exposure/การดูแลผู้เยาว์) + sRPE ที่นักกีฬากรอกเอง + template session; **แผนฝึกเป็นไฟล์แนบ (`TrainingPlan` เป็น optional)** — ไม่มี periodization model macro/meso/micro เต็มรูป; ภาระฝึกแสดงเป็น **แนวโน้มเชิงบรรยายเทียบค่าปกติของบุคคล** ไม่มี ACWR แบบ "แจ้งเตือนความเสี่ยงบาดเจ็บ"; **wellness แบบ opt-in หรือตามทีม** เฉพาะ squad ที่มีนักวิทยาศาสตร์การกีฬาดูแล (R-09) — ข้อมูลเก็บใน HLT, ATH รับเพียง readiness/flag; ผลทดสอบภาคสนามนำเข้าด้วย CSV มาตรฐานกลาง (LAB เป็นสัญญาแยก)
+- **สถานะความพร้อมในมุมโค้ช (D-05)**: roster แสดง พร้อม/จำกัด/ไม่พร้อม + ข้อจำกัดการฝึกจาก `hlt.AvailabilityChanged` ให้โค้ชของ squad **เสมอโดยไม่ต้องขอ consent**; รายละเอียดการวินิจฉัย/การรักษาต้องมี consent; การคัดตัวห้ามใช้ข้อมูล HLT/จิตวิทยาเป็นเหตุผล
+- **Competitions**: master ของรายการ (พลศึกษาเกมส์, กีฬามหาวิทยาลัยแห่งประเทศไทย, กีฬาแห่งชาติ, ทีมชาติ), competition delegation/roster ต่อวิทยาเขต, ผลแข่ง/สถิติ/เหรียญ, การเรียกตัวทีมชาติ; รายการที่ มกช. เป็นเจ้าภาพใช้ระบบ partner/สเปรดชีตนำเข้า และคงเฉพาะ roster ของ มกช. (**ตัด hosted-event accreditation** — D-06)
+- **ลาแข่งแบบยกคณะ** (W-04; blueprint ข้อ 2.4): **ATH เป็นเจ้าของ** `CompetitionLeaveBatch` (ATT เป็นผู้รับผล); coach ส่ง roster ต่อชนิดกีฬา → `sportshead` รวมและยื่น → **อนุมัติครั้งเดียวที่ระดับคณะ** → `ath.CompetitionLeaveApproved` → ATT ยกเว้นเวลาเรียน, EXM **สร้างสอบชดเชยอัตโนมัติโดยไม่ต้องอนุมัติซ้ำ**, PRA จัดวันฝึกชดเชย (D-08)
 - **Eligibility engine** (W-30): `EligibilityRuleSet` แบบ DMN ต่อรายการ/ทุน (เช่น ระเบียบกีฬามหาวิทยาลัยแห่งประเทศไทย 2559 ([มทร.ล้านนา](https://webs.rmutl.ac.th/assets/upload/files/2024/03/20240321133409_80477.pdf)) — เกณฑ์หน่วยกิต/สถานภาพ/อายุ **[ต้องตรวจสอบ]**) อ่านสถานะจาก REC, หน่วยกิตที่ลงจาก REG, GPA จาก ASM; ตรวจล่วงหน้าและแจ้งเตือนก่อนปิดรายชื่อ, dashboard โค้ช/DC tutor, ใบรับรองสถานภาพผ่าน DOC
 - **Team travel & per diem** (W-31): คำขอทริป, itinerary, roster, งบประมาณ, **เงินยืมทดรอง**, per diem policy, ยานพาหนะ/ที่พัก (ปล่อยห้องหอระหว่างทริป), ประกันรายรายการ (HLT), **permission slip ของผู้เยาว์** (ENG + PRIV), ชุด medical alert ที่อนุญาตล่วงหน้าให้หัวหน้าทริป (HLT), อนุมัติ, **ล้างเงินยืม/ใบสำคัญ** หลังกลับ → FIN; เงินรางวัล/เบี้ยเลี้ยงพร้อมภาษีผ่าน FIN payout
-- **Nutrition**: แผนโภชนาการเพื่อการแข่งขัน, fuelling/meal log, เชื่อมโรงอาหาร/หอนักกีฬา (ข้อมูลคลินิก เช่น body composition และ dietitian consult อยู่ใน HLT)
+- **Nutrition (ลดขอบเขต D-06)**: **meal provision ระดับทีม/หอนักกีฬา** (งบรายหัว จำนวนมื้อ), **supplement register** (ผลิตภัณฑ์ที่ผ่านการตรวจ batch) และ referral นักโภชนาการ — **ไม่มี meal/fuelling log รายมื้อรายบุคคล**; ข้อมูลคลินิก เช่น body composition และ dietitian consult อยู่ใน HLT
 - **Sports psychology**: workshop ต่อทีม, นัดหมายรายบุคคลผ่าน SVC, mental-health screening ที่ส่งต่อได้ (บันทึกอยู่ใน HLT สิทธิ์เฉพาะนักจิตวิทยา)
-- **Talent pathway**: `TalentPoolEntry`, การเจริญเติบโต (PHV) และ norm ต่อชนิดกีฬา/อายุ, ขั้น pathway (โรงเรียนกีฬา → มกช. → ทีมชาติ) แบบ longitudinal, แชร์ข้อมูลกับ กกท./สมาคมภายใต้ DataSharingAgreement + consent
+- **Talent pathway**: `TalentPoolEntry`, ขั้น pathway (โรงเรียนกีฬา → มกช. → ทีมชาติ) แบบ longitudinal; **การวัดการเจริญเติบโต (PHV/maturation) เฉพาะนักกีฬาใน talent pathway** (เริ่ม ม.4–ม.6 และนักกีฬาระดับชาติ) ไม่ใช่ทุกคน ผลเป็นแผนพัฒนา ไม่เป็น gate (D-06); แชร์ข้อมูลกับ กกท./สมาคมภายใต้ DataSharingAgreement + consent
+- **Para-classification (D-08)**: `ParaClassification` (class, สถานะ confirmed/review, วันทบทวน/หมดอายุ) ที่ eligibility engine อ่าน; หลักฐานการแพทย์อยู่ HLT ATH เก็บเฉพาะ class + วันหมดอายุ
 - **Dual career**: มอบหมาย DC tutor, academic risk view (ไม่มีการวินิจฉัย), การเรียนออนไลน์ระหว่างเก็บตัว (LMS)
 - **Anti-doping**: หลักสูตรอบรมผ่าน LMS + badge (GRD), เตือน TUE หมดอายุ (เก็บเฉพาะ reference) และไม่เก็บ whereabouts (ใช้ ADAMS ของ WADA)
 - เบิก/คืนชุดและอุปกรณ์ต่อนักกีฬาผ่าน FAC inventory
-- **Import adapters**: CSV/Excel, Catapult/Polar/Garmin (ต้องผ่าน DPIA + cross-border register และไม่บังคับให้นักกีฬาผูกบัญชีส่วนตัวโดยไม่แจ้ง)
+- **Import (ลดขอบเขต D-06)**: CSV/Excel ตาม **mapping มาตรฐานกลาง** เท่านั้น ไม่มี adapter เฉพาะยี่ห้อ (Catapult/Polar/Garmin) ใน core — เพิ่มเป็น option เมื่อมีทีมใช้จริง (ต้องผ่าน DPIA + cross-border register)
 
-- **Entities หลัก:** `AthleteProfile`, `SportDiscipline`, `AthleteTier`, `Squad`, `SquadMembership`, `CoachAssignment`, `TrainingPlan`, `TrainingSession`, `SessionLoad`, `WellnessEntry`, `Competition`, `Delegation`, `CompetitionEntry`, `CompetitionResult`, `NationalTeamCallUp`, `CompetitionLeaveBatch`, `CompetitionLeaveItem`, `EligibilityRuleSet`, `EligibilityCheck`, `TeamTrip`, `TripRoster`, `TripItinerary`, `TripBudget`, `TripAdvance`, `TripExpenseClaim`, `PerDiemPolicy`, `AthleteAward`, `NutritionPlan`, `FuellingLog`, `TalentPoolEntry`, `MaturationMeasure`, `PathwayStage`, `DcTutorAssignment`, `AntiDopingEducation`, `TueReminder`, `DeviceImportBatch`, `HostedEvent`
+- **Entities หลัก:** `AthleteProfile`, `SportDiscipline`, `AthleteTier`, `Squad`, `SquadMembership`, `CoachAssignment`, `TrainingPlan` (optional/ไฟล์แนบ), `TrainingSession`, `SessionTemplate`, `SessionLoad`, `ReadinessSummary` (อนุพันธ์จาก HLT), `Competition`, `CompetitionDelegation`, `CompetitionEntry`, `CompetitionResult`, `NationalTeamCallUp`, `CompetitionLeaveBatch`, `CompetitionLeaveItem`, `EligibilityRuleSet`, `EligibilityCheck`, `TeamTrip`, `TripRoster`, `TripItinerary`, `TripBudget`, `TripAdvance`, `TripExpenseClaim`, `PerDiemPolicy`, `AthleteAward`, `TeamMealProvision`, `SupplementRegister`, `NutritionReferral`, `TalentPoolEntry`, `MaturationMeasure` (เฉพาะ talent pathway), `PathwayStage`, `ParaClassification`, `DcTutorAssignment`, `AntiDopingEducation`, `TueReminder`, `DeviceImportBatch` (CSV มาตรฐานกลาง) · **ตัด/เลื่อนตาม D-06:** `FuellingLog`, `HostedEvent`, `WellnessEntry` (ย้ายไป HLT)
 
 - **Events ที่ publish:** `ath.AthleteProfileCreated`, `ath.SquadAssigned`, `ath.CoachAssigned`, `ath.CompetitionScheduled`, `ath.CompetitionLeaveApproved`, `ath.EligibilityConfirmed`, `ath.EligibilityFailed`, `ath.TripApproved`, `ath.TripClosed`, `ath.CompetitionResultRecorded`, `ath.TrainingPlanPublished`, `ath.TalentStageChanged`
 - **Events ที่ consume:** `eng.EmergencyDeclared`, `eng.PermissionSlipDecided`, `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `priv.GuardianConsentDecided`, `priv.ErasureApproved`, `adm.OfferConfirmed`, `reg.SectionScheduled`, `reg.EnrollmentConfirmed`, `reg.WithdrawalApproved`, `reg.TermRegistrationClosed`, `att.AbsenceThresholdWarning`, `exm.ExamTimetablePublished`, `exm.ExamConflictDetected`, `exm.MakeupExamScheduled`, `asm.GradesPublished`, `asm.GradeChanged`, `rec.StudentMatriculated`, `rec.StudentStatusChanged`, `rec.StudentExited`, `rec.StudentReinstated`, `rec.ProgramTransferred`, `rec.AcademicStandingChanged`, `rec.GuardianRelationChanged`, `ssc.BasicEdCompleted`, `fin.PayoutMade`, `sch.AwardGranted`, `safe.ContactRestrictionApplied`, `safe.ContactRestrictionLifted`, `safe.StaffClearanceVerified`, `safe.StaffClearanceExpired`, `hlt.MedicalClearanceChanged`, `hlt.AvailabilityChanged`, `hlt.InjuryReported`, `hlt.MedicalAlertUpdated`, `fac.BookingConfirmed`, `fac.BookingCancelled`, `lab.TestResultRecorded`, `xhr.StaffLeft`, `xhr.ProfessionalLicenceExpiring`, `xres.EthicsApprovalGranted`
 
 - **Workflow:** W-68, W-30, W-04, W-31, W-39 (ฝั่งสถานะ) และ workflow ใหม่ "ยื่นลาแข่งแบบยกคณะ (batch)", "เดินทางกลับ/ล้างเงินยืม"
-- **Integrations:** wearables/แล็บ (adapters), กกท./สมาคมกีฬา (ไฟล์/portal), เจ้าภาพกีฬามหาวิทยาลัย (ใบรับรองสถานภาพ), DCAT/ADAMS (ไม่มี API, เก็บ reference)
-- **แนวทาง:** **Build** + import adapters
-- **Release:** R2 core (profile, squad, coach, training, competitions, ลาแข่ง batch) · R3 เต็ม (eligibility, travel & per diem, nutrition, psychology, talent pathway)
+- **Integrations:** ไฟล์ CSV มาตรฐานกลางจากอุปกรณ์/การทดสอบ, กกท./สมาคมกีฬา (ไฟล์/portal), เจ้าภาพกีฬามหาวิทยาลัย (ใบรับรองสถานภาพ), DCAT/ADAMS (ไม่มี API, เก็บ reference)
+- **แนวทาง:** **Build** + CSV import มาตรฐานกลาง
+- **Release:** R2 (profile, squad, coach, session log, competitions, ลาแข่ง batch, **eligibility engine W-30 และ team travel/per diem/เงินยืม W-31** ทันพลศึกษาเกมส์ ก.ย. 2572 — D-03) · R3 (nutrition provision, psychology, talent pathway, ParaClassification) · สัญญาแยก (รายการที่ตัดตาม D-06)
 
 ### 8.2 FAC — Sports facilities booking
 
@@ -972,13 +987,11 @@ flowchart TB
 
 - **Integrations:** ระบบประตู/ไฟสนาม (ทางเลือก), X-PROC
 - **แนวทาง:** **Build**
-- **Release:** R3 (ใน R1–R2 การจองสนามสอบทักษะและห้องเรียนใช้ booking ขั้นต่ำของ FAC ที่ส่งพร้อม ADM/REG — ดูหมายเหตุ)
-
-> **หมายเหตุถึงเล่ม 12:** ADM (R1) และ REG/EXM (R2) ต้องจองสนาม/ห้อง จึงต้องมี FAC แบบขั้นต่ำ (ทะเบียน facility + booking ภายใน) ก่อน FAC เต็มใน R3
+- **Release:** **R1 ขั้นต่ำ** (ทะเบียน facility + จองสนามสอบทักษะของ ADM) · **R2 เต็ม** (ห้องเรียน/ห้องสอบสำหรับ REG/EXM, ตารางซ้อม ATH, inventory) — ตัดสินแล้วตาม D-03 (REL-06)
 
 ### 8.3 LAB — Sports-science lab management
 
-**วัตถุประสงค์:** บริหารห้องปฏิบัติการวิทยาศาสตร์การกีฬาแบบ LIMS-lite: protocol, การจอง, calibration และรายงานผล
+**วัตถุประสงค์:** บริหารห้องปฏิบัติการวิทยาศาสตร์การกีฬา: protocol, การจอง, calibration และรายงานผล — **ทั้งโมดูลเลื่อนเป็นสัญญาแยก (2574+) รวม W-110** เพราะมีแล็บจริงไม่กี่วิทยาเขต (D-06, REL-09); ระหว่างนี้ผลทดสอบภาคสนามนำเข้า ATH ด้วย CSV มาตรฐานกลาง และ external client ไป REV
 
 **ความสามารถ:**
 - คลัง protocol แบบมีเวอร์ชัน (VO2max, sprint, CMJ ฯลฯ), ทะเบียนเครื่องมือ, **ตาราง calibration และบันทึกผล**, การรับรองผู้ใช้เครื่อง (training gate) ก่อนจอง
@@ -992,7 +1005,7 @@ flowchart TB
 - **Events ที่ consume:** `priv.ConsentGranted`, `priv.ConsentWithdrawn`, `fin.PaymentReceived`, `ath.SquadAssigned`, `ath.TrainingPlanPublished`, `fac.BookingConfirmed`, `fac.BookingCancelled`, `xres.EthicsApprovalGranted`
 
 - **แนวทาง:** **Build**
-- **Release:** R3 พื้นฐาน (protocol, calibration, จองผ่าน FAC, ส่งผลให้ ATH) · สัญญาแยก (LIMS ขั้นสูง, บริการภายนอกเต็มรูปแบบ)
+- **Release:** สัญญาแยก ทั้งหมด (พื้นฐาน + LIMS ขั้นสูง + บริการภายนอก) — ความสามารถด้านบนเป็นขอบเขตอ้างอิงสำหรับสัญญาแยก
 
 ### 8.4 REV — Revenue services
 
@@ -1039,13 +1052,13 @@ flowchart TB
 
 | หัวข้อ | กติกา |
 |---|---|
-| ชื่อ | `<module>.<EventName>`; `<module>` = รหัสโมดูลตัวพิมพ์เล็กไม่มีขีด (`xhr`, `xlib`, …); `<EventName>` = PascalCase รูปอดีตกาล; ห้ามใช้ prefix อื่น เช่น `credentials.*`, `loan.*`, `consent.*` แบบ v0.9 (I-10) |
+| ชื่อ | `<module>.<EventName>`; `<module>` = รหัสโมดูลตัวพิมพ์เล็กไม่มีขีด (`xhr`, `xlib`, …); `<EventName>` = PascalCase รูปอดีตกาล; ห้ามใช้ prefix อื่น เช่น `credentials.*`, `loan.*`, `consent.*` แบบ v0.9 (RF I-10) |
 | Envelope | `event_id` (UUIDv7), `event_name`, `schema_version`, `occurred_at`, `org_unit_id`, `actor` (หรือ `system`), `on_behalf_of`, `correlation_id`, `causation_id`, `data_class` |
 | Payload | ส่งเฉพาะ ID และข้อมูลขั้นต่ำที่ผู้ consume ต้องใช้; **ห้ามมีข้อมูลสุขภาพ รายละเอียดเคสคุ้มครองเด็ก รายละเอียดวินัย การวินิจฉัย หรือเลขประจำตัวประชาชน**; ถ้าต้องการรายละเอียด ผู้ consume เรียก API ของเจ้าของภายใต้การตรวจสิทธิ์และ audit |
 | การส่ง | transactional outbox → Spring Modulith event publication registry บน PostgreSQL; at-least-once; ลำดับรับประกันต่อ aggregate; consumer ต้อง idempotent ด้วย `event_id`; ล้มเหลวเกินจำนวนครั้งเข้า DLQ และ replay ผ่าน ADMIN |
 | การกลับสถานะ | event ที่มีผลย้อนกลับได้ต้องมีคู่: `rec.StudentExited` ↔ `rec.StudentReinstated`, `safe.ContactRestrictionApplied` ↔ `safe.ContactRestrictionLifted`, `case.AppealFiled` (stay) ↔ `case.AppealDecided`, `rec.HoldPlaced` ↔ `rec.HoldReleased`; ผู้ consume ต้องมี compensating action |
 | เวอร์ชัน | เปลี่ยนแบบเพิ่มฟิลด์ (backward compatible) เพิ่ม `schema_version`; breaking change ต้อง publish คู่ขนานเวอร์ชันเก่า ≥ 12 เดือน และบันทึกใน AsyncAPI |
-| Contract test | CI ตรวจว่า (1) ทุก subscription ใน code อ้างชื่อที่อยู่ในตารางนี้ (2) ทุก event ที่ publish มี schema (3) ฟิลด์ `output` ใน `data/workflows.json` (เล่ม 05) ใช้ชื่อจากตารางนี้เท่านั้น |
+| Contract test | CI ตรวจว่า (1) ทุก subscription ใน code อ้างชื่อที่อยู่ในตารางนี้ (2) ทุก event ที่ publish มี schema (3) ชื่อ event ที่ workflow ปล่อย (ฟิลด์ `events[]` ที่จะเพิ่มใน `data/workflows.json`; `output` เป็นคำบรรยาย) ต้องมาจากตารางนี้เท่านั้น (WF-05) |
 | Notification | NOTI subscribe event ที่ notifiable แล้วใช้ `NotificationRule` แปลงเป็นข้อความ ส่วนประกาศ (broadcast) มาจาก ENG เท่านั้น |
 
 ### 10.2 ตาราง event
@@ -1269,60 +1282,60 @@ flowchart TB
 
 | v0.9 | ปัญหา | v1.0 |
 |---|---|---|
-| `athlete.ResultRecorded` vs `athlete.CompetitionResultRecorded` | ชื่อไม่ตรงกัน (I-06, IC-13) | `ath.CompetitionResultRecorded` |
-| `org.AcademicCalendarPublished` (ENG subscribe แต่ไม่มีผู้ publish) | ไม่มี publisher (I-07, IC-14) | คงชื่อ `org.AcademicCalendarPublished` และให้ ORG publish (ORG เป็นเจ้าของปฏิทิน) |
-| `registration.SectionScheduled`, `admissions.SkillTestSessionPlanned`, `athlete.TrainingPlanPublished` | ไม่มี publisher (I-07) | `reg.SectionScheduled`, `adm.SkillTestSessionPlanned`, `ath.TrainingPlanPublished` อยู่ใน Pub ของเจ้าของแล้ว |
-| `loan.DisbursementConfirmed` vs `loan.DisbursementReceived` | ชื่อไม่ตรงกัน (I-08) | `sch.LoanDisbursementReceived` |
-| `eng.EventCheckedIn` ไม่อยู่ใน Sub ของ AFF | ขาด subscriber (I-09) | AFF subscribe แล้ว |
+| `athlete.ResultRecorded` vs `athlete.CompetitionResultRecorded` | ชื่อไม่ตรงกัน (RF I-06, IC-13) | `ath.CompetitionResultRecorded` |
+| `org.AcademicCalendarPublished` (ENG subscribe แต่ไม่มีผู้ publish) | ไม่มี publisher (RF I-07, IC-14) | คงชื่อ `org.AcademicCalendarPublished` และให้ ORG publish (ORG เป็นเจ้าของปฏิทิน) |
+| `registration.SectionScheduled`, `admissions.SkillTestSessionPlanned`, `athlete.TrainingPlanPublished` | ไม่มี publisher (RF I-07) | `reg.SectionScheduled`, `adm.SkillTestSessionPlanned`, `ath.TrainingPlanPublished` อยู่ใน Pub ของเจ้าของแล้ว |
+| `loan.DisbursementConfirmed` vs `loan.DisbursementReceived` | ชื่อไม่ตรงกัน (RF I-08) | `sch.LoanDisbursementReceived` |
+| `eng.EventCheckedIn` ไม่อยู่ใน Sub ของ AFF | ขาด subscriber (RF I-09) | AFF subscribe แล้ว |
 | PRA → ASM ไม่มี event | ขาด contract (G-25) | `pra.EvaluationFinalized` → ASM |
 | `finance.HoldPlaced/Released` | hold มีหลายแหล่ง แต่ FIN เป็นเจ้าของ | REC เป็นเจ้าของ (`rec.HoldPlaced/Released`), FIN ส่ง `fin.DebtOverdue/DebtCleared` |
-| `credentials.*`, `scholarship.*`, `loan.*`, `consent.*`, `privacy.*`, `sportsschool.*`, `housing.*` | prefix ไม่ตรงรหัสโมดูล (I-10) | `grd.*`, `sch.*`, `priv.*`, `ssc.*`, `hou.*` |
+| `credentials.*`, `scholarship.*`, `loan.*`, `consent.*`, `privacy.*`, `sportsschool.*`, `housing.*` | prefix ไม่ตรงรหัสโมดูล (RF I-10) | `grd.*`, `sch.*`, `priv.*`, `ssc.*`, `hou.*` |
 | `assessment.MakeupExamScheduled` | ตารางสอบมีเจ้าของ 3 ที่ (R-01) | `exm.MakeupExamScheduled` |
 | `analytics.RiskFlagRaised` | ML early warning เลื่อน (blueprint ข้อ 9.12) | ตัดออก; สัญญาณเตือนแบบ rule-based อยู่ใน REC (`AcademicAlert`) และ ATT (`att.AbsenceThresholdWarning`) |
 
 ## 11. สรุป release ต่อโมดูล
 
-อ้างอิง blueprint หัวข้อ 7 (เล่ม 12 ขยายรายละเอียดและเป็นผู้ตัดสินเมื่อมีหมายเหตุ "เสนอ") ✓ = ใช้งานในรอบนั้น, ◐ = บางส่วน/ขั้นต่ำ, + = ขยายเพิ่ม
+ตัดสินแล้วตาม **D-03** (ตรงกับเล่ม 01 หัวข้อ 4.1 และเล่ม 12 หัวข้อ 2.1/3.1 — ไม่มีรายการ "เสนอ" ค้าง) ✓ = ใช้งานในรอบนั้น, ◐ = บางส่วน/ขั้นต่ำ, + = ขยายเพิ่ม · เลขเดือนสัญญา: R1 = M18, R2 = M26, R3 = M32, Wave 1 = M39, Wave 2a = M51, Wave 2b = M56 (ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือน — เล่ม 12 หัวข้อ 1.3)
 
-| โมดูล | R1 ก.ย. 2571 | R2 พ.ค. 2572 | R3 พ.ย. 2572 | Wave 1 มิ.ย. 2573 | Wave 2 มิ.ย. 2574 | สัญญาแยก 2574+ |
+| โมดูล | R1 ก.ย. 2571 (M18) | R2 พ.ค. 2572 (M26) | R3 พ.ย. 2572 (M32) | Wave 1 มิ.ย. 2573 (M39) | Wave 2a มิ.ย. 2574 (M51) / 2b พ.ย. 2574 (M56) | สัญญาแยก 2574+ |
 |---|---|---|---|---|---|---|
-| IAM | ✓ ผู้สมัคร, บุคลากร, ThaID, บุคคลภายนอก | + นักศึกษา, ผู้ปกครอง | | + 5 วิทยาเขต, โรงเรียน 1 แห่ง | + ทั้งหมด | |
+| IAM | ✓ ผู้สมัคร, ผู้ปกครองผู้สมัครผู้เยาว์, บุคลากร, ThaID, บุคคลภายนอก, role switcher | + นักศึกษา, ผู้ปกครองทั้งหมด | | + 5 วิทยาเขต, โรงเรียน 1 แห่ง | + ทั้งหมด | |
 | ORG | ✓ OrgUnit ทุกแห่ง, ปฏิทินรับสมัคร, window | + ปฏิทินภาค, blackout | | + ปฏิทินโรงเรียนกีฬา | | |
-| NOTI | ✓ | + ผู้ปกครอง, digest | | | | FCM/APNs (Flutter) |
+| NOTI | ✓ (read = คลิก/รับทราบ) | + ผู้ปกครอง, digest, ช่องทีม | | | | FCM/APNs (Flutter) |
 | ENG | ✓ ข่าว, ประกาศ, ฉุกเฉิน, journey ผู้สมัคร | + กิจกรรม, survey, permission slip | | | | |
 | SVC | ◐ คำร้องผู้สมัคร, ใบรับ, นัดรายงานตัว | ✓ catalogue, digital ID, คิว | | | | Wallet/NFC |
-| CASE | ◐ ร้องเรียน, อุทธรณ์ผลคัดเลือก, OIR | ✓ ทุกประเภท | | | | |
-| DOC | ◐ ใบเสร็จ, ประกาศ, บัตรสอบ (เสนอ) | ✓ เอกสารมาตรฐาน, e-Saraban | + credential ระดับ 3, LTV | + ปพ. | | |
+| CASE | ◐ ร้องเรียน, อุทธรณ์ผลคัดเลือก | ✓ ทุกประเภท (รวม OIR, DSR) | | | | |
+| DOC | ◐ e-Receipt ค่าสมัคร, ประกาศผล, บัตรประจำตัวสอบ | ✓ เอกสารมาตรฐาน, e-Saraban, print template | + credential ระดับ 3, LTV | + ปพ. | | |
 | PRIV | ✓ | + DSR execution, research gate | | + DPIA ผู้เยาว์ (gate) | | |
 | AUD | ✓ | | | | | |
-| ANA | | ✓ core | + | + | + | ClickHouse ถ้าจำเป็น |
-| RPT | ◐ OIT registry/snapshot | ✓ core | + QA workspace | | | |
-| ADMIN | ◐ ขั้นต่ำ (เสนอ) | ✓ | | + onboarding wave | + | |
-| ADM | ✓ 2 วิทยาเขต pilot | | | + 5 วิทยาเขต, ช่องทางโรงเรียนกีฬา | + ทั้งหมด | |
-| CUR | ◐ ProgramOffering/cap ของ pilot | ✓ | | + BASIC_ED | | |
+| ANA | | ✓ core + legacy analytics feed + standard exports | + dashboard ผู้บริหาร (KPI dictionary) | + | + | ClickHouse ถ้าจำเป็น |
+| RPT | ◐ OIT registry (W-136) ทั้งมหาวิทยาลัย | ✓ core | + QA workspace | | | |
+| ADMIN | ◐ ขั้นต่ำ (4-eyes config, job monitor, break-glass) | ✓ | | + onboarding wave | + | |
+| ADM | ✓ 2 วิทยาเขต pilot (clearing แบบยืนยันที่เดียว) | | | + 5 วิทยาเขต, ช่องทางโรงเรียนกีฬา | + ทั้งหมด | `ClearingRun` อัตโนมัติ (เมื่อมีนโยบาย) |
+| CUR | ◐ ProgramOffering + AccreditedIntakeCap ของ pilot | ✓ | | + BASIC_ED | | |
 | REG | | ✓ | | | | |
 | ATT | | ✓ | | + โรงเรียนกีฬา | | |
 | EXM | | ✓ | | | | คลังข้อสอบเข้ารหัส |
 | ASM | | ✓ | | + BASIC_ED | | |
-| REC | ◐ Person master + GuardianRelation (เสนอ); คำถามเปิดเรื่องออกรหัสก่อน R2 | ✓ | | + BASIC_ED | | |
-| GRD | | | ✓ | + CLR เต็ม | | |
+| REC | ◐ Person master + GuardianRelation; คำถามเปิดเรื่องออกรหัสก่อน R2 | ✓ | | + BASIC_ED | | |
+| GRD | | ◐ ยื่นขอจบ, pre-audit, clearance | ✓ | + CLR เต็ม | | |
 | GRAD | | | ✓ | | | |
 | PRA | | | ✓ | | | |
-| SSC | | | | ✓ โรงเรียนนำร่อง | ✓ ที่เหลือ | |
+| SSC | | | | ✓ โรงเรียนนำร่อง (16 พ.ค. 2573, M38) | ✓ ชุด A (16 พ.ค. 2574, M50); ชุด B พ.ค. 2575 ถ้าจำเป็น | |
 | LMS | | | ✓ | | | |
-| FIN | ◐ ค่าสมัคร/ยืนยันสิทธิ์ | ✓ เต็ม | | + pocket money (ถ้าผ่านการตรวจ) | | |
+| FIN | ◐ ค่าสมัคร/ยืนยันสิทธิ์ | ✓ เต็ม (รวมเงินยืมทริป) | | + pocket money (ถ้าผ่านการตรวจ) | | |
 | SCH | | ✓ | | | | |
 | HOU | | ✓ หอมหาวิทยาลัย + ตม.30 | | + boarding เต็ม | | |
 | AFF | | ✓ | | | | |
 | SAFE | | ◐ โครงสร้าง | | ✓ เต็ม | | |
-| HLT | ◐ vault + clearance (เสนอ) | ✓ พื้นฐาน | + sports medicine | + MAR/treatment consent | | |
+| HLT | ◐ `hlt_vault` + clearance ก่อนสอบทักษะ + บาดเจ็บวันสอบ | ✓ พื้นฐาน + availability status + wellness | + sports medicine | + MAR/treatment consent | | |
 | ALU | | | ✓ | | | |
-| ATH | | ◐ core | ✓ เต็ม | | | |
-| FAC | ◐ booking ขั้นต่ำ (เสนอ) | ◐ ห้องเรียน/ห้องสอบ | ✓ | | | |
-| LAB | | | ◐ พื้นฐาน (เสนอ) | | | LIMS ขั้นสูง |
+| ATH | | ◐ core + eligibility + team travel/per diem | ✓ ส่วนที่เหลือ | | | periodization เต็ม, ACWR alert, meal log, wearable adapters, hosted events (D-06) |
+| FAC | ◐ ทะเบียน facility + สนามสอบทักษะ | ✓ เต็ม | | | | |
+| LAB | | | | | | ✓ ทั้งโมดูล (รวม W-110) |
 | REV | | | | | | ✓ |
 | X-HELP | ✓ | | | | | |
-| X-CMS | ◐ หน้า OIT | | | | | ✓ เว็บไซต์เต็ม |
+| X-CMS | ◐ หน้า OIT (แสดงผลจาก RPT) | | | | | ✓ เว็บไซต์เต็ม |
 | X-HR, X-PAY, X-PLAN, X-PROC, X-RES, X-LIB, X-MEET, X-INTL | | | | | | ✓ |
 
 ## 12. ผลการปิด review
@@ -1406,3 +1419,14 @@ flowchart TB
 | ARCH-11 | offline/อัปโหลดไฟล์ใหญ่ | **แก้**: ADM offline-first scoring + tus resumable upload; PRA นิเทศ offline |
 | review_compliance #9 | TM30 มาช้า | **แก้**: HOU ตั้งแต่ R2 |
 | blueprint หัวข้อ 10 | event เป็นของเล่ม 06, เจ้าของเดียว, acting vs delegated | **แก้**: หัวข้อ 3 และ 10 |
+| **v1.1 — consistency REL-01..REL-10** | release matrix มี "(เสนอ)" ค้าง และไม่ตรง 01/12 | **แก้ (D-03):** หัวข้อ 11 ตัดสินครบ; IAM R1 รวมผู้ปกครองผู้สมัครผู้เยาว์ (REL-08); CASE R1 ไม่มี OIR (REL-07); FAC R1 ขั้นต่ำสนามสอบทักษะ + R2 เต็ม ตาม D-03 (แทนข้อเสนอ REL-06); LAB ทั้งโมดูลสัญญาแยก (REL-09); GRD ขั้นต่ำ + ATH eligibility/travel ใน R2 |
+| consistency TERM-03 | entity `Delegation` ชนศัพท์ delegated authority | **แก้:** `CompetitionDelegation` (8.1) — ส่งผู้ดูแลเล่ม 08 แก้ ER ให้ตรง |
+| consistency WF-05 | contract test อ้าง `output` | **แก้:** หัวข้อ 10.1 และหัวเล่มใช้ `events[]` |
+| consistency ID-03 | `I-nn` ชน integration ID | **แก้:** เติม `RF` ในเนื้อความนอกตาราง closure |
+| consistency WF-03 | รายการ Workflow ต่อโมดูลเป็น placeholder | **ส่งต่อ:** lead สร้างรายการ Workflow ใหม่จาก `data/workflows.json` (ไม่แก้ในรอบนี้ตามคำสั่ง) |
+| D-04 / OWN-02, X-27 | ชื่อ vault, ที่เก็บ DEK, wellness อยู่ ATH | **แก้:** HLT ใช้ `hlt_vault` + `hlt_keys` (DEK ต่อบุคคล × record class); `WellnessEntry` ย้ายเข้า HLT; ATH เก็บ `ReadinessSummary` |
+| D-05 / functional_sports S-01, X-28 | โค้ชอาจไม่เห็นสถานะความพร้อม | **แก้:** HLT/ATH: สถานะ พร้อม/จำกัด/ไม่พร้อม + ข้อจำกัดเห็นเสมอ (ออกโดย `physician`/`physio`), รายละเอียดต้อง consent |
+| D-06 / functional_sports O-1..O-6, O-9, O-10 | over-engineering | **แก้:** ATH (session log แทน periodization, ไม่มี ACWR alert, meal provision แทน meal log, CSV กลางแทน adapter ยี่ห้อ, ตัด hosted-event accreditation, maturation เฉพาะ talent pathway), LAB เลื่อนทั้งโมดูล, ADM ไม่มี z-score normalisation และเลื่อน `ClearingRun` |
+| functional_sports X-01, X-26 | ขอบเขต clearing "ต่อรอบ", เจ้าของ batch leave | **แก้:** clearing ต่อ cycle ต่อระดับ อ้างเล่ม 02 เป็นเจ้าของกติกา; ATH เป็นเจ้าของ batch leave, sportshead ยื่น, อนุมัติครั้งเดียว |
+| functional_sports F-11 / D-08 | ไม่มี ParaClassification | **แก้:** ATH `ParaClassification` |
+| ux_exec_change UXR-24, UXR-27, UXR-30, UXR-33, UXR-36, UXR-37 / D-08, D-10 | read receipt, ผลการลงทะเบียน, Thai QR, hold window, role switcher, standard export, fact ของ KPI | **แก้:** NOTI, REG, FIN, IAM, ANA (standard export + fact ใหม่สำหรับ KPI dictionary เล่ม 14) |

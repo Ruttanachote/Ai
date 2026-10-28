@@ -1,6 +1,6 @@
 # 08 — Data Architecture (สถาปัตยกรรมข้อมูล)
 
-> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · ผู้เขียน: D · ภาษา: ไทย (ศัพท์เทคนิค ชื่อผลิตภัณฑ์ และโค้ดเป็นภาษาอังกฤษ)
+> **สถานะ:** v1.1-draft · 28 ต.ค. 2569 (v1.0 → v1.1 ตาม [00-fix-decisions-v1.1](./00-fix-decisions-v1.1.md): D-04 `hlt_vault`/`hlt_keys`, DEK ต่อบุคคล × ประเภทระเบียน, wellness ย้ายเข้า HLT, restore-then-reapply-erasure; D-05 สถานะความพร้อมที่โค้ชเห็น; D-06 ลด entity ที่เกินจำเป็น; D-07 Wave 2a/2b + shadow comparison; D-09 RLS scope token + analytics แบบ physical replica/`security_invoker`; D-10 entity/fact สำหรับ KPI dictionary และ cohort history) · ผู้เขียน: D · ภาษา: ไทย (ศัพท์เทคนิค ชื่อผลิตภัณฑ์ และโค้ดเป็นภาษาอังกฤษ)
 > **อ่านคู่กับ:** [00-blueprint](./00-blueprint.md) (ข้อ 9.3 Minimum Operable Stack, 9.5 OrgUnit + RLS, 9.9 health vault, หัวข้อ 10) · [06-modules](./06-modules.md) (เจ้าของข้อมูลต่อโมดูลและ event) · `07-architecture.md` (ADR, key management ระดับ platform, NFR) · `10-security-compliance.md` (PDPA lawful basis, ROPA/DPIA, ระดับ e-signature, งานสารบรรณ) · `11-operations.md` (backup/DR, cutover, parallel run, rollback ระดับปฏิบัติการ) · `12-roadmap-cost-risk.md` (ทีม migration)
 > **ขอบเขต:** domain model, master data, identifiers, การกำหนดขอบเขตข้อมูลราย OrgUnit, การจัดชั้นข้อมูล (รวมชั้นความลับของทางราชการ), retention, health vault, การเข้ารหัส, RLS (รวม analytics/BI), data quality, migration จากระบบเดิมรายวิทยาเขต และ archival
 
@@ -35,7 +35,7 @@
 4. **ทุกตารางธุรกรรมมี `org_unit_id NOT NULL`** และอยู่ภายใต้ RLS (หัวข้อ 6 และ 10) รวมถึงตารางที่ v0.9 ขาด (ENROLLMENT, GRADE, INVOICE, PAYMENT, CONSENT, GUARDIAN_RELATION; IC-15)
 5. **Temporal อย่างจำกัด** (DATA-05): ใช้ effective-dating/bitemporal เฉพาะ PolicySet, FeeSchedule, OrgSetting, ExternalCode, ParentAgency, InstitutionName, StudentStatusHistory และ GuardianRelation ส่วนตารางอื่นใช้ history table (trigger) และ audit
 6. **Primary key เป็น UUIDv7** (เรียงตามเวลา เป็นมิตรกับ index) สร้างฝั่ง server หรือฝั่ง client สำหรับงาน offline (คะแนนสอบทักษะ, การนิเทศ) เพื่อให้ sync แบบ idempotent ได้
-7. **ข้อมูลสุขภาพอยู่ใน database แยก** (`hlt_vault`) เท่านั้น (หัวข้อ 9) และโมดูลอื่นเก็บได้เพียง status ที่ไม่มีการวินิจฉัย
+7. **ข้อมูลสุขภาพอยู่ใน database แยก** (`hlt_vault`) เท่านั้น (หัวข้อ 9) และโมดูลอื่นเก็บได้เพียง status ที่ไม่มีการวินิจฉัย — **v1.1:** รวมถึง wellness รายวัน (อารมณ์ การนอน ความปวด ความเมื่อยล้า) ซึ่งย้ายจาก ATH มาอยู่ใน `hlt_vault`; ATH เก็บเพียงสถานะความพร้อม + ข้อจำกัดการฝึก และ readiness band ที่ได้รับอนุญาต (D-04, D-05)
 8. **วันที่เก็บเป็น ISO (ค.ศ.) ใน `date`/`timestamptz`** และแสดงผลเป็น พ.ศ. ที่ชั้น presentation; ปีการศึกษาและปีงบประมาณเก็บเป็นปี พ.ศ. แบบ integer พร้อมชื่อคอลัมน์ `_be` เพื่อไม่ให้สับสน
 9. **ข้อความสองภาษา** ใช้คู่คอลัมน์ `_th`/`_en` สำหรับชื่อที่ต้องพิมพ์บนเอกสาร (ชื่อบุคคล หลักสูตร รายวิชา ปริญญา)
 10. **ไม่ลบข้อมูลธุรกรรมแบบ hard delete** ยกเว้นผ่าน `ErasureJob`/`DisposalBatch` ที่ตรวจ retention แล้ว (หัวข้อ 8)
@@ -116,8 +116,10 @@ erDiagram
     uuid org_unit_id FK
     uuid guardian_person_id FK
     uuid ward_person_id FK
-    string relation_type
+    string relation_type "FATHER MOTHER LEGAL_GUARDIAN CAREGIVER v1.1 grandparent or sponsor"
     boolean legal_authority
+    uuid delegated_by_relation_id "CAREGIVER appointed by LEGAL"
+    string binding_method "THAID DOCUMENT ASSISTED_IN_PERSON"
     int contact_priority
     date valid_from
     date valid_to
@@ -354,6 +356,8 @@ erDiagram
   EXIT_CASE ||--o{ EXIT_CASE_TASK : "cascades"
   STUDENT ||--o{ ADVISOR_ASSIGNMENT : "advised"
   STUDENT ||--o{ ACADEMIC_ALERT : "flagged"
+  ACADEMIC_ALERT ||--o{ ALERT_INTERVENTION : "followed up by"
+  STUDENT ||--o{ STANDING_EVALUATION : "evaluated before next term"
   STUDENT ||--o{ COURSE_SUBSTITUTION : "substitutes"
   STUDENT ||--o{ CURRICULUM_MIGRATION : "migrates"
   STUDENT ||--o{ DEGREE_AUDIT : "audited"
@@ -419,6 +423,38 @@ erDiagram
     string profile
     date effective_from
     string dmn_bundle_hash
+  }
+  ACADEMIC_ALERT {
+    uuid alert_id PK
+    uuid org_unit_id FK
+    uuid student_id FK
+    string rule_code "GPA_DROP ATTENDANCE NO_REG FIN_HOLD"
+    string severity
+    timestamp raised_at
+    uuid assigned_advisor_id
+    timestamp acknowledged_at
+    timestamp closed_at
+    string outcome "RESOLVED REFERRED NO_ACTION WITHDRAWN"
+  }
+  ALERT_INTERVENTION {
+    uuid id PK
+    uuid org_unit_id FK
+    uuid alert_id FK
+    string action_type "ADVISING_MEETING REFERRAL_COUNSELLING REFERRAL_FIN STUDY_PLAN CONTACT_GUARDIAN"
+    uuid advising_note_ref
+    uuid referral_case_ref
+    timestamp acted_at
+    uuid actor_id
+  }
+  STANDING_EVALUATION {
+    uuid id PK
+    uuid org_unit_id FK
+    uuid student_id FK
+    uuid term_id FK
+    string result "NORMAL PROBATION DISMISSAL_PENDING"
+    boolean appeal_pending
+    string registration_right "FULL CONDITIONAL BLOCKED"
+    timestamp computed_at
   }
   CREDENTIAL {
     uuid credential_id PK
@@ -707,12 +743,17 @@ erDiagram
   ATHLETE_PROFILE ||--o{ SQUAD_MEMBERSHIP : "joins"
   SQUAD ||--o{ COACH_ASSIGNMENT : "coached"
   STAFF ||--o{ COACH_ASSIGNMENT : "coaches"
-  SQUAD ||--o{ TRAINING_PLAN : "plans"
-  TRAINING_PLAN ||--o{ TRAINING_SESSION : "schedules"
+  SQUAD ||--o{ TRAINING_SESSION : "holds"
+  TRAINING_PLAN |o--o{ TRAINING_SESSION : "optionally plans"
+  TRAINING_SESSION ||--o{ SESSION_ATTENDANCE : "attended"
   TRAINING_SESSION ||--o{ SESSION_LOAD : "loads"
   ATHLETE_PROFILE ||--o{ SESSION_LOAD : "records"
-  ATHLETE_PROFILE ||--o{ WELLNESS_ENTRY : "reports"
-  COMPETITION ||--o{ DELEGATION : "sends"
+  ATHLETE_PROFILE ||--o{ READINESS_STATUS : "status from HLT"
+  ATHLETE_PROFILE ||--o| PARA_CLASSIFICATION : "classified"
+  SQUAD ||--o{ SELECTION_ROUND : "selects"
+  SELECTION_ROUND ||--o{ SELECTION_DECISION : "decides"
+  ATHLETE_PROFILE ||--o{ SELECTION_DECISION : "subject of"
+  COMPETITION ||--o{ COMPETITION_DELEGATION : "sends"
   COMPETITION ||--o{ COMPETITION_ENTRY : "has"
   ATHLETE_PROFILE ||--o{ COMPETITION_ENTRY : "enters"
   COMPETITION_ENTRY ||--o| COMPETITION_RESULT : "results"
@@ -727,7 +768,7 @@ erDiagram
   TEAM_TRIP ||--o{ TRIP_EXPENSE_CLAIM : "settles"
   ATHLETE_PROFILE ||--o{ NUTRITION_PLAN : "follows"
   PERSON ||--o{ TALENT_POOL_ENTRY : "tracked"
-  TALENT_POOL_ENTRY ||--o{ MATURATION_MEASURE : "measured"
+  TALENT_POOL_ENTRY ||--o{ MATURATION_MEASURE : "measured talent pathway only"
   ATHLETE_PROFILE ||--o{ DC_TUTOR_ASSIGNMENT : "tutored"
   TEST_PROTOCOL ||--o{ LAB_TEST_RESULT : "defines"
   ATHLETE_PROFILE ||--o{ LAB_TEST_RESULT : "tested"
@@ -741,6 +782,32 @@ erDiagram
     string level "NATIONAL YOUTH_NATIONAL UNIVERSITY PROVINCE"
     string tier
     string availability "FULL MODIFIED UNAVAILABLE from HLT"
+  }
+  READINESS_STATUS {
+    uuid id PK
+    uuid org_unit_id FK
+    uuid athlete_id FK
+    string status "FULL MODIFIED UNAVAILABLE"
+    string restrictions "e.g. NO_CONTACT NO_JUMP"
+    string readiness_band "GREEN AMBER RED if athlete permits"
+    date valid_to
+  }
+  PARA_CLASSIFICATION {
+    uuid id PK
+    uuid org_unit_id FK
+    uuid athlete_id FK
+    string sport_class
+    string status "CONFIRMED REVIEW NEW"
+    date review_on
+  }
+  SELECTION_DECISION {
+    uuid id PK
+    uuid org_unit_id FK
+    uuid selection_round_id FK
+    uuid athlete_id FK
+    string result "SELECTED RESERVE NOT_SELECTED DESELECTED"
+    uuid appeal_ref
+    uuid care_plan_ref
   }
   COACH_ASSIGNMENT {
     uuid id PK
@@ -771,11 +838,14 @@ erDiagram
   }
 ```
 
+**หมายเหตุ v1.1 (D-06, D-08, FS O-1..O-10):** `TRAINING_PLAN` เป็น optional (แนบไฟล์/template) และ**ไม่มีโมเดล periodization macro/meso/micro**; ข้อมูลขั้นต่ำคือ `TRAINING_SESSION` (สร้างจาก FAC recurring booking) + `SESSION_ATTENDANCE` (ใช้เป็น exposure และ safeguarding) + `SESSION_LOAD` (sRPE ที่นักกีฬากรอก) — ภาระฝึกแสดงเป็น**แนวโน้มเทียบ baseline ของบุคคล**เท่านั้น ไม่มี entity/alert "ACWR injury risk"; ไม่มี meal/fuelling log รายมื้อ (`NUTRITION_PLAN` เป็นแผนระดับบุคคล/ทีมที่นักโภชนาการทำ); ไม่มี vendor-specific wearable adapter (นำเข้า CSV ตาม mapping กลาง); `MATURATION_MEASURE` ใช้เฉพาะ talent pathway; ไม่มี `HOSTED_EVENT`/accreditation; entity ของ LAB (`TEST_PROTOCOL`, `INSTRUMENT`, `CALIBRATION_RECORD`, `LAB_TEST_RESULT`) อยู่ใน**สัญญาแยก** (เลื่อนจาก R3); `WELLNESS_ENTRY` ย้ายไป `hlt_vault` (หัวข้อ 2.9) และ ATH เห็นเพียง `READINESS_STATUS`; `COMPETITION_DELEGATION` (เดิม `DELEGATION`) เปลี่ยนชื่อเพื่อไม่ชนกับ "delegated authority" (CO TERM-03); เพิ่ม `PARA_CLASSIFICATION` และ `SELECTION_ROUND`/`SELECTION_DECISION` (การคัดเลือก/ตัดออกจากทีมพร้อมอุทธรณ์และแผนดูแล ตาม D-08)
+
 ### 2.9 Health vault (HLT) — database แยก `hlt_vault`
 
 ```mermaid
 erDiagram
-  HEALTH_SUBJECT ||--|| SUBJECT_KEY : "encrypted with"
+  HEALTH_SUBJECT ||--o{ SUBJECT_KEY : "keyed per record class in hlt_keys"
+  HEALTH_SUBJECT ||--o{ WELLNESS_ENTRY : "reports"
   HEALTH_SUBJECT ||--o{ ENCOUNTER : "visits"
   ENCOUNTER ||--o{ DIAGNOSIS : "diagnosed"
   ENCOUNTER ||--o{ TREATMENT : "treated"
@@ -806,9 +876,26 @@ erDiagram
     uuid subject_id PK
     string person_token "HMAC of person_id with vault-only key"
     uuid org_unit_id FK "care unit"
-    string key_ref "pointer to wrapped DEK in key store"
     timestamp shredded_at
-    string retention_class
+  }
+  SUBJECT_KEY {
+    uuid id PK
+    uuid subject_id FK
+    string record_class "CLINICAL MEDICATION_MINOR INJURY_RTP WELLNESS COUNSELLING DISABILITY SELECTION_MEDICAL INSURANCE TUE"
+    int key_version
+    bytea wrapped_dek "stored in database hlt_keys"
+    string kek_version
+    timestamp replicated_to_site_b_at
+    timestamp shredded_at
+  }
+  WELLNESS_ENTRY {
+    uuid id PK
+    uuid org_unit_id FK
+    uuid subject_id FK
+    date entry_date
+    bytea answers_enc "mood sleep soreness pain"
+    string derived_band "GREEN AMBER RED"
+    string record_class "WELLNESS"
   }
   INJURY {
     uuid injury_id PK
@@ -816,9 +903,13 @@ erDiagram
     uuid subject_id FK
     timestamp occurred_at
     string context "TRAINING COMPETITION CLASS DORM"
+    string protocol "NONE CONCUSSION HEAT WEIGHT_CUT"
+    int time_loss_days
+    string mechanism
+    string osiics_code
     bytea body_part_enc
     bytea diagnosis_enc
-    string lawful_basis "VITAL_INTEREST LEGAL_DUTY CONSENT"
+    string lawful_basis "S26_5A_MEDICAL VITAL_INTEREST_EMERGENCY LEGAL_DUTY CONSENT"
   }
   MEDICAL_ALERT {
     uuid id PK
@@ -833,7 +924,7 @@ erDiagram
     uuid org_unit_id FK
     uuid subject_id FK
     string grantee_role "COACH TRIP_LEADER DORM_DUTY"
-    string scope "AVAILABILITY ALERT DETAIL"
+    string scope "ALERT DETAIL (AVAILABILITY needs no grant)"
     uuid consent_ref
     date valid_to
   }
@@ -1002,7 +1093,140 @@ erDiagram
   }
 ```
 
-**ขนาดของ model:** แผนภาพทั้ง 11 ชุดมี **333 entity** (นับไม่ซ้ำ) ครอบคลุมทุกโมดูลในขอบเขตหลัก ส่วน entity ที่ไม่ได้แสดงในแผนภาพ (เช่น `NOTIFICATION_RULE`, `FORM_DEFINITION`, `DIGITAL_ID_CARD`, `ANNOUNCEMENT`, `EVENT_REGISTRATION`, `FACILITY`, `BOOKING`) มีรายชื่ออยู่ใน 06-modules และใช้กติกาเดียวกัน (`org_unit_id`, UUIDv7, ชั้นข้อมูล)
+### 2.12 KPI facts, ความพึงพอใจ และประวัติรุ่นก่อนระบบ (ANA, SVC) — ใหม่ v1.1
+
+> ตาม D-10: KPI dictionary แหล่งเดียวอยู่ใน**เล่ม 14** (รหัส `KPI-xx`); หัวข้อนี้เพิ่ม **entity และ fact ที่ขาด** เพื่อให้ทุก KPI คำนวณได้จาก warehouse (review UX หัวข้อ 4, UXR-08..UXR-13) — ตารางที่ขึ้นต้น `fct_`/`dim_`/`agg_` อยู่ใน analytics DB (มี `org_unit_id` + RLS ตามหัวข้อ 10.3) ส่วน `SERVICE_FEEDBACK` อยู่ใน core (schema `svc`)
+
+```mermaid
+erDiagram
+  PERSON ||--o{ SERVICE_FEEDBACK : "responds"
+  SERVICE_FEEDBACK }o--|| FEEDBACK_SURVEY : "answers"
+  DIM_ORG_UNIT ||--o{ FCT_ALERT : "scopes"
+  DIM_STUDENT ||--o{ FCT_ALERT : "flagged"
+  DIM_STUDENT ||--o{ FCT_COHORT_STATUS : "tracked"
+  DIM_COHORT ||--o{ FCT_COHORT_STATUS : "groups"
+  DIM_COHORT ||--o{ LEGACY_COHORT_SUMMARY : "pre-system history"
+  DIM_ADMISSION_PLAN ||--o{ FCT_APPLICATION : "measured against"
+  DIM_ORG_UNIT ||--o{ FCT_PETITION : "scopes"
+  DIM_ORG_UNIT ||--o{ FCT_CASE : "scopes"
+  DIM_ORG_UNIT ||--o{ FCT_SERVICE_FEEDBACK : "scopes"
+  DIM_ORG_UNIT ||--o{ FCT_LOAN_CONFIRMATION : "scopes"
+  DIM_ORG_UNIT ||--o{ FCT_COMPETITION_RESULT : "scopes"
+  DIM_ORG_UNIT ||--o{ FCT_ELIGIBILITY_CHECK : "scopes"
+  DIM_ORG_UNIT ||--o{ AGG_SAFEGUARDING_MONTHLY : "scopes"
+  DIM_ORG_UNIT ||--o{ DIM_STAFF_FTE_TERM : "staffed"
+  DIM_ORG_UNIT ||--o{ FCT_SLO_DAILY : "served"
+  DIM_ORG_UNIT ||--o{ LEGACY_FEED_TERM : "pre-go-live feed"
+
+  SERVICE_FEEDBACK {
+    uuid id PK
+    uuid org_unit_id FK
+    uuid person_id FK
+    string transaction_type "PETITION CASE PAYMENT REGISTRATION HELPDESK"
+    uuid transaction_ref
+    int score_1_to_5
+    string channel "PWA LIFF EMAIL"
+    bytea comment_enc
+    timestamp responded_at
+  }
+  FCT_COHORT_STATUS {
+    uuid org_unit_id FK
+    string student_key
+    string cohort_key
+    date census_date "10 Jun or 10 Nov snapshot"
+    string status_at_census
+    boolean transferred_within_tnsu
+    boolean excluded "DECEASED etc"
+    string source "SYSTEM LEGACY_MIGRATED"
+  }
+  LEGACY_COHORT_SUMMARY {
+    uuid org_unit_id FK
+    string program_code
+    string cohort_year_be
+    int entered
+    int active_year2
+    int graduated_on_time
+    int graduated_late
+    int withdrew
+    int dismissed
+    int transferred_out
+    string source "LEGACY_STATUS_HISTORY REGISTRAR_CERTIFIED"
+    string certified_by
+    string label "pre-system data"
+  }
+  FCT_ALERT {
+    uuid org_unit_id FK
+    string alert_key
+    string rule_code
+    timestamp raised_at
+    timestamp first_intervention_at
+    boolean followed_up_within_7d "needs advising note or referral"
+    string outcome
+  }
+  FCT_PETITION {
+    uuid org_unit_id FK
+    string form_code
+    timestamp submitted_at
+    timestamp closed_at
+    numeric business_days_to_close
+    boolean within_sla
+  }
+  FCT_CASE {
+    uuid org_unit_id FK
+    string case_type "metadata only no content"
+    timestamp received_at
+    timestamp closed_at
+    boolean within_sla
+  }
+  DIM_STAFF_FTE_TERM {
+    uuid org_unit_id FK
+    string term_key
+    numeric faculty_fte
+    string source "HR file import S-21 until X-HR"
+  }
+  FCT_SLO_DAILY {
+    uuid org_unit_id FK
+    date day
+    string journey
+    numeric availability
+    numeric p95_ms
+    numeric queue_wait_p95_s
+  }
+  AGG_SAFEGUARDING_MONTHLY {
+    uuid org_unit_id FK
+    string month
+    int concerns_count "suppressed if under 5"
+    numeric pct_screened_24h
+  }
+  LEGACY_FEED_TERM {
+    uuid org_unit_id FK
+    string term_key
+    string dataset "ROSTER STATUS ENROLMENT RECEIVABLE"
+    int row_count
+    numeric dq_score
+    string sha256
+  }
+```
+
+| Fact/entity ใหม่ | ใช้กับ KPI (หัวข้อของ KPI ใน v1.0 เล่ม 14; รหัส `KPI-xx` ตามเล่ม 14 v1.1) | ต้นทาง | หมายเหตุ |
+|---|---|---|---|
+| `ALERT_INTERVENTION` (REC) + `fct_alert` | นักศึกษาเสี่ยงได้รับการดูแล (v1.0 K-04) | `rec.AcademicAlert*` | "ติดตาม" = มี `AdvisingNote` หรือ referral ไม่ใช่แค่กดรับทราบ (UXR-09) |
+| `fct_cohort_status` + `dim_cohort` | อัตราคงอยู่ปี 1, จบตามเวลา (v1.0 K-03/K-05) | `STUDENT_STATUS_HISTORY` + `CENSUS_SNAPSHOT` | census 10 มิ.ย./10 พ.ย.; cohort = first-time เต็มเวลา; 2 มุมมอง (วิทยาเขต/มหาวิทยาลัย: ย้ายภายใน มกช. ไม่นับเป็นการสูญเสียระดับมหาวิทยาลัย); exclude ผู้เสียชีวิต; "ตามเวลา" = ระยะหลักสูตร (UXR-07) |
+| `LEGACY_COHORT_SUMMARY` | แนวโน้ม 5 ปีของ K-03/K-05 | migrate `StudentStatusHistory` ระดับรุ่น (รวมผู้ออก) 6–8 รุ่นเข้า **ANA เท่านั้น** หรือตัวเลขรวมที่นายทะเบียนรับรอง | ติดป้าย "ข้อมูลก่อนระบบ"; ถ้าไม่มีให้แสดงหมายเหตุว่าอัตราย้อนหลังคำนวณจากนักศึกษาที่ยังมีสถานะ ซึ่งสูงเกินจริงอย่างเป็นระบบ (UXR-08, D-10) |
+| `dim_admission_plan` | เติมเต็มแผนรับ (v1.0 K-02) | ADM `AdmissionPlan`, `SeatQuota` | |
+| `fct_application` (มีแล้ว) + คอลัมน์ `is_unique_applicant`, `lost_to` (`OTHER_TNSU_CAMPUS`/`OUTSIDE`) | funnel/yield (v1.0 K-01) | ADM | yield 2 ระดับ: unique applicant และ application/choice (UXR-06) |
+| `dim_staff_fte_term` | FTES ต่ออาจารย์ (v1.0 K-07) | import ไฟล์อัตรากำลังรายภาคจาก HR เดิมผ่าน S-21 จนกว่ามี X-HR | เจ้าของข้อมูล = กองบริหารงานบุคคล (UXR-10) |
+| `fct_payment` (มีแล้ว) + งวดตามใบแจ้งหนี้ที่ครบกำหนด, แยก deferment กยศ. | รายได้/ค้างชำระ (v1.0 K-08) | FIN | ตัด waiver (UXR-14) |
+| `fct_loan_confirmation` | กยศ. ยืนยันทันกำหนด (v1.0 K-09) | SCH | ตัวหาร = ผู้กู้ที่มีสัญญาในภาคนั้น |
+| `fct_competition_result`, `fct_eligibility_check` | ผลงานกีฬา, eligibility ก่อนแข่ง (v1.0 K-10/K-11) | ATH | |
+| `agg_safeguarding_monthly` | โรงเรียนกีฬา + safeguarding (v1.0 K-12) | SAFE ส่ง **aggregate** รายเดือน (ไม่ replicate รายเคส), suppress n < 5 | UXR-13 |
+| `fct_case`, `fct_petition` | ร้องเรียน/คำร้องปิดใน SLA (v1.0 K-13/K-14) | CASE, SVC (metadata เท่านั้น) | UXR-11 |
+| `SERVICE_FEEDBACK` + `fct_service_feedback` | CSAT (v1.0 K-14) | แบบสอบถามสั้นหลังธุรกรรม (SVC survey engine) | ส่งแบบสุ่มไม่เกิน 1 ครั้ง/คน/เดือน (กัน fatigue) |
+| `fct_slo_daily` | availability/p95/เวลารอคิว (v1.0 K-16) | export รายวันจาก Prometheus (07 ADR-017) | เจ้าของ = SRE (UXR-12) |
+| `legacy_feed_term` | ตัวเลขทั้งมหาวิทยาลัยก่อน Wave 2 ครบ | ไฟล์มาตรฐานรายภาคจาก OrgUnit ที่ยังใช้ระบบเดิม (หัวข้อ 13.1) | DQ score ต่อไฟล์ (UXR-18) |
+| `STANDING_EVALUATION` (REC) | — (รองรับ D-08: คำนวณสถานภาพก่อนเปิดลงทะเบียนภาคถัดไป + สิทธิ์ระหว่างอุทธรณ์) | REC DMN | |
+
+**ขนาดของ model:** v1.0 มี 11 แผนภาพ **333 entity**; **v1.1 มี 12 แผนภาพ 360 entity** (นับไม่ซ้ำด้วยสคริปต์: +28 ได้แก่ entity ของ KPI/fact 18 ตัวในหัวข้อ 2.12, `ALERT_INTERVENTION`, `STANDING_EVALUATION`, `READINESS_STATUS`, `PARA_CLASSIFICATION`, `SELECTION_ROUND`, `SELECTION_DECISION`, `SESSION_ATTENDANCE`, `SERVICE_FEEDBACK`, `FEEDBACK_SURVEY`, `COMPETITION_DELEGATION`; −1 `DELEGATION` ที่เปลี่ยนชื่อ; `WELLNESS_ENTRY` ย้ายจาก ATH ไป HLT) ครอบคลุมทุกโมดูลในขอบเขตหลัก; entity ใหม่อื่นจาก workflow W-148+ ของ D-08 (เช่น concussion protocol, critical incident ผู้เยาว์) ให้เล่ม 06 เป็นเจ้าของรายชื่อและใช้กติกาเดียวกัน ส่วน entity ที่ไม่ได้แสดงในแผนภาพ (เช่น `NOTIFICATION_RULE`, `FORM_DEFINITION`, `DIGITAL_ID_CARD`, `ANNOUNCEMENT`, `EVENT_REGISTRATION`, `FACILITY`, `BOOKING`) มีรายชื่ออยู่ใน 06-modules และใช้กติกาเดียวกัน (`org_unit_id`, UUIDv7, ชั้นข้อมูล)
 
 ## 3. Master data และเจ้าของข้อมูล
 
@@ -1023,6 +1247,8 @@ erDiagram
 | Purpose, lawful basis, privacy notice | PRIV | DPO | DPO office | API |
 | Regulatory obligations, OIT items | RPT | กองแผน/กองนโยบาย | ผู้รับผิดชอบรายงาน | `rpt.*` |
 | Reference data (หัวข้อ 4) | ADMIN (versioned dataset) | สำนักดิจิทัล/IT | `data_steward` | versioned dataset |
+
+**(v1.1) RACI ต่อ data domain × OrgUnit และการยุติข้อพิพาทเจ้าของข้อมูล (review UX UXR-53, D-10):** Data Owner (ระดับมหาวิทยาลัย) อนุมัตินิยามและกติกา, Data Steward ของ OrgUnit รับผิดชอบความถูกต้องของ record ที่ `org_unit_id` ของตน; กรณีคาบเกี่ยว (ย้ายวิทยาเขต, นักกีฬาที่ส่วนกลางดูแล, ผู้สมัครที่ผ่านหลายวิทยาเขต, ข้อมูล migrate ผิด) ใช้ **data dispute process:** ยื่นเรื่องใน X-HELP (หมวด data dispute) → steward ทั้งสองฝ่ายตอบภายใน 5 วันทำการ → ไม่ยุติส่ง Data Owner ตัดสินภายใน 10 วันทำการ → ไม่ยุติส่ง Design Authority/Steering ตามเส้นทาง escalation ในเล่ม 14; ระหว่างพิพาท record ไม่ถูกแก้นอก data-fix queue 4-eyes และผลการตัดสินบันทึกเป็นกติกาใน data dictionary
 
 ## 4. Reference data
 
@@ -1046,7 +1272,7 @@ erDiagram
 | Identifier | รูปแบบ | การจัดเก็บ | กติกา |
 |---|---|---|---|
 | `person_id` และ PK ทุกตาราง | UUIDv7 | คอลัมน์ `uuid` | ไม่เปิดเผยเป็นเลขที่ใช้ภายนอก |
-| **เลขประจำตัวประชาชน 13 หลัก** | 13 หลัก หลักสุดท้ายเป็น check digit (mod 11) | `PERSON_IDENTIFIER(id_type=NATIONAL_ID)`: `value_enc` (envelope encryption, หัวข้อ 11) + `value_hmac` (HMAC-SHA256 แยก key ตาม context: core, IAM/ThaID, migration) และแสดงแบบ mask `1-2345-xxxxx-xx-3` | ตรวจ check digit ตอนรับเข้า; ค้นหาด้วย HMAC เท่านั้น; ใช้กับ ThaID `pid`, กยศ., TCAS, สป.อว. |
+| **เลขประจำตัวประชาชน 13 หลัก** | 13 หลัก หลักสุดท้ายเป็น check digit (mod 11) | `PERSON_IDENTIFIER(id_type=NATIONAL_ID)`: `value_enc` (envelope encryption, หัวข้อ 11) + `value_hmac` (HMAC-SHA256 แยก key ตาม context: **core และ IAM/ThaID** — v1.1 ตัด context migration; migration เรียก HMAC ของ core ผ่าน API ใน enclave) และแสดงแบบ mask `1-2345-xxxxx-xx-3` | ตรวจ check digit ตอนรับเข้า; ค้นหาด้วย HMAC เท่านั้น; ใช้กับ ThaID `pid`, กยศ., TCAS, สป.อว. |
 | **รหัส G** | รหัสสำหรับเด็กที่ไม่มีหลักฐานทะเบียนราษฎร ([Dailynews](https://www.dailynews.co.th/articles/5922244/)) รูปแบบ **[ต้องตรวจสอบ]** | `id_type=G_CODE` (เข้ารหัสเหมือนเลขบัตร) | **ห้ามบังคับว่าทุกคนต้องมีเลข 13 หลัก**; เมื่อได้เลข 13 หลักภายหลัง เพิ่ม identifier ใหม่และตั้ง `superseded_by` โดยไม่สร้าง Person ใหม่ |
 | **Passport** | เลข + ประเทศผู้ออก (ISO alpha-3) + วันหมดอายุ | `id_type=PASSPORT` (เข้ารหัส) | เก็บหลายเล่มตามเวลา; ใช้กับผู้สมัคร/นักศึกษาต่างชาติ, ตม.30 |
 | เลขประจำตัวคนซึ่งไม่มีสัญชาติไทย/คนต่างด้าว 13 หลัก | 13 หลัก | `id_type=ALIEN_ID` | แยก type จากบัตรประชาชนเพื่อให้กติกาและรายงานถูกต้อง **[ต้องตรวจสอบประเภทที่ใช้จริง]** |
@@ -1070,7 +1296,7 @@ erDiagram
 | **Owning unit** (หน่วยที่เป็นเจ้าของ record) | APPLICATION (วิทยาเขตที่เปิดรอบ), STUDENT (วิทยาเขต/โรงเรียนต้นสังกัด), INVOICE/RECEIPT (หน่วยที่ออก), ALLOCATION (หน่วยเจ้าของหอ), CASE_FILE (หน่วยที่รับเรื่อง) | ค่าเริ่มต้น |
 | **Home + host** (สองคอลัมน์) | ENROLLMENT (`org_unit_id` = วิทยาเขตต้นสังกัดของนักศึกษา, `host_org_unit_id` = วิทยาเขตที่สอน), SECTION (`org_unit_id` = เจ้าของรายวิชา, `host_org_unit_id` = ที่สอน) | ใช้กับการเรียนข้ามวิทยาเขต/ออนไลน์ (G-16) |
 | **Care/serving unit** | ตารางใน `hlt_vault` (หน่วยที่ให้การดูแล), ATTENDANCE_MARK (ตาม enrollment) | |
-| **University level** | POLICY_SET, CLEARING_RUN, BADGE_CLASS, ตาราง config ระดับมหาวิทยาลัย | ใช้ OrgUnit ราก (University) |
+| **University level** | POLICY_SET, CLEARING_RUN (v1.1: เลื่อนจนกว่าจะมีนโยบาย clearing ข้ามวิทยาเขต; R1 ใช้การตรวจ "ยืนยันสิทธิ์ได้ที่เดียว" ด้วย HMAC เลขบัตรตอนยืนยัน — D-06), BADGE_CLASS, ตาราง config ระดับมหาวิทยาลัย | ใช้ OrgUnit ราก (University) |
 
 **ข้อยกเว้นที่ไม่มี `org_unit_id`:** (1) `PERSON` และตารางลูกของ Person (identifier, ชื่อ, ผู้ติดต่อ) เพราะเป็นข้อมูลร่วมข้ามหน่วย และมองเห็นได้ผ่าน relationship เท่านั้น (หัวข้อ 10.3) (2) reference data ระดับประเทศ (หัวข้อ 4) (3) ตาราง infrastructure ภายใน เช่น event publication registry ที่ไม่มีข้อมูลธุรกิจ ทั้งนี้ CI ตรวจทุก migration ว่าตารางใหม่ใน schema ธุรกรรมมี `org_unit_id` + `relrowsecurity = true` ไม่เช่นนั้น build ล้ม
 
@@ -1084,8 +1310,8 @@ erDiagram
 |---|---|---|
 | **Public** | หลักสูตร, ตารางเปิดสอน, ประกาศรับสมัคร, ประกาศรายชื่อแบบ mask, สถิติรวม (OIT/open data), ข่าว | เผยแพร่ได้, CDN cache, ตรวจ DLP ก่อนเผยแพร่ |
 | **Internal** | ตารางสอนรายบุคคลของอาจารย์, การจองห้อง/สนาม, รายชื่อ section (ไม่มีผลการเรียน), แม่แบบเอกสาร, config ทั่วไป | ต้อง login, RBAC, ไม่เปิดสาธารณะ |
-| **Confidential** (ข้อมูลส่วนบุคคล) | ประวัตินักศึกษา, เกรด, คะแนนสอบคัดเลือก, เวลาเรียน, การเงิน/บัญชีธนาคาร, ที่อยู่, ผู้ปกครองและ custody, กยศ., ผลวินัย, สถานะ StaffClearance (ไม่ใช่รายละเอียด), ผลทดสอบสมรรถภาพ, training load | RBAC + ABAC (scope, relationship), **RLS**, audit การอ่านข้อมูลของผู้อื่นและแบบรายการ, mask ใน non-prod (ใช้ synthetic เป็นหลัก), ส่งออกช่องทางภายนอกเฉพาะหัวข้อ + ลิงก์ |
-| **Sensitive** (ข้อมูลอ่อนไหวตาม PDPA ม.26 **[ต้องตรวจสอบเลขมาตรา]**) | สุขภาพ/บาดเจ็บ/การรักษา/ยา, ความพิการ, บันทึกจิตวิทยา/การให้คำปรึกษา, SDQ, เนื้อหาเคสคุ้มครองเด็ก, **ประวัติอาชญากรรม** (ผลตรวจประวัติ), ศาสนา (ถ้าเก็บ), TUE | อยู่ใน `hlt_vault` หรือ schema ของ SAFE ที่เข้ารหัส column-level, per-person key (vault), purpose-bound access, audit ทุก read, ไม่ index ในการค้นหา, ไม่ส่งเข้า analytics แบบระบุตัวตน, DPIA บังคับ |
+| **Confidential** (ข้อมูลส่วนบุคคล) | ประวัตินักศึกษา, เกรด, คะแนนสอบคัดเลือก, เวลาเรียน, การเงิน/บัญชีธนาคาร, ที่อยู่, ผู้ปกครองและ custody, กยศ., ผลวินัย, สถานะ StaffClearance (ไม่ใช่รายละเอียด), ผลทดสอบสมรรถภาพ, training load (sRPE), สถานะความพร้อม/ข้อจำกัดการฝึกที่ส่งจาก HLT | RBAC + ABAC (scope, relationship), **RLS**, audit การอ่านข้อมูลของผู้อื่นและแบบรายการ, mask ใน non-prod (ใช้ synthetic เป็นหลัก), ส่งออกช่องทางภายนอกเฉพาะหัวข้อ + ลิงก์ |
+| **Sensitive** (ข้อมูลอ่อนไหวตาม PDPA ม.26 **[ต้องตรวจสอบเลขมาตรา]**) | สุขภาพ/บาดเจ็บ/การรักษา/ยา, wellness รายวัน (v1.1), ใบรับรองแพทย์/ผลตรวจร่างกายตอนคัดเลือก (v1.1), ความพิการ, บันทึกจิตวิทยา/การให้คำปรึกษา, SDQ, เนื้อหาเคสคุ้มครองเด็ก, **ประวัติอาชญากรรม** (ผลตรวจประวัติ), ศาสนา (ถ้าเก็บ), TUE | อยู่ใน `hlt_vault` หรือ schema ของ SAFE ที่เข้ารหัส column-level, per-person key (vault), purpose-bound access, audit ทุก read, ไม่ index ในการค้นหา, ไม่ส่งเข้า analytics แบบระบุตัวตน, DPIA บังคับ |
 
 ไม่เก็บ biometric (ตัด face check-in ออกตาม R-11)
 
@@ -1126,7 +1352,9 @@ erDiagram
 | ข้อมูลบาดเจ็บ/RTP ของนักกีฬา | ระยะศึกษา + 5 ปี | crypto-shred | [ต้องตรวจสอบ] |
 | บันทึกจิตวิทยา/ให้คำปรึกษา | 5 ปีหลังพ้นสภาพ | crypto-shred | [ต้องตรวจสอบ] |
 | บันทึกการให้ยา (ผู้เยาว์) | จนอายุ 25 ปี หรือ 5 ปีหลังพ้นสภาพ แล้วแต่อย่างใดยาวกว่า | crypto-shred | [ต้องตรวจสอบ] |
-| Wellness/training raw | 3 ปี | เก็บเป็น aggregate + ลบ raw | [ต้องตรวจสอบ] |
+| Wellness รายวัน (v1.1 อยู่ใน `hlt_vault`, record class `WELLNESS`) | 3 ปี | crypto-shred ประเภท `WELLNESS` (ไม่กระทบประเภทอื่น) + เก็บ aggregate ที่ไม่ระบุตัวตน | [ต้องตรวจสอบ] |
+| Training load/session (ATH) | 3 ปี | เก็บเป็น aggregate + ลบ raw | [ต้องตรวจสอบ] |
+| ใบรับรองแพทย์/ผลตรวจร่างกายตอนคัดเลือก (v1.1, `SELECTION_MEDICAL`) | ผู้ไม่ได้รับเข้า: ลบเมื่อปิดรอบ + ระยะอุทธรณ์; ผู้ได้รับเข้า: ส่วนที่จำเป็นต่อการดูแลย้ายเป็น `CLINICAL` | crypto-shred | [ต้องตรวจสอบ] |
 | ชั่วโมงกิจกรรม | สรุปเก็บถาวรกับ activity transcript; check-in raw 2 ปี | ลบ raw | [ต้องตรวจสอบ] |
 | Consent records | อายุ consent + 10 ปี | ลบ | [ต้องตรวจสอบอายุความ] |
 | ประกาศทางการ | ถาวร | ส่งหอจดหมายเหตุ | [ต้องตรวจสอบ] |
@@ -1134,7 +1362,11 @@ erDiagram
 | Census snapshot และ submission evidence | 10 ปี (snapshot ที่เป็นสถิติทางการ: ถาวร) | — | [ต้องตรวจสอบ] |
 | Audit log (ธุรกรรมวิชาการ/การเงิน) | 10 ปี (WORM) | ลบเมื่อหมด Object Lock | [ต้องตรวจสอบ] |
 | Traffic/access log | ≥ 90 วัน online + 1 ปี archive (พ.ร.บ.คอมพิวเตอร์ ม.26) | ลบ | [ต้องตรวจสอบ] |
-| Backup | 35 วัน + รายเดือน 12 เดือน + รายปี 7 ปี (รายละเอียดเล่ม 11) | หมดอายุอัตโนมัติ; ไม่ restore รายการที่อยู่ใน tombstone list | [ต้องตรวจสอบ] |
+| Backup ของ core (v1.1) | 35 วัน + รายเดือน 12 เดือน (**ตัดรายปี 7 ปี** เพราะ backup ไม่ใช่ archive — ข้อมูลที่ต้องเก็บยาวอยู่ใน records/archive; เสนอ Q-93) + **fiscal-close export** รายปีเข้า records archive (Parquet + checksum) | หมดอายุอัตโนมัติ; ข้อมูลที่ถูกขอลบยังอยู่ใน backup ในสถานะ "beyond use" จนหมดอายุ และ**ทุกการ restore ต้อง reapply erasure ledger ก่อนเปิดใช้** (หัวข้อ 9.2) — เขียนไว้ใน privacy notice/ROPA | [ต้องตรวจสอบ] |
+| Backup ของ `hlt_vault` | 13 เดือน | ใช้ร่วมกับกุญแจใน `hlt_keys` เท่านั้น | [ต้องตรวจสอบ] |
+| **`hlt_keys` (wrapped DEK) และ backup** (v1.1) | ตราบที่ประเภทระเบียนของ subject ยังไม่ครบ retention; **backup ≤ 35 วัน** และสำเนา offline ไม่เกิน 35 วัน | ลบ DEK = crypto-shred; ข้อมูลอ่านไม่ได้ทั้งใน DB และ backup เมื่อ backup ของ `hlt_keys` ที่มี DEK นั้นหมดอายุ (≤ 35 วัน) | ตาม D-04 |
+| Erasure ledger (tombstone list) | ≥ อายุ backup ที่ยาวที่สุด + 1 ปี (WORM) | — | ตาม D-04 |
+| `LEGACY_COHORT_SUMMARY` และ `legacy_feed_term` (ANA) | ถาวรสำหรับตัวเลขรวมรายรุ่น; ไฟล์ feed รายบุคคล 2 ปีหลัง OrgUnit go-live | ลบไฟล์รายบุคคล คงตัวเลขรวม | [ต้องตรวจสอบ] |
 | Legacy archive | ตามประเภทข้อมูลต้นทางในตารางนี้ | ตามประเภท | [ต้องตรวจสอบ] |
 
 **ปฏิสัมพันธ์กับ DSR** (C-11): คำขอลบ/คัดค้านจะถูกปฏิเสธพร้อมเหตุผลเมื่อข้อมูลอยู่ใน retention class ที่มีหน้าที่เก็บตามกฎหมายหรือเก็บถาวร และ **crypto-shredding ห้ามใช้กับข้อมูลที่อยู่ในประเภทเก็บถาวร** ส่วน `LEGAL_HOLD` (จาก CASE) ระงับการลบทุกประเภท
@@ -1143,31 +1375,37 @@ erDiagram
 
 ### 9.1 โครงสร้าง
 
-- **Database แยก `hlt_vault`** บน Patroni cluster เดียวกับ core (ไม่ใช่ cluster แยก ตาม blueprint ข้อ 9.9 และ ARCH-04) มี owner role, credential (dynamic secret จาก OpenBao), pgBackRest stanza และ backup encryption key แยกจาก core; NetworkPolicy อนุญาตเฉพาะ pod ของโมดูล HLT
+- **Database แยก `hlt_vault`** และ **key store `hlt_keys`** (v1.1) บน Patroni cluster เดียวกับ core (ไม่ใช่ cluster แยก ตาม blueprint ข้อ 9.9 และ ARCH-04) แต่ละ DB มี owner role, credential (dynamic secret จาก OpenBao), pgBackRest stanza และ backup encryption key แยกจาก core และแยกจากกัน; NetworkPolicy อนุญาตเฉพาะ pod ของโมดูล HLT
 - **ไม่มี TDE** ใน PostgreSQL community (IC-02) จึงใช้ volume encryption + column-level encryption ด้วย per-person key (หัวข้อ 11)
 - **Pseudonymous subject**: `HEALTH_SUBJECT.person_token = HMAC(vault_key, person_id)` โดย vault_key อยู่ใน OpenBao และ resolve ได้เฉพาะใน HLT service; ตารางใน vault ไม่มีชื่อหรือเลขประจำตัวของบุคคล
 - เอกสารแนบ (ใบรับรองแพทย์, ภาพ) เก็บใน object storage bucket แยก เข้ารหัสด้วย DEK ของ subject และอ้างด้วย key ที่สุ่ม
-- Read replica ของ cluster มี `hlt_vault` อยู่ด้วยเพื่อ HA แต่ **role ของ analytics/ELT ไม่มีสิทธิ์ CONNECT** และ `pg_hba` ปฏิเสธการเชื่อมจาก analytics network; แม้จะเข้าถึงไฟล์ได้ก็พบแต่ ciphertext
+- Physical replica ของ cluster (standby และ ELT replica) มี `hlt_vault`/`hlt_keys` อยู่ด้วยโดยธรรมชาติ แต่ **role ของ analytics/ELT ไม่มีสิทธิ์ CONNECT ทั้งสอง DB** และ `pg_hba` ปฏิเสธการเชื่อมจาก analytics network; แม้จะเข้าถึงไฟล์ได้ก็พบแต่ ciphertext และ wrapped DEK ที่ต้องใช้ KEK ใน OpenBao
 
-### 9.2 Per-person key และ crypto-shredding
+### 9.2 DEK ต่อบุคคล × ประเภทระเบียน, key store `hlt_keys` และ crypto-shredding
+
+> v1.1 ตาม D-04 และ review v1-review Top-2/Top-3, K-03/K-04/K-05, CO OWN-01 (เล่ม 07 ADR-011/012 และหัวข้อ 12 ใช้แบบเดียวกัน)
 
 | ขั้น | รายละเอียด |
 |---|---|
-| สร้าง subject | สร้าง **DEK ต่อบุคคล** (AES-256-GCM) แล้วห่อด้วย KEK ของ vault ใน OpenBao Transit (KEK ไม่ export ได้) |
-| เก็บ DEK | wrapped DEK เก็บใน **key store แยก** (OpenBao KV v2 หรือ database `hlt_keys` ที่มี backup retention สั้นกว่า vault) **ไม่อยู่ใน backup ของ `hlt_vault`** เพื่อให้ crypto-shredding มีผลกับ backup ด้วย (SEC-09) |
-| เข้ารหัส | คอลัมน์ที่มีเนื้อหาทางการแพทย์ (`*_enc`) และไฟล์แนบเข้ารหัสด้วย DEK; คอลัมน์ที่ใช้ query (วันที่, ประเภท, สถานะ) ไม่เข้ารหัส |
-| Crypto-shredding | เมื่อครบ retention และไม่มี legal hold/หน้าที่เก็บถาวร: ลบทุกเวอร์ชันของ DEK → ciphertext ใน DB และ backup อ่านไม่ได้; บันทึก `shredded_at` และเพิ่ม subject ใน **tombstone list** เพื่อไม่ให้ restore นำกลับมาใช้ |
-| Rotation | KEK หมุนรายปีและ rewrap DEK; DEK หมุนเมื่อมีเหตุ (เช่น สงสัยรั่ว) |
-| Escrow/กู้คืน | KEK ของ OpenBao ใช้ Shamir unseal + สำเนา offline + ซ้อมกู้รายไตรมาส (blueprint ข้อ 9.3) ถือโดยผู้บริหาร มกช. ไม่ใช่ผู้รับจ้าง; รายละเอียดเชิงปฏิบัติการอยู่ในเล่ม 07/11 |
+| ประเภทระเบียน (record class) | `CLINICAL` (เวชระเบียน), `MEDICATION_MINOR`, `INJURY_RTP`, `WELLNESS`, `COUNSELLING`, `DISABILITY`, `SELECTION_MEDICAL`, `INSURANCE`, `TUE` — ผูกกับแถว retention ในหัวข้อ 8; ทุกตารางใน `hlt_vault` มีคอลัมน์ `record_class` |
+| สร้างกุญแจ | เมื่อบันทึกข้อมูลประเภทใดครั้งแรกของ subject: สร้าง **DEK ต่อ (subject × record class)** (AES-256-GCM) แล้วห่อด้วย KEK ของ vault ใน OpenBao Transit |
+| เก็บ DEK | wrapped DEK เก็บใน **database `hlt_keys`** (ตาราง `SUBJECT_KEY`) ใน cluster core — **ไม่ใช่ใน `hlt_vault` และไม่ใช่ OpenBao KV** (KV มี RPO ข้ามไซต์ = รอบ snapshot ซึ่งยาวกว่า DB); **ไม่อยู่ใน backup ของ `hlt_vault`**; credential/role แยก; เฉพาะ HLT service อ่านได้ |
+| Key-before-data | DEK ใหม่ต้อง commit และ**ยืนยันว่าถึง standby ไซต์ B** (`replay_lsn` ≥ LSN ของ commit, บันทึก `replicated_to_site_b_at`) ก่อนเข้ารหัสข้อมูลแถวแรก → ข้อมูลที่ถึงไซต์ B มีกุญแจของตนอยู่ที่ไซต์ B เสมอ (RPO ของกุญแจ ≈ 0 เทียบกับข้อมูล, D-04); บันทึกฉุกเฉินใช้ DEK ฉุกเฉินของหน่วยบริการที่สร้างล่วงหน้าแล้ว rewrap เข้ากุญแจของ subject ภายหลัง |
+| เข้ารหัส | คอลัมน์ที่มีเนื้อหาทางการแพทย์ (`*_enc`) และไฟล์แนบเข้ารหัสด้วย DEK ของประเภทนั้น; คอลัมน์ที่ใช้ query (วันที่, ประเภท, สถานะ, `record_class`) ไม่เข้ารหัส |
+| Backup ของกุญแจ | backup ของ `hlt_keys` เก็บ **≤ 35 วัน** (สั้นกว่า `hlt_vault` 13 เดือน) และสำเนา offline หมุนภายใน 35 วัน ([11-operations](./11-operations.md) หัวข้อ 6) |
+| Crypto-shredding | เมื่อประเภทระเบียนนั้นครบ retention และไม่มี legal hold/หน้าที่เก็บ: ลบทุกเวอร์ชันของ DEK (subject × class) → บันทึก `shredded_at` และเพิ่มรายการใน **erasure ledger** ซึ่งเก็บ**นอก DB ที่ถูก restore** (bucket `audit-worm`, Object Lock) → ciphertext ของประเภทนั้นใน DB และ backup ทุกชุดอ่านไม่ได้เมื่อ backup ของ `hlt_keys` ที่ยังมี DEK หมดอายุ (**≤ 35 วัน** — กรอบที่ประกาศใน privacy notice); ประเภทอื่นของบุคคลเดียวกันไม่ได้รับผล |
+| Restore-then-reapply-erasure | ทุกการ restore ของ `hlt_vault`, `hlt_keys` หรือ core: เปิดใน maintenance mode → ใช้ erasure ledger ลบ DEK/แถว/บุคคลที่อยู่ใน ledger ซ้ำ → ตรวจ (นับรายการที่ลบซ้ำ = จำนวนใน ledger ช่วงนั้น) → จึงเปิดใช้; ใช้กับ DSR ของ core ด้วย (ข้อมูลที่ลบตาม DSR ใน core ยังอยู่ใน backup ≤ 12 เดือนในสถานะ "beyond use") |
+| Rotation | KEK หมุนรายปีและ rewrap DEK แบบ lazy; DEK หมุนเมื่อมีเหตุ (เช่น สงสัยรั่ว) |
+| Escrow/กู้คืน | **แก้ v1.0 ที่เขียนว่า "KEK ใช้ Shamir unseal":** OpenBao ใช้ **auto-unseal ด้วย HSM ทั้ง 2 ไซต์**; Shamir 3-of-5 เป็น recovery key สำหรับ authorization เท่านั้น; ทางกู้เมื่อ HSM หายคือ **escrow ของ transit key** (export เฉพาะ key ceremony แบบ air-gapped, เข้ารหัสด้วย escrow key ที่แบ่ง Shamir ถือโดยผู้บริหาร มกช.) และซ้อมกรณี "HSM สูญหาย" รายปี (07 ADR-012, 11 หัวข้อ 8) |
 
 ### 9.3 การเข้าถึง
 
 - ทุกคำขอต้องระบุ **purpose** (CARE, EMERGENCY, SPORTS_MEDICINE, COUNSELLING, INSURANCE, RESEARCH_PSEUDO) และผ่านการตรวจ **care relationship** (เช่น แพทย์/พยาบาลของหน่วย, นักกายภาพที่ดูแลนักกีฬา, นักจิตวิทยาที่รับเคส)
-- **ฐานทางกฎหมาย**: การบันทึกบาดเจ็บ/ปฐมพยาบาลไม่รอ consent (ประโยชน์สำคัญต่อชีวิต/หน้าที่ตามกฎหมาย); การเปิดเผยรายละเอียดต่อโค้ช/ทีมใช้ `DISCLOSURE_GRANT` ที่ผูก consent (blueprint ข้อ 9.9)
+- **ฐานทางกฎหมาย (v1.1 ตาม D-05, D-09; matrix เป็นของเล่ม 10):** การบันทึกบาดเจ็บ/การรักษาตามปกติโดยผู้ประกอบวิชาชีพใช้ ม.26(5)(ก) 🟡 (`lawful_basis = S26_5A_MEDICAL`), ประโยชน์สำคัญต่อชีวิตใช้เฉพาะเหตุฉุกเฉินที่ขอ consent ไม่ได้ (`VITAL_INTEREST_EMERGENCY`); **โค้ชเห็นสถานะความพร้อม (พร้อม/จำกัด/ไม่พร้อม) และข้อจำกัดการฝึกเสมอโดยไม่ต้องมี consent** (ส่งเป็น `READINESS_STATUS` ใน ATH) ส่วนรายละเอียดการวินิจฉัย/การรักษาต้องมี `DISCLOSURE_GRANT` ที่ผูก consent; wellness ดิบไม่ออกนอก vault — ATH ได้เพียง readiness band เมื่อนักกีฬาอนุญาต
 - **Emergency path**: medical alert ชุดขั้นต่ำเปิดได้โดยหัวหน้าทริป/ครูหอเวรที่ได้รับอนุญาตล่วงหน้า
 - **Break-glass (W-14)**: ต้องอนุมัติ 2 คน หรือเปิดใช้เองในเหตุฉุกเฉินแล้ว review โดย 2 คนภายใน 24 ชม.
 - ทุก read/write บันทึกใน `VAULT_ACCESS_LOG` และ AUD; UEBA แจ้งเมื่ออ่านโดยไม่มี care relationship
-- **Output ออกนอก vault** มีเพียง: event ที่ไม่มีการวินิจฉัย (`hlt.AvailabilityChanged`, `hlt.MedicalClearanceChanged`, `hlt.InjuryReported` แบบ severity band), API สถานะ, และ **pipeline pseudonymised** ไป athlete mart ที่ตรวจ k-anonymity (ค่า k ตั้งค่าได้ เช่น ≥ 5) และ suppress cell เล็ก
+- **Output ออกนอก vault** มีเพียง: event ที่ไม่มีการวินิจฉัย (`hlt.AvailabilityChanged` พร้อมรายการข้อจำกัดเชิงกิจกรรม, `hlt.MedicalClearanceChanged`, `hlt.InjuryReported` แบบ severity band), API สถานะ, และ **pipeline pseudonymised** ไป athlete mart ที่ตรวจ k-anonymity (ค่า k ตั้งค่าได้ เช่น ≥ 5) และ suppress cell เล็ก
 - ไม่ index เนื้อหา vault ในระบบค้นหาใด ๆ
 
 ## 10. Row-Level Security และการกำหนดขอบเขตข้อมูล
@@ -1175,11 +1413,11 @@ erDiagram
 ### 10.1 Implementation contract (core database)
 
 1. ทุกตารางธุรกรรม `ENABLE` + **`FORCE ROW LEVEL SECURITY`**; application role **ไม่เป็น table owner และไม่มี `BYPASSRLS`**; migration role แยกจาก runtime role; DBA ใช้ JIT ที่เป็น read-only เป็นค่าเริ่มต้น และการเขียนใน schema `asm/rec/fin` ทำผ่าน `DataFixRequest` แบบ 4-eyes (SEC-01)
-2. Context ต่อ transaction ตั้งด้วย **`SET LOCAL`** (หรือ `set_config(name, value, true)`) เพราะ PgBouncer ใช้ transaction pooling: `app.person_id`, `app.org_scope` (array ของ OrgUnit ที่ขยายตาม hierarchy แล้ว), `app.roles`, `app.purpose`; ถ้าไม่ได้ตั้งค่า policy จะคืน **0 แถว** (default deny)
+2. **(v1.1, D-09) Context ต่อ transaction ตั้งผ่าน `SECURITY DEFINER` function ไม่ใช่ `set_config` จาก app role:** core ส่ง **scope token** ที่ลงนาม (`person_id`, `org_scope` ที่ขยายตาม hierarchy แล้ว, `roles`, `purpose`, `txid`, `exp` + HMAC) ไปยัง `sec.begin_scope(token)` ที่ตรวจลายเซ็นด้วย key ที่ app role อ่านไม่ได้, ตรวจ `txid`/อายุ และตรวจซ้ำกับ `ROLE_ASSIGNMENT` ที่มีผล; policy อ่าน scope ผ่าน `(SELECT sec.org_scope())` ซึ่งตรวจลายเซ็นซ้ำ — ค่า GUC ที่ถูกตั้งด้วย `set_config` โดย SQL injection จึงไม่มีผล; ยังเป็นระดับ transaction จึงใช้กับ PgBouncer transaction pooling ได้; ถ้าไม่มี token ที่ถูกต้อง policy คืน **0 แถว** (default deny) — รายละเอียดใน [07 ADR-005](./07-architecture.md)
 3. Hierarchy ใช้ `ORG_UNIT.path` (ltree) ทำให้ scope ระดับวิทยาเขตครอบคลุมคณะ/ภาคภายใต้โดยอัตโนมัติ และ scope ระดับมหาวิทยาลัยครอบคลุมทั้งหมด
-4. Policy มาตรฐาน: `org_unit_id = ANY(app_org_scope()) OR rel_visible(table, row_id)` โดย `rel_visible` เป็นฟังก์ชัน `SECURITY DEFINER` (security barrier) ที่อ่านตาราง relationship (advisor-of, instructor-of-section, coach-of, guardian-of, homeroom-of, supervisor-of, judge-of-session) พร้อม cache ต่อ transaction
+4. Policy มาตรฐาน (v1.1, review v1-review A-08): **policy ที่ 1** `org_unit_id = ANY((SELECT sec.org_scope()))` (ประเมินครั้งเดียวต่อ statement, ใช้ index นำด้วย `org_unit_id` ได้) และ **policy ที่ 2 แบบ permissive** สำหรับความสัมพันธ์ `EXISTS (SELECT 1 FROM rel.<relationship> r WHERE r.person_id = (SELECT sec.person_id()) AND r.target_id = <table>.<key>)` บนตาราง relationship (advisor-of, instructor-of-section, coach-of, guardian-of, homeroom-of, supervisor-of, judge-of-session) ที่มี index `(person_id, target_id)` — แทน `rel_visible()` ต่อแถวของ v1.0 ที่ planner ประเมินยาก; วัด p95 ใน load test
 5. การเข้าถึงของเจ้าของข้อมูลเอง (นักศึกษา/ผู้ปกครอง) ผ่าน API self-service ที่ใช้ policy `person_id = app.person_id` หรือ guardian-of ที่ไม่ขึ้นกับ org scope
-6. **Test**: synthetic dataset สองวิทยาเขต + cross-tenant fuzz test ทุกตารางใน CI; query lint ตรวจ `pg_class.relrowsecurity` และ `relforcerowsecurity`; ทดสอบซ้ำทุก release
+6. **Test**: synthetic dataset สองวิทยาเขต + cross-tenant fuzz test ทุกตารางใน CI; query lint ตรวจ `pg_class.relrowsecurity` และ `relforcerowsecurity`; **(v1.1)** test ว่า `set_config` ที่ใส่ scope ปลอม/token ของ transaction อื่นได้ 0 แถว, ไม่มี role ใดมี `BYPASSRLS` (ยกเว้น superuser ผ่าน break-glass), view ใน `elt_api` ทุกตัวเป็น `security_invoker`; ทดสอบซ้ำทุก release
 
 ### 10.2 Tenancy rules สำหรับ edge cases (ARCH-10)
 
@@ -1197,16 +1435,17 @@ erDiagram
 
 ### 10.3 Analytics replica และ BI scoping
 
-ตาม blueprint ข้อ 9.5 "CDC/replica/BI ต้องบังคับ scope ด้วย":
+ตาม blueprint ข้อ 9.5 "CDC/replica/BI ต้องบังคับ scope ด้วย" — **v1.1 (D-09) ใช้แบบเดียวกับเล่ม 07 ADR-017** (v1.0 เล่มนี้ใช้ physical replica แต่เล่ม 07 ใช้ logical replication จึงขัดกัน; review v1-review Top-4):
 
-1. **แหล่งข้อมูล**: physical read replica ใช้เป็นต้นทาง ELT เท่านั้น โดย role `elt_reader` อ่านผ่าน **view ที่มี column allow-list** (ไม่มีชื่อ, เลขบัตร, ที่อยู่, ผู้ปกครอง, บัญชีธนาคาร) และ **ไม่มีสิทธิ์ CONNECT `hlt_vault`** (DATA-02)
-2. **Analytics database** (PostgreSQL แยก) เก็บ staging/marts ที่ dbt สร้าง ทุก fact/dim ที่เป็นข้อมูลระดับบุคคลมี `org_unit_id` และ **RLS policy แบบเดียวกับ core**; `dim_student` ใช้ surrogate `student_key` ส่วนตาราง identity (student_key → ชื่อ/รหัส) แยกและให้เฉพาะ role ที่ได้รับอนุญาต
-3. **Superset**: ผู้ใช้ทั่วไปเข้าถึงได้เฉพาะ dataset ที่เป็น curated view และ **ทุก dataset ต้องมี Superset RLS filter** ที่ผูก role ซึ่ง sync จาก Keycloak (CI ตรวจว่า dataset ใหม่มี filter); DB role ของ Superset อ่านได้เฉพาะ curated view ไม่ใช่ base table; ถ้าเวอร์ชันที่ใช้รองรับการ impersonate ผู้ใช้กับ PostgreSQL ให้ส่ง `app.org_scope` ลง DB ด้วย **[ต้องตรวจสอบตามเวอร์ชัน]**
-4. **SQL Lab ปิด** สำหรับผู้ใช้ทั่วไป; data team ใช้ผ่าน JIT และทุก query ถูก audit (SEC-05)
-5. **Export**: ข้อมูลระดับบุคคลเกิน N แถว (ค่าเริ่มต้น 100) ต้องระบุ purpose + อนุมัติ + watermark (ชื่อผู้ดึง/เวลา); dashboard ที่มี attribute อ่อนไหวเชิงสถิติ (ความพิการ, วินัย) suppress cell ที่ n < 5
-6. **Athlete mart** รับจาก vault เฉพาะผ่าน pipeline pseudonymised (หัวข้อ 9.3)
-7. **RPT exports** สร้างโดย service ที่มี scope ของรายงานนั้น ไฟล์ส่งออกเข้ารหัสและเก็บ hash เป็น submission evidence
-8. **Access review** รายไตรมาสของ role BI และรายชื่อผู้ใช้ SQL Lab
+1. **แหล่งข้อมูล**: **physical read replica** (สมาชิก `nofailover` ของ cluster core) ใช้เป็นต้นทาง ELT เท่านั้น — ไม่ใช้ logical replication เข้าตารางที่เปิด RLS เพราะ subscription owner ต้อง bypass RLS
+2. role `elt_reader` อ่านผ่าน schema `elt_api` ซึ่งเป็น **view แบบ `security_invoker = true`** ที่มี **column allow-list** (ไม่มีชื่อ, เลขบัตร, ที่อยู่, ผู้ปกครอง, บัญชีธนาคาร) — RLS ของ base table จึงทำงานในนามผู้เรียก; `elt_reader` ได้ scope ระดับมหาวิทยาลัยผ่าน scope token ของ service identity (**ไม่มี `BYPASSRLS`**) และ **ไม่มีสิทธิ์ CONNECT `hlt_vault`/`hlt_keys`** (DATA-02)
+3. **Analytics database** (cluster analytics+apps) ดึงข้อมูลด้วย `postgres_fdw` จาก `elt_api` แบบ incremental รายชั่วโมง; dbt สร้าง staging/marts โดยทุก fact/dim ที่เป็นข้อมูลระดับบุคคลมี `org_unit_id` และ **RLS policy แบบเดียวกับ core**; `dim_student` ใช้ surrogate `student_key` ส่วนตาราง identity (student_key → ชื่อ/รหัส) แยกและให้เฉพาะ role ที่ได้รับอนุญาต
+4. **Superset**: ผู้ใช้ทั่วไปเข้าถึงได้เฉพาะ dataset ที่เป็น curated view และ **ทุก dataset ต้องมี Superset RLS filter** ที่ผูก role ซึ่ง sync จาก Keycloak (CI ตรวจว่า dataset ใหม่มี filter); DB role ของ Superset อ่านได้เฉพาะ curated view ไม่ใช่ base table; **ไม่พึ่ง DB impersonation** ของ Superset (ยังไม่ยืนยันว่ารองรับ PostgreSQL 🟡)
+5. **SQL Lab ปิด** สำหรับผู้ใช้ทั่วไป; data team ใช้ผ่าน JIT และทุก query ถูก audit (SEC-05)
+6. **Export (ค่าเดียวทั้งชุดเอกสาร, v1.1 แทนค่า 100 ของ v1.0):** (ก) **standard export ต่อบทบาท** ที่อนุมัติไว้ล่วงหน้า (catalogue ในเล่ม 14/06 เช่น รายชื่อในกลุ่มเรียน, รายชื่อสอบ, ลูกหนี้ของวิทยาเขต) ไม่ต้องขออนุมัติรายครั้งแต่มี audit + watermark (ข) **ad-hoc export ข้อมูลระดับบุคคล > 500 แถวต่อครั้ง หรือ > 2,000 แถวสะสมต่อผู้ใช้ต่อวัน** ต้องระบุ purpose + อนุมัติ + watermark (ชื่อผู้ดึง/เวลา) (ค) export ที่มี attribute อ่อนไหวเชิงสถิติ (ความพิการ, วินัย, สุขภาพ aggregate) ต้องอนุมัติทุกขนาด; dashboard ที่มี attribute อ่อนไหว suppress cell ที่ n < 5
+7. **Athlete mart** รับจาก vault เฉพาะผ่าน pipeline pseudonymised (หัวข้อ 9.3)
+8. **RPT exports** สร้างโดย service ที่มี scope ของรายงานนั้น ไฟล์ส่งออกเข้ารหัสและเก็บ hash เป็น submission evidence
+9. **Access review** รายไตรมาสของ role BI และรายชื่อผู้ใช้ SQL Lab
 
 ## 11. การเข้ารหัส (Encryption)
 
@@ -1218,12 +1457,12 @@ PostgreSQL community **ไม่มี TDE** (blueprint หัวข้อ 10) �
 | Backup | pgBackRest repository encryption (key แยกต่อ stanza: core, vault) + Object Lock (compliance mode) | backup ทั้งหมด |
 | Object storage | server-side encryption + bucket แยกตามชั้นข้อมูล; ไฟล์ใน vault เข้ารหัสด้วย DEK ของ subject ก่อนอัปโหลด | ไฟล์แนบ |
 | **Column-level (application envelope encryption)** | AES-256-GCM ด้วย DEK ต่อโดเมน/ตาราง ห่อด้วย KEK ใน OpenBao Transit | เลขประจำตัวประชาชน/รหัส G/passport, เลขบัญชีธนาคาร, เลขผู้เสียภาษี, รายได้ครอบครัว, narrative ของวินัย/ร้องเรียน/safeguarding, ตัวตนผู้แจ้งเบาะแส, รายละเอียดผลตรวจประวัติ, secret ของ adapter (เช่น TCAS key), ข้อสอบในคลัง |
-| Per-person key | DEK ต่อ subject + crypto-shredding | ทุกเนื้อหาใน `hlt_vault` |
-| Deterministic lookup | HMAC-SHA256 ด้วย key แยกต่อ context (core, IAM/ThaID, migration) ที่อยู่ใน OpenBao Transit แบบ non-exportable และมีเวอร์ชันเพื่อ rotate (SEC-10) | ค้นหาเลขบัตร/passport โดยไม่ถอดรหัส |
+| Per-person × record-class key (v1.1) | DEK ต่อ (subject × ประเภทระเบียน) เก็บแบบห่อใน `hlt_keys` + crypto-shredding | ทุกเนื้อหาใน `hlt_vault` |
+| Deterministic lookup | HMAC-SHA256 ด้วย key แยกต่อ context (**core, IAM/ThaID** — v1.1 ตัด migration) ที่อยู่ใน OpenBao Transit, ไม่ export ในงานปกติ (export เฉพาะ key ceremony เพื่อ escrow) และมีเวอร์ชันเพื่อ rotate (SEC-10) | ค้นหาเลขบัตร/passport โดยไม่ถอดรหัส |
 | In transit | TLS 1.2+ ภายนอก; mTLS หรือ TLS ภายในระหว่าง service, PgBouncer, PostgreSQL | ทุกการเชื่อมต่อ |
-| ลายมือชื่อ | key ใน HSM (แยกจาก OpenBao) | DOC/GRD |
+| ลายมือชื่อ | e-seal ของหน่วยงานใน HSM ทั้ง 2 ไซต์ (แยกจาก OpenBao; core เรียก PKCS#11 โดยตรง); S3 รายบุคคลผ่าน remote signing ของ CA | DOC/GRD |
 
-**ลำดับชั้นของ key:** root (OpenBao unseal แบบ Shamir) → KEK ต่อโดเมน (core-PII, vault, safeguarding, finance-bank) → DEK (ต่อโดเมน/ตาราง หรือต่อบุคคลใน vault); non-production ใช้ key ชุดของตนเองเสมอ และไม่มีสำเนา key ของ production
+**ลำดับชั้นของ key (แก้ v1.1):** root = seal ของ OpenBao ที่ **auto-unseal ด้วย HSM ของแต่ละไซต์** (Shamir 3-of-5 เป็น recovery key สำหรับ authorization เท่านั้น ไม่ใช่ unseal) → KEK ต่อโดเมน (core-PII, vault, safeguarding, finance-bank) → DEK (ต่อโดเมน/ตาราง หรือต่อ subject × ประเภทระเบียนใน vault ซึ่งเก็บใน `hlt_keys`); ทางกู้เมื่อ HSM หาย = escrow ของ transit key (07 หัวข้อ 12); non-production ใช้ key ชุดของตนเองเสมอ และไม่มีสำเนา key ของ production
 
 ## 12. Data quality และ data governance
 
@@ -1238,7 +1477,7 @@ PostgreSQL community **ไม่มี TDE** (blueprint หัวข้อ 10) �
 | Timeliness | เกรดส่งภายใน window; การแจ้ง ตม.30 ภายใน 24 ชม.; census snapshot ตรงวันตัดยอด | ORG window + RPT scheduler |
 | Integrity | GradeSnapshot hash ตรงกับข้อมูลปัจจุบัน; hash chain ของ audit | AUD integrity job |
 
-KPI ตั้งต้น (เสนอ): ความครบถ้วนของ identifier ≥ 99.5%, Person ซ้ำที่ยังไม่แก้ < 0.1%, reconciliation การเงินไม่ตรง = 0 รายการเกิน 3 วันทำการ; แสดงใน DQ dashboard ต่อวิทยาเขต และแก้ผ่าน **data-fix queue แบบ 4-eyes** (ไม่แก้ตรงใน DB)
+KPI คุณภาพข้อมูลตั้งต้น (เสนอ; นิยามสุดท้ายอยู่ใน **KPI dictionary ของเล่ม 14** ตาม D-10 — เล่มนี้เป็นเจ้าของกฎ DQ ไม่ใช่นิยาม KPI): ความครบถ้วนของ identifier ≥ 99.5%, Person ซ้ำที่ยังไม่แก้ < 0.1%, reconciliation การเงินไม่ตรง = 0 รายการเกิน 3 วันทำการ; แสดงใน DQ dashboard ต่อวิทยาเขต และแก้ผ่าน **data-fix queue แบบ 4-eyes** (ไม่แก้ตรงใน DB); **(v1.1, UX UXR-54)** ช่วง P0 ถึง T−6 เดือนก่อน go-live ของแต่ละวิทยาเขต DQ dashboard แสดงเฉพาะแนวโน้มของวิทยาเขตตนเองเทียบเกณฑ์ **ไม่จัดอันดับข้ามวิทยาเขต** (กันการปกปิดข้อมูลจริงก่อน migration); การเปรียบเทียบข้ามวิทยาเขตใช้หลัง go-live เท่านั้น
 
 ## 13. Migration จากระบบเดิมรายวิทยาเขต
 
@@ -1246,13 +1485,18 @@ KPI ตั้งต้น (เสนอ): ความครบถ้วนข�
 
 ### 13.1 ลำดับตามแผนเฟส (blueprint หัวข้อ 7)
 
+> เดือนสัมพัทธ์ M1 = เม.ย. 2570 (D-02); ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือนตามรอบรับสมัคร (เล่ม 12 §1.3)
+
 | ช่วง | ข้อมูลที่ย้าย | หมายเหตุ |
 |---|---|---|
-| P0 Discovery (เม.ย.–มิ.ย. 2570) | **Profiling ทุกวิทยาเขตและโรงเรียน** (ไม่ย้ายจริง) | inventory + profiling report + เลือก pilot |
-| R1 (ก.ย. 2571) | reference data, OrgUnit, หลักสูตร/ProgramOffering ของ 2 วิทยาเขต pilot; **ผู้สมัครเป็นข้อมูลใหม่** | นักศึกษาปัจจุบันยังอยู่ระบบเดิม |
-| R2 (พ.ค. 2572) | นักศึกษาปัจจุบันของ pilot ที่รอยต่อปีการศึกษา: Person, Student, ประวัติผลการเรียนทั้งหมด, สถานภาพ, ยอดคงค้าง, hold, กยศ., หอพักที่ active | parallel run 1 ภาค |
-| Wave 1 (มิ.ย. 2573; โรงเรียน พ.ค. 2573) | +5 วิทยาเขต + โรงเรียนกีฬานำร่อง 1 แห่ง | ซ้อมอย่างน้อย 3 รอบต่อ wave |
-| Wave 2 (มิ.ย. 2574; โรงเรียน พ.ค. 2574) | วิทยาเขตที่เหลือ 10 แห่ง + โรงเรียนที่เหลือ | |
+| P0 Discovery (เม.ย.–มิ.ย. 2570, M1–M3) | **Profiling ทุกวิทยาเขตและโรงเรียน** (ไม่ย้ายจริง) | inventory + profiling report + เลือก pilot |
+| R1 (ก.ย. 2571, M18) | reference data, OrgUnit, หลักสูตร/ProgramOffering ของ 2 วิทยาเขต pilot; **ผู้สมัครเป็นข้อมูลใหม่** | นักศึกษาปัจจุบันยังอยู่ระบบเดิม |
+| R2 (พ.ค. 2572, M26) | นักศึกษาปัจจุบันของ pilot ที่รอยต่อปีการศึกษา: Person, Student, ประวัติผลการเรียนทั้งหมด, สถานภาพ, ยอดคงค้าง, hold, กยศ., หอพักที่ active | parallel run 1 ภาค |
+| R2 ขึ้นไป (พ.ค. 2572, M26) — **legacy analytics feed** (v1.1, UXR-18) | ไฟล์มาตรฐานรายภาค (รายชื่อ, สถานภาพ, ลงทะเบียน, ลูกหนี้) จาก OrgUnit ที่ยังใช้ระบบเดิมเข้า ANA staging (`legacy_feed_term`) พร้อม DQ score | ผู้บริหารเห็นภาพทั้งมหาวิทยาลัยก่อน Wave 2 ครบ; ใช้ template เดียวกับ BR-06 ของเล่ม 12 |
+| R2 (M26) — **cohort history สรุป** (v1.1, UXR-08, D-10) | `StudentStatusHistory` ระดับรุ่นย้อนหลัง 6–8 รุ่น **รวมผู้ลาออก/พ้นสภาพ** ของวิทยาเขต pilot เข้า **ANA เท่านั้น** (`LEGACY_COHORT_SUMMARY`/`fct_cohort_status` source = LEGACY_MIGRATED) หรือ ตัวเลขรวมรายรุ่นที่นายทะเบียนรับรอง; ทำซ้ำในแต่ละ wave | ไม่เข้า REC; ติดป้าย "ข้อมูลก่อนระบบ"; ถ้าไม่มีให้ KPI ย้อนหลังแสดงหมายเหตุว่าสูงเกินจริง |
+| Wave 1 (มิ.ย. 2573, M39; โรงเรียน พ.ค. 2573, M38) | +5 วิทยาเขต + โรงเรียนกีฬานำร่อง 1 แห่ง | ซ้อมอย่างน้อย 3 รอบต่อ wave |
+| **Wave 2a** (มิ.ย. 2574, M51; v1.1 ตาม D-07) | วิทยาเขตชุดแรกของ Wave 2 + โรงเรียนกีฬาที่เหลือชุดแรก (พ.ค. 2574, M50) — รายชื่อเป็นของเล่ม 12 | rehearsal ≥ 3 รอบต่อ OrgUnit; data engineer ไม่ต้องทำ 22 OrgUnit พร้อมกัน |
+| **Wave 2b** (พ.ย. 2574, M56; ต้นภาค 2) | วิทยาเขตที่เหลือ (+ โรงเรียนชุดสอง พ.ค. 2575 ถ้าจำเป็น ตามที่เล่ม 12 เสนอ) | migrate ณ รอยต่อภาค 1→2: ประวัติถึงภาค 1/2574 + ยอดคงค้างกลางปีการศึกษา + การลงทะเบียนภาค 2 ทำในระบบใหม่ |
 
 ### 13.2 Pipeline
 
@@ -1291,8 +1535,8 @@ flowchart LR
 | 10. Dress rehearsal | ≥ 3 รอบต่อ wave บน enclave ที่มี control เท่า production จับเวลา | cutover ≤ 48 ชม. |
 | 11. Reconciliation & sign-off | นับต่อ entity ต่อวิทยาเขต, GPAX, หน่วยกิตสะสม, ยอดคงค้าง, hold, ผู้กู้, ผู้พักหอ; รายงานลงนามโดยนายทะเบียนและหัวหน้าการเงินวิทยาเขต | ลงนามครบ |
 | 12. Cutover | นอกช่วงลงทะเบียน/ประกาศผล/ครบกำหนดชำระ; freeze ระบบเดิม; delta load; smoke test; go/no-go scorecard ที่มีเกณฑ์ตัวเลข | ผ่าน scorecard |
-| 13. Parallel run 1 ภาค | ระบบใหม่เป็น system of record; ระบบเดิมเปิดแบบ read-only และรับ **reverse feed** รายคืนเพื่อ shadow-compute ค่าธรรมเนียม standing และสถานะสิ้นภาค แล้วเทียบผลรายสัปดาห์ | diff เกินเกณฑ์ = 0 ก่อนปิด parallel run |
-| 14. Rollback | rollback window จนถึงวันครบกำหนดชำระแรกหลัง cutover; **reverse-delta tooling** ส่งธุรกรรมใหม่กลับในรูปแบบที่ระบบเดิม import ได้; เกณฑ์ตัดสินอยู่ใน scorecard | ซ้อม rollback อย่างน้อย 1 ครั้งต่อ wave |
+| 13. Parallel run 1 ภาค (**แก้ v1.1 ตาม D-07: shadow comparison**) | ระบบใหม่เป็น system of record; ระบบเดิม **read-only และไม่ถูกเขียนกลับ** (เลิก reverse feed/write-back เว้นแต่วิทยาเขตนั้นมี API ที่รับได้ — ตรวจใน P0); ระบบใหม่คำนวณซ้ำด้วย **legacy-rule PolicySet** (กฎเดิมของวิทยาเขตนั้นแปลงเป็น DMN ในขั้นที่ 4) คู่กับ PolicySet ใหม่ แล้วออก **รายงานเทียบ** ค่าธรรมเนียม GPA/standing และสถานะสิ้นภาค กับ snapshot ของระบบเดิม ณ วัน cutover และกับตัวอย่างที่นายทะเบียนตรวจมือ รายสัปดาห์และสิ้นภาค | diff ที่อธิบายไม่ได้ = 0 ก่อนปิด parallel run |
+| 14. Rollback (แก้ v1.1) | rollback window จนถึงวันลงทะเบียนวันแรกของภาค (เล่ม 11/12); ไม่มี reverse-delta อัตโนมัติ (ยกเว้นวิทยาเขตที่มี import API): ระบบใหม่ออก **delta report ต่อ entity** (CSV + checksum: ผู้สมัคร/นักศึกษาใหม่, การชำระ, การเปลี่ยนสถานะ) เพื่อคีย์กลับระบบเดิมแบบ 4-eyes — ปริมาณจำกัดเพราะ window สั้น; เกณฑ์ตัดสินอยู่ใน scorecard | ซ้อม rollback (คีย์ delta ตัวอย่าง) อย่างน้อย 1 ครั้งต่อ wave |
 | 15. Decommission | หลัง parallel run: ข้อมูลระบบเดิมทั้งหมดเข้า legacy archive แล้วออก decommission certificate ต่อระบบ | certificate ลงนาม |
 
 **เครื่องมือ:** landing zone เข้ารหัสใน object storage, dbt + SQL tests สำหรับ profiling/DQ, mapping registry (ตาราง versioned ใน schema `mig`), DQ dashboard ต่อวิทยาเขต (Superset), data-fix UI แบบ 4-eyes, ข้อมูลระบุตัวตนใน migration ใช้ HMAC key ของ context migration ที่หมุนทิ้งหลังจบ wave
@@ -1309,7 +1553,7 @@ flowchart LR
 
 - ค่าเริ่มต้นใช้ **synthetic data generator** (ชื่อไทย, เลข 13 หลักที่ check digit ถูกแต่อยู่ในช่วงที่ไม่ออกจริง **[ต้องตรวจสอบช่วงที่ปลอดภัย]**, เกรดและการเงินที่สมจริง, สองวิทยาเขต + หนึ่งโรงเรียน) (DATA-07)
 - masked copy ของข้อมูลจริงใช้เฉพาะ migration rehearsal ใน enclave ที่มี control เท่า production และลบหลังจบรอบ
-- ห้ามนำข้อมูลจาก `hlt_vault` และ SAFE ไป non-production ในทุกรูปแบบ
+- ห้ามนำข้อมูลจาก `hlt_vault`, `hlt_keys` และ SAFE ไป non-production ในทุกรูปแบบ
 
 ## 16. ผลการปิด review
 
@@ -1318,7 +1562,7 @@ flowchart LR
 | review_architecture Top-10 #10, IC-15 | RLS มีช่องโหว่ (SET LOCAL, BYPASSRLS, CDC/BI นอก RLS, ตารางไม่มี org_unit_id) | **แก้**: หัวข้อ 6 และ 10 (contract, FORCE RLS, `SET LOCAL`, CI lint, org_unit_id ทุกตารางธุรกรรม รวม ENROLLMENT/GRADE/INVOICE/PAYMENT/CONSENT/GUARDIAN_RELATION) |
 | ARCH-10 | multi-tenancy edge cases | **แก้**: หัวข้อ 10.2 |
 | ARCH-04, IC-02 | vault เป็น cluster แยก + "TDE" | **แก้**: database แยกบน cluster เดียวกัน, ไม่มี TDE, volume + column encryption (หัวข้อ 9, 11) |
-| SEC-09 | crypto-shred ไม่มีผลกับ backup | **แก้**: wrapped DEK อยู่ใน key store แยกที่ไม่อยู่ใน backup ของ vault + tombstone list |
+| SEC-09 | crypto-shred ไม่มีผลกับ backup | **แก้**: wrapped DEK อยู่ใน key store แยกที่ไม่อยู่ใน backup ของ vault + tombstone list (v1.1 กำหนดเป็น `hlt_keys` + DEK ต่อประเภท + backup ≤ 35 วัน + ledger นอก DB; ดู 16.1) |
 | SEC-10 | HMAC key รั่วแล้ว brute force ได้ | **แก้**: HMAC key ต่อ context ใน OpenBao Transit แบบ non-exportable + versioned |
 | SEC-05, DATA-02 | SQL Lab/CDC ส่ง PII | **แก้**: column allow-list, ปิด SQL Lab, export มี purpose + watermark, vault ไม่เข้าถึงจาก analytics (หัวข้อ 10.3) |
 | ARCH-02, ARCH-03 | ClickHouse/OpenSearch เกินจำเป็น | **แก้**: PostgreSQL replica + analytics DB + dbt + Superset; ไม่ index vault |
@@ -1337,13 +1581,68 @@ flowchart LR
 | C-26 | วันที่ใน XML | **แก้**: หลักการข้อ 8 (เก็บ ISO แสดง พ.ศ.) |
 | C-42 | retention เวชระเบียน | **เลื่อนพร้อมเหตุผล**: ผูกกับสถานะห้องพยาบาลที่ต้องยืนยันใน P0 |
 | review_functional R-07 | guardian หลายโมเดล | **แก้**: `GUARDIAN_RELATION` เดียวใน REC + `CUSTODY_RESTRICTION` |
-| R-06 | สุขภาพหลายที่ | **แก้**: ทุก entity สุขภาพอยู่ใน `hlt_vault` (2.9) |
-| I-21 | เจ้าของปฏิทิน | **แก้**: ORG (หัวข้อ 3) ตาม blueprint |
-| G-05 | เสียชีวิต/ออกกลางคัน | **แก้**: `PERSON.deceased_flag`, `EXIT_CASE`, สถานะใน `STUDENT` |
-| G-13 | ผู้ปกครองถูกจำกัดสิทธิ์โดยศาล | **แก้**: `CUSTODY_RESTRICTION` + `AUTHORISED_PICKUP.blocked` |
-| G-16 | ข้ามวิทยาเขต | **แก้**: home/host org ใน ENROLLMENT/SECTION |
-| G-17 | ชื่อสถาบันเดิม, เอกสารกระดาษ | **แก้**: `INSTITUTION_NAME`, digitisation queue |
+| review_functional R-06 | สุขภาพหลายที่ | **แก้**: ทุก entity สุขภาพอยู่ใน `hlt_vault` (2.9) |
+| review_functional I-21 | เจ้าของปฏิทิน | **แก้**: ORG (หัวข้อ 3) ตาม blueprint |
+| review_functional G-05 | เสียชีวิต/ออกกลางคัน | **แก้**: `PERSON.deceased_flag`, `EXIT_CASE`, สถานะใน `STUDENT` |
+| review_functional G-13 | ผู้ปกครองถูกจำกัดสิทธิ์โดยศาล | **แก้**: `CUSTODY_RESTRICTION` + `AUTHORISED_PICKUP.blocked` |
+| review_functional G-16 | ข้ามวิทยาเขต | **แก้**: home/host org ใน ENROLLMENT/SECTION |
+| review_functional G-17 | ชื่อสถาบันเดิม, เอกสารกระดาษ | **แก้**: `INSTITUTION_NAME`, digitisation queue |
 | v0.9 6.3 | รหัสนักศึกษาตายตัว 11 หลัก | **แก้**: `StudentNumberScheme` ตั้งค่าได้ต่อวิทยาเขต/ระดับ, คงรหัสเดิม |
 | v0.9 6.5 | retention เป็นค่าเดา | **แก้บางส่วน**: เพิ่มประเภทข้อมูลใหม่และติด [ต้องตรวจสอบ] ทุกแถวจนกว่า มกช. อนุมัติ |
 | blueprint หัวข้อ 10 | PostgreSQL ไม่มี TDE | **แก้**: หัวข้อ 11 |
 | blueprint ข้อ 9.5 | replica/BI ต้องบังคับ scope | **แก้**: หัวข้อ 10.3 |
+
+### 16.1 ผลการปิด review v1-review (รอบ v1.1)
+
+แหล่ง: `research_notes/ออกแบบระบบการศึกษา TNSU ระดับ production/v1-review/` — **AC** = architecture_compliance.md, **CO** = consistency.md, **UX** = ux_exec_change.md, **FS** = functional_sports.md · ตาม [00-fix-decisions-v1.1](./00-fix-decisions-v1.1.md)
+
+| ข้อ | การจัดการในเล่มนี้ | หัวข้อ |
+|---|---|---|
+| AC Top-1 / K-01 "KEK ใช้ Shamir unseal" (08 §9.2, §11) | **แก้**: auto-unseal ด้วย HSM ทั้ง 2 ไซต์, Shamir = recovery key, escrow ของ transit key คือทางกู้ (D-04) | 9.2, 11 |
+| AC Top-2 / K-03 / CO OWN-01 ที่เก็บ DEK, OpenBao KV มี RPO ไม่ตรง DB | **แก้**: เลือก `hlt_keys` (DB) เท่านั้น + key-before-data + backup ≤ 35 วัน + erasure ledger นอก DB | 9.2, 8 |
+| AC Top-3 / K-04 DEK เดียวต่อคน | **แก้**: DEK ต่อ (subject × record class) + `SUBJECT_KEY` | 2.9, 9.2 |
+| AC Top-3 / K-05 backup 7 ปีกับ DSR | **แก้**: ตัด backup รายปี 7 ปี (เสนอ Q-93), "beyond use" + restore-then-reapply-erasure ใน privacy notice | 8, 9.2 |
+| AC Top-4 RLS นอก OLTP, 07 vs 08 ขัดกัน, export 100 vs 500 | **แก้**: physical replica + `security_invoker` + FDW, ไม่มี BYPASSRLS, Superset RLS filter; export ค่าเดียว 500/ครั้ง + 2,000/วัน + standard export ต่อบทบาท (D-09) | 10.3 |
+| AC Top-5 / S-02 GUC + SQLi | **แก้**: scope token + `SECURITY DEFINER` (D-09) | 10.1 |
+| AC A-08 `rel_visible()` ต่อแถว | **แก้**: policy แยก + EXISTS ที่ index ได้ | 10.1 |
+| AC Top-8 / O-04 reverse-delta | **แก้**: shadow comparison ด้วย legacy-rule PolicySet; rollback ด้วย delta report + คีย์ 4-eyes (D-07) | 13.3 |
+| AC K-06 เวชระเบียน | **เลื่อน** ไป P0 (สถานะห้องพยาบาล); แยกประเภท `CLINICAL` ไว้แล้ว | 9.2 |
+| AC หัวข้อ 2.7 HMAC 3 context | **แก้**: เหลือ 2 (core, IAM) | 5, 11 |
+| AC C-03 (สุขภาพในการคัดเลือก) | **แก้ส่วนข้อมูล**: ประเภท `SELECTION_MEDICAL` ใน vault + retention; ฐานกฎหมายเป็นของเล่ม 10 (L-36) | 7.1, 8, 9.2 |
+| AC C-02 (VI กับบาดเจ็บทั่วไป) | **แก้ส่วนข้อมูล**: `lawful_basis` ของ `INJURY` = `S26_5A_MEDICAL` / `VITAL_INTEREST_EMERGENCY` (D-09) | 2.9, 9.3 |
+| CO OWN-02 ชื่อ DB | **แก้**: ใช้ `hlt_vault`/`hlt_keys` | ทั้งเล่ม |
+| CO TERM-03 `DELEGATION` | **แก้**: `COMPETITION_DELEGATION` | 2.8 |
+| CO WF-04 ลาแข่ง ATH | ตรวจแล้วสอดคล้อง (`COMPETITION_LEAVE_*` อยู่ใน ATH) | 2.8 |
+| CO REL-02 CUR ใน R1 | สอดคล้องอยู่แล้ว (ProgramOffering ของ pilot ใน R1) | 13.1 |
+| CO ID-03 รหัส review_functional ชนกับ I/X/A | **แก้**: เติม "review_functional" ในตาราง closure | 16 |
+| UX UXR-08 cohort ย้อนหลังขาดผู้ออก | **แก้**: `LEGACY_COHORT_SUMMARY` + migrate status history ระดับรุ่นเข้า ANA (D-10) | 2.12, 13.1 |
+| UX UXR-09 ติดตาม alert | **แก้**: `ALERT_INTERVENTION`, `fct_alert` | 2.4, 2.12 |
+| UX UXR-10 FTE อาจารย์ | **แก้**: `dim_staff_fte_term` (import ไฟล์ HR) | 2.12 |
+| UX UXR-11 CSAT, SLA คำร้อง/เรื่องร้องเรียน | **แก้**: `SERVICE_FEEDBACK`, `fct_service_feedback`, `fct_petition`, `fct_case` | 2.12 |
+| UX UXR-12 KPI จาก observability | **แก้**: `fct_slo_daily` | 2.12 |
+| UX UXR-13 ผลแข่งขัน, safeguarding | **แก้**: `fct_competition_result`, `agg_safeguarding_monthly` (aggregate ไม่ replicate) | 2.12 |
+| UX UXR-05/06/07/14 นิยาม KPI | **ส่งต่อ** เล่ม 14 (KPI dictionary, D-10); เล่มนี้เพิ่มคอลัมน์/fact ที่ต้องใช้ (unique applicant, lost_to, census, cohort, งวดใบแจ้งหนี้) | 2.12 |
+| UX UXR-18 ตัวเลขทั้งมหาวิทยาลัยก่อน Wave 2 | **แก้**: legacy analytics feed ตั้งแต่ R2 | 13.1, 2.12 |
+| UX UXR-37 export | **แก้**: ค่าเดียว + standard export | 10.3 |
+| UX UXR-53 ข้อพิพาทเจ้าของข้อมูล | **แก้**: RACI + data dispute process | 3 |
+| UX UXR-54 DQ scorecard ประจาน | **แก้**: ไม่จัดอันดับก่อน go-live | 12 |
+| UX Top-5 ผู้ดูแลที่ไม่ใช่ผู้แทนโดยชอบธรรม | **แก้ส่วนข้อมูล**: `relation_type = CAREGIVER` + `delegated_by_relation_id` + `binding_method` (D-08) | 2.1 |
+| FS X-27 wellness ใน ATH | **แก้**: `WELLNESS_ENTRY` ใน `hlt_vault`, ATH มี `READINESS_STATUS` (D-04) | 1, 2.8, 2.9 |
+| FS S-01 / D-05 สถานะความพร้อมต้อง consent | **แก้**: สถานะ + ข้อจำกัดไม่ต้องมี grant; รายละเอียดต้องมี consent | 2.9, 9.3 |
+| FS S-11 injury surveillance | **แก้**: `time_loss_days`, `mechanism`, `osiics_code` (ระบบ coding [ต้องตรวจสอบ]), `protocol` | 2.9 |
+| FS F-11 ParaClassification | **แก้**: `PARA_CLASSIFICATION` | 2.8 |
+| FS S-04 / D-08 คัดเลือก/ตัดออกจากทีม | **แก้ส่วนข้อมูล**: `SELECTION_ROUND`/`SELECTION_DECISION` + appeal/care plan | 2.8 |
+| FS O-1..O-6, O-9, O-10 / D-06 over-engineering | **แก้**: periodization optional, ไม่มี ACWR alert/meal log/vendor adapter/HostedEvent, maturation เฉพาะ talent pathway, LAB สัญญาแยก, ClearingRun เลื่อน | 2.8, 6 |
+| D-08 สถานภาพก่อนเปิดลงทะเบียนภาคถัดไป | **แก้ส่วนข้อมูล**: `STANDING_EVALUATION` | 2.4 |
+
+### 16.2 สมมติฐาน/คำถามใหม่ที่เสนอ (ให้ผู้นำรวมเข้าทะเบียน A ในเล่ม 01 และ Q ในเล่ม 13)
+
+> เลขชุดเดียวกับเล่ม 07 และ 11 (ไม่ซ้ำกัน); รายการที่เกี่ยวกับเล่มนี้:
+
+| รหัสเสนอ | ประเภท | ข้อความ | ผลถ้าผิด / ผลของคำตอบ | ยืนยันด้วย |
+|---|---|---|---|---|
+| A-109 | สมมติฐาน | ระบบเดิมของวิทยาเขตส่วนใหญ่**ไม่มี API ที่รับการเขียนกลับ** จึงใช้ shadow comparison เป็นค่าเริ่มต้นของ parallel run | ถ้ามี API → เปิด write-back เฉพาะวิทยาเขตนั้น (rollback อัตโนมัติได้) | Q-92 |
+| A-110 | สมมติฐาน | ดึง `StudentStatusHistory` ระดับรุ่นย้อนหลัง 6–8 รุ่น (รวมผู้ออก) จากระบบเดิมได้ หรือนายทะเบียนรับรองตัวเลขรวมรายรุ่นได้ | ไม่ได้ทั้งสองทาง → KPI คงอยู่/สำเร็จย้อนหลังแสดงพร้อมหมายเหตุว่าสูงเกินจริง | Q-96 |
+| Q-92 | คำถาม | ผู้ขายระบบทะเบียนเดิมของแต่ละวิทยาเขตมี import/write API หรือไม่ (ใช้ตัดสิน write-back vs shadow comparison และวิธี rollback) | ตามคำตอบรายวิทยาเขต | P0 data profiling |
+| Q-93 | คำถาม | อนุมัติให้ backup ของ core เก็บ 35 วัน + รายเดือน 12 เดือน (ตัดรายปี 7 ปี) และใช้ fiscal-close export เข้า records archive แทน | ไม่อนุมัติ → ข้อมูลที่ลบตาม DSR อยู่ใน backup ได้ถึง 7 ปี (ต้องเขียนใน privacy notice) | DPO + สำนักงานตรวจสอบภายใน |
+| Q-96 | คำถาม | สำหรับ KPI ย้อนหลัง จะ migrate status history ระดับรุ่นหรือใช้ตัวเลขรวมที่นายทะเบียนรับรอง และย้อนหลังกี่รุ่น | กำหนดขอบเขตงาน migration ของ ANA | Design Authority + นายทะเบียน |

@@ -1,10 +1,10 @@
 # 11 — การปฏิบัติการ (Environments, Deployment, DR, Testing, Release, Migration, Support, Exit)
 
-> **สถานะ:** v1.0-draft · 28 ต.ค. 2569 · ผู้เขียน: E · ภาษา: ไทย (ศัพท์เทคนิคเป็นภาษาอังกฤษ)
+> **สถานะ:** v1.1-draft · 28 ต.ค. 2569 (v1.0 → v1.1 ตาม [00-fix-decisions-v1.1](00-fix-decisions-v1.1.md): D-04 backup/กุญแจ/HSM ไซต์ B/ซ้อม HSM สูญหาย/restore-then-reapply-erasure; D-06 topology ที่นับครบ (etcd, 2 PG cluster, Sentinel); D-07 Wave 2a/2b, R3 กับ freeze, helpdesk L1 staffing model, K8s upgrade ≥ 3 ครั้ง/ปี, on-call ขั้นต่ำ, shadow comparison; D-09 test RLS/SQLi; SLO chain และ OpenBao ใน game day; export threshold ค่าเดียว) · ผู้เขียน: E · ภาษา: ไทย (ศัพท์เทคนิคเป็นภาษาอังกฤษ)
 >
 > **อ่านคู่กับ:** [00-blueprint](00-blueprint.md) · [07-architecture](07-architecture.md) (MOS, ADR, NFR/SLO/RPO/RTO — เล่มนี้ไม่ซ้ำตัวเลขเหล่านั้น อ้างอิงไป) · [03-academic-calendar](03-academic-calendar.md) (ปฏิทินที่ขับ freeze) · [04-roles-permissions](04-roles-permissions.md) (role ของผู้ดูแลระบบ, break-glass) · [08-data](08-data.md) (migration mapping, retention) · [10-security-compliance](10-security-compliance.md) (PDPA, NCSA, DPA) · [12-roadmap-cost-risk](12-roadmap-cost-risk.md) (วัน go-live, milestones MS-*, freeze FZ-*, bridges BR-*, FTE และต้นทุน)
 >
-> **ตัวเลขจากเล่ม 12 ที่เล่มนี้ใช้:** ทีมผู้รับจ้าง 28–39 FTE (สูงสุด 39); ทีม IT มกช. 5 → 10 คน (+3 ก่อน R2, +2 ก่อน Wave 1); champion 2 คนต่อวิทยาเขต/โรงเรียน; R2 go-live 1 พ.ค. 2572 พร้อม parallel run ตลอดภาค 1/2572 และระบบเดิมเป็น read-only หลังผ่านเกณฑ์ MS-2b วันที่ 15 ธ.ค. 2572; migration rehearsal 3 รอบ + mock registration day ก่อน R2; rollback window ถึงวันลงทะเบียนวันแรก; ส่งมอบสิ้นสุด มี.ค. 2575 พร้อม independent rebuild test
+> **ตัวเลขจากเล่ม 12 ที่เล่มนี้ใช้:** ทีมผู้รับจ้าง 28–39 FTE (สูงสุด 39); ทีม IT มกช. 5 → 10 คน (+3 ก่อน R2, +2 ก่อน Wave 1); champion 2 คนต่อวิทยาเขต/โรงเรียน; R2 go-live 1 พ.ค. 2572 (M26) พร้อม parallel run ตลอดภาค 1/2572 และระบบเดิมเป็น read-only หลังผ่านเกณฑ์ MS-2b วันที่ 15 ธ.ค. 2572 (M33); R3 1 พ.ย. 2572 (M32); Wave 1 1 มิ.ย. 2573 (M39); **Wave 2a มิ.ย. 2574 (M51) และ Wave 2b พ.ย. 2574 (M56)** ตาม D-07; migration rehearsal 3 รอบ + mock registration day ก่อน R2; rollback window ถึงวันลงทะเบียนวันแรก; ส่งมอบสิ้นสุด มี.ค. 2575 (M60) พร้อม independent rebuild test · M1 = เม.ย. 2570; ถ้าเริ่มสัญญาหลัง ต.ค. 2570 ทุก release เลื่อน 12 เดือนตามรอบรับสมัคร (เล่ม 12 §1.3)
 
 ---
 
@@ -48,7 +48,7 @@
 - ค่าเริ่มต้นคือ **synthetic data generator** (ชื่อไทยที่สมจริง, เลขประจำตัว 13 หลักที่ check digit ถูกแต่ไม่ใช่ของจริง, เกรด/การชำระที่กระจายตัวสมจริง, ผู้เยาว์และผู้ปกครองสมมติ)
 - **ห้ามนำข้อมูลจริงหรือ masked copy เข้า dev/test/staging**
 - Migration rehearsal ใช้ข้อมูลจริงได้เฉพาะใน **migration enclave** ซึ่งเป็น namespace ใน zone ของ prod ที่มี control เท่า prod (RLS, audit, PAM, ไม่มี vendor standing access) และลบหลังจบแต่ละรอบ
-- ไม่มีข้อมูล health_vault/safeguarding ในการ rehearsal ยกเว้นตรวจจำนวนและ checksum
+- ไม่มีข้อมูล `hlt_vault`/`hlt_keys`/safeguarding ในการ rehearsal ยกเว้นตรวจจำนวนและ checksum
 
 ---
 
@@ -59,39 +59,44 @@ flowchart TB
   subgraph SITEA["Site A - primary (cloud ในประเทศไทย)"]
     subgraph EDGEA["Edge"]
       CDN["CDN / WAF ของผู้ให้บริการ"]
+      LB["Cloud L4 load balancer"]
       GW["APISIX x3 - peak x6"]
     end
     subgraph K8SA["Kubernetes prod cluster"]
-      NS1["ns core-web"]
-      NS2["ns core-registration"]
-      NS3["ns core-worker"]
-      NS4["ns web - Next.js"]
+      NS1["ns core-web<br/>PgBouncer sidecar"]
+      NS2["ns core-registration<br/>PgBouncer sidecar"]
+      NS3["ns core-worker<br/>PgBouncer sidecar"]
+      NS4["ns web - Next.js<br/>รวม waiting room route"]
       NS5["ns identity - Keycloak x3"]
       NS6["ns doc-render + clamav"]
       NS7["ns security - OpenBao x3"]
-      NS8["ns cache - Valkey x3"]
+      NS8["ns cache - Valkey x3 + Sentinel x3"]
       NS9["ns analytics - Superset, dbt jobs"]
       NS10["ns observability"]
       NS11["ns adopted - Zammad, Moodle"]
     end
     subgraph DATAA["Data zone - VM หรือ node pool แยก"]
-      PG1[("PG core primary")]
-      PG2[("PG core sync standby")]
-      PGA[("PG analytics")]
-      PGP[("PG apps")]
+      PG1[("PG core primary + etcd")]
+      PG2[("PG core sync standby + etcd")]
+      PGE[("PG core ELT replica nofailover + etcd")]
+      PGA[("PG analytics+apps primary")]
+      PGA2[("PG analytics+apps replica")]
       S3A[("Object storage + Object Lock")]
     end
+    HSMA["HSM ไซต์ A"]
   end
   subgraph SITEB["Site B - DR warm"]
     K8SB["Kubernetes DR cluster<br/>scale ต่ำ, Argo CD sync"]
-    PG3[("PG core async standby")]
-    OBB["OpenBao DR"]
+    PG3[("PG core standby cluster<br/>async + etcd x3")]
+    OBB["OpenBao DR<br/>กู้จาก snapshot ทุก 15 นาที"]
+    HSMB["HSM ไซต์ B"]
     S3B[("Object storage replica")]
   end
   subgraph OFF["นอกระบบ"]
     TAPE[("สำเนา offline รายสัปดาห์<br/>มกช. ถือ")]
   end
-  CDN --> GW
+  CDN --> LB
+  LB --> GW
   GW --> NS1
   GW --> NS2
   GW --> NS4
@@ -100,47 +105,53 @@ flowchart TB
   NS2 --> PG1
   NS3 --> PG1
   PG1 -.->|"sync"| PG2
+  PG1 -.->|"physical streaming"| PGE
   PG1 -.->|"async + WAL archive"| PG3
-  PG1 -.->|"logical replication"| PGA
+  PGE -.->|"view security_invoker ผ่าน postgres_fdw"| PGA
+  PGA -.->|"async"| PGA2
+  NS7 --> HSMA
+  OBB --> HSMB
   S3A -.->|"replication"| S3B
   NS7 -.->|"snapshot"| S3A
   S3A -.->|"รายสัปดาห์"| TAPE
 ```
 
-**หลักการ topology:** NetworkPolicy default-deny ทุก namespace; namespace `core-worker` เป็นที่เดียวที่ออก internet ได้ (egress allow-list ไป ThaID, ธนาคาร, LINE, FCM, SMS, หน่วยงานรัฐ); `security` และ `doc-render` แยก node pool; admin access ผ่าน PAM เท่านั้น; PostgreSQL อยู่บน VM/node pool แยกที่มี NVMe และไม่ถูก autoscaler ลบ
+**หลักการ topology:** NetworkPolicy default-deny ทุก namespace; namespace `core-worker` เป็นที่เดียวที่ออก internet ได้ (egress allow-list ไป ThaID, ธนาคาร, LINE, FCM, SMS, หน่วยงานรัฐ); `security` และ `doc-render` แยก node pool; admin access ผ่าน PAM เท่านั้น; PostgreSQL อยู่บน VM/node pool แยกที่มี NVMe และไม่ถูก autoscaler ลบ; **(v1.1)** PostgreSQL มี **2 cluster** (core: primary + sync standby + ELT replica ที่ไซต์ A และ standby cluster ที่ไซต์ B; analytics+apps: primary + replica) และ **etcd 3 members ต่อไซต์** เป็น DCS ของ Patroni (ไซต์ A วางบน 3 node ของ cluster core บน volume แยก, ไซต์ B ใช้ node PG + VM เล็ก 2 ตัว) ตาม 07 ADR-026; HSM แยกต่อไซต์ (07 ADR-012)
 
 ### 2.1 Sizing (ตารางเดียวที่ใช้ทั้งชุดเอกสาร — ปิด IC-20)
 
-ค่าออกแบบมาจาก [07-architecture](07-architecture.md) หัวข้อ 10.3 (origin 2,100 RPS, 120 cmd/s, ยืนยัน 300 cmd/s) **ความสามารถต่อ pod เป็นสมมติฐานที่ต้องยืนยันด้วย load test** (S11-01: core-web 2 vCPU รับ ~250 RPS ผสมอ่าน/เขียน; core-registration 2 vCPU รับ ~60 cmd/s)
+ค่าออกแบบมาจาก [07-architecture](07-architecture.md) หัวข้อ 10.3 (origin 2,100 RPS, 120 cmd/s, ยืนยัน 300 cmd/s; v1.1: queue poll 1,950 RPS ตกที่ Next.js แทน APISIX plugin, PgBouncer เป็น sidecar) **ความสามารถต่อ pod เป็นสมมติฐานที่ต้องยืนยันด้วย load test** (S11-01: core-web 2 vCPU รับ ~250 RPS ผสมอ่าน/เขียน; core-registration 2 vCPU รับ ~60 cmd/s)
 
 | Workload | สเปกต่อ pod | ปกติ | Peak (scale ล่วงหน้า T-2 ชม. จากปฏิทิน) | ที่มา |
 |---|---|---|---|---|
 | core-web | 2 vCPU / 4 GB | 3 | **10** | 2,100 ÷ 250 = 8.4 → 9 + 1 สำรอง |
 | core-registration | 2 vCPU / 4 GB | 2 | **6** | 300 ÷ 60 = 5 + 1 |
 | core-worker | 2 vCPU / 4 GB | 2 | 4 | P0 1,000 delivery/s + statement import |
-| Next.js portal / back-office | 1 vCPU / 2 GB | 3 / 2 | 8 / 2 | SSR เฉพาะ first load |
+| Next.js portal / back-office | 1 vCPU / 2 GB | 3 / 2 | 8 / 2 | SSR เฉพาะ first load + waiting room poll ~250 RPS/pod (อ่าน Valkey อย่างเดียว; ยืนยันใน load test) |
+| PgBouncer (sidecar) | 0.25 vCPU / 128 MB ต่อ pod ของ core | ตาม pod | ตาม pod | server conn peak รวม 124 (07 ADR-027) |
 | Keycloak | 2 vCPU / 4 GB | 3 | 4 | 50 login/s ทดสอบ |
-| APISIX | 2 vCPU / 2 GB | 3 | 6 | 2,100 RPS origin + 1,950 RPS queue poll |
+| APISIX | 2 vCPU / 2 GB | 3 | 6 | 2,100 RPS origin + 1,950 RPS queue poll (ส่งต่อไป Next.js) + ตรวจ admission JWT |
 | doc-render | 2 vCPU / 4 GB | 2 | 4 (batch transcript) | 3,000 ฉบับ ≤ 1 ชม. |
 | clamd | 2 vCPU / 4 GB | 2 | 2 | — |
-| Valkey | 2 vCPU / 8 GB | 3 | 3 | — |
+| Valkey + Sentinel | 2 vCPU / 8 GB (+ Sentinel 0.25 vCPU ×3) | 3 | 3 | — |
 | OpenBao | 1 vCPU / 2 GB | 3 | 3 | — |
 | Superset / dbt | 2 vCPU / 4 GB | 2 / job | 2 | — |
-| PostgreSQL core | 16 vCPU / 128 GB / NVMe 1 TB | primary + sync standby (site A) + async (site B) | เท่าเดิม | 4,500 row/s ที่ 300 cmd/s; ข้อมูล OLTP 150–300 GB ใน 5 ปี |
-| PostgreSQL analytics | 8 vCPU / 64 GB | 1 | 1 | — |
-| PostgreSQL apps (Moodle, Zammad, Superset meta) | 4 vCPU / 16 GB | 2 | 2 | — |
+| PostgreSQL core cluster | 16 vCPU / 128 GB / NVMe 1 TB | primary + sync standby (site A) + standby cluster (site B) | เท่าเดิม | 4,500 row/s ที่ 300 cmd/s; ข้อมูล OLTP 150–300 GB ใน 5 ปี; มี `core`, `hlt_vault`, `hlt_keys`, `keycloak` |
+| PostgreSQL core — ELT replica (v1.1) | 4 vCPU / 32 GB / NVMe 1 TB | 1 (site A, nofailover) | 1 | ELT รายชั่วโมงผ่าน FDW (A-112) |
+| etcd (v1.1) | ไซต์ A: บน node PG (volume แยก); ไซต์ B: 1 บน node PG + VM 2 vCPU × 2 | 3 + 3 | 3 + 3 | Patroni DCS |
+| PostgreSQL analytics+apps cluster (v1.1 รวม) | 8 vCPU / 64 GB | primary + replica | 2 | marts + Moodle, Zammad, Superset meta |
 
 | สรุป vCPU (เต็มระบบ หลัง Wave 2) | ปกติ | ช่วง peak |
 |---|---|---|
 | Site A: app nodes 16 vCPU × 6 (peak × 10) | 96 | 160 |
 | Site A: system/edge nodes 8 vCPU × 3 | 24 | 24 |
-| Site A: PG core 2 × 16 + analytics 8 + apps 2 × 4 | 48 | 48 |
+| Site A: PG core 2 × 16 + ELT replica 4 + analytics+apps 2 × 8 | 52 | 52 |
 | Site A: observability 8 vCPU × 3 | 24 | 24 |
-| **Site A รวม** | **192** | **256** |
-| Site B (DR warm): K8s 3 × 16 + system 2 × 8 + PG 16 + อื่น 8 | 88 | 88–150 (pre-scale ก่อนช่วงวิกฤต) |
+| **Site A รวม** | **196** | **260** |
+| Site B (DR warm): K8s 3 × 16 + system 2 × 8 + PG 16 + etcd VM 2 × 2 + อื่น 8 | 92 | 92–154 (pre-scale ก่อนช่วงวิกฤต) |
 | Non-prod: dev+test 32 + staging 24 (staging scale ชั่วคราวได้ถึง ~130 ช่วง perf test) | 56 | ชั่วคราว |
-| **รวมใช้งานจริง** | **≈ 336** | — |
-| **ความจุที่ทำสัญญา (รวม headroom และการ scale ช่วง peak/perf test)** | **≈ 400 vCPU** — ตรงกับสมมติฐานต้นทุน CA-06 ในเล่ม 12 | v0.9 ≈ 650 vCPU |
+| **รวมใช้งานจริง** | **≈ 344** (v1.0: 336; +4 ELT replica, +4 etcd VM ไซต์ B) | — |
+| **ความจุที่ทำสัญญา (รวม headroom และการ scale ช่วง peak/perf test)** | **≈ 400 vCPU** — ยังอยู่ในสมมติฐานต้นทุน CA-06 ในเล่ม 12 (headroom ลดจาก 19% เหลือ 16%; **หมายเหตุให้เล่ม 12:** ถ้าต้องการ headroom เท่าเดิมให้ปัดเป็น ≈ 410 vCPU) | v0.9 ≈ 650 vCPU |
 
 **Storage:** object storage ปีแรก ≈ 8–10 TB (ไฟล์ผู้สมัคร ≈ 1 TB/ปี รวมวิดีโอ, เอกสารนักศึกษา ≈ 0.3 TB, PDF ที่ระบบสร้าง ≈ 0.5 TB/ปี, backup PG + WAL 35 วัน ≈ 3–4 TB, log/trace) โตราว 3–4 TB/ปี ×2 sites + สำเนา offline (S11-02)
 
@@ -166,7 +177,8 @@ flowchart LR
   PROD -->|"SLO burn alert"| RB["rollback image<br/>หรือ kill-switch"]
 ```
 
-- **Trunk-based** + short-lived branch; ทุก merge ต้องผ่าน review 1 คน (2 คนสำหรับโมดูล FIN/ASM/IAM และ migration ของ DB)
+- **Trunk-based** + short-lived branch; ทุก merge ต้องผ่าน review 1 คน (2 คนสำหรับโมดูล FIN/ASM/IAM, migration ของ DB และ schema `sec`)
+- **(v1.1, 07 ADR-031) env repo ของ prod:** branch protection + **2 reviewers (อย่างน้อย 1 คนเป็นของ มกช.)** + signed commits; Argo CD ใช้ SSO (Keycloak) + RBAC แยก project prod ไม่มีบัญชี admin ภายในที่ใช้งานปกติ; **runner ของ prod แยก** และไม่มี secret ถาวร (OIDC → OpenBao ออก credential อายุสั้น); การแก้ policy ของ Kyverno/Argo CD ต้อง 2 reviewers
 - **DB migration (Flyway) แบบ expand/contract:** ทุก release เข้ากันได้ย้อนหลัง 1 release เพื่อ rollback image ได้โดยไม่ต้อง restore DB; การลบคอลัมน์ทำหลังจาก release ที่ไม่ใช้แล้วอย่างน้อย 1 รอบ
 - **Infrastructure:** OpenTofu ผ่าน PR + `plan` แนบใน review; state เข้ารหัสใน object storage ในไทย
 - **Kyverno** ปฏิเสธ image ที่ไม่ได้ลงนามหรือมี CVE critical ที่ยังไม่ได้รับข้อยกเว้น
@@ -181,21 +193,22 @@ flowchart LR
 
 | ชั้น | สิ่งที่ทดสอบ | เครื่องมือ | Gate |
 |---|---|---|---|
-| Unit | domain logic (GPA, ค่าธรรมเนียม, ค่าปรับลงทะเบียนช้า 2 แบบ, สถานภาพ, eligibility) | JUnit 5 | coverage ≥ 80% ในโมดูล domain + **mutation score ≥ 70%** (PIT) ในโมดูล ASM/REC/FIN/REG |
-| Module/integration | repository, RLS, outbox, job queue บน PostgreSQL จริง | Testcontainers (PG + PgBouncer) | ผ่าน 100% |
-| **RLS cross-tenant suite** | ทุก repository ถูกเรียกด้วย scope ผิด/ว่าง/สุ่ม ต้องได้ 0 แถว; scope ไม่รั่วข้าม transaction ผ่าน PgBouncer; 6 กรณี tenancy ของ [07](07-architecture.md) หัวข้อ 11.9 | Testcontainers + fuzz | ผ่าน 100% ทุก PR |
+| Unit | domain logic (GPA, ค่าธรรมเนียม, ค่าปรับลงทะเบียนช้า 2 แบบ, สถานภาพ, eligibility) | JUnit 5 | coverage ≥ 80% ในโมดูล domain + **mutation score ≥ 70%** (PIT) ในโมดูล ASM/REC/FIN/REG — v1.1: PIT รันแบบ **incremental ต่อ PR** (เฉพาะโค้ดที่เปลี่ยน) และ **เต็มรายคืน** เพื่อไม่ให้ CI ช้า (AC O-06) |
+| Module/integration | repository, RLS, outbox, job queue บน PostgreSQL จริง; **(v1.1)** prepared statement ผ่าน PgBouncer sidecar (`max_prepared_statements`), repository นอก transaction ต้องคืน 0 แถว | Testcontainers (PG + PgBouncer) | ผ่าน 100% |
+| **RLS cross-tenant suite** | ทุก repository ถูกเรียกด้วย scope ผิด/ว่าง/สุ่ม ต้องได้ 0 แถว; scope ไม่รั่วข้าม transaction ผ่าน PgBouncer; 6 กรณี tenancy ของ [07](07-architecture.md) หัวข้อ 11.9; **(v1.1, D-09)** จำลอง SQL injection: `set_config` ใส่ scope ปลอม / token ของ transaction อื่น / token หมดอายุ ต้องได้ 0 แถว; lint ว่าไม่มี role ใดมี `BYPASSRLS` และ view ใน `elt_api` เป็น `security_invoker` ทุกตัว; Semgrep ห้าม dynamic SQL | Testcontainers + fuzz | ผ่าน 100% ทุก PR |
 | Architecture | boundary ของโมดูล, ไม่มี query ข้าม schema | Spring Modulith verify + ArchUnit | 0 violation |
 | **PolicySet golden cases** | กรณีตัวอย่างต่อข้อบังคับแต่ละรุ่น (มหาวิทยาลัย + โรงเรียนกีฬา) ที่นายทะเบียนรับรอง | DMN test runner | 100% ก่อน publish |
-| Contract | web ↔ core (Pact); event (AsyncAPI compat); **file contract กับหน่วยงานรัฐที่ไม่มี sandbox** (กยศ., GFMIS, สป.อว., TCAS, ธนาคาร) ด้วย **golden files** | Pact, schema diff, golden file diff | ผ่าน 100% |
-| **เอกสารไทย** | visual diff ของ PDF (ชื่อสระซ้อน, เลขไทย, จำนวนเงินตัวอักษร), PDF/A + PDF/UA validation | renderer + pixel diff + veraPDF | 0 diff ที่ไม่ได้อนุมัติ |
+| Contract | web ↔ core (Pact); event (AsyncAPI compat); **file contract กับหน่วยงานรัฐที่ไม่มี sandbox** (กยศ., GFMIS, สป.อว., TCAS, ธนาคาร) ด้วย **golden files**; **(v1.1)** contract ของ bridge กับระบบเดิม (BR-01/02/06, legacy analytics feed) ด้วยไฟล์ตัวอย่างจริงของแต่ละ product | Pact, schema diff, golden file diff | ผ่าน 100% |
+| **เอกสารไทย** | visual diff ของ PDF (ชื่อสระซ้อน, เลขไทย, จำนวนเงินตัวอักษร), PDF/A + PDF/UA validation, **(v1.1) text extraction** (ต้องไม่มี U+200B ในข้อความที่คัดลอก/XML), ลงนาม e-seal + green check ใน Acrobat/Foxit (NRCA trust anchor), กรณี TSA ล่ม → B-B แล้ว augment | renderer + pixel diff + veraPDF + DSS validation | 0 diff ที่ไม่ได้อนุมัติ |
 | E2E | journey หลักต่อ persona (ผู้สมัคร, นักศึกษา, ผู้ปกครอง, อาจารย์, นายทะเบียน, การเงิน) ภาษาไทย/อังกฤษ | Playwright | journey สำคัญผ่าน 100% |
-| Accessibility | axe-core ทุกหน้า + manual screen reader ภาษาไทยก่อน release หลัก | axe-core, NVDA/TalkBack/VoiceOver | 0 critical |
+| Accessibility | axe-core ทุกหน้า + manual screen reader ภาษาไทยก่อน release หลัก; **(v1.1, UX UXR-47)** ผู้ตรวจ**อิสระจากทีมพัฒนา** ตรวจทุกหน้าจอ ★ (เล่ม 14) + สุ่ม 20% ของหน้าจออื่น + ทุก template PDF ที่ออกให้ผู้ใช้ และรวม LINE in-app browser (LIFF) ใน matrix | axe-core, NVDA/TalkBack/VoiceOver | 0 critical |
 | Device/network | Android ระดับล่าง + โปรไฟล์ 3G, งาน offline ของ judge/นิเทศ | device lab + Lighthouse CI | LCP ≤ 2.5 s, JS ≤ 200 KB/route |
-| Migration | mapping ต่อระบบเดิม, reconciliation, เวลา cutover | dbt tests / Great Expectations, rehearsal | ตามหัวข้อ 13 |
+| Migration | mapping ต่อระบบเดิม, reconciliation, เวลา cutover, shadow comparison ด้วย legacy-rule PolicySet | dbt tests / Great Expectations, rehearsal | ตามหัวข้อ 13 |
+| **Import ไฟล์ของเจ้าหน้าที่ (v1.1, UX UXR-38)** | CSV/Excel ที่เป็น TIS-620/Windows-874/UTF-8 ไม่มี BOM, ปี พ.ศ. ในเซลล์วันที่, export UTF-8 with BOM เปิดใน Excel ไทยได้ | golden files | ผ่าน 100% |
 | Performance | scenario ในหัวข้อ 4.2 | k6 (AGPL ใช้ภายใน) หรือ Gatling | ตามเกณฑ์ผ่าน |
 | Security | SAST, SCA, secrets, DAST, pen test | Semgrep CE, Dependency-Track + Trivy, gitleaks, OWASP ZAP, ผู้ทดสอบอิสระ | ไม่มี High/Critical ค้าง; ASVS L2 (L3 สำหรับ FIN/IAM/ADMIN) |
-| Resilience | game day: ฆ่า PG primary, Keycloak node, Valkey, core pod ระหว่าง load test | chaos script | invariant ไม่เสีย, SLO ระหว่างทดสอบตามเป้า |
-| DR/restore | restore PITR, OpenBao escrow | หัวข้อ 7–8 | เป็น release gate รายไตรมาส |
+| Resilience | game day: ฆ่า PG primary, Keycloak node, Valkey, core pod ระหว่าง load test; **(v1.1)** ฆ่า etcd 1 member (ต้องไม่กระทบ) และ 2 members (primary ต้องเป็น read-only ตามคาด), **ฆ่า OpenBao leader และปิด OpenBao ทั้ง cluster 10 นาที** (journey ที่ถอดรหัสต้องอยู่ได้ด้วย DEK cache, restart แล้ว auto-unseal ด้วย HSM), **ตัด HSM ไซต์ A** ชั่วคราว (OpenBao ที่ unseal แล้วต้องทำงานต่อ; การลงนามสลับไป HSM B หรือเข้าคิว) | chaos script | invariant ไม่เสีย, SLO ระหว่างทดสอบตามเป้า |
+| DR/restore | restore PITR, OpenBao escrow, **DB ↔ object reconciliation หลัง failover, reapply erasure ledger หลัง restore**, HSM สูญหาย | หัวข้อ 6–8 | เป็น release gate รายไตรมาส |
 
 **ตัวชี้วัดคุณภาพหลัง release:** defect escape rate (defect ที่พบใน prod ÷ ทั้งหมด) ≤ 10% ต่อ release และแนวโน้มลดลง; ทุก Sev-1/2 ต้องมี test ที่จับได้เพิ่มเข้า suite
 
@@ -208,9 +221,9 @@ flowchart LR
 | T0 | เปิด window; pre-queue randomisation; ปล่อย 400 คน/นาที |
 | T0 → T+15 | ramp ถึง 3,200 active, origin ≈ 1,050 RPS (ตามสัดส่วน 800 page + 160 seat refresh + 64 payment status), command 10/s เฉลี่ย burst 60/s |
 | ระดับทดสอบ | (1) **คาด** 1× (2) **ออกแบบ** 2×: 2,100 RPS, 120 cmd/s นาน 30 นาที (3) **ยืนยัน** 300 cmd/s (4) **stress** 3,150 RPS หาจุดแตก |
-| Fault injection (ระดับ 2) | นาทีที่ 10: ฆ่า PG primary (Patroni failover); นาทีที่ 15: ฆ่า Valkey primary; นาทีที่ 20: ฆ่า core-registration 2 pod; นาทีที่ 25: ปิด Keycloak ทั้งหมด 2 นาที |
+| Fault injection (ระดับ 2) | นาทีที่ 10: ฆ่า PG primary (Patroni failover); นาทีที่ 15: ฆ่า Valkey primary (waiting room ต้องสลับเป็น fixed-rate token); นาทีที่ 20: ฆ่า core-registration 2 pod (พร้อม PgBouncer sidecar ของ pod นั้น); นาทีที่ 25: ปิด Keycloak ทั้งหมด 2 นาที; **(v1.1)** นาทีที่ 28: ปิด OpenBao ทั้ง cluster 5 นาที (registration ต้องไม่กระทบ) |
 | เกณฑ์ผ่าน | registration command p95 ≤ 1 s, p99 ≤ 2.5 s; API อ่าน p95 ≤ 300 ms; error rate (5xx) ≤ 0.1% ไม่นับช่วง failover ≤ 60 s; **invariant: ไม่มีกลุ่มเรียนใดที่ enrollment > capacity, ไม่มี enrollment ซ้ำ, ไม่มี command ที่ตอบ 201 แต่ไม่มีแถว**; ผู้ที่ login ไว้แล้วลงทะเบียนต่อได้ระหว่าง Keycloak ล่ม; Valkey ล่มแล้วระบบ fail-open ได้ |
-| Scenario อื่น | "grade release" (37.5 session/s, login burst), "admission result" (CDN shard 120/s + origin ปิด), "P0 broadcast" (48,195 delivery, push+LINE 95% ≤ 2 นาที), "deadline ส่งเกรด", "fiscal rollover 1 ต.ค." |
+| Scenario อื่น | "grade release" (37.5 session/s, login burst), "admission result" (CDN shard **300/s burst** ตาม A-34 + origin ปิด; v1.1), "P0 broadcast" (48,195 delivery, push+LINE 95% ≤ 2 นาที), "deadline ส่งเกรด", "fiscal rollover 1 ต.ค." |
 | เมื่อไร | ก่อน R2 (mock registration day บน staging ก่อน 1 พ.ค. 2572 ตามเล่ม 12 MS-2), ก่อนทุกช่วงลงทะเบียน (T-4 สัปดาห์), ก่อนแต่ละ wave |
 
 ### 4.3 Security testing
@@ -237,7 +250,8 @@ flowchart LR
 | Configuration ราย OrgUnit (ค่าธรรมเนียม, ปฏิทิน, รอบรับสมัคร) | ตามต้องการ | ทุกเวลา ยกเว้น freeze ของ ring นั้น | maker-checker ของเจ้าของข้อมูล |
 | PolicySet / BPMN / template | ตามรอบข้อบังคับ | นอก freeze | 4-eyes + golden tests |
 | Hotfix | ≤ 24 ชม. สำหรับ Sev-1/2 | ทุกเวลา | 2 approvals (vendor lead + IT มกช.) |
-| Platform upgrade ใหญ่ (PG major, K8s, Keycloak major) | ปีละ 1–2 ครั้ง | หน้าต่างว่าง: **ปลาย ก.ค.–ส.ค., ธ.ค.–ต้น ม.ค., เม.ย.** | CAB + ทดสอบใน staging ≥ 2 สัปดาห์ |
+| **Kubernetes minor upgrade (v1.1)** | **≥ 3 ครั้ง/ปี** (Kubernetes ออก ~3 minor/ปี, patch support ~1 ปี และต้องขึ้นทีละ minor ตาม skew policy ✅) — ใช้ครบทั้ง 3 หน้าต่าง: **เม.ย., ปลาย ก.ค.–ส.ค., ธ.ค.–ต้น ม.ค.**; ถ้าใช้ managed K8s ให้ผู้ให้บริการ upgrade ในหน้าต่างเดียวกัน | ตามซ้าย | CAB + ทดสอบใน staging ≥ 2 สัปดาห์; staging ขึ้นก่อน prod ≥ 2 สัปดาห์ |
+| Platform upgrade ใหญ่อื่น (PG major ทุก ~2 ปี, Keycloak major, OpenBao, etcd) | ปีละ 1–2 ครั้ง | หน้าต่างว่างเดียวกัน (ไม่ทำพร้อม K8s ในหน้าต่างเดียว) | CAB + ทดสอบใน staging ≥ 2 สัปดาห์ |
 | Security patch critical | ≤ 7 วัน (high ≤ 30 วัน) | อนุญาตแม้ในช่วง freeze | 2 approvals |
 
 ### 5.2 Freeze แบบ ring (ปิด OPS-04)
@@ -246,8 +260,14 @@ flowchart LR
 
 1. **วันที่ freeze ดึงจากปฏิทินใน ORG อัตโนมัติ** (calendar-as-configuration) และแสดงใน pipeline; Argo CD ปฏิเสธ sync ไป ring ที่อยู่ใน freeze ถ้าไม่มี emergency approval
 2. **Freeze ราย ring:** ช่วงลงทะเบียนของวิทยาเขต X freeze เฉพาะ ring ที่ X อยู่ และเฉพาะโมดูลที่เกี่ยว (REG, FIN-payment, IAM) ส่วน ring อื่นยัง release ได้
-3. **Freeze ทั้งระบบ** เฉพาะช่วงที่ทุก ring วิกฤตพร้อมกัน (FZ-GL, FZ-FY สำหรับ FIN, และวันลงทะเบียนถ้าทุกวิทยาเขตเปิดวันเดียวกัน) เป้า: freeze ทั้งระบบ ≤ 6 สัปดาห์/ปี และ freeze รวมต่อ ring ≤ 30% ของปี
-4. ในช่วง freeze อนุญาตเฉพาะ security patch และ emergency fix ที่มี 2 approvals และต้องมี postmortem
+3. **(v1.1) FZ-GL เป็นราย ring + รายโมดูลของ release นั้น ไม่ใช่ทั้งระบบ** (review v1-review AC O-02): ตั้งแต่ go/no-go ถึงสิ้น hypercare ห้าม change กับ ring ที่ go-live และโมดูลของ release นั้น ส่วน ring อื่นที่ไม่อยู่ใน freeze ของตนยัง release fix ได้ — ตรงกับนิยาม FZ-GL/FZ-REG2 ราย module ใน ring ของเล่ม 12 v1.1 หัวข้อ 2.4
+4. **Freeze ทั้งระบบ** เฉพาะช่วงที่ทุก ring วิกฤตพร้อมกัน (FZ-FY สำหรับ FIN และวันลงทะเบียนถ้าทุกวิทยาเขตเปิดวันเดียวกัน) — เป้า: freeze ทั้งระบบ ≤ 6 สัปดาห์/ปี; **freeze รวมต่อ ring ≤ 30% ของปีในปีปกติ และ ≤ 40% ในปีที่มี go-live (2572–2574)** เพราะการคำนวณซ้ำของ review พบว่าปีที่มี go-live ราว 43–45% ถ้า FZ-GL เป็นทั้งระบบ; เมื่อ FZ-GL เป็นราย ring จะลดลงเหลือราว 35–40% สำหรับ ring pilot ปี 2572 **[ต้องคำนวณซ้ำด้วยปฏิทินจริงใน P0]**
+5. ในช่วง freeze อนุญาตเฉพาะ security patch และ emergency fix ที่มี 2 approvals และต้องมี postmortem — **ยกเว้นข้อ 6**
+6. **(v1.1, D-07) R3 go-live 1 พ.ย. 2572 (M32) กับ freeze:** 1 พ.ย. ตรงกับ FZ-REG2/FZ-SS ของ ring pilot และอยู่หลัง FZ-FY/FZ-ADM/FZ-GRADE/FZ-LOAN ซึ่งขัดกับกติกา "ไม่มี go-live ช่วง ต.ค.–กลาง พ.ย." **ทางที่เลือก = ปรับกติกา ไม่เลื่อน R3** เพราะ PRA (ฝึกสอนภาค 2), LMS (roster ต้นภาค) และ GRAD ต้องพร้อมตั้งแต่วันเปิดภาค ถ้าเลื่อนไปสัปดาห์ที่ 2 ของ พ.ย. ผู้ใช้จะต้องเริ่มภาคบนระบบเดิมแล้วย้ายกลางสัปดาห์:
+   - **code ของ R3 deploy แบบ dark (flag ใน ADMIN ปิด) ภายใน 24 ก.ย. 2572** (ก่อน FZ-FY 25 ก.ย.) และไม่มี deploy ของโมดูล R3 อีกหลังจากนั้นยกเว้น fix ที่ผ่าน 2 approvals
+   - dress rehearsal บน staging ด้วย flag เปิดในสัปดาห์แรกของ ต.ค. แล้ว **go/no-go R3 วันที่ 15 ต.ค. 2572** (MS-3 ของเล่ม 12)
+   - **1 พ.ย.: "planned activation"** = เปิด flag ของโมดูล R3 (GRD, PRA, GRAD, ALU, FAC, ATH ส่วนที่เหลือ, LMS) สำหรับ ring pilot ซึ่ง**ไม่ใช่โมดูลที่อยู่ใน freeze ขณะนั้น** (FZ-REG2 = REG/FIN-payment/IAM, FZ-SS = ring โรงเรียน ซึ่ง R3 ไม่มี) จึงอนุญาตเป็นข้อยกเว้นประเภทเดียวของ freeze โดยต้องมี kill-switch ราย module × OrgUnit พร้อมและ CAB อนุมัติล่วงหน้า; ถ้า no-go → เปิดเป็น 2 ระลอก (ระลอกแรกเฉพาะ PRA + LMS วันที่ 1 พ.ย., ที่เหลือหลัง FZ-REG2 สิ้นสุด ≈ 16 พ.ย.)
+   - หลักเดียวกันใช้กับ **Wave 2b (พ.ย. 2574, M56)**
 
 ### 5.3 ปฏิทินรายเดือน (ช่วงพีค 4 ช่วงตาม blueprint ข้อ 8)
 
@@ -256,15 +276,15 @@ flowchart LR
 | ม.ค. | ทดสอบทักษะ/สัมภาษณ์รอบโควตา, รับสมัครโรงเรียนกีฬา ม.1/ม.4 | FZ-ADM ±2 วันรอบประกาศผล | upgrade platform (ต้นเดือน), DR drill เต็มรูปแบบ (ครั้งที่ 1) |
 | ก.พ. | **พีค:** สอบปลายภาค 2, กยศ. 28 ก.พ., รับสมัครรอบทั่วไปเริ่ม | FZ-LOAN, FZ-ADM | release ปกตินอกโมดูลที่ freeze |
 | มี.ค. | **พีค:** ส่ง/ประกาศเกรดภาค 2, โรงเรียนกีฬาปิดภาค ออก ปพ., OIT เปิด 2 มี.ค. | FZ-GRADE, FZ-SS (ช่วง ปพ.) | — |
-| เม.ย. | ภาคฤดูร้อน, สภาอนุมัติผู้จบ | น้อย | **หน้าต่าง upgrade ใหญ่**, pen test, ซ้อม key escrow ไตรมาส 2 |
+| เม.ย. | ภาคฤดูร้อน, สภาอนุมัติผู้จบ | น้อย | **หน้าต่าง upgrade ใหญ่ (K8s minor ครั้งที่ 1)**, pen test, ซ้อม key escrow ไตรมาส 2 |
 | พ.ค. | **พีค:** โรงเรียนกีฬาเปิด 16 พ.ค., รายงานตัว, ลงทะเบียนภาค 1, กยศ. | FZ-SS, FZ-REG1 (เริ่ม), FZ-GL ปีที่มี go-live (R2 1 พ.ค. 2572) | load test/mock registration ต้นเดือน |
-| มิ.ย. | **พีค:** เปิดภาค 1, late reg, รับปริญญา, snapshot 10 มิ.ย., OIT ปิด 30 มิ.ย. | FZ-REG1, FZ-RPT | — |
+| มิ.ย. | **พีค:** เปิดภาค 1, late reg, รับปริญญา, snapshot 10 มิ.ย., OIT ปิด 30 มิ.ย.; Wave 1 (2573) / **Wave 2a (2574)** go-live 1 มิ.ย. | FZ-REG1, FZ-RPT, FZ-GL ราย ring | — |
 | ก.ค. | สัปดาห์เรียน, ยื่นกู้ DSL | น้อย | release ปกติ, ซ้อม key escrow ไตรมาส 3 |
-| ส.ค. | สอบกลางภาค | น้อย | **หน้าต่าง upgrade**, DR drill เต็มรูปแบบ (ครั้งที่ 2) |
+| ส.ค. | สอบกลางภาค | น้อย | **หน้าต่าง upgrade (K8s minor ครั้งที่ 2)**, DR drill เต็มรูปแบบ (ครั้งที่ 2) |
 | ก.ย. | พลศึกษาเกมส์, สอบปลายภาค 1, ปิดยื่นกู้ | FZ-FY เริ่ม 25 ก.ย. | เตรียม fiscal rollover |
-| ต.ค. | **พีค:** เกรดภาค 1, ขึ้นปีงบ 1 ต.ค., กยศ. 31 ต.ค., ลงทะเบียนภาค 2, เปิดรับโควตา | FZ-FY (ถึง 7 ต.ค.), FZ-GRADE, FZ-LOAN, FZ-ADM, FZ-REG2 | — |
-| พ.ย. | **พีค:** เปิดภาค 2, โรงเรียนกีฬาเปิด 1 พ.ย., snapshot 10 พ.ย. | FZ-REG2, FZ-SS, FZ-RPT, FZ-ADM | — |
-| ธ.ค. | สอบกลางภาค 2, ทดสอบทักษะรอบโควตา | FZ-ADM รอบประกาศ | **หน้าต่าง upgrade**, ซ้อม key escrow ไตรมาส 4, tabletop |
+| ต.ค. | **พีค:** เกรดภาค 1, ขึ้นปีงบ 1 ต.ค., กยศ. 31 ต.ค., ลงทะเบียนภาค 2, เปิดรับโควตา | FZ-FY (ถึง 7 ต.ค.), FZ-GRADE, FZ-LOAN, FZ-ADM, FZ-REG2 | dress rehearsal บน staging; go/no-go R3 (15 ต.ค. 2572) / Wave 2b (15 ต.ค. 2574) ตามเล่ม 12 |
+| พ.ย. | **พีค:** เปิดภาค 2, โรงเรียนกีฬาเปิด 1 พ.ย., snapshot 10 พ.ย. | FZ-REG2, FZ-SS, FZ-RPT, FZ-ADM | planned activation ของ R3 (1 พ.ย. 2572) และ Wave 2b (พ.ย. 2574) ตามข้อ 5.2 ข้อ 6 |
+| ธ.ค. | สอบกลางภาค 2, ทดสอบทักษะรอบโควตา | FZ-ADM รอบประกาศ; FZ-GL ราย ring ของ R3/Wave 2b ถึงสิ้น hypercare | **หน้าต่าง upgrade (K8s minor ครั้งที่ 3)**, ซ้อม key escrow ไตรมาส 4, tabletop |
 
 วันที่จริงต้องแทนด้วยปฏิทินรายวิทยาเขตที่ยืนยันใน P0 ([03-academic-calendar](03-academic-calendar.md))
 
@@ -276,21 +296,26 @@ flowchart LR
 
 | ข้อมูล | วิธี | ความถี่ | เก็บ | ปลายทาง |
 |---|---|---|---|---|
-| PostgreSQL core (db core, keycloak) | pgBackRest full + diff + WAL archive (`archive_timeout` ≤ 60 s), เข้ารหัส | full รายสัปดาห์, diff รายวัน, WAL ต่อเนื่อง | 35 วัน + รายเดือน 12 เดือน + รายปี 7 ปี | `backup-pg` site A + replicate site B (**Object Lock compliance mode, tenant แยก**) |
-| PostgreSQL health_vault | เหมือน core | เหมือน core | **13 เดือน** (crypto-shredding, ADR-011) | เหมือน core |
-| PostgreSQL analytics/apps | pgBackRest | รายวัน | 35 วัน | `backup-pg` |
-| OpenBao | Raft snapshot เข้ารหัส | รายชั่วโมง | 35 วัน | `backup-openbao` (Object Lock) + escrow package แยก (หัวข้อ 8) |
+| PostgreSQL core (db core, keycloak) | pgBackRest full + diff + WAL archive (`archive_timeout` ≤ 60 s), เข้ารหัส | full รายสัปดาห์, diff รายวัน, WAL ต่อเนื่อง | 35 วัน + รายเดือน 12 เดือน (**v1.1 ตัดรายปี 7 ปี** — backup ไม่ใช่ archive; ข้อมูลที่ต้องเก็บยาวอยู่ใน records archive + **fiscal-close export** รายปี ตามเล่ม 08 หัวข้อ 8; เสนอ Q-92) | `backup-pg` site A + replicate site B (**Object Lock compliance mode, tenant แยก**) |
+| PostgreSQL `hlt_vault` | เหมือน core (stanza และกุญแจ backup แยก) | เหมือน core | **13 เดือน** (07 ADR-011) | เหมือน core |
+| **PostgreSQL `hlt_keys` (wrapped DEK, v1.1)** | เหมือน core (stanza และกุญแจ backup แยก) | เหมือน core | **≤ 35 วัน** (สั้นกว่า `hlt_vault` เพื่อให้ crypto-shredding มีผลกับ backup ภายในกรอบที่ประกาศ; D-04) | เหมือน core; ไม่อยู่ในสำเนา offline เกิน 35 วัน |
+| PostgreSQL analytics+apps cluster | pgBackRest + WAL (Moodle/Zammad ต้อง PITR ได้) | full รายสัปดาห์, diff รายวัน | 35 วัน | `backup-pg` |
+| OpenBao | Raft snapshot เข้ารหัส | **ทุก 15 นาที (v1.1)** + ทันทีหลังสร้าง/rotate key (snapshot-before-use) | 35 วัน | `backup-openbao` (Object Lock) ทั้ง 2 sites + escrow package แยก (หัวข้อ 8) |
+| **HSM (seal key + กุญแจลงนาม, v1.1)** | clone/backup แบบเข้ารหัสด้วยกลไกของผู้ผลิต HSM ไปยัง HSM ไซต์ B (หรือ Cloud HSM ที่ replicate ข้ามไซต์) | เมื่อสร้าง/หมุนกุญแจ | ตามอายุกุญแจ | HSM ไซต์ B + สำเนา backup ของผู้ผลิตที่ มกช. ถือ |
+| **Erasure ledger (v1.1)** | WORM ใน `audit-worm` (นอก DB ที่ถูก restore) | ทุกการลบ/crypto-shred/DSR | ≥ อายุ backup ที่ยาวที่สุด + 1 ปี | Object Lock ทั้ง 2 sites |
 | Object storage (documents, clean, audit-worm) | versioning + replication ข้าม site; audit เป็น WORM ตาม retention | ต่อเนื่อง | ตาม retention ในเล่ม 08 | site B |
 | Git forge (source, IaC, env repo, PolicySet, BPMN, template) | backup ของ forge + **mirror แบบ read-only** ไปที่ object storage | รายวัน + mirror ทุก push | 1 ปี | Object Lock + สำเนา offline |
 | Container registry (Harbor) | replication ไป site B + export image ที่ใช้ใน prod | ทุก release | release ที่ใช้งาน + 12 เดือน | site B + offline |
 | OpenTofu state | versioning + Object Lock | ทุก apply | 1 ปี | — |
 | Keycloak realm export (ไม่มี secret) | export | รายวัน | 35 วัน | — |
 | Superset/Zammad/Moodle | DB + ไฟล์ | รายวัน | 35 วัน | — |
-| **สำเนา offline** | ชุดล่าสุดของทั้งหมดข้างต้น (DB full + WAL ช่วงสัปดาห์, OpenBao snapshot, Git mirror, image prod) ลงสื่อที่ตัดการเชื่อมต่อ (disk/tape) ที่ **มกช. ถือ** | **รายสัปดาห์** | 8 สัปดาห์หมุนเวียน + รายไตรมาส 1 ปี | ห้องนิรภัยของ มกช. (คนละที่กับ site A/B) |
+| **สำเนา offline** | ชุดล่าสุดของทั้งหมดข้างต้น (DB full + WAL ช่วงสัปดาห์, OpenBao snapshot, Git mirror, image prod) ลงสื่อที่ตัดการเชื่อมต่อ (disk/tape) ที่ **มกช. ถือ** | **รายสัปดาห์** | **ต่อชุดข้อมูล (v1.1, AC K-05):** core/Git/image 8 สัปดาห์หมุนเวียน + รายไตรมาส 1 ปี; `hlt_vault` 8 สัปดาห์ (ไม่มีรายไตรมาส); **`hlt_keys` 4 สัปดาห์ (≤ 35 วัน)**; OpenBao snapshot 8 สัปดาห์ | ห้องนิรภัยของ มกช. (คนละที่กับ site A/B) |
 
 **การแยก credential:** บัญชีที่ prod ใช้เขียน backup เขียนได้แต่ลบ/ย่อ retention ไม่ได้; บัญชีผู้ดูแล backup tenant ถือโดย `security_admin` ของ มกช. + MFA; compliance mode ทำให้แม้ผู้ดูแลก็ลบก่อนหมดอายุไม่ได้
 
-**Restore verification (เลข 0 ใน 3-2-1-1-0):** job รายวันสุ่ม restore backup ล่าสุดใน environment แยก แล้วรัน integrity checks (จำนวนแถว, checksum ตารางสำคัญ, hash ของ GradeSubmission snapshot, ลำดับเลขใบเสร็จ) ผลต้อง 0 error; PITR ไปเวลาสุ่มรายเดือน
+**Restore verification (เลข 0 ใน 3-2-1-1-0; v1.1 ปรับตาม AC O-10):** **รายวัน** ตรวจ WAL/diff ล่าสุดด้วยการ restore แบบสุ่มตาราง (ไม่ใช่ทั้ง DB); **รายสัปดาห์** full restore ทุก stanza ใน environment แยก แล้วรัน integrity checks (จำนวนแถว, checksum ตารางสำคัญ, hash ของ GradeSubmission snapshot, ลำดับเลขใบเสร็จ, **ถอดรหัส canary ของ `hlt_vault` ด้วย `hlt_keys` ที่ restore คู่กัน**) ผลต้อง 0 error; PITR ไปเวลาสุ่มรายเดือน
+
+**Restore-then-reapply-erasure (v1.1, D-04):** ทุกการ restore เพื่อใช้งานจริง (PITR, DR, ransomware) เปิดฐานข้อมูลใน **maintenance mode** ก่อน → job `erasure-replay` อ่าน erasure ledger ตั้งแต่เวลาของ backup ที่ใช้ แล้วลบ DEK ใน `hlt_keys`, แถว/บุคคลที่ถูกลบตาม DSR หรือ retention ใน core ซ้ำ → ตรวจว่าจำนวนที่ลบซ้ำตรงกับ ledger → จึงเปิดให้ผู้ใช้; ข้อมูลที่ถูกขอลบจึงคงอยู่ใน backup ในสถานะ "beyond use" จนหมดอายุ (core ≤ 12 เดือน, `hlt_vault` 13 เดือนแต่อ่านไม่ได้เมื่อ DEK ถูกลบ, `hlt_keys` ≤ 35 วัน) — ข้อความนี้อยู่ใน privacy notice/ROPA (เล่ม 10)
 
 **Backup ไม่ใช่ archive:** เอกสารที่ต้องเก็บตามกฎหมายระยะยาว (ทะเบียนถาวร, การเงิน 10 ปี) เก็บใน records/archive ตามเล่ม 08 ไม่พึ่ง backup รายปี
 
@@ -303,17 +328,20 @@ flowchart LR
 | การซ้อม | ความถี่ | เวลา | ขอบเขต | ผ่านเมื่อ |
 |---|---|---|---|---|
 | Tabletop DR | รายไตรมาส | ม.ค., เม.ย., ก.ค., ธ.ค. | ทีม vendor + IT มกช. + ผู้บริหาร | ทุกคนรู้บทบาท, runbook ปรับปรุง |
-| **Full failover ไป site B** | ปีละ 2 ครั้ง | ม.ค. และ ส.ค. (นอกพีค) ใน maintenance window ที่ประกาศ ≥ 7 วัน | promote DB, scale apps, switch DNS/GSLB, ตรวจ integrity, failback | RTO ≤ 4 ชม., RPO ≤ 5 นาที วัดจริง |
+| **Full failover ไป site B** | ปีละ 2 ครั้ง | ม.ค. และ ส.ค. (นอกพีค) ใน maintenance window ที่ประกาศ ≥ 7 วัน | promote standby cluster (Patroni + etcd ไซต์ B), กู้ OpenBao จาก snapshot + auto-unseal ด้วย HSM ไซต์ B, scale apps, switch DNS/GSLB, **DB ↔ object reconciliation**, ตรวจ integrity, **สร้าง standby ใหม่ที่ไซต์ B (degraded mode)**, failback | RTO ≤ 4 ชม., RPO ≤ 5 นาที (DB) / ≤ 15 นาที (OpenBao) วัดจริง; ไม่มีแถวใน `hlt_vault` ที่ไม่มี DEK; standby ใหม่ ≤ 8 ชม. |
 | Pre-peak readiness | T-2 สัปดาห์ก่อนทุกช่วงลงทะเบียน | พ.ค., ต.ค. | pre-scale DR, ทดสอบ failover บน staging, ยืนยันขั้นตอน | runbook พร้อม, DR scaled |
 | PITR restore | รายเดือน | — | กู้ DB ไปเวลาสุ่มใน environment แยก | ≤ 4 ชม., integrity ผ่าน |
-| Game day | ก่อนทุกช่วงลงทะเบียน | ระหว่าง load test บน staging | หัวข้อ 4.2 | invariant ไม่เสีย |
+| Game day | ก่อนทุกช่วงลงทะเบียน | ระหว่าง load test บน staging | หัวข้อ 4.2 รวม etcd, **OpenBao (leader และทั้ง cluster)**, HSM ไซต์ A ไม่ตอบ | invariant ไม่เสีย |
+| **Business continuity (offline counter) drill (v1.1)** | ปีละ 1 ครั้งต่อ OrgUnit (พร้อม DR drill) | — | หัวข้อ 7.4 | รับเงิน/เช็คชื่อ/คะแนนสอบด้วยชุดอุปกรณ์สำรองได้ และคีย์ย้อนหลังครบภายใน T+1 |
 | **Clean-room rebuild (ransomware)** | ปีละ 1 ครั้ง | ส.ค. หรือ ธ.ค. | สร้าง platform ใหม่จาก Git mirror offline + backup immutable ในบัญชี/tenant ใหม่ โดยไม่ใช้ credential เดิม | สร้างได้ภายใน 72 ชม. |
 | Breach tabletop | ปีละ 2 ครั้ง (1 ครั้งเป็นข้อมูลผู้เยาว์) | — | หัวข้อ 9 | แจ้งภายในกรอบ 72 ชม. ได้ |
 
 ### 7.2 Runbook หลัง DR failover (ปิด NFR-06)
 
 1. Incident Commander (IC) + CIO ตัดสินใจ failover (ไม่ทำอัตโนมัติข้าม site)
-2. Promote async standby ที่ site B, บันทึก LSN สุดท้ายที่ได้รับ; Argo CD sync workload; switch DNS/GSLB
+2. Promote standby cluster ที่ site B (Patroni + etcd ไซต์ B), บันทึก LSN สุดท้ายที่ได้รับ; กู้ OpenBao จาก snapshot ล่าสุด (≤ 15 นาที) ซึ่ง auto-unseal ด้วย HSM ไซต์ B; ตรวจว่าทุก `SUBJECT_KEY` ที่ถูกอ้างจาก `hlt_vault` มีอยู่ (key-before-data); Argo CD sync workload; switch DNS/GSLB
+2a. **DB ↔ object reconciliation (v1.1, AC N-04):** job เทียบ hash ที่ DB อ้าง (`GENERATED_DOCUMENT.sha256`, ไฟล์แนบ) กับ object ที่มีจริงที่ไซต์ B → object ที่หายแต่ DB มี: สร้างเอกสารใหม่จาก snapshot ที่ลงนาม (ลงนามซ้ำด้วยกุญแจใน HSM ไซต์ B) หรือแจ้งผู้ใช้อัปโหลดใหม่; object ที่มีแต่ DB ไม่มี: ย้ายไป quarantine รอตรวจ; เอกสารลงนามเขียนแบบ write-both ก่อนสถานะ "issued" จึงควรไม่พบกรณีนี้
+2b. **Degraded mode (AC N-05):** ไซต์ B มี PG node เดียว → เริ่มสร้าง standby ใหม่ทันที (เป้า ≤ 8 ชม.), ระหว่างนั้นเพิ่มความถี่ WAL archive ไป object storage และงด change ที่ไม่จำเป็น
 3. **ข้อมูลที่อาจหายในช่วง RPO (≤ 5 นาที):**
    - **เลขใบเสร็จ:** เปิด **ชุดเลขใหม่** (prefix/epoch ใหม่ราย OrgUnit + ปีงบ) ห้ามใช้เลขต่อจากเลขสุดท้ายที่ DR เห็น เพราะเลขช่วง RPO อาจถูกออกให้ผู้ใช้แล้ว; บันทึกช่วงเลขที่อาจว่างเป็นรายงานต่อ สตง./ผู้ตรวจสอบภายใน
    - **การชำระเงิน:** reconcile จาก statement ธนาคาร + callback log ของ APISIX/adapter ที่ส่งไป site B; สร้าง payment ที่หายย้อนหลัง
@@ -326,28 +354,45 @@ flowchart LR
 | ช่วงเวลา | งาน |
 |---|---|
 | 0–4 ชม. | ตั้ง incident (SEV-1), แยกเครือข่าย, หยุด credential ที่สงสัยทั้งหมด, เก็บ forensic snapshot, แจ้ง SOC/MSSP, DPO เริ่มนาฬิกา PDPA 72 ชม., เปิดหน้า status static ที่โฮสต์แยก, ผู้บริหารประกาศขยายกำหนดเวลาตามปฏิทิน |
-| 4–24 ชม. | ยืนยันว่า backup tenant (compliance mode) และสำเนา offline ไม่ถูกแตะ; สร้าง **clean room** (บัญชี/tenant ใหม่ หรือ site B ที่ล้างแล้ว) จาก Git mirror offline + OpenTofu + Argo CD; ติดตั้ง OpenBao ใหม่แล้วกู้จาก snapshot + escrow (หัวข้อ 8) |
-| 24–48 ชม. | Restore PostgreSQL ไปจุดก่อนเหตุ (PITR), ตรวจ integrity (hash ของ GradeSubmission snapshot, ลำดับเลขใบเสร็จ, จำนวนแถว), **หมุนทุก credential/secret/certificate** และ re-issue token ทั้งหมด, สแกน image ใหม่ทั้งหมด |
+| 4–24 ชม. | ยืนยันว่า backup tenant (compliance mode) และสำเนา offline ไม่ถูกแตะ; สร้าง **clean room** (บัญชี/tenant ใหม่ หรือ site B ที่ล้างแล้ว) จาก Git mirror offline + OpenTofu + Argo CD; ติดตั้ง OpenBao ใหม่แล้วกู้จาก snapshot และ unseal ด้วย HSM ที่ยืนยันว่าไม่ถูกใช้โดยมิชอบ — ถ้าสงสัย HSM ให้ตั้ง seal ใหม่และ import transit key จาก escrow (ขั้นตอน "HSM สูญหาย" หัวข้อ 8) |
+| 24–48 ชม. | Restore PostgreSQL ไปจุดก่อนเหตุ (PITR) ใน maintenance mode, **reapply erasure ledger** (หัวข้อ 6), ตรวจ integrity (hash ของ GradeSubmission snapshot, ลำดับเลขใบเสร็จ, จำนวนแถว), DB ↔ object reconciliation, **หมุนทุก credential/secret/certificate** และ re-issue token ทั้งหมด, สแกน image ใหม่ทั้งหมด |
 | 48–72 ชม. | เปิดใช้แบบขั้นบันได: read-only (ดูเกรด/ประกาศ) → ชำระเงินและ reconcile statement ช่วงหยุด → คำร้อง/ลงทะเบียน; เฝ้าระวังเข้ม 30 วัน; postmortem |
 
-บริการขั้นต่ำระหว่างเหตุ: หน้า status/ประกาศ static, ธนาคารยังรับชำระได้, แบบฟอร์มกระดาษมาตรฐานที่นำเข้าภายหลังด้วย 4-eyes
+บริการขั้นต่ำระหว่างเหตุ: หน้า status/ประกาศ static, ธนาคารยังรับชำระได้, แบบฟอร์มกระดาษมาตรฐานที่นำเข้าภายหลังด้วย 4-eyes (หัวข้อ 7.4)
+
+### 7.4 Business continuity kit ต่อ OrgUnit (v1.1, UX UXR-40)
+
+เพื่อให้ manual fallback ใน [07](07-architecture.md) หัวข้อ 11.8 ใช้ได้จริงเมื่อ WAN ของวิทยาเขต/ระบบล่ม:
+
+| รายการ | รายละเอียด |
+|---|---|
+| เล่มใบรับเงินชั่วคราว | มีเลขกำกับที่ออกจากส่วนกลางล่วงหน้าต่อ OrgUnit (ช่วงเลขบันทึกใน FIN), เก็บในตู้ของการเงินวิทยาเขต; ใบเสร็จอิเล็กทรอนิกส์ออกย้อนหลังอ้างเลขชั่วคราว |
+| เครือข่ายสำรอง | 4G/5G router ต่อเคาน์เตอร์หลัก/ห้องสอบทักษะ + ซิมสำรองคนละเครือข่าย |
+| แบบฟอร์มพิมพ์ล่วงหน้า | check-in, ใบให้คะแนนสอบทักษะ (ตาม rubric ของรอบ), เช็คชื่อ, คำร้องด่วน — สร้างจาก template ของ DOC และพิมพ์ใหม่เมื่อ template เปลี่ยน |
+| ขั้นตอนคีย์ย้อนหลัง | ภายใน T+1 ผ่าน import CSV แบบ 4-eyes (07 หัวข้อ 11.11) พร้อม reconcile กับเล่มใบรับเงินชั่วคราว |
+| ผู้รับผิดชอบ | champion + หัวหน้างานการเงิน/ทะเบียนของ OrgUnit; ตรวจความพร้อมก่อนทุกช่วงพีค |
+| ซ้อม | ปีละ 1 ครั้งต่อ OrgUnit พร้อม DR drill (หัวข้อ 7.1); อยู่ในหลักสูตรอบรมของเจ้าหน้าที่ counter (เล่ม 14) |
 
 ---
 
 ## 8. Key-escrow restore drills
 
-ตาม ADR-012 และหัวข้อ 12 ของ [07-architecture](07-architecture.md) (ปิด Top-2)
+ตาม ADR-011/012 และหัวข้อ 12 ของ [07-architecture](07-architecture.md) (ปิด Top-2; **v1.1 แก้ seal model ตาม D-04 และ review v1-review Top-1/K-01/K-08**)
 
 | รายการ | รายละเอียด |
 |---|---|
-| ผู้ถือ share | recovery key ของ OpenBao: Shamir 3-of-5; escrow private key ของ KEK: Shamir 3-of-5 — ผู้ถือเป็น **ตำแหน่ง** ของ มกช. (เสนอ: รองอธิการบดีที่กำกับ IT, ผอ.สำนักคอมพิวเตอร์, DPO, ผอ.กองคลัง, ผู้ตรวจสอบภายใน) ไม่มี vendor ถือ share **[รายชื่อต้องยืนยันใน P0]** |
+| Seal model | OpenBao **auto-unseal ด้วย HSM ของแต่ละไซต์** (ไซต์ B มี HSM และ seal key ของตนเอง) → restart/failover **ไม่ต้องใช้ผู้ถือ share** จึงไม่อยู่บนเส้นทางวิกฤตของ DR/ransomware |
+| ผู้ถือ share | **recovery key** ของ OpenBao: Shamir 3-of-5 (ใช้ authorization เท่านั้น เช่น generate root, rekey, seal migration — **ถอดรหัส root key ไม่ได้ และไม่ใช่ทางกู้เมื่อ HSM หาย**); **escrow private key** ของ transit key: Shamir 3-of-5 — ผู้ถือเป็น **ตำแหน่ง** ของ มกช. (เสนอ: รองอธิการบดีที่กำกับ IT, ผอ.สำนักคอมพิวเตอร์, DPO, ผอ.กองคลัง, ผู้ตรวจสอบภายใน) **+ ผู้แทนสำรองที่ระบุชื่อต่อ share** ไม่มี vendor ถือ share **[รายชื่อต้องยืนยันใน P0]** |
 | ที่เก็บ | สื่อ offline (smartcard หรือกระดาษใน sealed envelope ที่มีลายมือชื่อปิดผนึก) ในตู้นิรภัย 2 สถานที่ (ส่วนกลาง + วิทยาเขตอื่น) แต่ละที่มี share ไม่ถึง quorum |
-| พิธีกุญแจ (key ceremony) | ครั้งแรกก่อน R1; ทุกครั้งที่ rotate escrow key หรือเปลี่ยนผู้ถือ; มีผู้สังเกตการณ์ (ผู้ตรวจสอบภายใน), บันทึกวิดีโอ, checklist ลงนาม |
-| **ซ้อมรายไตรมาส** | ใน environment แยกที่ไม่มีเครือข่ายออก: (1) ผู้ถือ 3 คนประกอบ escrow key (2) ถอดรหัส escrow package (3) import transit KEK เข้า OpenBao ใหม่ (4) **ถอดรหัส canary ciphertext ที่รู้คำตอบ** (ตัวอย่าง DEK ของ health_vault ทดสอบ, HMAC ของเลขบัตรทดสอบที่ต้องได้ค่าตรง) (5) ทำลาย environment และบันทึกผล |
-| **ซ้อม restore from zero** | ปีละ 2 ครั้ง: ไม่มี OpenBao เดิมเลย → กู้จาก Raft snapshot + recovery shares + escrow → แอป staging เชื่อมต่อและอ่านข้อมูลเข้ารหัสได้ — เป็น **เงื่อนไข go-live** ของ R1, R2, R3, Wave 1, Wave 2 (สอดคล้อง MS-1 ในเล่ม 12) |
-| ผ่านเมื่อ | canary ถอดรหัสได้ 100%, เวลาในการประกอบ quorum ≤ 4 ชม. นับจากเรียกตัว, ไม่มี share ใดสูญหาย |
+| พิธีกุญแจ (key ceremony) | ครั้งแรกก่อน R1; ทุกครั้งที่สร้าง transit key ใหม่ (export เข้า escrow ก่อนใช้กับข้อมูลจริง), rotate escrow key หรือเปลี่ยนผู้ถือ; ทำบน**เครื่อง air-gapped**; มีผู้สังเกตการณ์ (ผู้ตรวจสอบภายใน), บันทึกวิดีโอ, checklist ลงนาม |
+| **ซ้อมรายไตรมาส** | ใน environment แยกที่ไม่มีเครือข่ายออก: (1) ผู้ถือ 3 คนประกอบ escrow key (2) ถอดรหัส escrow package (3) import transit key เข้า OpenBao ใหม่ (4) **ถอดรหัส canary ciphertext ที่รู้คำตอบ** (DEK ทดสอบใน `hlt_keys` → ข้อมูลทดสอบใน `hlt_vault`, HMAC ของเลขบัตรทดสอบที่ต้องได้ค่าตรง) (5) ทำลาย environment และบันทึกผล |
+| **ซ้อม restore from zero** | ปีละ 2 ครั้ง: ไม่มี OpenBao เดิมเลย → กู้จาก Raft snapshot + unseal ด้วย HSM → แอป staging เชื่อมต่อและอ่านข้อมูลเข้ารหัสได้ — เป็น **เงื่อนไข go-live** ของ R1, R2, R3, Wave 1, Wave 2a, Wave 2b (สอดคล้อง MS-1 ในเล่ม 12) |
+| **ซ้อม "HSM สูญหาย" (v1.1)** | ปีละ 1 ครั้ง (เม.ย. หรือ ส.ค.): สมมติว่า HSM ทั้ง 2 ไซต์ใช้ไม่ได้ → ตั้ง OpenBao ใหม่ด้วย seal ใหม่ (HSM สำรอง/ทดสอบ หรือ Shamir seal ชั่วคราวใน environment แยก) → ประกอบ escrow key → import transit key ทุกตัว → ถอดรหัส canary ของ `hlt_keys`/`hlt_vault` และ HMAC → บันทึกเวลา (เป้า ≤ 24 ชม.) — เงื่อนไข go-live ของ Wave 1 ขึ้นไป |
+| **ซ้อมนอกเวลาราชการ (v1.1, K-08)** | ปีละ 1 ครั้ง ประกอบ quorum escrow ด้วยผู้แทนสำรองในวันหยุด/กลางคืน |
+| ผ่านเมื่อ | canary ถอดรหัสได้ 100%, เวลาในการประกอบ quorum ≤ 4 ชม. นับจากเรียกตัว (เป็นเป้าของกรณี HSM สูญหาย ไม่ใช่ DR ปกติ), ไม่มี share ใดสูญหาย, ทุก transit key version ที่ใช้งานอยู่มีใน escrow |
 | เมื่อผู้ถือเปลี่ยนตำแหน่ง | re-split ภายใน 30 วัน และทำลาย share เดิมพร้อมบันทึก |
 | ล้มเหลว | ถือเป็น SEV-2; ล้มเหลว 2 ไตรมาสติดต้องทบทวน ADR-012 |
+| Bus factor (AC A-04) | runbook OpenBao (restore, HSM-lost), Patroni/etcd (failover, PITR) และ Keycloak upgrade ต้องมี **≥ 2 คนของ มกช.** ที่ทำได้เองจากการซ้อมแบบสลับคน — เงื่อนไข MS-W1 (หัวข้อ 16) |
 
 ---
 
@@ -391,11 +436,11 @@ flowchart LR
 
 | Dashboard | ผู้ใช้ | เนื้อหา |
 |---|---|---|
-| **SLO ราย journey** | on-call, CIO | availability/latency ของ ลงทะเบียน, login, ดูเกรด, ชำระเงิน, ประกาศ (SLO และ error budget ที่เหลือ ตาม [07](07-architecture.md) หัวข้อ 10.7) |
+| **SLO ราย journey** | on-call, CIO | availability/latency ของ ลงทะเบียน, login, ดูเกรด, ข้อมูลส่วนตัว/HLT, ชำระเงิน, ประกาศ (SLO และ error budget ที่เหลือ ตาม [07](07-architecture.md) หัวข้อ 10.7 — v1.1 ช่วงวิกฤตของลงทะเบียน 99.94%) แยกแสดง budget ที่ใช้ต่อ component ใน chain (edge, LB, APISIX, core, PG; OpenBao สำหรับ journey ที่ถอดรหัส); ค่ารายวันส่งเข้า ANA เป็น `fct_slo_daily` สำหรับ KPI ในเล่ม 14 |
 | Registration day | war room | ขนาดคิว, อัตราปล่อย, active users, cmd/s, 409 rate, lock wait, p95, outbox lag, Valkey hit rate |
 | Payment | การเงิน + on-call | callback/นาที, ยอดรอ reconcile, exception, เวลาตั้งแต่ชำระถึงออกใบเสร็จ |
 | NOTI | on-call | delivery/s ต่อช่องทาง, P0 progress (% ถึงผู้รับ), bounce/fail ต่อผู้ให้บริการ |
-| Platform | dba_sre | PG (CPU, connections, replication lag, WAL rate, bloat), PgBouncer wait, K8s, OpenBao seal status, backup success, restore verification |
+| Platform | dba_sre | PG (CPU, connections, replication lag ทั้ง sync/ELT/ไซต์ B, WAL rate, bloat), **etcd (quorum, leader change, fsync latency)**, PgBouncer wait ต่อ pod, K8s, **OpenBao seal status/leader/อายุ snapshot ล่าสุด (alert > 20 นาที)**, **HSM reachability ทั้ง 2 ไซต์**, `hlt_keys` key-before-data lag, backup success, restore verification, erasure-replay ล่าสุด |
 | **RUM ราย OrgUnit/ISP** | IT วิทยาเขต | LCP, error rate, เวลาโหลดแยกวิทยาเขตและเครือข่าย (ปิด OBS-01) |
 | Integration | L2 | job ที่ล้มเหลว, dead-letter, ไฟล์ที่ส่งหน่วยงานรัฐตามกำหนด (เชื่อมกับ RPT) |
 | Security | security_admin | login ผิดปกติ, step-up, export ขนาดใหญ่, break-glass, alert จาก SOC |
@@ -404,7 +449,7 @@ flowchart LR
 ### 10.2 Alerting
 
 - **Burn-rate แบบ multi-window:** page เมื่อ 1 ชม./5 นาทีเผา budget ≥ 14.4× หรือ 6 ชม./30 นาที ≥ 6×; ticket เมื่อ 3 วัน/6 ชม. ≥ 1×
-- Synthetic checks ทุก 1 นาทีจาก **นอกศูนย์ข้อมูล** อย่างน้อย 2 เครือข่าย และจากจุดในวิทยาเขต pilot
+- **(v1.1, AC N-06) SLI หลักเป็น request-based จาก log ของ APISIX** (สัดส่วน request ที่สำเร็จและเร็วพอ) เพราะ synthetic ทุก 1 นาทีหยาบเกินไปสำหรับ budget 6 นาที/7 วัน; synthetic checks ทุก 1 นาทีจาก **นอกศูนย์ข้อมูล** อย่างน้อย 2 เครือข่ายและจากจุดในวิทยาเขต pilot ใช้เป็นสัญญาณเสริม (จับกรณีที่ request ไม่ถึง APISIX เลย เช่น edge/LB ล่ม)
 - ทุก alert มี runbook link; alert ที่ไม่มี action ถูกลบ
 - Alert ส่งเข้า on-call ของ vendor/MSP 24×7 (หัวข้อ 15) และ copy ไป IT มกช. ในเวลาทำการ
 
@@ -414,7 +459,7 @@ flowchart LR
 2. เข้าถึงนอกเวลาทำการโดยบัญชีเจ้าหน้าที่ที่ปกติไม่ทำ
 3. เข้าถึงข้อมูลข้ามวิทยาเขตนอก scope ปกติ (แม้ RLS อนุญาตผ่าน role ระดับมหาวิทยาลัย)
 4. อ่าน health_vault โดยไม่มี care relationship (ถูกปฏิเสธซ้ำ)
-5. Export > 500 แถว หรือ export ถี่
+5. Ad-hoc export > 500 แถว/ครั้ง หรือ > 2,000 แถว/วัน (ค่าเดียวกับ 07 ADR-017 และ 08 หัวข้อ 10.3; แทนค่า 100 ของ 08 v1.0) หรือ standard export ที่ปริมาณเกิน baseline × 3
 6. เปลี่ยนบัญชีรับเงินคืนแล้วขอคืนเงินภายใน cooling period
 7. Waiver/คืนเงินมูลค่าสูงหรือถี่จากผู้อนุมัติคนเดียวกัน
 8. Login จาก ASN ต่างประเทศของบัญชีเจ้าหน้าที่/admin
@@ -422,6 +467,9 @@ flowchart LR
 10. Hash ของ GradeSubmission snapshot ไม่ตรงกับข้อมูลปัจจุบัน (job รายคืน)
 11. MFA reset หลายรายการจาก helpdesk คนเดียวในเวลาสั้น
 12. ส่งข้อความ 1:1 จากผู้ใหญ่ถึงผู้เยาว์ที่ถูกบล็อกโดย two-adult rule ซ้ำ
+13. **(v1.1, D-09)** การตรวจ scope token ใน `sec.org_scope()`/`sec.begin_scope()` ล้มเหลวซ้ำจาก session เดียวกัน (สัญญาณ SQL injection ที่พยายามขยาย scope)
+14. **(v1.1)** ถอนรายวิชาแล้วอีกบัญชีลงกลุ่มเดียวกันภายในไม่กี่วินาทีซ้ำหลายครั้ง (seat hoarding/ส่งต่อที่นั่ง, 07 ADR-004)
+15. **(v1.1)** หลาย session สลับบัญชีจากเครื่องเดียวผิดรูปแบบ shared device ที่ลงทะเบียน (การแชร์บัญชี, 07 ADR-009)
 
 ---
 
