@@ -16,7 +16,7 @@ npm run build
 | บทบาท | หน้าแรก | ลองดู |
 |---|---|---|
 | Solution Manager | ภาพรวมยอดขาย | `#/projects/p2` → แท็บ Cost Sheet และใบเสนอราคา |
-| หัวหน้ากลุ่ม DT | รออนุมัติราคา | เปิด Close Lose กลับเป็น Pipeline |
+| หัวหน้ากลุ่ม DT | รออนุมัติราคา | SOC as a Service (`#/projects/p11`) → เปิดโครงการใหม่จากดีลที่แพ้ |
 | ผู้บริหาร | ภาพรวมยอดขาย | อนุมัติ v3 ของโครงการ e-Service |
 | PMO | Portfolio | Handover ของ AI Document OCR (`#/projects/p7`) |
 | Project Manager | Portfolio | Smart Permit → แผนงาน Task ความเสี่ยง, Workload ทีม |
