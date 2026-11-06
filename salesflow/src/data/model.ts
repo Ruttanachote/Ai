@@ -202,6 +202,7 @@ export interface Project {
   contractValue?: number
   reopenedFromId?: string
   terms?: ContractTerms
+  handoverDone?: boolean
   parentId?: string
   approval?: Approval
   milestones?: Milestone[]

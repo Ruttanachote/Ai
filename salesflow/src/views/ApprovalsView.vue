@@ -9,7 +9,8 @@ const mine = (role: string) =>
   (session.role === 'head' && role.includes('หัวหน้า')) || (session.role === 'exec' && role.includes('ผู้บริหาร')) || session.role === 'admin'
 
 const waiting = computed(() =>
-  projects.filter((p) => p.approval?.steps.some((s) => s.status === 'pending' && mine(s.role))),
+  projects.filter((p) => !['stale', 'recalled'].includes(p.approval?.status ?? '') && p.approval?.submittedBy !== session.userId
+    && p.approval?.steps.some((s) => s.status === 'pending' && mine(s.role))),
 )
 const others = computed(() =>
   projects.filter((p) => p.approval && !waiting.value.includes(p)),

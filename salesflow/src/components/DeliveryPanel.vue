@@ -1,31 +1,50 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import Avatar from './Avatar.vue'
 import Icon from './Icon.vue'
-import type { Project, Task } from '../data/model'
-import { PEOPLE, TEAMS, baht, person, thDate, TODAY } from '../data/mock'
+import type { ContractTerms, Project, Task } from '../data/model'
+import { handoverGate, isTender } from '../domain/rules'
+import { PEOPLE, TEAMS, baht, person, thDate, TODAY, TODAY_ISO } from '../data/mock'
 import { notify, session } from '../store'
 
 const props = defineProps<{ p: Project }>()
 const view = ref<'plan' | 'tasks' | 'risks'>('plan')
 
 /* ---------- Handover (Close Win → Handover) ---------- */
+const done = !!props.p.handoverDone
 const checklist = reactive([
   { t: 'สัญญา / PO ฉบับลงนาม อยู่ในโฟลเดอร์ Contract', done: true },
   { t: 'Cost Sheet ฉบับอนุมัติ (Baseline งบประมาณ)', done: true },
   { t: 'TOR และ Proposal ที่ใช้ยื่น', done: true },
-  { t: 'ขอบเขตงาน งวดงาน และเงื่อนไขค่าปรับ', done: false },
-  { t: 'ผู้ติดต่อฝั่งลูกค้าและช่องทางสื่อสาร', done: false },
-  { t: 'ความเสี่ยงและคำสัญญาที่ให้ลูกค้าระหว่างขาย', done: false },
+  { t: 'ขอบเขตงาน งวดงาน และเกณฑ์ตรวจรับ', done },
+  { t: 'ผู้ติดต่อฝั่งลูกค้าและคณะกรรมการตรวจรับ', done },
+  { t: 'ความเสี่ยงและคำสัญญาที่ให้ลูกค้าระหว่างขาย', done },
 ])
+watch(checklist, () => { props.p.handoverDone = checklist.every((c) => c.done) }, { deep: true })
 const pick = reactive({ pm: props.p.pm ?? '', team: props.p.team })
-const handoverReady = computed(() => checklist.every((c) => c.done) && pick.pm)
 const canAssign = computed(() => ['pmo', 'head', 'admin'].includes(session.role))
+
+// P0-11 · contract terms are structured data (penalty exposure, SLA, tax) — required before delivery starts.
+const terms = reactive<ContractTerms>(props.p.terms ? { ...props.p.terms } : {
+  penaltyBasis: 'whole_contract', penaltyRatePerDay: 0.001, penaltyMinPerDay: 100, warrantyMonths: 12, slaTier: 'มาตรฐาน 8x5', whtRate: isTender(props.p) ? 0.01 : 0.03,
+})
+const ratePct = computed({ get: () => +(terms.penaltyRatePerDay * 100).toFixed(3), set: (v: number) => { terms.penaltyRatePerDay = v / 100 } })
+const bond = reactive({ bank: 'ธนาคารกรุงไทย', expires: '', form: 'หนังสือค้ำประกันธนาคาร' })
+const hasPerf = computed(() => (props.p.bonds ?? []).some((b) => b.kind === 'performance'))
+function saveTerms() {
+  props.p.terms = { ...terms }
+  if (isTender(props.p) && !hasPerf.value && bond.expires) {
+    const amount = Math.round((props.p.contractValue ?? props.p.revenue) * 0.05)
+    props.p.bonds = [...(props.p.bonds ?? []), { kind: 'performance', pct: 5, amount, form: bond.form, bank: bond.bank, issued: TODAY_ISO, expires: bond.expires }]
+  }
+  notify('บันทึกเงื่อนไขสัญญาแล้ว')
+}
+const gate = computed(() => handoverGate(props.p, checklist.every((c) => c.done)))
 
 function assign() {
   props.p.pm = pick.pm
   props.p.team = pick.team
-  notify(`มอบหมาย ${person(pick.pm)?.name} เป็น PM แล้ว ส่งนัดประชุม Handover ใน Teams`)
+  notify(`มอบหมาย ${person(pick.pm)?.name} เป็น PM แล้ว — สร้างนัดประชุม Handover (Teams) ในปฏิทินของ PMO`)
 }
 
 /* ---------- Gantt ---------- */
@@ -77,7 +96,7 @@ const crs = [
 <template>
   <!-- Handover gate -->
   <section v-if="p.stage === 'win' || p.stage === 'handover'" class="panel hand">
-    <div class="panel-head"><h2>Handover จาก Pre-sale ให้ PM</h2><span class="chip" :class="handoverReady ? 'win' : 'warn'">{{ checklist.filter((c) => c.done).length }}/{{ checklist.length }} รายการ</span></div>
+    <div class="panel-head"><h2>Handover จาก Pre-sale ให้ PM</h2><span class="chip" :class="gate.ok ? 'win' : 'warn'">{{ gate.ok ? 'พร้อมเริ่มส่งมอบ' : `เหลือ ${gate.errors.length} รายการ` }}</span></div>
     <div class="hgrid">
       <ul class="check">
         <li v-for="c in checklist" :key="c.t"><label><input v-model="c.done" type="checkbox" /> {{ c.t }}</label></li>
@@ -100,6 +119,23 @@ const crs = [
         <button v-if="canAssign" class="btn primary" :disabled="!pick.pm" @click="assign">มอบหมาย PM และนัดประชุม Handover</button>
         <p v-else class="hint">PMO หรือหัวหน้ากลุ่มเป็นผู้มอบหมาย PM</p>
       </div>
+    </div>
+    <div class="terms">
+      <h3>เงื่อนไขสัญญา</h3>
+      <div class="tgrid">
+        <div class="field"><label for="pb">ฐานคิดค่าปรับ</label>
+          <select id="pb" v-model="terms.penaltyBasis" class="input" :disabled="!canAssign"><option value="whole_contract">ราคาเต็มสัญญา (งานส่งมอบทั้งระบบ)</option><option value="undelivered_value">มูลค่างานที่ยังไม่ส่งมอบ</option></select></div>
+        <div class="field"><label for="pr">อัตราค่าปรับ (% ต่อวัน)</label><input id="pr" v-model.number="ratePct" class="input num" type="number" step="0.01" min="0.01" max="0.2" :disabled="!canAssign" /><span class="hint">ระเบียบ: 0.01–0.20% (งานทั้งระบบ 0.01–0.10%) ขั้นต่ำ ฿{{ terms.penaltyMinPerDay }}/วัน</span></div>
+        <div class="field"><label for="wm">ระยะรับประกัน (เดือน)</label><input id="wm" v-model.number="terms.warrantyMonths" class="input num" type="number" min="0" :disabled="!canAssign" /></div>
+        <div class="field"><label for="sla">ระดับ SLA</label><select id="sla" v-model="terms.slaTier" class="input" :disabled="!canAssign"><option>มาตรฐาน 8x5</option><option>พรีเมียม 24x7</option></select></div>
+        <div class="field"><label for="wht">หัก ณ ที่จ่าย</label><select id="wht" v-model.number="terms.whtRate" class="input" :disabled="!canAssign"><option :value="0.01">1% (หน่วยงานรัฐ)</option><option :value="0.03">3% (ค่าบริการ เอกชน)</option></select></div>
+      </div>
+      <div v-if="isTender(p) && !hasPerf" class="tgrid">
+        <div class="field"><label for="bb">หลักประกันสัญญา 5% — ธนาคาร</label><input id="bb" v-model="bond.bank" class="input" :disabled="!canAssign" /></div>
+        <div class="field"><label for="be">หมดอายุ</label><input id="be" v-model="bond.expires" class="input" type="date" :disabled="!canAssign" /><span class="hint">ควรครอบคลุมถึงหลังหมดประกัน</span></div>
+      </div>
+      <button v-if="canAssign" class="btn" @click="saveTerms">บันทึกเงื่อนไขสัญญา</button>
+      <div v-if="!gate.ok" class="missing"><strong>ก่อนย้ายเป็น In Delivery ต้องมี</strong><ul><li v-for="e in gate.errors" :key="e">{{ e }}</li></ul></div>
     </div>
   </section>
 
@@ -189,6 +225,11 @@ const crs = [
 
 <style scoped>
 .hand { margin-bottom: 20px; }
+.terms { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 14px; justify-items: start; }
+.tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; width: 100%; align-items: start; }
+.tgrid .field { align-content: start; }
+.missing { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-md); padding: 10px 14px; font-size: 13.5px; width: 100%; }
+.missing ul { margin: 4px 0 0; padding-left: 18px; }
 .hgrid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
 .check { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
 .check label { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: var(--r-sm); cursor: pointer; }

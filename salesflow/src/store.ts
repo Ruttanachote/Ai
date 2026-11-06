@@ -20,6 +20,9 @@ export function setRole(r: Role) {
 
 export const projects = reactive(PROJECTS)
 
+/** Admin-tunable approval thresholds (Settings → ลำดับการอนุมัติ). */
+export const SETTINGS = reactive({ tolerancePct: 2, gpDropPct: 3, approvalValidDays: 60 })
+
 export function moveStage(id: string, to: StageKey, note: string, by: string) {
   const p = projects.find((x) => x.id === id)
   if (!p) return

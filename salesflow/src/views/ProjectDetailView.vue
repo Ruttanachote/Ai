@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
 import StageRail from '../components/StageRail.vue'
 import StageBadge from '../components/StageBadge.vue'
@@ -12,7 +13,9 @@ import DeliveryPanel from '../components/DeliveryPanel.vue'
 import MaPanel from '../components/MaPanel.vue'
 import ProcurementPanel from '../components/ProcurementPanel.vue'
 import { moveStage, notify, projects, session } from '../store'
-import { baht, person, thDate, daysSince, TEAMS } from '../data/mock'
+import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account } from '../data/mock'
+import { validateMove, checkContractValue, appealWindowEnd, reopenAsNew, isTender } from '../domain/rules'
+import { SETTINGS } from '../store'
 import { allowedMoves, stageOf, probOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
 
 const props = defineProps<{ id: string }>()
@@ -32,47 +35,105 @@ const tabs = computed(() => {
   return t
 })
 
-const moves = computed(() => (p.value ? allowedMoves(p.value.stage, session.role) : []))
+const moves = computed(() => (p.value ? allowedMoves(p.value.stage, session.role).filter((m) => !(p.value!.stage === 'lose' && m === 'pipeline')) : []))
+// Lost deals are never reopened in place (win rate history must not change) — heads open a new linked deal.
+const canReopen = computed(() => p.value?.stage === 'lose' && ['head', 'exec', 'admin'].includes(session.role))
 const target = ref<StageKey | null>(null)
 const reason = ref('')
-const needsReason = computed(() => target.value === 'cancelled' || (p.value?.stage === 'lose' && target.value === 'pipeline'))
-// Forward moves must pass the current stage's exit criteria; exits (Lose/Cancelled) skip them.
-const forward = computed(() => !!target.value && !['lose', 'cancelled'].includes(target.value) && p.value?.stage !== 'lose')
+const forward = computed(() => !!target.value && !['lose', 'cancelled'].includes(target.value))
 const gate = ref<boolean[]>([])
 const loss = ref({ reason: '', competitor: '', price: null as number | null })
+const contractValue = ref<number | null>(null)
+const contractFile = ref(true)
 watch(target, () => {
   gate.value = p.value ? stageOf(p.value.stage).exit.map(() => false) : []
   loss.value = { reason: '', competitor: '', price: null }
+  contractValue.value = p.value?.approval?.snapshot?.revenue ?? p.value?.revenue ?? null
+  reason.value = ''
 })
-const canConfirm = computed(() => {
-  if (needsReason.value && !reason.value.trim()) return false
-  if (target.value === 'lose' && !loss.value.reason) return false
-  if (forward.value && gate.value.some((g) => !g)) return false
-  return true
-})
+const poCheck = computed(() =>
+  p.value && target.value === 'win' && contractValue.value
+    ? checkContractValue(p.value, { contractValue: contractValue.value, tolerancePct: SETTINGS.tolerancePct, gpDropPct: SETTINGS.gpDropPct }, TODAY_ISO)
+    : undefined,
+)
+// Same rule set the API enforces (src/domain/rules.ts) — the dialog lists what is still missing.
+const check = computed(() =>
+  p.value && target.value
+    ? validateMove(p.value, {
+        to: target.value, today: TODAY_ISO, gateChecked: !gate.value.some((g) => !g), reason: reason.value,
+        loss: target.value === 'lose' ? { code: loss.value.reason, competitor: loss.value.competitor || undefined, price: loss.value.price ?? undefined } : undefined,
+        hasContractFile: contractFile.value, contractValue: contractValue.value ?? undefined, poCheck: poCheck.value,
+        handoverChecklistDone: !!p.value.handoverDone,
+      })
+    : { ok: false, errors: [] },
+)
+const blocking = computed(() => check.value.errors.filter((e) => !e.startsWith('ยังไม่ได้ยืนยันเงื่อนไข')))
+const appealEnd = computed(() => (p.value ? appealWindowEnd(p.value) : undefined))
 const aging = computed(() => {
   if (!p.value?.stageSince) return null
   const d = daysSince(p.value.stageSince)
   const lim = stageOf(p.value.stage).staleDays
   return { d, stale: !!lim && d > lim, lim }
 })
+
+// Forecast category override needs a reason (shown to the head in the forecast roll-up).
+const catDraft = ref<ForecastCat | null>(null)
+const catReason = ref('')
 function setCat(e: Event) {
-  if (p.value) p.value.forecastCat = (e.target as HTMLSelectElement).value as ForecastCat
+  if (!p.value) return
+  const v = (e.target as HTMLSelectElement).value as ForecastCat
+  catDraft.value = v === catOf({ stage: p.value.stage }) ? null : v
+  if (!catDraft.value) { p.value.forecastCat = undefined; p.value.forecastReason = undefined }
 }
+function saveCat() {
+  if (!p.value || !catDraft.value || !catReason.value.trim()) return
+  p.value.forecastCat = catDraft.value
+  p.value.forecastReason = catReason.value.trim()
+  catDraft.value = null
+  catReason.value = ''
+  notify('บันทึก Forecast category แล้ว')
+}
+
 function confirmMove() {
-  if (!p.value || !target.value || !canConfirm.value) return
+  if (!p.value || !target.value || !check.value.ok) return
   const to = stageOf(target.value).label
   if (target.value === 'lose') {
     p.value.loss = { reason: loss.value.reason, competitor: loss.value.competitor || undefined, price: loss.value.price ?? undefined }
     reason.value = reason.value || `แพ้งาน: ${loss.value.reason}${loss.value.competitor ? ' · ผู้ชนะ ' + loss.value.competitor : ''}`
   }
-  p.value.stageSince = new Date().toISOString().slice(0, 10)
+  if (target.value === 'win') p.value.contractValue = contractValue.value ?? undefined
+  p.value.stageSince = TODAY_ISO
   p.value.forecastCat = undefined
   moveStage(p.value.id, target.value, reason.value || `เปลี่ยนสถานะเป็น ${to}`, person(session.userId)?.name ?? '')
   notify(`เปลี่ยนสถานะเป็น ${to} แล้ว`)
   target.value = null
-  reason.value = ''
 }
+
+function requestPostAward() {
+  if (!p.value?.approval) return
+  p.value.approval = {
+    ...p.value.approval, version: 'v' + (Number(p.value.approval.version.slice(1)) + 1), status: 'pending', postAward: true, submittedAt: 'วันนี้',
+    snapshot: { ...p.value.approval.snapshot!, contractValue: contractValue.value ?? undefined },
+    steps: [
+      { who: person(session.userId)?.name ?? '', whoId: session.userId, role: 'SM ส่งขออนุมัติหลังได้งาน', status: 'approved', at: 'วันนี้' },
+      { who: 'Supawadee W.', whoId: 'sw', role: 'หัวหน้ากลุ่ม DT4', status: 'pending' },
+      { who: 'Thanakorn C.', whoId: 'tc', role: 'ผู้บริหาร', status: 'waiting' },
+    ],
+  }
+  target.value = null
+  notify('ส่งขออนุมัติหลังได้งาน (มูลค่า PO ต่างจากที่อนุมัติ) แล้ว')
+}
+
+const router = useRouter()
+function reopen() {
+  if (!p.value) return
+  const id = 'p' + (projects.length + 1)
+  projects.push(reopenAsNew(p.value, id, 'PIP-69-' + String(200 + projects.length).padStart(4, '0'), TODAY_ISO, person(session.userId)?.name ?? ''))
+  notify('เปิดโครงการใหม่จากดีลที่แพ้แล้ว — ดีลเดิมยังนับเป็น Close Lose')
+  router.push('/projects/' + id)
+}
+const reopened = computed(() => projects.filter((x) => x.reopenedFromId === props.id))
+const fromLost = computed(() => projects.find((x) => x.id === p.value?.reopenedFromId))
 
 const gp = computed(() => (p.value ? p.value.revenue - p.value.cost : 0))
 const files = { TOR: 3, Proposal: 2, 'Cost Sheet': 1, Quotation: 1, Contract: 1, 'Official PO': 1, Handover: 2, 'Summary Plan Sheet': 1, 'PM Report': 4, 'Warranty Certificate': 1, 'SLA Report': 3 }
@@ -97,12 +158,16 @@ const drop = ref(false)
           <span v-if="aging" class="chip" :class="aging.stale ? 'lose' : 'dark'" :title="aging.stale ? `เกินเกณฑ์ ${aging.lim} วันของสถานะนี้` : ''">อยู่ในสถานะนี้ {{ aging.d }} วัน{{ aging.stale ? ' · ค้างนาน' : '' }}</span>
         </div>
         <h1>{{ p.name }}</h1>
-        <p class="sub">{{ p.code }} · {{ p.customer }}<template v-if="parent"> · ต่อจาก <router-link :to="`/projects/${parent.id}`">{{ parent.code }}</router-link></template></p>
-        <div v-if="moves.length" class="moves">
-          <button v-for="m in moves" :key="m" class="btn" :class="m === 'lose' || m === 'cancelled' ? 'quiet' : 'light'" @click="target = m">
-            {{ m === 'pipeline' && p.stage === 'lose' ? 'เปิดกลับเป็น Pipeline' : 'ย้ายไป ' + stageOf(m).label }}
-          </button>
+        <p class="sub">{{ p.code }} · <router-link v-if="p.customerAccountId" :to="`/accounts/${p.customerAccountId}`">{{ account(p.customerAccountId)?.name }}</router-link><template v-else>{{ p.customer }}</template>
+          · {{ isTender(p) ? 'ประมูลภาครัฐ' : 'ขายตรง' }}
+          <template v-if="parent"> · ต่อจาก <router-link :to="`/projects/${parent.id}`">{{ parent.code }}</router-link></template>
+          <template v-if="fromLost"> · เปิดใหม่จาก <router-link :to="`/projects/${fromLost.id}`">{{ fromLost.code }}</router-link></template>
+        </p>
+        <div v-if="moves.length || canReopen" class="moves">
+          <button v-for="m in moves" :key="m" class="btn" :class="m === 'lose' || m === 'cancelled' ? 'quiet' : 'light'" @click="target = m">ย้ายไป {{ stageOf(m).label }}</button>
+          <button v-if="canReopen" class="btn light" @click="reopen">เปิดโครงการใหม่จากดีลนี้</button>
         </div>
+        <p v-if="reopened.length" class="sub small">เปิดใหม่แล้วเป็น <router-link v-for="r in reopened" :key="r.id" :to="`/projects/${r.id}`">{{ r.code }}</router-link></p>
       </div>
     </section>
 
@@ -120,8 +185,9 @@ const drop = ref(false)
         <section class="panel">
           <h3>ข้อมูลการขาย</h3>
           <dl class="kv">
-            <dt>ลูกค้า</dt><dd>{{ p.customer }}</dd>
-            <dt>End User</dt><dd>{{ p.endUser }}</dd>
+            <dt>ลูกค้า</dt><dd><router-link v-if="p.customerAccountId" :to="`/accounts/${p.customerAccountId}`">{{ account(p.customerAccountId)?.name }}</router-link><template v-else>{{ p.customer }}<em>ยังไม่ผูกทะเบียนลูกค้า</em></template></dd>
+            <dt>End User</dt><dd>{{ account(p.endUserAccountId)?.name ?? p.endUser }}</dd>
+            <template v-if="p.contractValue"><dt>มูลค่าตามสัญญา</dt><dd class="num strong">{{ baht(p.contractValue) }}</dd></template>
             <dt>Revenue</dt><dd class="num strong">{{ baht(p.revenue) }}<em v-if="!p.revenue">รอ Quotation อนุมัติ</em></dd>
             <dt>Cost (COGS)</dt><dd class="num">{{ baht(p.cost) }}<em v-if="!p.cost">รอ Cost Sheet อนุมัติ</em></dd>
             <dt>Gross Profit</dt><dd class="num strong">{{ baht(gp) }}<span v-if="p.revenue" class="muted"> · {{ ((gp / p.revenue) * 100).toFixed(1) }}%</span></dd>
@@ -129,7 +195,14 @@ const drop = ref(false)
             <template v-if="stageOf(p.stage).phase === 'presale'">
               <dt>โอกาสปิด</dt><dd class="num">{{ Math.round(probOf(p) * 100) }}% · ถ่วงน้ำหนัก {{ baht(Math.round((p.revenue || p.budget) * probOf(p))) }}</dd>
               <dt><label for="fc">Forecast category</label></dt>
-              <dd><select id="fc" class="input mini" :value="catOf(p)" @change="setCat"><option v-for="(l, k) in FORECAST_CAT" :key="k" :value="k">{{ l }}</option></select></dd>
+              <dd>
+                <select id="fc" class="input mini" :value="catDraft ?? catOf(p)" @change="setCat"><option v-for="(l, k) in FORECAST_CAT" :key="k" :value="k">{{ l }}</option></select>
+                <em v-if="p.forecastReason && !catDraft" class="lossnote">ปรับเอง: {{ p.forecastReason }}</em>
+              </dd>
+              <template v-if="catDraft">
+                <dt><label for="fcr">เหตุผลที่ปรับ</label></dt>
+                <dd class="catr"><input id="fcr" v-model="catReason" class="input mini" placeholder="เช่น ลูกค้ายืนยันงบแล้ว" /><button class="btn sm" :disabled="!catReason.trim()" @click="saveCat">บันทึก</button></dd>
+              </template>
             </template>
             <template v-if="p.loss">
               <dt>เหตุผลที่แพ้</dt><dd>{{ p.loss.reason }}<em v-if="p.loss.competitor" class="lossnote">ผู้ชนะ {{ p.loss.competitor }}{{ p.loss.price ? ' · ' + baht(p.loss.price) : '' }}</em></dd>
@@ -209,9 +282,24 @@ const drop = ref(false)
       </ol>
     </section>
 
-    <Dialog :open="!!target" :title="target ? (p.stage === 'lose' ? 'เปิดกลับเป็น Pipeline' : `ย้ายไป ${stageOf(target).label}`) : ''" @close="target = null">
+    <Dialog :open="!!target" :title="target ? `ย้ายไป ${stageOf(target).label}` : ''" wide @close="target = null">
       <p v-if="target">{{ stageOf(target).hint }}</p>
-      <p v-if="target === 'win'" class="chip warn">ต้องแนบ PO หรือสัญญาในโฟลเดอร์ Official PO / Contract — ระบบจะแจ้ง PMO ให้จัด Handover</p>
+      <template v-if="target === 'win'">
+        <div class="two">
+          <div class="field">
+            <label for="cv">มูลค่าตามสัญญา / PO (บาท ไม่รวม VAT)</label>
+            <input id="cv" v-model.number="contractValue" class="input num" type="number" min="0" step="1000" />
+            <span class="hint">อนุมัติไว้ {{ baht(p.approval?.snapshot?.revenue ?? p.revenue) }} · ต่างได้ ±{{ SETTINGS.tolerancePct }}% และ GP ลดได้ไม่เกิน {{ SETTINGS.gpDropPct }} จุด</span>
+          </div>
+          <label class="file"><input v-model="contractFile" type="checkbox" /> มีไฟล์ PO / สัญญาที่ลงนามในโฟลเดอร์ Official PO หรือ Contract แล้ว</label>
+        </div>
+        <div v-if="poCheck" class="po" :class="poCheck.ok ? 'ok' : 'bad'">
+          <span>GP ที่อนุมัติ <b class="num">{{ poCheck.gpApproved.toFixed(1) }}%</b></span>
+          <span>GP ตามสัญญา <b class="num">{{ poCheck.gpContract.toFixed(1) }}%</b></span>
+          <span>ต่างจากที่อนุมัติ <b class="num">{{ poCheck.diffPct > 0 ? '+' : '' }}{{ poCheck.diffPct.toFixed(1) }}%</b></span>
+        </div>
+        <p v-if="isTender(p) && appealEnd" class="hint">ประกาศผู้ชนะ {{ thDate(p.bid?.result) }} · พ้นระยะอุทธรณ์ 7 วันทำการวันที่ {{ thDate(appealEnd) }}</p>
+      </template>
       <p v-if="target === 'cancelled'" class="chip lose">ยกเลิกแล้วกู้คืนไม่ได้ ยอดขายจะถูกหักออกจากเป้าของ SM</p>
       <fieldset v-if="forward && stageOf(p.stage).exit.length" class="gate">
         <legend>ยืนยันเงื่อนไขก่อนออกจาก {{ stageOf(p.stage).label }}</legend>
@@ -228,13 +316,18 @@ const drop = ref(false)
         </div>
       </template>
       <div class="field">
-        <label for="rs">{{ needsReason ? 'เหตุผล (บังคับ)' : 'บันทึก (ไม่บังคับ)' }}</label>
-        <textarea id="rs" v-model="reason" class="input" rows="3" />
+        <label for="rs">{{ target === 'cancelled' ? 'เหตุผล (บังคับ)' : 'บันทึก (ไม่บังคับ)' }}</label>
+        <textarea id="rs" v-model="reason" class="input" rows="2" />
+      </div>
+      <div v-if="blocking.length" class="missing" role="status">
+        <strong>ยังย้ายไม่ได้ เพราะ</strong>
+        <ul><li v-for="e in blocking" :key="e">{{ e }}</li></ul>
       </div>
       <template #foot>
         <button class="btn" @click="target = null">ยกเลิก</button>
-        <button class="btn primary" :disabled="!canConfirm" @click="confirmMove">
-          {{ target === 'cancelled' ? 'ยกเลิกโครงการ' : p.stage === 'lose' ? 'เปิดกลับเป็น Pipeline' : `ย้ายไป ${target ? stageOf(target).label : ''}` }}
+        <button v-if="target === 'win' && poCheck?.needsReapproval" class="btn" @click="requestPostAward">ขออนุมัติหลังได้งาน</button>
+        <button class="btn primary" :disabled="!check.ok" @click="confirmMove">
+          {{ target === 'cancelled' ? 'ยกเลิกโครงการ' : `ย้ายไป ${target ? stageOf(target).label : ''}` }}
         </button>
       </template>
     </Dialog>
@@ -293,6 +386,16 @@ const drop = ref(false)
 .splitl li { display: flex; align-items: center; gap: 8px; }
 .splitl b { width: 10px; height: 10px; border-radius: 2px; flex: none; }
 .splitl .num { margin-left: auto; }
+.catr { display: flex; gap: 6px; justify-content: flex-end; }
+.catr .input { width: 180px; }
+.sub a { color: #fff; text-decoration: underline; margin-right: 6px; }
+.file { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; padding-top: 26px; cursor: pointer; }
+.file input { width: 17px; height: 17px; accent-color: var(--ink); margin-top: 3px; }
+.po { display: flex; gap: 20px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--r-md); font-size: 13.5px; }
+.po.ok { background: var(--win-soft); color: var(--win); }
+.po.bad { background: var(--lose-soft); color: var(--lose); }
+.missing { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-md); padding: 10px 14px; font-size: 13.5px; }
+.missing ul { margin: 4px 0 0; padding-left: 18px; }
 .gate { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; margin: 0; display: grid; gap: 6px; }
 .gate legend { font-size: 13px; font-weight: 600; padding: 0 4px; }
 .gate label { display: flex; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; }

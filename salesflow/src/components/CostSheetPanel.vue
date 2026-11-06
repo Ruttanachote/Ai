@@ -3,8 +3,8 @@ import { computed, ref } from 'vue'
 import Icon from './Icon.vue'
 import Dialog from './Dialog.vue'
 import type { Project } from '../data/model'
-import { baht, person } from '../data/mock'
-import { notify, session } from '../store'
+import { baht, person, thDate, TODAY_ISO } from '../data/mock'
+import { notify, session, SETTINGS } from '../store'
 
 // One Excel workbook per project (SharePoint), tabs: Summary · Cost Sheet · Quotation.
 // The system reads named ranges after each save and shows the summary here.
@@ -52,51 +52,75 @@ const versions = computed(() =>
     : [{ v: 'v1', at: '—', by: person(props.p.sm)?.name ?? '', status: 'ฉบับร่าง', note: 'สร้างจาก Template มาตรฐาน 2569 อัตโนมัติ' }],
 )
 
-const pendingStep = computed(() => props.p.approval?.steps.find((s) => s.status === 'pending'))
+const a = computed(() => props.p.approval)
+const pendingStep = computed(() => (a.value?.status === 'stale' || a.value?.status === 'recalled' ? undefined : a.value?.steps.find((s) => s.status === 'pending')))
+// The submitter can never decide on their own request, whatever roles they hold.
+const isSubmitter = computed(() => (a.value?.submittedBy ?? props.p.sm) === session.userId)
 const canDecide = computed(() => {
   const s = pendingStep.value
-  if (!s) return false
+  if (!s || isSubmitter.value) return false
   return (session.role === 'head' && s.role.includes('หัวหน้า')) || (session.role === 'exec' && s.role.includes('ผู้บริหาร')) || session.role === 'admin'
 })
-const approved = computed(() => !!props.p.approval && props.p.approval.steps.every((s) => s.status === 'approved'))
-// SharePoint keeps saving new versions; an approval is only valid for the version it was given on.
-const staleEdit = ref(false)
-const stale = computed(() => approved.value && staleEdit.value)
+const approved = computed(() => !!a.value && a.value.status !== 'stale' && a.value.steps.every((s) => s.status === 'approved'))
+const expired = computed(() => approved.value && !!a.value?.validUntil && a.value.validUntil < TODAY_ISO)
+const stale = computed(() => a.value?.status === 'stale')
+
+// Simulates the Graph delta/webhook: any save after submit makes the approval stale (server: markStaleIfChanged).
 function openExcel() {
   notify('เปิดไฟล์ใน Excel Online (แท็บใหม่)')
-  if (approved.value) staleEdit.value = true
+  if (a.value && (approved.value || pendingStep.value)) {
+    a.value.status = 'stale'
+    a.value.eTag = '"{3F2A},' + (Number(a.value.spVersionId ?? '1') + 1) + '"'
+  }
 }
 function recall() {
-  const steps = props.p.approval!.steps
-  steps.forEach((s) => { if (s.status === 'pending' || s.status === 'waiting') s.status = 'waiting' })
-  props.p.approval = undefined
+  if (!a.value) return
+  a.value.status = 'recalled'
+  a.value.steps.forEach((s) => { if (s.status === 'pending') s.status = 'waiting' })
   notify('ดึงคำขออนุมัติกลับแล้ว แก้ไฟล์แล้วส่งใหม่ได้')
 }
 const isOwner = computed(() => session.role === 'sm' || session.role === 'head' || session.role === 'admin')
+const canSubmit = computed(() => isOwner.value && (!a.value || ['stale', 'recalled', 'rejected'].includes(a.value.status ?? '') || a.value.steps.some((s) => s.status === 'rejected') || expired.value))
 
 function submit() {
   sendOpen.value = false
+  const nextV = a.value ? Number(a.value.version.slice(1)) + 1 : 1
+  const snap = { revenue: Math.round(rev.value), cost: Math.round(total.value), gp: Math.round(gpPct.value * 10) / 10 }
+  const valid = new Date(TODAY_ISO)
+  valid.setDate(valid.getDate() + SETTINGS.approvalValidDays)
   props.p.approval = {
-    version: props.p.approval ? 'v' + (Number(props.p.approval.version.slice(1)) + 1) : 'v1',
+    version: 'v' + nextV,
     submittedAt: 'วันนี้',
+    status: 'pending',
+    submittedBy: session.userId,
+    snapshot: snap,
+    snapshotHash: [snap.revenue, snap.cost, snap.gp].map((n) => n.toString(16)).join('').slice(0, 20),
+    spVersionId: String(14 + nextV),
+    eTag: `"{3F2A},${14 + nextV}"`,
+    archivedPath: `Cost Sheet/Submitted/v${nextV}.xlsx`,
+    validUntil: valid.toISOString().slice(0, 10),
     steps: [
-      { who: person(props.p.sm)?.name ?? '', role: 'SM ส่งขออนุมัติ', status: 'approved', at: 'วันนี้' },
-      { who: 'Supawadee W.', role: 'หัวหน้ากลุ่ม DT4', status: 'pending' },
-      { who: 'Thanakorn C.', role: 'ผู้บริหาร', status: 'waiting' },
+      { who: person(session.userId)?.name ?? '', whoId: session.userId, role: 'SM ส่งขออนุมัติ', status: 'approved', at: 'วันนี้' },
+      { who: 'Supawadee W.', whoId: 'sw', role: 'หัวหน้ากลุ่ม DT4', status: 'pending' },
+      { who: 'Thanakorn C.', whoId: 'tc', role: 'ผู้บริหาร', status: 'waiting' },
     ],
   }
-  notify('ส่งอีเมลขออนุมัติถึง Supawadee W. แล้ว')
+  notify('ส่งอีเมลขออนุมัติ (ลิงก์เข้าระบบ) ถึง Supawadee W. แล้ว')
 }
 function decide() {
-  const steps = props.p.approval!.steps
+  if (!a.value || !canDecide.value) return
+  const steps = a.value.steps
   const i = steps.findIndex((s) => s.status === 'pending')
   steps[i].status = decideOpen.value === 'approve' ? 'approved' : 'rejected'
   steps[i].at = 'วันนี้'
+  steps[i].channel = 'web'
   steps[i].note = note.value || undefined
-  if (decideOpen.value === 'approve' && steps[i + 1]) steps[i + 1].status = 'pending'
-  if (decideOpen.value === 'approve' && !steps[i + 1]) {
-    props.p.revenue = Math.round(rev.value)
-    props.p.cost = Math.round(total.value)
+  if (decideOpen.value === 'reject') a.value.status = 'rejected'
+  else if (steps[i + 1]) steps[i + 1].status = 'pending'
+  else {
+    a.value.status = 'approved'
+    props.p.revenue = a.value.snapshot?.revenue ?? Math.round(rev.value)
+    props.p.cost = a.value.snapshot?.cost ?? Math.round(total.value)
   }
   notify(decideOpen.value === 'approve' ? 'อนุมัติแล้ว ระบบแจ้ง SM ทางอีเมล' : 'ส่งกลับให้ SM แก้ไขแล้ว')
   decideOpen.value = null
@@ -120,9 +144,10 @@ function decide() {
         </div>
         <div class="acts">
           <a class="btn" href="#" @click.prevent="openExcel"><Icon name="excel" /> แก้ไขใน Excel Online</a>
-          <button v-if="isOwner && pendingStep && session.role === 'sm'" class="btn" @click="recall">ดึงคำขอกลับ</button>
-          <button v-if="isOwner && ((!pendingStep && !approved) || stale)" class="btn primary" @click="staleEdit = false; sendOpen = true"><Icon name="mail" /> ส่งขออนุมัติ</button>
-          <button v-if="isOwner && approved && !stale" class="btn primary" @click="saleOpen = true"><Icon name="mail" /> ส่งใบเสนอราคาให้ Sale</button>
+          <button v-if="pendingStep && isSubmitter" class="btn" @click="recall">ดึงคำขอกลับ</button>
+          <router-link class="btn" :to="`/print/quotation/${p.id}`"><Icon name="file" /> ดูใบเสนอราคา PDF</router-link>
+          <button v-if="canSubmit" class="btn primary" @click="sendOpen = true"><Icon name="mail" /> ส่งขออนุมัติ</button>
+          <button v-if="isOwner && approved && !stale && !expired" class="btn primary" @click="saleOpen = true"><Icon name="mail" /> ส่งใบเสนอราคาให้ Sale</button>
         </div>
       </div>
 
@@ -171,6 +196,15 @@ function decide() {
 
       <section class="panel">
         <h3>ลำดับการอนุมัติ</h3>
+        <dl v-if="p.approval?.snapshot" class="rec">
+          <dt>สถานะ</dt><dd><span class="chip" :class="stale ? 'warn' : approved && !expired ? 'win' : p.approval.status === 'rejected' ? 'lose' : ''">{{ stale ? 'ไฟล์ถูกแก้หลังส่ง' : expired ? 'หมดอายุ' : approved ? 'อนุมัติแล้ว' : p.approval.status === 'recalled' ? 'ดึงกลับแล้ว' : p.approval.status === 'rejected' ? 'ส่งกลับแก้ไข' : 'รอพิจารณา' }}{{ p.approval.postAward ? ' · หลังได้งาน' : '' }}</span></dd>
+          <dt>ตัวเลขที่อนุมัติ</dt><dd class="num">{{ baht(p.approval.snapshot.revenue) }} · GP {{ p.approval.snapshot.gp }}%</dd>
+          <template v-if="p.approval.snapshot.contractValue"><dt>มูลค่า PO</dt><dd class="num">{{ baht(p.approval.snapshot.contractValue) }}</dd></template>
+          <dt>ไฟล์ที่อนุมัติ</dt><dd class="small">{{ p.approval.archivedPath }} · SharePoint v{{ p.approval.spVersionId }}</dd>
+          <dt>ใช้ได้ถึง</dt><dd class="small">{{ thDate(p.approval.validUntil) }}</dd>
+          <dt>รหัสตรวจสอบ</dt><dd class="small num">{{ p.approval.snapshotHash?.slice(0, 12) }}</dd>
+        </dl>
+        <p v-if="pendingStep && isSubmitter && ['head', 'exec', 'admin'].includes(session.role)" class="hint">คุณเป็นผู้ส่งคำขอนี้ จึงพิจารณาเองไม่ได้</p>
         <ol v-if="p.approval" class="steps">
           <li v-for="s in p.approval.steps" :key="s.who" :class="s.status">
             <span class="mk" />
@@ -244,7 +278,8 @@ function decide() {
 .cs { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
 .bookhead { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
 .xl { width: 42px; height: 42px; border-radius: var(--r-sm); background: #e4f2ea; color: #1d6f42; display: grid; place-items: center; flex: none; }
-.bookhead > div:nth-child(2) { flex: 1; min-width: 220px; }
+.bookhead > div:nth-child(2) { flex: 1 1 260px; min-width: 0; }
+.bookhead h3 { overflow-wrap: anywhere; }
 .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .sheet .g td { background: var(--sunken); font-weight: 600; font-size: 13px; color: var(--ink-2); }
 .sheet .t td { font-weight: 700; border-top: 2px solid var(--ink); font-family: var(--display); }
@@ -269,6 +304,9 @@ dd.good { color: var(--win); } dd.bad { color: var(--lose); }
 .waiting { color: var(--faint); }
 .note { color: var(--ink-2); background: var(--sunken); padding: 6px 10px; border-radius: var(--r-sm); margin-top: 4px; }
 .wait { color: var(--warn); }
+.rec { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0 0 14px; font-size: 13.5px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.rec dt { color: var(--muted); }
+.rec dd { margin: 0; text-align: right; }
 .stale { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-md); padding: 12px 14px; font-size: 14px; margin-bottom: 14px; }
 .stale strong { color: var(--warn); }
 .decide { display: flex; gap: 8px; margin-top: 4px; }

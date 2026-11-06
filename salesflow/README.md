@@ -23,6 +23,17 @@ npm run build
 | MA / Support | ประกันและ MA | ระบบจองคิว (`#/projects/p8`) → ต่อ MA |
 | ผู้ดูแลระบบ | สิทธิ์และการตั้งค่า | ตารางสิทธิ์ ลำดับอนุมัติ Microsoft 365 |
 
+## Server (Microsoft 365 integration)
+
+```bash
+npm test                 # 31 tests: กฎธุรกิจ, Graph client, Cost Sheet, อนุมัติ, PDF, outbox, token
+npm run typecheck:server
+TENANT_ID=… API_AUDIENCE=api://… GRAPH_CLIENT_STATE=… npm run api
+```
+
+ต้องใช้ Node 22.18 ขึ้นไป (รัน TypeScript ได้โดยตรง) · สร้าง PDF ต้องมี Playwright + Chromium บนเครื่อง worker
+กฎธุรกิจอยู่ที่ `src/domain/` ใช้ร่วมกันทั้งหน้าเว็บและ server · ขั้นตอนตั้งค่า tenant อยู่ที่ `server/infra/README.md`
+
 ภาพประกอบโหลดจาก Unsplash (images.unsplash.com) ถ้าเครือข่ายบล็อก จะแสดงพื้นสีเข้มแทน
 
 เอกสารวิเคราะห์ระบบ: [docs/system-analysis.md](docs/system-analysis.md)

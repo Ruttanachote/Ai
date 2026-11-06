@@ -6,6 +6,7 @@ import Avatar from '../components/Avatar.vue'
 import { projects, session } from '../store'
 import { PHOTOS, TEAMS, mb, baht, daysUntil, daysSince, thDate, person } from '../data/mock'
 import { stageOf, catOf, probOf, FORECAST_CAT, type StageKey } from '../data/model'
+import { winRate } from '../domain/rules'
 
 const OPEN: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding']
 const WEIGHT = Object.fromEntries(OPEN.map((k) => [k, stageOf(k).weight])) as Partial<Record<StageKey, number>>
@@ -95,7 +96,7 @@ const deadlines = computed(() =>
       <div class="kpi"><span>Pipeline ถ่วงน้ำหนัก</span><strong class="num">{{ mb(weighted) }}</strong><em>{{ open.length }} โครงการที่ยังเปิดอยู่</em></div>
       <div class="kpi"><span>Forecast + Rebidding</span><strong class="num">{{ mb(forecast) }}</strong><em>โอกาส 70–80% ปิดไตรมาสนี้–หน้า</em></div>
       <div class="kpi"><span>Gross margin งานที่ชนะ</span><strong class="num">{{ gp.toFixed(1) }}%</strong><em>เป้าบริษัทไม่ต่ำกว่า 25%</em></div>
-      <div class="kpi"><span>Win rate ปีนี้</span><strong class="num">71%</strong><em>ชนะ 5 จาก 7 โครงการที่มีผล</em></div>
+      <div class="kpi"><span>Win rate</span><strong class="num">{{ Math.round(winRate(mine) * 100) }}%</strong><em>นับจากผลชนะ/แพ้ ดีลที่เปิดใหม่ไม่เปลี่ยนตัวเลขย้อนหลัง</em></div>
     </section>
 
     <div class="grid">

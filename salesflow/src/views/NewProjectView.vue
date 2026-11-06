@@ -2,14 +2,15 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
-import { PHOTOS, TEAMS, person } from '../data/mock'
+import { ACCOUNTS, PHOTOS, TEAMS, TODAY_ISO, account, person } from '../data/mock'
+import { validateCreate } from '../domain/rules'
 import type { ProjectType } from '../data/model'
 import { notify, projects, session } from '../store'
 
 const router = useRouter()
 const me = person(session.userId)
 const f = reactive({
-  name: '', customer: '', endUser: '', type: 'พัฒนาระบบ' as ProjectType, team: me?.team ?? 'DT4-2',
+  name: '', customerAccountId: '', endUserAccountId: '', type: 'พัฒนาระบบ' as ProjectType, team: me?.team ?? 'DT4-2',
   budget: null as number | null, expectedClose: '', sale: '', nextStep: '', note: '',
 })
 const touched = reactive<Record<string, boolean>>({})
@@ -18,15 +19,28 @@ const errors = computed(() => ({
   budget: f.budget !== null && f.budget < 0 ? 'งบประมาณต้องไม่ติดลบ' : '',
 }))
 const busy = ref(false)
+const serverErrors = ref<string[]>([])
+const customers = ACCOUNTS.filter((a) => a.type === 'customer')
+const endUsers = computed(() => ACCOUNTS.filter((a) => a.parentId === f.customerAccountId || a.id === f.customerAccountId))
 
 function create() {
   touched.name = true
   if (errors.value.name || errors.value.budget) return
+  const cust = account(f.customerAccountId)
+  const draft = {
+    id: '', code: '', name: f.name.trim(), customer: cust?.name ?? 'รอระบุลูกค้า', endUser: account(f.endUserAccountId)?.name ?? cust?.name ?? 'รอระบุลูกค้า',
+    customerAccountId: f.customerAccountId || undefined, endUserAccountId: f.endUserAccountId || undefined,
+    type: f.type, stage: 'opportunity' as const, team: f.team, revenue: 0, cost: 0, budget: f.budget ?? 0, sm: session.userId, sale: f.sale,
+    collaborators: [], nextStep: '', cover: PHOTOS.workshop, history: [],
+  }
+  const v = validateCreate(draft, TODAY_ISO)
+  if (!v.ok) { serverErrors.value = v.errors; return }
   busy.value = true
   const id = 'p' + (projects.length + 1)
   projects.push({
     id, code: 'OPP-69-' + String(150 + projects.length).padStart(4, '0'), name: f.name.trim(),
-    customer: f.customer || 'รอระบุลูกค้า', endUser: f.endUser || 'รอระบุลูกค้า', type: f.type, stage: 'opportunity', team: f.team,
+    customer: draft.customer, endUser: draft.endUser, customerAccountId: draft.customerAccountId, endUserAccountId: draft.endUserAccountId,
+    salesMotion: cust && cust.sector !== 'enterprise' ? 'tender' : 'direct', stageSince: TODAY_ISO, type: f.type, stage: 'opportunity', team: f.team,
     revenue: 0, cost: 0, budget: f.budget ?? 0, sm: session.userId, sale: f.sale, collaborators: [],
     expectedClose: f.expectedClose || undefined, nextStep: f.nextStep || 'ระบุลูกค้าและนัดเก็บ Requirement', cover: PHOTOS.workshop,
     history: [{ stage: 'opportunity', note: `สร้างโครงการ งบประมาณลูกค้า ฿${(f.budget ?? 0).toLocaleString()}`, at: 'วันนี้', by: me?.name ?? '' }],
@@ -52,8 +66,21 @@ function create() {
         </div>
 
         <div class="two">
-          <div class="field"><label for="cus">ลูกค้า</label><input id="cus" v-model="f.customer" class="input" /><span class="hint">ว่างได้ ระบบแสดงเป็น “รอระบุลูกค้า”</span></div>
-          <div class="field"><label for="eu">End User</label><input id="eu" v-model="f.endUser" class="input" /></div>
+          <div class="field">
+            <label for="cus">ลูกค้า</label>
+            <select id="cus" v-model="f.customerAccountId" class="input" @change="f.endUserAccountId = ''">
+              <option value="">ยังไม่ทราบ — ระบุก่อนเข้า Pipeline</option>
+              <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <span class="hint">ไม่พบในรายการ? เพิ่มที่ทะเบียนลูกค้า</span>
+          </div>
+          <div class="field">
+            <label for="eu">End User</label>
+            <select id="eu" v-model="f.endUserAccountId" class="input" :disabled="!f.customerAccountId">
+              <option value="">เหมือนลูกค้า</option>
+              <option v-for="c in endUsers" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </div>
         </div>
 
         <fieldset class="field">
@@ -84,6 +111,7 @@ function create() {
 
         <div class="field"><label for="ns">Next step</label><input id="ns" v-model="f.nextStep" class="input" placeholder="เช่น นัดเก็บ Requirement 12 พ.ย." /></div>
 
+        <div v-if="serverErrors.length" class="err" role="alert"><p v-for="e in serverErrors" :key="e">{{ e }}</p></div>
         <footer>
           <router-link to="/projects" class="btn ghost">ยกเลิก</router-link>
           <button class="btn primary" type="submit" :disabled="busy">ลงทะเบียนโครงการ</button>

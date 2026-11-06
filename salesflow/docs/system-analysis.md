@@ -180,3 +180,24 @@ Team(code, name, parentCode, annualTarget)  ·  User(id, entraId, roles[], teamC
 | Delivery | สถานะงวดงาน (ส่งมอบ → ตรวจรับ → วางบิล → รับเงิน) |
 | Workload | จองเบื้องต้น (Soft) แยกจากจองแน่นอน (Hard) · ความต้องการคนจาก Pipeline ถ่วงน้ำหนัก |
 | MA | นาฬิกา SLA แยกตอบรับ/แก้ไข หยุดนับเมื่อรอลูกค้า เตือน 50/75/100% · แจ้งต่อ MA ตามกำหนดแจ้งในสัญญาและรอบงบภาครัฐ (180/120/90/60/30/7 วัน) · คะแนนสุขภาพลูกค้า |
+
+---
+
+## 10. สถานะ P0 (MVP+) — ทำแล้ว
+
+| ID | เรื่อง | ทำที่ไหน | ตรวจด้วย |
+|---|---|---|---|
+| P0-1 | อ่าน Cost Sheet ด้วย delegated token + fallback ดาวน์โหลดแล้ว parse ไม่เขียนเซลล์ ตรวจชื่อ range และ Template version | `server/src/graph/costsheet.ts`, `xlsx.ts` | test: session แบบ non-persistent, error ระบุชื่อ range, fallback เมื่อ `accessConflict` |
+| P0-2 | อนุมัติผูกกับ SharePoint version/eTag, snapshot hash, สำเนา `Submitted/vN`, stale เมื่อไฟล์ถูกแก้, หมดอายุ, ดึงกลับ, ผู้รับมอบอำนาจ, ผู้ส่ง ≠ ผู้อนุมัติ | `server/src/approval/approval.ts`, `CostSheetPanel.vue` | test + หน้าจอ: แก้ไฟล์หลังอนุมัติแล้วปุ่ม “ส่งใบเสนอราคาให้ Sale” หายไป |
+| P0-3 | Close Win กรอกมูลค่าสัญญา เทียบกับที่อนุมัติ (±% และ GP ลดได้กี่จุด ตั้งค่าได้) และราคาที่ยื่น e-GP → ขออนุมัติหลังได้งาน | `src/domain/rules.ts` `checkContractValue` | test + dialog Close Win |
+| P0-4 | ใบเสนอราคา PDF จาก snapshot (template เดียวกันทั้งเว็บและ server) มีจำนวนเงินตัวอักษรภาษาไทย ไม่มีข้อมูลต้นทุน | `src/domain/quotation.ts`, `server/src/pdf/quotation.ts`, หน้า `/print/quotation/:id` | test สร้าง PDF จริงด้วย Chromium |
+| P0-5 | อนุมัติผ่านหน้าในระบบเป็นหลัก อีเมลมีลิงก์เข้าระบบ, นัด Handover เป็น calendar event มีลิงก์ Teams, แจ้งช่องทีมผ่าน Teams Workflows | `server/src/mail/outbox.ts`, `teams/handover.ts`, Settings → ช่องทางแจ้งเตือน | test |
+| P0-6 | แยก 2 app registration, `Sites.Selected`, `Mail.Send` จำกัดด้วย Exchange RBAC, outbox, Graph client ที่ retry ตาม `Retry-After` · ส่งคำขอทีละรายการต่อ workbook · ≤4 ต่อ mailbox, ตรวจ token และ App Roles, OBO | `server/src/graph/client.ts`, `auth/auth.ts`, `server/infra/` | test (ลายเซ็น, audience, tenant, หมดอายุ, ไม่มีบทบาท) |
+| P0-7 | Probability ตัวเลข, Forecast category ปรับเองต้องมีเหตุผล, ตรวจเงื่อนไขทั้งตอนสร้าง แก้ และย้าย | `validateCreate`, `validateMove` | test: สร้างเป็น Forecast โดยไม่มีใบเสนอราคาที่อนุมัติไม่ได้ |
+| P0-8 | Close Lose บังคับเหตุผล (และผู้ชนะเมื่อแพ้คู่แข่ง) · “เปิดโครงการใหม่จากดีลนี้” แทนเปิดกลับ (`reopenedFromId`) | `reopenAsNew`, `winRate` | test: Win rate ย้อนหลังไม่เปลี่ยน |
+| P0-9 | ทะเบียนลูกค้า (เลขผู้เสียภาษี, ประเภท, หน่วยงานแม่) + หน้า Account 360 · ฟอร์มลงทะเบียนเลือกลูกค้าจากทะเบียน | `AccountsView`, `AccountDetailView` | หน้าจอ |
+| P0-10 | ขั้นตอนประมูล e-GP, ปฏิทินวันทำการไทย (Admin เพิ่มวันหยุดได้), Close Win ดีลรัฐต้องพ้นระยะอุทธรณ์ 7 วันทำการ | `src/domain/calendar.ts`, `closeWinRule` | test |
+| P0-11 | เงื่อนไขสัญญา (ฐานค่าปรับ อัตรา ขั้นต่ำ ประกัน SLA หัก ณ ที่จ่าย) + หลักประกันสัญญาเป็นเงื่อนไขของ Handover · หน้าหลักประกันรวมทุกโครงการ | `handoverGate`, `DeliveryPanel`, `GuaranteesView` | test + หน้าจอ |
+
+ข้อที่ยังต้องทำกับ tenant จริง: รันสคริปต์ใน `server/infra`, ทดสอบ webhook กับสิทธิ์ `Sites.Selected`, ต่อฐานข้อมูลจริงแทน in-memory store
+สถานะ **Rebidding** ยังคงไว้ตามที่ผู้ใช้กำหนด (รายงานเสนอให้ย้ายไปเป็น `salesMotion='tender'` — ระบบเพิ่ม `salesMotion` แล้วแต่ไม่ได้ลบสถานะ)

@@ -17,6 +17,10 @@ const router = createRouter({
     { path: '/workload', component: () => import('./views/WorkloadView.vue') },
     { path: '/ma', component: () => import('./views/MaView.vue') },
     { path: '/settings', component: () => import('./views/SettingsView.vue') },
+    { path: '/accounts', component: () => import('./views/AccountsView.vue') },
+    { path: '/accounts/:id', component: () => import('./views/AccountDetailView.vue'), props: true },
+    { path: '/guarantees', component: () => import('./views/GuaranteesView.vue') },
+    { path: '/print/quotation/:id', component: () => import('./views/QuotationPrintView.vue'), props: true },
   ],
 })
 
@@ -25,6 +29,7 @@ router.beforeEach((to) => {
   if (to.path === '/login') return true
   if (!session.signedIn) return '/login'
   if (to.path.startsWith('/projects/') && to.path !== '/projects/new') return true
+  if (to.path.startsWith('/print/') || to.path.startsWith('/accounts/')) return true
   if (!canSee(to.path, session.role)) return HOME[session.role]
   return true
 })

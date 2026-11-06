@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { ROLES, type Role } from '../data/model'
-import { TEAMS, mb } from '../data/mock'
+import { TEAMS, mb, thDate } from '../data/mock'
+import { TH_GOV_2026 } from '../domain/calendar'
+import { SETTINGS } from '../store'
 
-const tab = ref<'roles' | 'approval' | 'teams' | 'm365'>('roles')
+const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'teams' | 'm365'>('roles')
 const R = Object.keys(ROLES) as Role[]
 type Level = 'full' | 'own' | 'view' | ''
 const MATRIX: { cap: string; v: Level[] }[] = [
@@ -27,13 +29,34 @@ const RULES = [
   { when: 'GP < 25% หรือมูลค่า > ฿20M', who: 'หัวหน้ากลุ่ม DT → ผู้บริหาร → CFO', sla: '5 วันทำการ' },
   { when: 'โครงการ MA ต่อสัญญา', who: 'หัวหน้ากลุ่ม DT', sla: '2 วันทำการ' },
 ]
-const M365 = [
-  { name: 'Microsoft Entra ID', what: 'Single sign-on และ App Roles (SM, Head, Exec, PMO, PM, MA, Admin)', ok: true },
-  { name: 'SharePoint / OneDrive', what: 'สร้างโฟลเดอร์เอกสารต่อโครงการ เก็บเวอร์ชันไฟล์อัตโนมัติ', ok: true },
-  { name: 'Excel Online (Graph Workbook API)', what: 'สร้าง Cost Sheet + Quotation จาก Template อ่านค่าสรุปจาก Named range', ok: true },
-  { name: 'Outlook (Graph Mail)', what: 'อีเมลขออนุมัติแบบ Actionable Message ส่งใบเสนอราคาให้ Sale หนังสือแจ้งหมดประกัน', ok: true },
-  { name: 'Microsoft Teams', what: 'นัดประชุม Handover แจ้งเตือนในช่องทีม DT', ok: false },
+const APPS = [
+  { name: 'SalesFlow Web', use: 'หน้าเว็บ + API: เข้าสู่ระบบ, App Roles, อ่าน Excel แทน SM (OBO)', cred: 'Certificate',
+    perms: ['User.Read (Delegated)', 'Files.ReadWrite (Delegated) — อ่าน Named range ตอนกด Sync/ส่งอนุมัติ', 'Calendars.ReadWrite (Delegated) — นัด Handover ในนามของ PMO'] },
+  { name: 'SalesFlow Worker', use: 'งานเบื้องหลัง: โฟลเดอร์ SharePoint, ส่งอีเมล, ตรวจไฟล์ถูกแก้', cred: 'Certificate',
+    perms: ['Sites.Selected (Application) — write เฉพาะไซต์ Stream Projects', 'Mail.Send (Application) — จำกัดด้วย Exchange RBAC ให้ส่งได้จาก salesflow@ เท่านั้น'] },
 ]
+const NOT_USED = [
+  'Excel Workbook API แบบ Application — Microsoft ไม่รองรับ',
+  'แปลง Excel เป็น PDF (?format=pdf) — เลือกชีตไม่ได้และจำกัด 2 MB ระบบสร้าง PDF เอง',
+  'ChannelMessage.Send แบบ Application — ใช้ได้เฉพาะงาน migration',
+  'Office 365 Connectors / Incoming Webhook ของ Teams — ยกเลิกในปี 2026',
+]
+const CHANNELS = reactive([
+  { k: 'inapp', name: 'กล่องงานในระบบ', what: 'ช่องทางหลักของการอนุมัติและงานที่ต้องทำ ใช้ได้บนมือถือ', on: true, fixed: true },
+  { k: 'email', name: 'อีเมลจาก salesflow@', what: 'แจ้งเตือนพร้อมลิงก์เข้าหน้าที่เกี่ยวข้อง (เข้าผ่าน SSO) ส่งผ่าน Outbox มี retry', on: true, fixed: false },
+  { k: 'teams', name: 'Teams Workflows ต่อช่อง DT', what: 'โพสต์การ์ดเมื่อชนะงาน, Handover, ประกันใกล้หมด', on: true, fixed: false },
+  { k: 'am', name: 'ปุ่มอนุมัติในอีเมล (Actionable Message)', what: 'เฟส 2 — ต้องลงทะเบียนกับ Microsoft, ใช้บนเบราว์เซอร์มือถือไม่ได้, หมดอายุ 1 เดือน', on: false, fixed: false },
+])
+const WEBHOOKS = reactive(TEAMS.map((t) => ({ team: t.code, url: t.code === 'DT4-2' ? 'https://prod-27.southeastasia.logic.azure.com/workflows/…' : '' })))
+// reactive() proxies the same object, so domain rules see added holidays immediately.
+const cal = reactive(TH_GOV_2026)
+const holidays = computed(() => cal.holidays.filter((h) => h.startsWith('2026') || h.startsWith('2027')))
+const newHoliday = ref('')
+function addHoliday() {
+  if (newHoliday.value && !cal.holidays.includes(newHoliday.value)) cal.holidays.push(newHoliday.value)
+  cal.holidays.sort()
+  newHoliday.value = ''
+}
 </script>
 
 <template>
@@ -42,6 +65,8 @@ const M365 = [
     <div class="tabs" role="tablist">
       <button role="tab" :aria-selected="tab === 'roles'" @click="tab = 'roles'">สิทธิ์ตามบทบาท</button>
       <button role="tab" :aria-selected="tab === 'approval'" @click="tab = 'approval'">ลำดับการอนุมัติ</button>
+      <button role="tab" :aria-selected="tab === 'calendar'" @click="tab = 'calendar'">ปฏิทินวันทำการ</button>
+      <button role="tab" :aria-selected="tab === 'channels'" @click="tab = 'channels'">ช่องทางแจ้งเตือน</button>
       <button role="tab" :aria-selected="tab === 'teams'" @click="tab = 'teams'">ทีม DT และเป้า</button>
       <button role="tab" :aria-selected="tab === 'm365'" @click="tab = 'm365'">Microsoft 365</button>
     </div>
@@ -60,7 +85,32 @@ const M365 = [
         <thead><tr><th>เงื่อนไข</th><th>ผู้อนุมัติตามลำดับ</th><th>SLA</th></tr></thead>
         <tbody><tr v-for="r in RULES" :key="r.when"><td>{{ r.when }}</td><td><strong>{{ r.who }}</strong></td><td>{{ r.sla }}</td></tr></tbody>
       </table>
-      <p class="hint" style="margin-top: 12px">ถ้าเกิน SLA ระบบส่งอีเมลเตือนซ้ำ และแจ้งผู้อนุมัติลำดับถัดไป</p>
+      <p class="hint" style="margin-top: 12px">ถ้าเกิน SLA ระบบส่งอีเมลเตือนซ้ำ และแจ้งผู้รับมอบอำนาจแทน · ผู้ส่งคำขออนุมัติคำขอของตัวเองไม่ได้</p>
+      <h3 class="sub">เกณฑ์ความถูกต้องของราคา</h3>
+      <div class="thr">
+        <div class="field"><label for="tol">มูลค่า PO ต่างจากที่อนุมัติได้ (±%)</label><input id="tol" v-model.number="SETTINGS.tolerancePct" class="input num" type="number" min="0" step="0.5" /></div>
+        <div class="field"><label for="gpd">GP ลดลงได้ไม่เกิน (จุด)</label><input id="gpd" v-model.number="SETTINGS.gpDropPct" class="input num" type="number" min="0" step="0.5" /></div>
+        <div class="field"><label for="vd">อายุการอนุมัติ (วัน)</label><input id="vd" v-model.number="SETTINGS.approvalValidDays" class="input num" type="number" min="1" /><span class="hint">ตรงกับระยะยืนราคาในใบเสนอราคา</span></div>
+      </div>
+      <p class="hint">เกินเกณฑ์ตอน Close Win ต้องขออนุมัติหลังได้งาน · แก้ไฟล์ Excel หลังอนุมัติ คำขอจะถูกระงับจนส่งใหม่</p>
+    </section>
+
+    <section v-if="tab === 'calendar'" class="panel">
+      <div class="panel-head"><h2>วันหยุดราชการ</h2><span class="muted small">ใช้นับวันอุทธรณ์ e-GP (7 วันทำการ), SLA การอนุมัติ และ SLA ของ Ticket</span></div>
+      <div class="addh"><input v-model="newHoliday" class="input" type="date" aria-label="วันหยุดใหม่" /><button class="btn" :disabled="!newHoliday" @click="addHoliday">เพิ่มวันหยุด</button></div>
+      <ul class="hol"><li v-for="h in holidays" :key="h">{{ thDate(h) }}</li></ul>
+      <p class="hint">วันทำการ: จันทร์–ศุกร์ · ปรับทุกปีตามประกาศคณะรัฐมนตรี</p>
+    </section>
+
+    <section v-if="tab === 'channels'" class="channels">
+      <div v-for="c in CHANNELS" :key="c.k" class="panel con">
+        <div><h3>{{ c.name }}</h3><p class="muted small">{{ c.what }}</p></div>
+        <label class="sw"><input v-model="c.on" type="checkbox" :disabled="c.fixed" /> {{ c.on ? 'เปิด' : 'ปิด' }}</label>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>URL ของ Teams Workflow ต่อทีม</h2></div>
+        <div v-for="w in WEBHOOKS" :key="w.team" class="hook"><span>{{ w.team }}</span><input v-model="w.url" class="input" placeholder="วาง URL จาก Workflow “Post to a channel when a webhook request is received”" /></div>
+      </div>
     </section>
 
     <section v-if="tab === 'teams'" class="panel">
@@ -71,10 +121,15 @@ const M365 = [
     </section>
 
     <section v-if="tab === 'm365'" class="m365">
-      <div v-for="c in M365" :key="c.name" class="panel con">
-        <div><h3>{{ c.name }}</h3><p class="muted small">{{ c.what }}</p></div>
-        <span class="chip" :class="c.ok ? 'win' : ''">{{ c.ok ? 'เชื่อมต่อแล้ว' : 'ยังไม่เชื่อมต่อ' }}</span>
-        <button class="btn sm">{{ c.ok ? 'ตั้งค่า' : 'เชื่อมต่อ' }}</button>
+      <div v-for="a in APPS" :key="a.name" class="panel app">
+        <div class="apph"><h3>{{ a.name }}</h3><span class="chip">{{ a.cred }}</span></div>
+        <p class="muted small">{{ a.use }}</p>
+        <ul><li v-for="x in a.perms" :key="x">{{ x }}</li></ul>
+      </div>
+      <div class="panel app">
+        <h3>ไม่ใช้โดยตั้งใจ</h3>
+        <ul class="no"><li v-for="x in NOT_USED" :key="x">{{ x }}</li></ul>
+        <p class="hint">ขั้นตอนตั้งค่าและสคริปต์อยู่ที่ server/infra ใน repository</p>
       </div>
     </section>
   </div>
@@ -90,7 +145,19 @@ const M365 = [
 .lv.own { background: var(--presale-soft); color: var(--presale); }
 .lv.view { background: var(--idle-soft); color: var(--ink-2); }
 .lv.none { color: var(--faint); }
-.m365 { display: grid; gap: 10px; }
-.con { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center; padding: 18px 22px; }
+.m365 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.app ul { margin: 10px 0 0; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
+.apph { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.no li { color: var(--muted); }
+.sub { margin: 24px 0 12px; }
+.thr { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 8px; }
+.addh { display: flex; gap: 8px; margin-bottom: 14px; max-width: 360px; }
+.hol { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; font-size: 14px; }
+.hol li { background: var(--sunken); border-radius: var(--r-sm); padding: 6px 10px; }
+.channels { display: grid; gap: 10px; }
+.sw { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.sw input { width: 18px; height: 18px; accent-color: var(--ink); }
+.hook { display: grid; grid-template-columns: 70px 1fr; gap: 10px; align-items: center; margin-bottom: 8px; font-weight: 500; }
+.con { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 18px 22px; }
 @media (max-width: 560px) { .con { grid-template-columns: 1fr; } }
 </style>

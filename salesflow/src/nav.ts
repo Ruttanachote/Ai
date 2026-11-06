@@ -14,11 +14,15 @@ export const NAV: NavGroup[] = [
       { to: '/pipeline', label: 'Pipeline board', icon: 'board', roles: ['sm', 'head', 'exec', 'admin'] },
       { to: '/projects', label: 'ทะเบียนโครงการ', icon: 'list', roles: ALL },
       { to: '/projects/new', label: 'ลงทะเบียนโครงการ', icon: 'plus', roles: ['sm', 'head', 'admin'] },
+      { to: '/accounts', label: 'ทะเบียนลูกค้า', icon: 'people', roles: ['sm', 'head', 'exec', 'pmo', 'ma', 'admin'] },
     ],
   },
   {
-    title: 'อนุมัติ',
-    items: [{ to: '/approvals', label: 'รออนุมัติราคา', icon: 'inbox', roles: ['head', 'exec', 'admin'] }],
+    title: 'อนุมัติและการเงิน',
+    items: [
+      { to: '/approvals', label: 'รออนุมัติราคา', icon: 'inbox', roles: ['head', 'exec', 'admin'] },
+      { to: '/guarantees', label: 'หลักประกัน', icon: 'shield', roles: ['head', 'exec', 'pmo', 'admin'] },
+    ],
   },
   {
     title: 'ส่งมอบโครงการ',

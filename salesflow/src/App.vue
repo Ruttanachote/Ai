@@ -29,7 +29,7 @@ watch(() => route.path, () => (menuOpen.value = false))
 </script>
 
 <template>
-  <router-view v-if="route.path === '/login'" />
+  <router-view v-if="route.path === '/login' || route.path.startsWith('/print/')" />
   <div v-else class="shell" :class="{ open: menuOpen }">
     <aside class="side">
       <div class="brand">

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Project } from '../data/model'
-import { addDays, addWorkingDays, baht, daysUntil, thDate, TODAY } from '../data/mock'
+import { baht, daysUntil, thDate, TODAY } from '../data/mock'
+import { addDays } from '../domain/calendar'
+import { appealWindowEnd } from '../domain/rules'
 import { notify, session } from '../store'
 
 // Thai public procurement (พ.ร.บ.จัดซื้อจัดจ้างฯ 2560 + ระเบียบกระทรวงการคลัง 2560).
@@ -11,7 +13,7 @@ const b = computed(() => props.p.bid)
 const isGov = computed(() => b.value && b.value.method !== 'เอกชน')
 
 // Appeal window: 7 working days after the result is posted on e-GP; signing waits for it.
-const appealEnds = computed(() => (b.value?.result ? addWorkingDays(b.value.result, 7) : undefined))
+const appealEnds = computed(() => appealWindowEnd(props.p))
 const steps = computed(() => {
   const x = b.value
   if (!x) return []
