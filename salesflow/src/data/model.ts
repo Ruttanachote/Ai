@@ -54,22 +54,43 @@ export const catOf = (p: { stage: StageKey; forecastCat?: ForecastCat }): Foreca
 /** Main happy path used by the stage rail. Lose / Cancelled are side exits. */
 export const RAIL: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win', 'handover', 'delivery', 'warranty', 'ended']
 
-export type Role = 'sm' | 'head' | 'exec' | 'pmo' | 'pm' | 'ma' | 'admin'
+export type Role = 'sm' | 'head' | 'deputy' | 'exec' | 'pmo' | 'opn' | 'pm' | 'ma' | 'callcenter' | 'admin'
 
+// Sale is not a platform user — Sale names are kept on each project for reference only.
 export const ROLES: Record<Role, { label: string; th: string }> = {
-  sm: { label: 'Solution Manager', th: 'หาโครงการ ทำ Cost Sheet และใบเสนอราคา' },
-  head: { label: 'หัวหน้ากลุ่ม DT', th: 'อนุมัติราคา เปิด Close Lose กลับ ยกเลิกโครงการ' },
-  exec: { label: 'ผู้บริหาร', th: 'อนุมัติขั้นสุดท้าย ดูยอดขายทุกทีม' },
-  pmo: { label: 'PMO', th: 'Handover จัดสรร PM และทีม DT' },
-  pm: { label: 'Project Manager', th: 'วางแผน ติดตามงาน ส่งมอบ' },
-  ma: { label: 'MA / Support', th: 'ดูแลประกัน แจ้งต่อ MA รับเรื่องปัญหา' },
+  sm: { label: 'Solution Manager (Pre-sale)', th: 'เก็บ Requirement กับ Sale ประเมิน Man-day ทำ Cost Sheet และใบเสนอราคาตาม TOR' },
+  head: { label: 'หัวหน้ากลุ่ม / หัวหน้าทีม Dev', th: 'ดูยอดทั้งกลุ่ม เข้าประชุม Handover เปิดดีลใหม่จากงานที่แพ้ ยกเลิกโครงการ' },
+  deputy: { label: 'รองผู้บริหาร DT', th: 'อนุมัติ Cost Sheet และใบเสนอราคาขั้นแรก' },
+  exec: { label: 'ผู้บริหาร DT', th: 'อนุมัติขั้นสุดท้าย ดูยอดขายทุกกลุ่ม' },
+  pmo: { label: 'PMO (DT3-3)', th: 'จัดประชุม Handover มอบหมาย PM และทีม Dev' },
+  opn: { label: 'OPN (DT3-2)', th: 'จัดซื้อและการเงินโครงการ อนุมัติการเบิกจ่ายจัดซื้อ' },
+  pm: { label: 'Project Manager', th: 'รับงานหลัง Handover คุมขอบเขต แผน ความเสี่ยง อนุมัติ OT ในวงเงินที่กันไว้' },
+  ma: { label: 'ทีม MA', th: 'ดูแลช่วงรับประกัน ติดต่อลูกค้าเรื่องต่อ MA ออกใบเสนอราคาต่อสัญญาเอง' },
+  callcenter: { label: 'Call center (ทีม MA)', th: 'รับเคสลูกค้าผ่าน Helpdesk ช่วงรับประกัน' },
   admin: { label: 'ผู้ดูแลระบบ', th: 'ผู้ใช้ สิทธิ์ ทีม และการเชื่อมต่อ M365' },
 }
 
+/** Price approval chain for Cost Sheet + Quotation: deputy executive, then executive. */
+export const APPROVAL_CHAIN: { role: Role; label: string }[] = [
+  { role: 'deputy', label: 'รองผู้บริหาร DT' },
+  { role: 'exec', label: 'ผู้บริหาร DT' },
+]
+
+export interface Team {
+  code: string
+  name: string
+  group: string
+  /** sales = profit centre with a target; support = OPN, PMO, MA; exec = DT management */
+  kind: 'sales' | 'support' | 'exec'
+  target?: number
+  formerly?: string
+}
+
 /** Which stage transitions each role may perform (enforced server-side as well). */
-export function allowedMoves(stage: StageKey, role: Role): StageKey[] {
-  const lead = role === 'head' || role === 'exec' || role === 'admin'
-  const sm = role === 'sm' || lead
+export function allowedMoves(stage: StageKey, role: Role, type?: ProjectType): StageKey[] {
+  const lead = role === 'head' || role === 'deputy' || role === 'exec' || role === 'admin'
+  // MA-type renewals are sold by the MA team, so MA moves them through the sales stages.
+  const sm = role === 'sm' || lead || (type === 'MA' && role === 'ma')
   switch (stage) {
     case 'opportunity': return sm ? ['pipeline', 'lose'] : []
     case 'pipeline': return sm ? ['forecast', 'rebidding', 'lose'] : []
@@ -93,7 +114,8 @@ export interface ApprovalSnapshot { revenue: number; cost: number; gp: number; c
 export interface Approval {
   version: string
   submittedAt: string
-  steps: { who: string; role: string; status: 'approved' | 'pending' | 'rejected' | 'waiting'; at?: string; note?: string; whoId?: string; onBehalfOf?: string; channel?: 'web' | 'email_link' }[]
+  /** `approver` says which role decides this step (the submit step has none). */
+  steps: { who: string; role: string; status: 'approved' | 'pending' | 'rejected' | 'waiting'; at?: string; note?: string; whoId?: string; approver?: Role; onBehalfOf?: string; channel?: 'web' | 'email_link' }[]
   /** stale = workbook changed after approval; recalled = SM pulled it back. */
   status?: 'pending' | 'approved' | 'rejected' | 'recalled' | 'stale'
   submittedBy?: string
@@ -109,6 +131,19 @@ export interface Approval {
   /** Post-award approval raised because the PO differs from the approved quote (P0-3). */
   postAward?: boolean
 }
+
+export type HandoverParty = 'sm' | 'pm' | 'ma' | 'opn' | 'devlead'
+export const HANDOVER_PARTIES: { k: HandoverParty; label: string }[] = [
+  { k: 'sm', label: 'SM (Pre-sale)' }, { k: 'pm', label: 'Project Manager' }, { k: 'ma', label: 'ทีม MA' },
+  { k: 'opn', label: 'OPN (DT3-2)' }, { k: 'devlead', label: 'หัวหน้าทีม Dev' },
+]
+export interface HandoverAttendee { party: HandoverParty; who: string; attended: boolean }
+
+/** OT reserve comes from the Cost Sheet line "เงินกันทำ OT"; PM approves within it. */
+export interface OtRequest { id: string; who: string; week: string; hours: number; amount: number; reason: string; status: 'pending' | 'approved' | 'rejected' }
+
+/** PR raised against the Cost Sheet's Hardware/Software budget; OPN (DT3-2) approves disbursement. */
+export interface ProcurementRequest { id: string; item: string; vendor: string; amount: number; budgetLine: string; requestedBy: string; at: string; status: 'pending' | 'approved' | 'rejected' | 'po_issued'; note?: string }
 
 export type Sector = 'government' | 'soe' | 'enterprise' | 'other'
 export interface Account {
@@ -172,7 +207,6 @@ export interface Project {
   cost: number
   budget: number
   sm: string
-  sale: string
   pm?: string
   collaborators: string[]
   bidDue?: string
@@ -203,6 +237,12 @@ export interface Project {
   reopenedFromId?: string
   terms?: ContractTerms
   handoverDone?: boolean
+  /** Handover meeting: SM, PM, MA, OPN and the Dev team lead must all attend. */
+  handover?: { meetingAt?: string; attendees: HandoverAttendee[] }
+  /** Sale(s) working this deal with the SM — at least one. Reference only; Sale does not log in. */
+  sales: string[]
+  ot?: OtRequest[]
+  procurement?: ProcurementRequest[]
   parentId?: string
   approval?: Approval
   milestones?: Milestone[]

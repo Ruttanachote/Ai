@@ -1,4 +1,4 @@
-import type { Account, Person, Project } from './model'
+import type { Account, Person, Project, Team } from './model'
 
 // Unsplash footage — loaded by the viewer's browser; components fall back to a tone if blocked.
 export const img = (id: string, w = 1200) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=70`
@@ -19,30 +19,46 @@ export const PHOTOS = {
 }
 
 export const PEOPLE: Person[] = [
-  { id: 'rk', name: 'Ruttanachot K.', initials: 'RK', role: 'sm', team: 'DT4-2', color: '#B0466E' },
-  { id: 'np', name: 'Nattapong P.', initials: 'NP', role: 'sm', team: 'DT2', color: '#3A63C9' },
+  { id: 'rk', name: 'Ruttanachot K.', initials: 'RK', role: 'sm', team: 'DT4-LC', color: '#B0466E' },
+  { id: 'np', name: 'Nattapong P.', initials: 'NP', role: 'sm', team: 'DT4-AI', color: '#3A63C9' },
   { id: 'sw', name: 'Supawadee W.', initials: 'SW', role: 'head', team: 'DT4', color: '#2E8A6E' },
-  { id: 'tc', name: 'Thanakorn C.', initials: 'TC', role: 'exec', color: '#5B4BB7' },
-  { id: 'pj', name: 'Pimchanok J.', initials: 'PJ', role: 'pmo', color: '#C26A1E' },
-  { id: 'ak', name: 'Arthit K.', initials: 'AK', role: 'pm', team: 'DT4-2', color: '#1F7FA8' },
-  { id: 'ks', name: 'Kanokwan S.', initials: 'KS', role: 'pm', team: 'DT2', color: '#8E4FB5' },
-  { id: 'wm', name: 'Wichai M.', initials: 'WM', role: 'ma', color: '#4C7A2B' },
-  { id: 'dev1', name: 'Phuwadol T.', initials: 'PT', role: 'pm', team: 'DT4-2', color: '#6B7280' },
-  { id: 'dev2', name: 'Jiraporn L.', initials: 'JL', role: 'pm', team: 'DT4-2', color: '#A15C38' },
-  { id: 'dev3', name: 'Somchai R.', initials: 'SR', role: 'pm', team: 'DT4-2', color: '#3F6E8C' },
-  { id: 'dev4', name: 'Ploy N.', initials: 'PN', role: 'pm', team: 'DT2', color: '#9A4060' },
-  { id: 'dev5', name: 'Krit V.', initials: 'KV', role: 'pm', team: 'DT2', color: '#53689A' },
+  { id: 'kr', name: 'Kittiya R.', initials: 'KR', role: 'deputy', team: 'DT-EXEC', color: '#7A4FA3' },
+  { id: 'tc', name: 'Thanakorn C.', initials: 'TC', role: 'exec', team: 'DT-EXEC', color: '#5B4BB7' },
+  { id: 'pj', name: 'Pimchanok J.', initials: 'PJ', role: 'pmo', team: 'DT3-3', color: '#C26A1E' },
+  { id: 'op', name: 'Orawan P.', initials: 'OP', role: 'opn', team: 'DT3-2', color: '#2F7D6D' },
+  { id: 'ak', name: 'Arthit K.', initials: 'AK', role: 'pm', team: 'DT3-3', color: '#1F7FA8' },
+  { id: 'ks', name: 'Kanokwan S.', initials: 'KS', role: 'pm', team: 'DT3-3', color: '#8E4FB5' },
+  { id: 'wm', name: 'Wichai M.', initials: 'WM', role: 'ma', team: 'MA', color: '#4C7A2B' },
+  { id: 'cc', name: 'Nipa S.', initials: 'NS', role: 'callcenter', team: 'MA', color: '#9C6B1F' },
+  { id: 'dl', name: 'Somkiat L.', initials: 'SL', role: 'head', team: 'DT4-LC', color: '#3E5C76' },
+  { id: 'dev1', name: 'Phuwadol T.', initials: 'PT', role: 'pm', team: 'DT4-LC', color: '#6B7280' },
+  { id: 'dev2', name: 'Jiraporn L.', initials: 'JL', role: 'pm', team: 'DT4-LC', color: '#A15C38' },
+  { id: 'dev3', name: 'Somchai R.', initials: 'SR', role: 'pm', team: 'DT4-LC', color: '#3F6E8C' },
+  { id: 'dev4', name: 'Ploy N.', initials: 'PN', role: 'pm', team: 'DT4-AI', color: '#9A4060' },
+  { id: 'dev5', name: 'Krit V.', initials: 'KV', role: 'pm', team: 'DT4-AI', color: '#53689A' },
 ]
 export const person = (id?: string) => PEOPLE.find((p) => p.id === id)
 
-export const TEAMS = [
-  { code: 'DT1', name: 'Enterprise Apps', target: 60_000_000 },
-  { code: 'DT2', name: 'Data & AI', target: 45_000_000 },
-  { code: 'DT3', name: 'Infra & Cloud', target: 80_000_000 },
-  { code: 'DT4-1', name: 'Gov Digital — Portal', target: 35_000_000 },
-  { code: 'DT4-2', name: 'Gov Digital — Platform', target: 40_000_000 },
-  { code: 'DT5', name: 'Cyber Security', target: 30_000_000 },
+// DT SBU structure 2026. One Platform starts with DT SBU, then extends to DB.
+export const TEAMS: Team[] = [
+  { code: 'DT1', name: 'Digital Infrastructure', group: 'DT1', kind: 'sales', target: 120_000_000, formerly: 'BU1 + BU2' },
+  { code: 'DT2', name: 'Digital Security', group: 'DT2', kind: 'sales', target: 45_000_000, formerly: 'BU4' },
+  { code: 'DT3', name: 'Digital Edge & Services', group: 'DT3', kind: 'sales', target: 60_000_000, formerly: 'BU5 + BU6' },
+  { code: 'DT3-2', name: 'OPN — จัดซื้อและการเงินโครงการ', group: 'DT3', kind: 'support' },
+  { code: 'DT3-3', name: 'PMO', group: 'DT3', kind: 'support' },
+  { code: 'DT4-LC', name: 'Low Code', group: 'DT4', kind: 'sales', target: 40_000_000, formerly: 'BU3' },
+  { code: 'DT4-CNA', name: 'CNA (Cloud Native App)', group: 'DT4', kind: 'sales', target: 35_000_000, formerly: 'BU3' },
+  { code: 'DT4-IoT', name: 'IoT', group: 'DT4', kind: 'sales', target: 20_000_000, formerly: 'BU5-IoT' },
+  { code: 'DT4-AI', name: 'AI', group: 'DT4', kind: 'sales', target: 30_000_000, formerly: 'BU3' },
+  { code: 'MA', name: 'ทีม MA และ Call center', group: 'MA', kind: 'support' },
+  { code: 'DT-EXEC', name: 'ผู้บริหาร DT', group: 'DT-EXEC', kind: 'exec' },
 ]
+export const GROUP_NAME: Record<string, string> = {
+  DT1: 'DT1 Digital Infrastructure', DT2: 'DT2 Digital Security', DT3: 'DT3 Digital Edge & Services', DT4: 'DT4 Digital Innovation', MA: 'ทีม MA', 'DT-EXEC': 'ผู้บริหาร DT',
+}
+export const SALES_TEAMS = TEAMS.filter((t) => t.kind === 'sales')
+export const teamOf = (code?: string) => TEAMS.find((t) => t.code === code)
+export const groupOf = (code: string) => teamOf(code)?.group ?? code.split('-')[0]
 
 export const ACCOUNTS: Account[] = [
   { id: 'a-mof', name: 'กระทรวงพาณิชย์ดิจิทัล', sector: 'government', type: 'customer', province: 'กรุงเทพฯ' },
@@ -65,15 +81,15 @@ export const account = (id?: string) => ACCOUNTS.find((a) => a.id === id)
 export const PROJECTS: Project[] = [
   {
     id: 'p1', code: 'OPP-69-0142', name: 'Comtech CT', customer: 'รอระบุลูกค้า', endUser: 'รอระบุลูกค้า', type: 'พัฒนาระบบ',
-    stage: 'opportunity', team: 'DT4-2', revenue: 0, cost: 0, budget: 1_000_000, sm: 'rk', sale: '', collaborators: [],
+    stage: 'opportunity', team: 'DT4-LC', revenue: 0, cost: 0, budget: 1_000_000, sm: 'rk', sales: ['Pongsak T.'], collaborators: [],
     nextStep: 'ระบุลูกค้า ประเภทโครงการ Profit Center และนัดเก็บ Requirement', cover: PHOTOS.workshop, stageSince: '2026-10-15',
     history: [{ stage: 'opportunity', note: 'สร้างโครงการ งบประมาณลูกค้า ฿1,000,000', at: '15 ต.ค. 69', by: 'Ruttanachot K.' }],
   },
   { customerAccountId: 'a-dtp', endUserAccountId: 'a-dtp-reg', salesMotion: 'tender', 
     id: 'p2', code: 'PIP-69-0098', name: 'ระบบ e-Service ใบอนุญาตออนไลน์', customer: 'กรมส่งเสริมการค้าดิจิทัล', endUser: 'กองทะเบียนธุรกิจ', type: 'พัฒนาระบบ',
-    stage: 'pipeline', team: 'DT4-2', revenue: 18_400_000, cost: 12_950_000, budget: 19_500_000, sm: 'rk', sale: 'Sirinya B.', collaborators: ['ak'],
+    stage: 'pipeline', team: 'DT4-LC', revenue: 18_400_000, cost: 12_950_000, budget: 19_500_000, sm: 'rk', sales: ['Sirinya B.', 'Pongsak T.'], collaborators: [],
     bidDue: '2026-12-10', expectedClose: '2026-12-28', nextStep: 'รอผู้บริหารอนุมัติใบเสนอราคา v3 ก่อนส่ง Sale', cover: PHOTOS.city, stageSince: '2026-09-30',
-    splits: [{ team: 'DT4-2', pct: 70 }, { team: 'DT2', pct: 30 }],
+    splits: [{ team: 'DT4-LC', pct: 70 }, { team: 'DT4-AI', pct: 30 }],
     bid: { method: 'e-bidding', refPrice: 19_200_000 },
     approval: {
       version: 'v3', submittedAt: '4 พ.ย. 69 14:20', status: 'pending', submittedBy: 'rk', validUntil: '2027-01-03',
@@ -81,8 +97,8 @@ export const PROJECTS: Project[] = [
       archivedPath: 'Cost Sheet/Submitted/v3.xlsx',
       steps: [
         { who: 'Ruttanachot K.', whoId: 'rk', role: 'SM ส่งขออนุมัติ', status: 'approved', at: '4 พ.ย. 14:20' },
-        { who: 'Supawadee W.', whoId: 'sw', role: 'หัวหน้ากลุ่ม DT4', status: 'approved', channel: 'email_link', at: '5 พ.ย. 09:12', note: 'ปรับ Margin Hardware เหลือ 12% แล้ว ผ่าน' },
-        { who: 'Thanakorn C.', whoId: 'tc', role: 'ผู้บริหาร', status: 'pending' },
+        { who: 'Kittiya R.', whoId: 'kr', role: 'รองผู้บริหาร DT', approver: 'deputy', status: 'approved', channel: 'email_link', at: '5 พ.ย. 09:12', note: 'ปรับ Margin Hardware เหลือ 12% แล้ว ผ่าน' },
+        { who: 'Thanakorn C.', whoId: 'tc', role: 'ผู้บริหาร DT', approver: 'exec', status: 'pending' },
       ],
     },
     history: [
@@ -92,13 +108,13 @@ export const PROJECTS: Project[] = [
   },
   { customerAccountId: 'a-slog', salesMotion: 'direct', 
     id: 'p3', code: 'FC-69-0071', name: 'Data Lakehouse และ BI ผู้บริหาร', customer: 'บมจ. สยามโลจิสติกส์', endUser: 'ฝ่ายวางแผนกลยุทธ์', type: 'พัฒนาระบบ',
-    stage: 'forecast', team: 'DT2', revenue: 12_800_000, cost: 8_320_000, budget: 13_000_000, sm: 'np', sale: 'Kittipat O.', collaborators: ['ks'],
+    stage: 'forecast', team: 'DT4-AI', revenue: 12_800_000, cost: 8_320_000, budget: 13_000_000, sm: 'np', sales: ['Kittipat O.'], collaborators: [],
     expectedClose: '2026-12-15', nextStep: 'รอลูกค้าออก PO ภายในสัปดาห์หน้า', cover: PHOTOS.server, stageSince: '2026-10-28', bid: { method: 'เอกชน' },
     history: [{ stage: 'forecast', note: 'ลูกค้าตกลงขอบเขตและราคาแล้ว', at: '28 ต.ค. 69', by: 'Nattapong P.' }],
   },
   { customerAccountId: 'a-rubber', salesMotion: 'tender', 
     id: 'p4', code: 'RB-69-0033', name: 'ระบบบริหารงานบุคคล HRMS', customer: 'การยางแห่งภาคใต้', endUser: 'กองบริหารทรัพยากรบุคคล', type: 'ซื้อขาย',
-    stage: 'rebidding', team: 'DT1', revenue: 24_900_000, cost: 18_200_000, budget: 25_000_000, sm: 'rk', sale: 'Sirinya B.', collaborators: [],
+    stage: 'rebidding', team: 'DT4-CNA', revenue: 24_900_000, cost: 18_200_000, budget: 25_000_000, sm: 'rk', sales: ['Sirinya B.'], collaborators: [],
     bidDue: '2026-11-20', nextStep: 'ยื่นซองบน e-GP ก่อน 20 พ.ย. 16:00', cover: PHOTOS.board, stageSince: '2026-11-01',
     bid: { method: 'e-bidding', egpNo: '69109384521', refPrice: 25_000_000, announce: '2026-11-01', submit: '2026-11-20', ourBid: 24_900_000, smeAdvantage: false },
     bonds: [{ kind: 'bid', pct: 5, amount: 1_245_000, form: 'หนังสือค้ำประกันธนาคาร', bank: 'ธนาคารกรุงไทย', issued: '2026-11-12', expires: '2027-03-20' }],
@@ -106,17 +122,28 @@ export const PROJECTS: Project[] = [
   },
   { customerAccountId: 'a-mnh', salesMotion: 'tender', 
     id: 'p5', code: 'PIP-69-0110', name: 'Private Cloud เช่าใช้ 36 เดือน', customer: 'โรงพยาบาลเมืองใหม่', endUser: 'ศูนย์เทคโนโลยีสารสนเทศ', type: 'เช่าซื้อ',
-    stage: 'pipeline', team: 'DT3', revenue: 31_500_000, cost: 25_100_000, budget: 33_000_000, sm: 'np', sale: 'Kittipat O.', collaborators: [],
+    stage: 'pipeline', team: 'DT1', revenue: 31_500_000, cost: 25_100_000, budget: 33_000_000, sm: 'np', sales: ['Kittipat O.'], collaborators: [],
     expectedClose: '2027-02-15', nextStep: 'Demo ระบบ DR ให้ทีม IT ลูกค้า', cover: PHOTOS.office, stageSince: '2026-07-20', bid: { method: 'e-bidding' }, history: [],
   },
   { customerAccountId: 'a-cri', salesMotion: 'tender', handoverDone: true, terms: { penaltyBasis: 'whole_contract', penaltyRatePerDay: 0.001, penaltyMinPerDay: 100, warrantyMonths: 12, slaTier: 'มาตรฐาน 8x5', whtRate: 0.01 }, 
     id: 'p6', code: 'WIN-69-0021', name: 'Smart Permit Platform', customer: 'เทศบาลนครเชียงราย', endUser: 'กองช่าง', type: 'พัฒนาระบบ',
-    stage: 'delivery', team: 'DT4-2', revenue: 9_600_000, cost: 6_400_000, budget: 9_800_000, sm: 'rk', sale: 'Sirinya B.', pm: 'ak', collaborators: ['dev1', 'dev2', 'dev3'],
+    stage: 'delivery', team: 'DT4-LC', revenue: 9_600_000, cost: 6_400_000, budget: 9_800_000, sm: 'rk', sales: ['Sirinya B.'], pm: 'ak', collaborators: ['dev1', 'dev2', 'dev3'],
     startProject: '2026-07-01', endProject: '2027-01-31', nextStep: 'UAT รอบ 2 วันที่ 18 พ.ย.', cover: PHOTOS.dev, stageSince: '2026-07-01', penaltyRate: 0.001,
     bid: { method: 'e-bidding', egpNo: '69047712093', refPrice: 9_900_000, announce: '2026-04-20', submit: '2026-05-08', result: '2026-05-29', signed: '2026-06-20', ourBid: 9_600_000 },
     bonds: [
       { kind: 'bid', pct: 5, amount: 480_000, form: 'หนังสือค้ำประกันธนาคาร', bank: 'ธนาคารกสิกรไทย', issued: '2026-05-06', expires: '2026-09-30', returned: '2026-07-02' },
       { kind: 'performance', pct: 5, amount: 480_000, form: 'หนังสือค้ำประกันธนาคาร', bank: 'ธนาคารกสิกรไทย', issued: '2026-06-18', expires: '2028-02-15' },
+    ],
+    handover: { meetingAt: '2026-06-28', attendees: [{ party: 'sm', who: 'rk', attended: true }, { party: 'pm', who: 'ak', attended: true }, { party: 'ma', who: 'wm', attended: true }, { party: 'opn', who: 'op', attended: true }, { party: 'devlead', who: 'dl', attended: true }] },
+    ot: [
+      { id: 'ot1', who: 'dev3', week: '27 ต.ค.', hours: 12, amount: 7_200, reason: 'แก้ปัญหาเชื่อมต่อ Thai QR ก่อน UAT รอบ 1', status: 'approved' },
+      { id: 'ot2', who: 'dev2', week: '3 พ.ย.', hours: 16, amount: 9_600, reason: 'ปรับหน้าจอตรวจเอกสารตามความเห็นลูกค้า', status: 'approved' },
+      { id: 'ot3', who: 'dev1', week: '10 พ.ย.', hours: 20, amount: 12_000, reason: 'เตรียมข้อมูลทดสอบ UAT รอบ 2', status: 'pending' },
+    ],
+    procurement: [
+      { id: 'PR-69-0412', item: 'Server Rack 2U × 2 และ Storage 20TB', vendor: 'บจ. ดาต้าซิสเต็มส์', amount: 1_180_000, budgetLine: 'Server และ Storage', requestedBy: 'ak', at: '2026-08-12', status: 'po_issued' },
+      { id: 'PR-69-0587', item: 'License ฐานข้อมูล 3 ปี', vendor: 'บจ. ซอฟต์แวร์ไลเซนส์', amount: 920_000, budgetLine: 'License ฐานข้อมูลและ OS (3 ปี)', requestedBy: 'ak', at: '2026-11-03', status: 'pending' },
+      { id: 'PR-69-0590', item: 'SSL Certificate และ WAF 1 ปี', vendor: 'บจ. ไซเบอร์การ์ด', amount: 185_000, budgetLine: 'License ฐานข้อมูลและ OS (3 ปี)', requestedBy: 'ak', at: '2026-11-05', status: 'pending' },
     ],
     milestones: [
       { name: 'Kick-off & Requirement', start: '2026-07-01', end: '2026-07-31', progress: 100, payment: 960_000, paid: true, state: 'paid' },
@@ -142,44 +169,44 @@ export const PROJECTS: Project[] = [
   },
   { customerAccountId: 'a-tpd', salesMotion: 'direct', 
     id: 'p7', code: 'WIN-69-0034', name: 'AI Document OCR สำหรับงานสารบรรณ', customer: 'บมจ. ไทยประกันพัฒนา', endUser: 'ฝ่ายปฏิบัติการ', type: 'พัฒนาระบบ',
-    stage: 'handover', team: 'DT2', revenue: 7_200_000, cost: 4_680_000, budget: 7_500_000, sm: 'np', sale: 'Kittipat O.', collaborators: [],
+    stage: 'handover', team: 'DT4-AI', revenue: 7_200_000, cost: 4_680_000, budget: 7_500_000, sm: 'np', sales: ['Kittipat O.'], collaborators: [],
     expectedClose: '2026-10-30', nextStep: 'นัดประชุม Handover 10 พ.ย. — รอ PMO เลือก PM และทีม DT', cover: PHOTOS.meeting, stageSince: '2026-10-30',
     history: [{ stage: 'win', note: 'ได้ PO เลขที่ TP-2026-881', at: '30 ต.ค. 69', by: 'Nattapong P.' }],
   },
   { customerAccountId: 'a-mnh', salesMotion: 'tender', 
     id: 'p8', code: 'WIN-68-0112', name: 'ระบบจองคิวผู้ป่วยนอก', customer: 'โรงพยาบาลเมืองใหม่', endUser: 'แผนกผู้ป่วยนอก', type: 'พัฒนาระบบ',
-    stage: 'warranty', team: 'DT4-1', revenue: 5_400_000, cost: 3_700_000, budget: 5_500_000, sm: 'rk', sale: 'Sirinya B.', pm: 'ak', collaborators: [],
+    stage: 'warranty', team: 'DT4-CNA', revenue: 5_400_000, cost: 3_700_000, budget: 5_500_000, sm: 'rk', sales: ['Sirinya B.'], pm: 'ak', collaborators: [],
     startWarranty: '2025-12-05', endWarranty: '2026-12-05', nextStep: 'ส่งหนังสือแจ้งหมดประกัน + เสนอราคา MA ปี 2', cover: PHOTOS.talk,
     history: [{ stage: 'warranty', note: 'Go-Live และเริ่มรับประกัน 12 เดือน', at: '5 ธ.ค. 68', by: 'Arthit K.' }],
   },
   { customerAccountId: 'a-port', salesMotion: 'tender', 
     id: 'p9', code: 'WIN-68-0087', name: 'Network Monitoring Center', customer: 'การท่าเรือภาคตะวันออก', endUser: 'กองเทคโนโลยี', type: 'ซื้อขาย',
-    stage: 'warranty', team: 'DT3', revenue: 14_200_000, cost: 11_300_000, budget: 15_000_000, sm: 'np', sale: 'Kittipat O.', pm: 'ks', collaborators: [],
+    stage: 'warranty', team: 'DT1', revenue: 14_200_000, cost: 11_300_000, budget: 15_000_000, sm: 'np', sales: ['Kittipat O.'], pm: 'ks', collaborators: [],
     startWarranty: '2025-11-28', endWarranty: '2026-11-28', nextStep: 'ลูกค้าตอบรับต่อ MA — รอ PO', cover: PHOTOS.server,
     history: [],
   },
   { customerAccountId: 'a-ed9', salesMotion: 'tender', 
     id: 'p10', code: 'WIN-68-0045', name: 'ระบบสารบรรณอิเล็กทรอนิกส์', customer: 'สำนักงานเขตพื้นที่การศึกษา 9', endUser: 'กลุ่มอำนวยการ', type: 'พัฒนาระบบ',
-    stage: 'warranty', team: 'DT1', revenue: 3_900_000, cost: 2_500_000, budget: 4_000_000, sm: 'rk', sale: 'Sirinya B.', pm: 'ks', collaborators: [],
+    stage: 'warranty', team: 'DT4-LC', revenue: 3_900_000, cost: 2_500_000, budget: 4_000_000, sm: 'rk', sales: ['Sirinya B.'], pm: 'ks', collaborators: [],
     startWarranty: '2026-02-01', endWarranty: '2027-01-31', nextStep: 'ปิด Ticket ค้าง 2 รายการ', cover: PHOTOS.desk, history: [],
   },
   { customerAccountId: 'a-cbank', salesMotion: 'direct', 
     id: 'p11', code: 'LOSE-69-0012', name: 'SOC as a Service', customer: 'ธนาคารชุมชนพัฒนา', endUser: 'ฝ่ายความปลอดภัยไซเบอร์', type: 'เช่าซื้อ',
-    stage: 'lose', team: 'DT5', revenue: 11_000_000, cost: 8_900_000, budget: 10_000_000, sm: 'np', sale: 'Kittipat O.', collaborators: [],
+    stage: 'lose', team: 'DT2', revenue: 11_000_000, cost: 8_900_000, budget: 10_000_000, sm: 'np', sales: ['Kittipat O.'], collaborators: [],
     nextStep: 'ราคาสูงกว่าคู่แข่ง 9% — เก็บไว้เสนอรอบงบปี 70', cover: PHOTOS.city, loss: { reason: 'ราคาสูงกว่าคู่แข่ง', competitor: 'บจ. ไซเบอร์การ์ด', price: 10_050_000 }, stageSince: '2026-08-14', history: [],
   },
-  { customerAccountId: 'a-dtp', endUserAccountId: 'a-dtp-fin', salesMotion: 'tender', 
+  { customerAccountId: 'a-dtp', endUserAccountId: 'a-dtp-fin', salesMotion: 'tender', splits: [{ team: 'DT4-LC', pct: 50 }, { team: 'MA', pct: 50 }], 
     id: 'p12', code: 'MA-69-0004', name: 'MA ปีที่ 2 — ระบบบริหารครุภัณฑ์', customer: 'กรมส่งเสริมการค้าดิจิทัล', endUser: 'กองคลัง', type: 'MA',
-    stage: 'warranty', team: 'DT4-2', revenue: 1_200_000, cost: 640_000, budget: 1_200_000, sm: 'rk', sale: 'Sirinya B.', collaborators: [],
+    stage: 'warranty', team: 'DT4-LC', revenue: 1_200_000, cost: 640_000, budget: 1_200_000, sm: 'wm', sales: ['Sirinya B.'], collaborators: [],
     startWarranty: '2026-04-01', endWarranty: '2027-03-31', parentId: 'p2', nextStep: 'รายงาน SLA ไตรมาส 3', cover: PHOTOS.handshake, history: [],
   },
 ]
 
 export const TICKETS = [
-  { id: 'MA-2311', project: 'p8', title: 'ระบบส่ง SMS แจ้งคิวไม่ออกช่วงเช้า', severity: 'P1', status: 'กำลังแก้ไข', opened: '6 พ.ย. 08:42', sla: '4 ชม.', left: '1 ชม. 18 น.', owner: 'wm', resp: 'ตอบใน 12 น.', used: 68, paused: false },
-  { id: 'MA-2308', project: 'p9', title: 'Dashboard ไม่แสดงสถานะ Switch ชั้น 3', severity: 'P2', status: 'รอลูกค้ายืนยัน', opened: '5 พ.ย. 13:10', sla: '8 ชม.', left: 'หยุดนับ', owner: 'wm', resp: 'ตอบใน 40 น.', used: 55, paused: true },
-  { id: 'MA-2301', project: 'p10', title: 'ขอเพิ่มรายงานหนังสือเข้า-ออกรายไตรมาส', severity: 'CR', status: 'ประเมินราคา', opened: '1 พ.ย. 10:05', sla: '—', left: '—', owner: 'wm', resp: 'ตอบใน 2 ชม.', used: 0, paused: false },
-  { id: 'MA-2296', project: 'p12', title: 'Export Excel ครุภัณฑ์ช้าเกิน 1 นาที', severity: 'P3', status: 'กำลังแก้ไข', opened: '30 ต.ค. 15:30', sla: '3 วัน', left: 'เกิน 6 ชม.', owner: 'wm', resp: 'ตอบช้า 1 ชม.', used: 108, paused: false },
+  { id: 'MA-2311', project: 'p8', title: 'ระบบส่ง SMS แจ้งคิวไม่ออกช่วงเช้า', severity: 'P1', status: 'กำลังแก้ไข', opened: '6 พ.ย. 08:42', sla: '4 ชม.', left: '1 ชม. 18 น.', owner: 'cc', resp: 'ตอบใน 12 น.', used: 68, paused: false, channel: 'Helpdesk' },
+  { id: 'MA-2308', project: 'p9', title: 'Dashboard ไม่แสดงสถานะ Switch ชั้น 3', severity: 'P2', status: 'รอลูกค้ายืนยัน', opened: '5 พ.ย. 13:10', sla: '8 ชม.', left: 'หยุดนับ', owner: 'wm', resp: 'ตอบใน 40 น.', used: 55, paused: true, channel: 'โทรศัพท์' },
+  { id: 'MA-2301', project: 'p10', title: 'ขอเพิ่มรายงานหนังสือเข้า-ออกรายไตรมาส', severity: 'CR', status: 'ประเมินราคา', opened: '1 พ.ย. 10:05', sla: '—', left: '—', owner: 'wm', resp: 'ตอบใน 2 ชม.', used: 0, paused: false, channel: 'อีเมล' },
+  { id: 'MA-2296', project: 'p12', title: 'Export Excel ครุภัณฑ์ช้าเกิน 1 นาที', severity: 'P3', status: 'กำลังแก้ไข', opened: '30 ต.ค. 15:30', sla: '3 วัน', left: 'เกิน 6 ชม.', owner: 'wm', resp: 'ตอบช้า 1 ชม.', used: 108, paused: false, channel: 'Helpdesk' },
 ]
 
 export const TODAY_ISO = '2026-11-06'

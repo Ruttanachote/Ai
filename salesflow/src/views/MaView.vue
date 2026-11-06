@@ -4,8 +4,8 @@ import Avatar from '../components/Avatar.vue'
 import StageBadge from '../components/StageBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
-import { projects, scope } from '../store'
-import { TICKETS, CONTRACTS, baht, daysUntil, thDate, addDays, mb } from '../data/mock'
+import { projects, scope, tickets as allTickets } from '../store'
+import { CONTRACTS, baht, daysUntil, thDate, addDays, mb } from '../data/mock'
 import { warrantyBucket, bookedValue, sum } from '../domain/metrics'
 import { customerName } from '../display'
 
@@ -20,7 +20,7 @@ const buckets = computed(() => [
   { k: '31–120 วัน', d: 'ส่งใบเสนอราคา MA — ลูกค้าภาครัฐต้องทันรอบตั้งงบ (ยื่นคำของบราว พ.ค.)', list: inBucket('due120'), tone: 'warm' },
   { k: 'มากกว่า 120 วัน', d: 'ดูแลตาม SLA และเก็บข้อมูลสุขภาพลูกค้า', list: inBucket('later'), tone: '' },
 ])
-const tickets = computed(() => TICKETS.filter((t) => ids.value.has(t.project)).map((t) => ({ ...t, p: scope.value.list.find((p) => p.id === t.project) })))
+const tickets = computed(() => allTickets.filter((t) => ids.value.has(t.project)).map((t) => ({ ...t, p: scope.value.list.find((p) => p.id === t.project) })))
 const renewals = computed(() => scope.value.list.filter((p) => p.type === 'MA'))
 const kpis = computed(() => [
   { label: 'โครงการในระยะประกัน', value: String(base.value.length), note: mb(sum(base.value, bookedValue)) + ' มูลค่าตามสัญญา' },

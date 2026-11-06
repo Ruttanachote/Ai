@@ -1,6 +1,6 @@
 // HTTP surface. `handle()` is transport-free so it can be unit tested; main.ts adapts node:http.
 // Every business rule comes from src/domain (shared with the web app) and is enforced here.
-import type { Project } from '../../../src/data/model.ts'
+import { allowedMoves, type Project } from '../../../src/data/model.ts'
 import { validateMove, checkContractValue, type MoveInput } from '../../../src/domain/rules.ts'
 import { decide, recall, type ApprovalRequest, ApprovalRuleError, canSendQuotation } from '../approval/approval.ts'
 import { AuthError, ForbiddenError, requireRole, type Principal } from '../auth/auth.ts'
@@ -40,10 +40,11 @@ export async function handle(d: Deps, req: Req): Promise<Res> {
     let m: RegExpExecArray | null
 
     if (req.method === 'POST' && (m = /^\/api\/projects\/([^/]+)\/move$/.exec(req.path))) {
-      requireRole(me, 'sm', 'head', 'exec', 'pmo', 'pm', 'ma', 'admin')
       const p = d.projects.get(m[1])
       if (!p) return json(404, { error: 'ไม่พบโครงการ' })
       const b = req.body as Omit<MoveInput, 'today' | 'poCheck' | 'hasContractFile'>
+      // Same transition table the web app uses to show buttons — enforced here.
+      if (!me.roles.some((r) => allowedMoves(p.stage, r, p.type).includes(b.to))) return json(403, { error: 'บทบาทของคุณย้ายสถานะนี้ไม่ได้' })
       const input: MoveInput = { ...b, today: d.today() }
       if (b.to === 'win' && b.contractValue) {
         input.poCheck = checkContractValue(p, { contractValue: b.contractValue, tolerancePct: d.settings.tolerancePct, gpDropPct: d.settings.gpDropPct }, d.today())
@@ -64,7 +65,7 @@ export async function handle(d: Deps, req: Req): Promise<Res> {
       const body = (req.body ?? {}) as { note?: string; channel?: 'web' | 'email_link' }
       if (m[2] === 'recall') recall(a, me.oid, d.now())
       else {
-        requireRole(me, 'head', 'exec', 'admin')
+        requireRole(me, 'deputy', 'exec', 'admin')
         decide(a, me.oid, m[2] as 'approve' | 'reject', d.now(), body)
       }
       return json(200, a)

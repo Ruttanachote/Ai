@@ -15,7 +15,7 @@ import ProcurementPanel from '../components/ProcurementPanel.vue'
 import { moveStage, notify, projects, session } from '../store'
 import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account } from '../data/mock'
 import { validateMove, checkContractValue, appealWindowEnd, reopenAsNew, isTender } from '../domain/rules'
-import { SETTINGS } from '../store'
+import { SETTINGS, newApprovalSteps } from '../store'
 import { probability, weightedValue, dealValue, teamShare } from '../domain/metrics'
 import { allowedMoves, stageOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
 
@@ -36,7 +36,7 @@ const tabs = computed(() => {
   return t
 })
 
-const moves = computed(() => (p.value ? allowedMoves(p.value.stage, session.role).filter((m) => !(p.value!.stage === 'lose' && m === 'pipeline')) : []))
+const moves = computed(() => (p.value ? allowedMoves(p.value.stage, session.role, p.value.type).filter((m) => !(p.value!.stage === 'lose' && m === 'pipeline')) : []))
 // Lost deals are never reopened in place (win rate history must not change) — heads open a new linked deal.
 const canReopen = computed(() => p.value?.stage === 'lose' && ['head', 'exec', 'admin'].includes(session.role))
 const target = ref<StageKey | null>(null)
@@ -115,11 +115,7 @@ function requestPostAward() {
   p.value.approval = {
     ...p.value.approval, version: 'v' + (Number(p.value.approval.version.slice(1)) + 1), status: 'pending', postAward: true, submittedAt: 'วันนี้',
     snapshot: { ...p.value.approval.snapshot!, contractValue: contractValue.value ?? undefined },
-    steps: [
-      { who: person(session.userId)?.name ?? '', whoId: session.userId, role: 'SM ส่งขออนุมัติหลังได้งาน', status: 'approved', at: 'วันนี้' },
-      { who: 'Supawadee W.', whoId: 'sw', role: 'หัวหน้ากลุ่ม DT4', status: 'pending' },
-      { who: 'Thanakorn C.', whoId: 'tc', role: 'ผู้บริหาร', status: 'waiting' },
-    ],
+    steps: newApprovalSteps(session.userId, 'SM ส่งขออนุมัติหลังได้งาน'),
   }
   target.value = null
   notify('ส่งขออนุมัติหลังได้งาน (มูลค่า PO ต่างจากที่อนุมัติ) แล้ว')
@@ -231,7 +227,7 @@ const drop = ref(false)
 
         <section class="panel people">
           <div class="pp"><Avatar :id="p.sm" :size="40" /><div><span>Owner Project (SM)</span><strong>{{ person(p.sm)?.name }}</strong></div></div>
-          <div class="pp"><Avatar :label="p.sale || '?'" :size="40" /><div><span>Account Executive (Sale)</span><strong>{{ p.sale || 'ยังไม่ระบุ' }}</strong><em>รับใบเสนอราคาทางอีเมล ไม่ใช้ระบบ</em></div></div>
+          <div class="pp"><Avatar :label="p.sales[0] ?? '?'" :size="40" /><div><span>Sale ที่ทำงานคู่กับ SM</span><strong>{{ p.sales.length ? p.sales.join(', ') : 'ยังไม่ระบุ — ต้องมีอย่างน้อย 1 คน' }}</strong><em>ข้อมูลอ้างอิง · Sale ไม่ได้ใช้ One Platform</em></div></div>
           <div class="pp"><Avatar :id="p.pm" :size="40" :label="p.pm ? undefined : '?'" /><div><span>Project Manager</span><strong>{{ person(p.pm)?.name ?? (post ? 'รอ PMO มอบหมาย' : 'มอบหมายหลัง Close Win') }}</strong></div></div>
           <div v-if="p.collaborators.length" class="collab"><span class="small muted">ผู้ร่วมงาน</span><div><Avatar v-for="c in p.collaborators" :key="c" :id="c" :size="28" /></div></div>
         </section>

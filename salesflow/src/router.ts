@@ -21,6 +21,8 @@ const router = createRouter({
     { path: '/accounts', component: () => import('./views/AccountsView.vue') },
     { path: '/accounts/:id', component: () => import('./views/AccountDetailView.vue'), props: true },
     { path: '/guarantees', component: () => import('./views/GuaranteesView.vue') },
+    { path: '/procurement', component: () => import('./views/ProcurementView.vue') },
+    { path: '/helpdesk', component: () => import('./views/HelpdeskView.vue') },
     { path: '/print/quotation/:id', component: () => import('./views/QuotationPrintView.vue'), props: true },
   ],
 })

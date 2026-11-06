@@ -1,4 +1,4 @@
-# ตั้งค่า Microsoft 365 สำหรับ SalesFlow (P0-6 least privilege)
+# ตั้งค่า Microsoft 365 สำหรับ One Platform (P0-6 least privilege)
 
 ทำครั้งเดียวต่อ tenant โดย Global Admin / Exchange Admin / SharePoint Admin
 ตรวจทุกขั้นกับเอกสาร Microsoft ล่าสุดก่อนรันจริง — คำสั่งด้านล่างยังไม่ได้รันกับ tenant จริง
@@ -11,7 +11,7 @@
 | Credential | Certificate (สำหรับ OBO client assertion) | Certificate เท่านั้น — ไม่ใช้ client secret |
 | Graph (Delegated) | `User.Read`, `Files.ReadWrite` (อ่าน Workbook ของ SM), `Calendars.ReadWrite` (นัด Handover ในนามของ PMO) | — |
 | Graph (Application) | — | `Sites.Selected`, `Mail.Send` (จำกัดด้วย RBAC ข้อ 3) |
-| App Roles | `SalesFlow.SM`, `.Head`, `.Exec`, `.PMO`, `.PM`, `.MA`, `.Admin` | — |
+| App Roles | `OnePlatform.SM`, `.Head`, `.Deputy`, `.Exec`, `.PMO`, `.OPN`, `.PM`, `.MA`, `.CallCenter`, `.Admin` (Sale ไม่มีบทบาท เพราะไม่ได้ใช้ระบบ) | — |
 | Expose an API | `api://<web-client-id>/access_as_user` | — |
 
 ห้ามให้ permission แบบ `*.All` กับ Worker (เช่น `Sites.ReadWrite.All`, `Mail.Send` ที่ไม่ได้จำกัดขอบเขต)

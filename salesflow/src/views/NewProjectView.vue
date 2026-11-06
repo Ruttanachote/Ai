@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
-import { ACCOUNTS, PHOTOS, TEAMS, TODAY_ISO, account, person } from '../data/mock'
+import { ACCOUNTS, PHOTOS, SALES_TEAMS, TODAY_ISO, account, person } from '../data/mock'
 import { validateCreate } from '../domain/rules'
 import type { ProjectType } from '../data/model'
 import { notify, projects, session } from '../store'
@@ -10,13 +10,15 @@ import { notify, projects, session } from '../store'
 const router = useRouter()
 const me = person(session.userId)
 const f = reactive({
-  name: '', customerAccountId: '', endUserAccountId: '', type: 'พัฒนาระบบ' as ProjectType, team: me?.team ?? 'DT4-2',
-  budget: null as number | null, expectedClose: '', sale: '', nextStep: '', note: '',
+  name: '', customerAccountId: '', endUserAccountId: '', type: 'พัฒนาระบบ' as ProjectType, team: SALES_TEAMS.some((t) => t.code === me?.team) ? me!.team! : 'DT4-LC',
+  budget: null as number | null, expectedClose: '', sales: '', nextStep: '', note: '',
 })
 const touched = reactive<Record<string, boolean>>({})
+const salesList = computed(() => f.sales.split(',').map((x) => x.trim()).filter(Boolean))
 const errors = computed(() => ({
   name: !f.name.trim() ? 'ใส่ชื่อโครงการ' : '',
   budget: f.budget !== null && f.budget < 0 ? 'งบประมาณต้องไม่ติดลบ' : '',
+  sales: salesList.value.length ? '' : 'ใส่ชื่อ Sale อย่างน้อย 1 คน',
 }))
 const busy = ref(false)
 const serverErrors = ref<string[]>([])
@@ -25,12 +27,13 @@ const endUsers = computed(() => ACCOUNTS.filter((a) => a.parentId === f.customer
 
 function create() {
   touched.name = true
-  if (errors.value.name || errors.value.budget) return
+  touched.sales = true
+  if (errors.value.name || errors.value.budget || errors.value.sales) return
   const cust = account(f.customerAccountId)
   const draft = {
     id: '', code: '', name: f.name.trim(), customer: cust?.name ?? 'รอระบุลูกค้า', endUser: account(f.endUserAccountId)?.name ?? cust?.name ?? 'รอระบุลูกค้า',
     customerAccountId: f.customerAccountId || undefined, endUserAccountId: f.endUserAccountId || undefined,
-    type: f.type, stage: 'opportunity' as const, team: f.team, revenue: 0, cost: 0, budget: f.budget ?? 0, sm: session.userId, sale: f.sale,
+    type: f.type, stage: 'opportunity' as const, team: f.team, revenue: 0, cost: 0, budget: f.budget ?? 0, sm: session.userId, sales: salesList.value,
     collaborators: [], nextStep: '', cover: PHOTOS.workshop, history: [],
   }
   const v = validateCreate(draft, TODAY_ISO)
@@ -41,7 +44,7 @@ function create() {
     id, code: 'OPP-69-' + String(150 + projects.length).padStart(4, '0'), name: f.name.trim(),
     customer: draft.customer, endUser: draft.endUser, customerAccountId: draft.customerAccountId, endUserAccountId: draft.endUserAccountId,
     salesMotion: cust && cust.sector !== 'enterprise' ? 'tender' : 'direct', stageSince: TODAY_ISO, type: f.type, stage: 'opportunity', team: f.team,
-    revenue: 0, cost: 0, budget: f.budget ?? 0, sm: session.userId, sale: f.sale, collaborators: [],
+    revenue: 0, cost: 0, budget: f.budget ?? 0, sm: session.userId, sales: salesList.value, collaborators: [],
     expectedClose: f.expectedClose || undefined, nextStep: f.nextStep || 'ระบุลูกค้าและนัดเก็บ Requirement', cover: PHOTOS.workshop,
     history: [{ stage: 'opportunity', note: `สร้างโครงการ งบประมาณลูกค้า ฿${(f.budget ?? 0).toLocaleString()}`, at: 'วันนี้', by: me?.name ?? '' }],
   })
@@ -94,8 +97,8 @@ function create() {
 
         <div class="two">
           <div class="field">
-            <label for="team">ทีม DT (Profit Center)</label>
-            <select id="team" v-model="f.team" class="input"><option v-for="t in TEAMS" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option></select>
+            <label for="team">ทีมเจ้าของโครงการ (Profit Center)</label>
+            <select id="team" v-model="f.team" class="input"><option v-for="t in SALES_TEAMS" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option></select>
           </div>
           <div class="field">
             <label for="bud">Budget ลูกค้า (บาท)</label>
@@ -106,7 +109,12 @@ function create() {
 
         <div class="two">
           <div class="field"><label for="ec">Expected Close</label><input id="ec" v-model="f.expectedClose" class="input" type="date" /></div>
-          <div class="field"><label for="sale">Account Executive (Sale)</label><input id="sale" v-model="f.sale" class="input" /><span class="hint">Sale รับใบเสนอราคาทางอีเมล</span></div>
+          <div class="field">
+            <label for="sale">Sale ที่ทำงานคู่กับคุณ</label>
+            <input id="sale" v-model="f.sales" class="input" placeholder="เช่น Sirinya B., Pongsak T." :aria-invalid="touched.sales && !!errors.sales" @blur="touched.sales = true" />
+            <span v-if="touched.sales && errors.sales" class="err">{{ errors.sales }}</span>
+            <span v-else class="hint">อย่างน้อย 1 คน คั่นด้วยจุลภาค · Sale ไม่ได้ใช้ One Platform</span>
+          </div>
         </div>
 
         <div class="field"><label for="ns">Next step</label><input id="ns" v-model="f.nextStep" class="input" placeholder="เช่น นัดเก็บ Requirement 12 พ.ย." /></div>

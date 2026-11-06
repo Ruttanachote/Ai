@@ -5,10 +5,13 @@
 //   calendar) using the Web app registration's certificate — never a client secret in prod.
 import { createHash, createPublicKey, createSign, createVerify, randomUUID, type KeyObject } from 'node:crypto'
 
-export type Role = 'sm' | 'head' | 'exec' | 'pmo' | 'pm' | 'ma' | 'admin'
+import type { Role } from '../../../src/data/model.ts'
+export type { Role }
+/** Entra ID App Role values → One Platform roles. Sale has no role: Sale does not sign in. */
 export const APP_ROLE_VALUES: Record<string, Role> = {
-  'SalesFlow.SM': 'sm', 'SalesFlow.Head': 'head', 'SalesFlow.Exec': 'exec', 'SalesFlow.PMO': 'pmo',
-  'SalesFlow.PM': 'pm', 'SalesFlow.MA': 'ma', 'SalesFlow.Admin': 'admin',
+  'OnePlatform.SM': 'sm', 'OnePlatform.Head': 'head', 'OnePlatform.Deputy': 'deputy', 'OnePlatform.Exec': 'exec',
+  'OnePlatform.PMO': 'pmo', 'OnePlatform.OPN': 'opn', 'OnePlatform.PM': 'pm', 'OnePlatform.MA': 'ma',
+  'OnePlatform.CallCenter': 'callcenter', 'OnePlatform.Admin': 'admin',
 }
 
 export interface Principal { oid: string; name?: string; upn?: string; roles: Role[]; tid: string; teams: string[] }

@@ -162,7 +162,7 @@ const sign = (claims: object, key: KeyObject = privateKey, kid = 'k1') => {
 }
 const T = 'tenant-1'
 const opts = { tenantId: T, audience: 'api://salesflow', keys: async (kid: string) => (kid === 'k1' ? publicKey : undefined), now: 1_800_000_000_000 }
-const claims = (o: object = {}) => ({ tid: T, iss: `https://login.microsoftonline.com/${T}/v2.0`, aud: 'api://salesflow', exp: 1_800_000_600, nbf: 1_799_999_000, oid: 'u1', name: 'RK', roles: ['SalesFlow.SM', 'SalesFlow.Head', 'Other.Role'], ...o })
+const claims = (o: object = {}) => ({ tid: T, iss: `https://login.microsoftonline.com/${T}/v2.0`, aud: 'api://salesflow', exp: 1_800_000_600, nbf: 1_799_999_000, oid: 'u1', name: 'RK', roles: ['OnePlatform.SM', 'OnePlatform.Head', 'Other.Role'], ...o })
 
 test('valid token maps App Roles (multi-role) and requireRole enforces them', async () => {
   const p = await verifyAccessToken(sign(claims()), opts)
@@ -185,7 +185,7 @@ test('rejects bad signature, wrong audience/tenant, expiry, and users without a 
 test('API enforces shared rules and Graph webhook validation', async () => {
   const deps: Deps = {
     authenticate: async (h) => { if (!h) throw new AuthError('no token'); return { oid: 'sm1', roles: ['sm'], tid: T, teams: [] } },
-    projects: new Map([['p', { id: 'p', code: 'C', name: 'X', customer: '', endUser: '', type: 'MA', stage: 'rebidding', team: 'DT2', revenue: 1, cost: 1, budget: 1, sm: 'sm1', sale: '', collaborators: [], nextStep: '', cover: '', history: [] }]]),
+    projects: new Map([['p', { id: 'p', code: 'C', name: 'X', customer: '', endUser: '', type: 'MA', stage: 'rebidding', team: 'DT2', revenue: 1, cost: 1, budget: 1, sm: 'sm1', sales: [], collaborators: [], nextStep: '', cover: '', history: [] }]]),
     approvals: new Map([['a1', newReq()]]),
     today: () => '2026-11-06', now: () => '2026-11-06T10:00:00Z', clientState: 'secret',
     onDriveNotification: () => {}, settings: { tolerancePct: 2, gpDropPct: 3 }, hasContractFile: async () => true,
@@ -201,4 +201,8 @@ test('API enforces shared rules and Graph webhook validation', async () => {
   assert.equal(good.status, 200)
   const self = await handle(deps, { method: 'POST', path: '/api/approvals/a1/approve', headers: { authorization: 'Bearer x' }, query: q0 })
   assert.equal(self.status, 403)
+  // an SM cannot move a project out of Handover — that is PMO/PM work
+  deps.projects.get('p')!.stage = 'handover'
+  const pmOnly = await handle(deps, { method: 'POST', path: '/api/projects/p/move', headers: { authorization: 'Bearer x' }, query: q0, body: { to: 'delivery', gateChecked: true } })
+  assert.equal(pmOnly.status, 403)
 })

@@ -102,3 +102,55 @@ export function health(p: Project, today: string): Health[] {
     { k: 'Payment', tone: 'ok', note: `รับแล้ว ${ms.filter((m) => m.paid).length}/${ms.length} งวด` },
   ]
 }
+
+/* ---------------- Cost Sheet lines (Cost Sheet tab, OT reserve, procurement budget) ---------------- */
+
+export type CostKind = 'manday' | 'procure' | 'ot' | 'other'
+export interface CostLine { name: string; amt: number; kind: CostKind }
+export interface CostGroup { group: string; items: CostLine[] }
+
+/**
+ * Cost Sheet structure read from the workbook (named ranges in production). Man-day lines are
+ * estimated by the SM from the TOR; Hardware/Software lines are the budget OPN approves PRs
+ * against; the OT line is the reserve the PM may approve within.
+ */
+export function costSheet(p: Project): CostGroup[] {
+  const base = p.cost || 6_000_000
+  return [
+    { group: 'ทีมพัฒนา (Man-day ตาม TOR)', items: [
+      { name: 'Project Manager 1 คน × 120 วัน', amt: base * 0.09, kind: 'manday' },
+      { name: 'System Analyst / BA 2 คน × 90 วัน', amt: base * 0.11, kind: 'manday' },
+      { name: 'Developer 4 คน × 140 วัน', amt: base * 0.24, kind: 'manday' },
+      { name: 'QA / Tester 1 คน × 60 วัน', amt: base * 0.04, kind: 'manday' },
+    ] },
+    { group: 'Hardware / Software (จัดซื้อผ่าน OPN)', items: [
+      { name: 'Server และ Storage', amt: base * 0.2, kind: 'procure' },
+      { name: 'License ฐานข้อมูลและ OS (3 ปี)', amt: base * 0.12, kind: 'procure' },
+    ] },
+    { group: 'เงินสำรองและค่าบริการอื่น', items: [
+      { name: 'เงินกันทำ OT ทีม (5%)', amt: base * 0.05, kind: 'ot' },
+      { name: 'ค่าเดินทาง อบรม และจัดประชุม', amt: base * 0.06, kind: 'other' },
+      { name: 'Contingency / ความเสี่ยงโครงการ', amt: base * 0.04, kind: 'other' },
+      { name: 'ค่า Warranty 12 เดือน', amt: base * 0.05, kind: 'other' },
+    ] },
+  ]
+}
+export const costLines = (p: Project) => costSheet(p).flatMap((g) => g.items)
+
+/** OT: reserve from the Cost Sheet, approved and pending requests, what is left for the PM to approve. */
+export function otBudget(p: Project) {
+  const reserve = Math.round(costLines(p).filter((l) => l.kind === 'ot').reduce((s, l) => s + l.amt, 0))
+  const approved = (p.ot ?? []).filter((o) => o.status === 'approved').reduce((s, o) => s + o.amount, 0)
+  const pending = (p.ot ?? []).filter((o) => o.status === 'pending').reduce((s, o) => s + o.amount, 0)
+  return { reserve, approved, pending, left: reserve - approved }
+}
+
+/** Procurement: each Hardware/Software line's budget against PRs approved or turned into POs. */
+export function procurementBudget(p: Project) {
+  return costLines(p).filter((l) => l.kind === 'procure').map((l) => {
+    const prs = (p.procurement ?? []).filter((r) => r.budgetLine === l.name)
+    const committed = prs.filter((r) => r.status === 'approved' || r.status === 'po_issued').reduce((s, r) => s + r.amount, 0)
+    const pending = prs.filter((r) => r.status === 'pending').reduce((s, r) => s + r.amount, 0)
+    return { line: l.name, budget: Math.round(l.amt), committed, pending, left: Math.round(l.amt) - committed }
+  })
+}

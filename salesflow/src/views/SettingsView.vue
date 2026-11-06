@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { ROLES, type Role } from '../data/model'
-import { TEAMS, mb, thDate } from '../data/mock'
+import { TEAMS, GROUP_NAME, mb, thDate } from '../data/mock'
 import { TH_GOV_2026 } from '../domain/calendar'
 import { SETTINGS } from '../store'
 import PageHeader from '../components/PageHeader.vue'
@@ -9,31 +9,37 @@ import PageHeader from '../components/PageHeader.vue'
 const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'teams' | 'm365'>('roles')
 const R = Object.keys(ROLES) as Role[]
 type Level = 'full' | 'own' | 'view' | ''
+// Columns follow ROLES: SM, หัวหน้ากลุ่ม, รองผู้บริหาร, ผู้บริหาร, PMO, OPN, PM, MA, Call center, Admin
 const MATRIX: { cap: string; v: Level[] }[] = [
-  { cap: 'ลงทะเบียน / แก้ไขโครงการช่วงขาย', v: ['own', 'full', 'view', 'view', '', '', 'full'] },
-  { cap: 'แก้ไข Cost Sheet และใบเสนอราคา', v: ['own', 'full', 'view', '', '', '', 'full'] },
-  { cap: 'อนุมัติราคา', v: ['', 'full', 'full', '', '', '', 'full'] },
-  { cap: 'เปลี่ยนสถานะ Opportunity → Close Win', v: ['own', 'full', 'full', '', '', '', 'full'] },
-  { cap: 'เปิด Close Lose กลับเป็น Pipeline', v: ['', 'full', 'full', '', '', '', 'full'] },
-  { cap: 'ยกเลิกโครงการหลังชนะ (Cancelled)', v: ['', 'full', 'full', '', '', '', 'full'] },
-  { cap: 'Handover · มอบหมาย PM และทีม DT', v: ['', 'full', 'view', 'full', 'view', '', 'full'] },
-  { cap: 'แผนงาน Task Workload Risk CR', v: ['view', 'view', 'view', 'full', 'own', '', 'full'] },
-  { cap: 'ประกัน หนังสือแจ้ง Ticket', v: ['view', 'view', 'view', 'view', 'own', 'full', 'full'] },
-  { cap: 'เปิดโครงการ MA ใหม่จากโครงการเดิม', v: ['own', 'full', '', '', '', 'full', 'full'] },
-  { cap: 'Dashboard ยอดขายทุกทีม', v: ['', 'own', 'full', 'view', '', '', 'full'] },
-  { cap: 'จัดการผู้ใช้ สิทธิ์ ทีม และ Template', v: ['', '', '', '', '', '', 'full'] },
+  { cap: 'ลงทะเบียน / แก้ไขโครงการช่วงขาย', v: ['own', 'own', 'view', 'view', 'view', '', '', '', '', 'full'] },
+  { cap: 'แก้ไข Cost Sheet และใบเสนอราคา (Man-day ตาม TOR)', v: ['own', 'view', 'view', 'view', '', '', '', '', '', 'full'] },
+  { cap: 'อนุมัติ Cost Sheet และใบเสนอราคา', v: ['', '', 'full', 'full', '', '', '', '', '', 'full'] },
+  { cap: 'เปลี่ยนสถานะ Opportunity → Close Win', v: ['own', 'own', 'full', 'full', '', '', '', '', '', 'full'] },
+  { cap: 'เปิดโครงการใหม่จากงานที่แพ้ / ยกเลิกหลังชนะ', v: ['', 'own', 'full', 'full', '', '', '', '', '', 'full'] },
+  { cap: 'จัดประชุม Handover · มอบหมาย PM', v: ['view', 'view', 'view', 'view', 'full', 'view', 'view', 'view', '', 'full'] },
+  { cap: 'แผนงาน Task ความเสี่ยง CR', v: ['view', 'own', 'view', 'view', 'full', '', 'own', 'view', '', 'full'] },
+  { cap: 'อนุมัติ OT ในเงินกันของ Cost Sheet', v: ['', '', '', '', '', '', 'own', '', '', 'full'] },
+  { cap: 'ขอซื้อ (PR) ตามงบ Cost Sheet', v: ['', '', '', '', '', 'view', 'own', '', '', 'full'] },
+  { cap: 'อนุมัติเบิกจ่ายจัดซื้อ', v: ['', '', 'view', 'view', '', 'full', 'view', '', '', 'full'] },
+  { cap: 'ประกัน หนังสือแจ้งลูกค้า ต่อสัญญา MA', v: ['view', 'view', 'view', 'view', 'view', '', '', 'full', 'view', 'full'] },
+  { cap: 'ออกใบเสนอราคาต่อสัญญา MA', v: ['', '', '', '', '', '', '', 'full', '', 'full'] },
+  { cap: 'รับเคส Helpdesk / Ticket', v: ['', '', '', '', '', '', '', 'full', 'full', 'full'] },
+  { cap: 'Dashboard ยอดขาย', v: ['own', 'own', 'full', 'full', '', '', '', '', '', 'full'] },
+  { cap: 'จัดการผู้ใช้ สิทธิ์ ทีม และ Template', v: ['', '', '', '', '', '', '', '', '', 'full'] },
 ]
 const LBL: Record<Level, string> = { full: 'ทั้งหมด', own: 'ของตัวเอง', view: 'ดูได้', '': '—' }
 const RULES = [
-  { when: 'GP ≥ 30% และมูลค่า ≤ ฿5M', who: 'หัวหน้ากลุ่ม DT', sla: '2 วันทำการ' },
-  { when: 'GP 25–30% หรือมูลค่า ฿5M–20M', who: 'หัวหน้ากลุ่ม DT → ผู้บริหาร', sla: '3 วันทำการ' },
-  { when: 'GP < 25% หรือมูลค่า > ฿20M', who: 'หัวหน้ากลุ่ม DT → ผู้บริหาร → CFO', sla: '5 วันทำการ' },
-  { when: 'โครงการ MA ต่อสัญญา', who: 'หัวหน้ากลุ่ม DT', sla: '2 วันทำการ' },
+  { when: 'Cost Sheet + ใบเสนอราคา ทุกโครงการขาย', who: 'รองผู้บริหาร DT → ผู้บริหาร DT', sla: '2 + 2 วันทำการ' },
+  { when: 'ขออนุมัติหลังได้งาน (PO ต่างจากที่อนุมัติ)', who: 'รองผู้บริหาร DT → ผู้บริหาร DT', sla: '2 + 2 วันทำการ' },
+  { when: 'ใบเสนอราคาต่อสัญญา MA (ทีม MA ออกเอง)', who: 'รองผู้บริหาร DT → ผู้บริหาร DT', sla: '2 + 2 วันทำการ' },
+  { when: 'เบิกจ่ายจัดซื้อ (PR) ภายในงบ Cost Sheet', who: 'OPN (DT3-2)', sla: '3 วันทำการ' },
+  { when: 'OT ภายในเงินกันใน Cost Sheet', who: 'Project Manager', sla: 'ภายในสัปดาห์' },
+  { when: 'OT เกินเงินกัน', who: 'หัวหน้าทีม Dev → รองผู้บริหาร DT', sla: '2 วันทำการ' },
 ]
 const APPS = [
-  { name: 'SalesFlow Web', use: 'หน้าเว็บ + API: เข้าสู่ระบบ, App Roles, อ่าน Excel แทน SM (OBO)', cred: 'Certificate',
+  { name: 'One Platform Web', use: 'หน้าเว็บ + API: เข้าสู่ระบบ, App Roles, อ่าน Excel แทน SM (OBO)', cred: 'Certificate',
     perms: ['User.Read (Delegated)', 'Files.ReadWrite (Delegated) — อ่าน Named range ตอนกด Sync/ส่งอนุมัติ', 'Calendars.ReadWrite (Delegated) — นัด Handover ในนามของ PMO'] },
-  { name: 'SalesFlow Worker', use: 'งานเบื้องหลัง: โฟลเดอร์ SharePoint, ส่งอีเมล, ตรวจไฟล์ถูกแก้', cred: 'Certificate',
+  { name: 'One Platform Worker', use: 'งานเบื้องหลัง: โฟลเดอร์ SharePoint, ส่งอีเมล, ตรวจไฟล์ถูกแก้', cred: 'Certificate',
     perms: ['Sites.Selected (Application) — write เฉพาะไซต์ Stream Projects', 'Mail.Send (Application) — จำกัดด้วย Exchange RBAC ให้ส่งได้จาก salesflow@ เท่านั้น'] },
 ]
 const NOT_USED = [
@@ -116,8 +122,10 @@ function addHoliday() {
 
     <section v-if="tab === 'teams'" class="panel">
       <table class="table">
-        <thead><tr><th>รหัส</th><th>ชื่อทีม</th><th class="r">เป้ายอดขายปี 2569</th></tr></thead>
-        <tbody><tr v-for="t in TEAMS" :key="t.code"><td><strong>{{ t.code }}</strong></td><td>{{ t.name }}</td><td class="r num">{{ mb(t.target) }}</td></tr></tbody>
+        <thead><tr><th>รหัส</th><th>ชื่อทีม</th><th>กลุ่ม</th><th>บทบาท</th><th>เดิม</th><th class="r">เป้ายอดขายปี 2569</th></tr></thead>
+        <tbody><tr v-for="t in TEAMS" :key="t.code"><td><strong>{{ t.code }}</strong></td><td>{{ t.name }}</td><td class="small">{{ GROUP_NAME[t.group] }}</td>
+          <td><span class="chip" :class="t.kind === 'sales' ? 'presale' : ''">{{ t.kind === 'sales' ? 'ทีมขาย/พัฒนา' : t.kind === 'support' ? 'ทีมสนับสนุน' : 'ผู้บริหาร' }}</span></td>
+          <td class="small muted">{{ t.formerly ?? '—' }}</td><td class="r num">{{ t.target ? mb(t.target) : '—' }}</td></tr></tbody>
       </table>
     </section>
 

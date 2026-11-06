@@ -2,15 +2,15 @@
 import { computed, reactive, ref, watch } from 'vue'
 import Avatar from './Avatar.vue'
 import Icon from './Icon.vue'
-import type { ContractTerms, Project, Task } from '../data/model'
+import { HANDOVER_PARTIES, type ContractTerms, type OtRequest, type Project, type Task } from '../data/model'
 import { handoverGate, isTender } from '../domain/rules'
-import { effort, health, lateTasks, paidAmount, progressPct } from '../domain/metrics'
+import { effort, health, lateTasks, paidAmount, progressPct, otBudget } from '../domain/metrics'
 import KpiStrip from './KpiStrip.vue'
-import { PEOPLE, TEAMS, baht, person, thDate, TODAY, TODAY_ISO } from '../data/mock'
+import { PEOPLE, SALES_TEAMS, baht, groupOf, person, thDate, TODAY, TODAY_ISO } from '../data/mock'
 import { notify, session } from '../store'
 
 const props = defineProps<{ p: Project }>()
-const view = ref<'plan' | 'tasks' | 'risks'>('plan')
+const view = ref<'plan' | 'tasks' | 'ot' | 'risks'>('plan')
 
 /* ---------- Handover (Close Win → Handover) ---------- */
 const done = !!props.p.handoverDone
@@ -43,10 +43,32 @@ function saveTerms() {
 }
 const gate = computed(() => handoverGate(props.p, checklist.every((c) => c.done)))
 
+// Handover meeting: SM, PM, MA, OPN and the Dev team lead. PMO invites them (calendar event
+// with a Teams link) and ticks attendance after the meeting; the gate needs all five.
+const devLeadOf = (team: string) => PEOPLE.find((x) => x.role === 'head' && x.team === team)?.id ?? PEOPLE.find((x) => x.role === 'head' && x.team === groupOf(team))?.id ?? ''
+const DEFAULT_WHO = { ma: 'wm', opn: 'op' }
 function assign() {
   props.p.pm = pick.pm
   props.p.team = pick.team
-  notify(`มอบหมาย ${person(pick.pm)?.name} เป็น PM แล้ว — สร้างนัดประชุม Handover (Teams) ในปฏิทินของ PMO`)
+  props.p.handover = {
+    meetingAt: props.p.handover?.meetingAt ?? 'นัดแล้ว',
+    attendees: HANDOVER_PARTIES.map(({ k }) => ({
+      party: k,
+      who: k === 'sm' ? props.p.sm : k === 'pm' ? pick.pm : k === 'devlead' ? devLeadOf(pick.team) : DEFAULT_WHO[k],
+      attended: props.p.handover?.attendees.find((a) => a.party === k)?.attended ?? false,
+    })),
+  }
+  notify(`มอบหมาย ${person(pick.pm)?.name} เป็น PM แล้ว — ส่งนัดประชุม Handover (Teams) ถึงผู้เข้าร่วม 5 ฝ่าย`)
+}
+const canMarkAttendance = computed(() => ['pmo', 'admin'].includes(session.role))
+
+/* ---------- OT (PM approves within the Cost Sheet reserve) ---------- */
+const ot = computed(() => otBudget(props.p))
+const canApproveOt = computed(() => (session.role === 'pm' && props.p.pm === session.userId) || session.role === 'admin')
+function decideOt(o: OtRequest, ok: boolean) {
+  if (ok && o.amount > ot.value.left) return
+  o.status = ok ? 'approved' : 'rejected'
+  notify(ok ? `อนุมัติ OT ${person(o.who)?.name} ${o.hours} ชม.` : 'ไม่อนุมัติ OT แล้ว')
 }
 
 /* ---------- Gantt ---------- */
@@ -116,19 +138,30 @@ const crs = [
           <label for="pm">Project Manager</label>
           <select id="pm" v-model="pick.pm" class="input" :disabled="!canAssign">
             <option value="" disabled>เลือก PM</option>
-            <option v-for="u in PEOPLE.filter((x) => x.role === 'pm' && ['ak', 'ks'].includes(x.id))" :key="u.id" :value="u.id">{{ u.name }} · {{ u.team }}</option>
+            <option v-for="u in PEOPLE.filter((x) => x.role === 'pm' && x.team === 'DT3-3')" :key="u.id" :value="u.id">{{ u.name }} · PMO</option>
           </select>
         </div>
         <div class="field">
           <label for="team">ทีม DT ที่พัฒนา</label>
           <select id="team" v-model="pick.team" class="input" :disabled="!canAssign">
-            <option v-for="t in TEAMS" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option>
+            <option v-for="t in SALES_TEAMS" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option>
           </select>
           <span class="hint">ดูความว่างของทีมได้ที่เมนู Workload ทีม</span>
         </div>
         <button v-if="canAssign" class="btn primary" :disabled="!pick.pm" @click="assign">มอบหมาย PM และนัดประชุม Handover</button>
         <p v-else class="hint">PMO หรือหัวหน้ากลุ่มเป็นผู้มอบหมาย PM</p>
       </div>
+    </div>
+    <div class="att">
+      <h3>ผู้เข้าประชุม Handover</h3>
+      <p v-if="!p.handover" class="hint">มอบหมาย PM ก่อน ระบบจะส่งนัดถึง SM, PM, ทีม MA, OPN และหัวหน้าทีม Dev</p>
+      <ul v-else>
+        <li v-for="a in p.handover.attendees" :key="a.party">
+          <Avatar :id="a.who" :size="28" />
+          <span><strong>{{ HANDOVER_PARTIES.find((x) => x.k === a.party)?.label }}</strong><em>{{ person(a.who)?.name ?? 'ยังไม่ระบุ' }}</em></span>
+          <label class="ok"><input v-model="a.attended" type="checkbox" :disabled="!canMarkAttendance" /> เข้าร่วมแล้ว</label>
+        </li>
+      </ul>
     </div>
     <div class="terms">
       <h3>เงื่อนไขสัญญา</h3>
@@ -155,6 +188,7 @@ const crs = [
     <div class="tabs" role="tablist">
       <button role="tab" :aria-selected="view === 'plan'" @click="view = 'plan'">Timeline และงวดงาน</button>
       <button role="tab" :aria-selected="view === 'tasks'" @click="view = 'tasks'">Task board</button>
+      <button role="tab" :aria-selected="view === 'ot'" @click="view = 'ot'">OT</button>
       <button role="tab" :aria-selected="view === 'risks'" @click="view = 'risks'">ความเสี่ยงและ Change request</button>
     </div>
 
@@ -198,6 +232,34 @@ const crs = [
       </div>
     </section>
 
+    <section v-if="view === 'ot'" class="panel">
+      <div class="panel-head"><h2>OT ทีมพัฒนา</h2><span class="muted small">PM อนุมัติได้ไม่เกินเงินกัน OT ใน Cost Sheet ที่อนุมัติ</span></div>
+      <div class="otbar" role="img" :aria-label="`ใช้ไป ${ot.approved} จาก ${ot.reserve}`">
+        <i class="a" :style="{ width: Math.min(100, (ot.approved / ot.reserve) * 100) + '%' }" />
+        <i class="p" :style="{ width: Math.min(100 - (ot.approved / ot.reserve) * 100, (ot.pending / ot.reserve) * 100) + '%' }" />
+      </div>
+      <p class="small otl"><span>อนุมัติแล้ว <b class="num">{{ baht(ot.approved) }}</b></span><span>รออนุมัติ <b class="num">{{ baht(ot.pending) }}</b></span><span>คงเหลือ <b class="num">{{ baht(ot.left) }}</b> จาก {{ baht(ot.reserve) }}</span></p>
+      <table class="table">
+        <thead><tr><th>ผู้ขอ</th><th>สัปดาห์</th><th class="r">ชม.</th><th class="r">จำนวนเงิน</th><th>เหตุผล</th><th>สถานะ</th></tr></thead>
+        <tbody>
+          <tr v-for="o in p.ot ?? []" :key="o.id">
+            <td><span class="who"><Avatar :id="o.who" :size="24" />{{ person(o.who)?.name }}</span></td>
+            <td class="small">{{ o.week }}</td><td class="r num">{{ o.hours }}</td><td class="r num">{{ baht(o.amount) }}</td>
+            <td class="small">{{ o.reason }}</td>
+            <td>
+              <template v-if="o.status === 'pending' && canApproveOt">
+                <button class="btn sm primary" :disabled="o.amount > ot.left" @click="decideOt(o, true)">อนุมัติ</button>
+                <button class="btn sm ghost" @click="decideOt(o, false)">ไม่อนุมัติ</button>
+                <p v-if="o.amount > ot.left" class="small bad">เกินเงินกัน — ต้องให้หัวหน้าทีม Dev และรองผู้บริหารอนุมัติ</p>
+              </template>
+              <span v-else class="chip" :class="o.status === 'approved' ? 'win' : o.status === 'rejected' ? 'lose' : 'warn'">{{ o.status === 'approved' ? 'อนุมัติแล้ว' : o.status === 'rejected' ? 'ไม่อนุมัติ' : 'รอ PM อนุมัติ' }}</span>
+            </td>
+          </tr>
+          <tr v-if="!(p.ot ?? []).length"><td colspan="6" class="muted">ยังไม่มีคำขอ OT</td></tr>
+        </tbody>
+      </table>
+    </section>
+
     <section v-if="view === 'risks'" class="rgrid">
       <div class="panel">
         <div class="panel-head"><h2>ความเสี่ยงและปัญหา</h2><button class="btn sm">เพิ่มความเสี่ยง</button></div>
@@ -230,6 +292,21 @@ const crs = [
 
 <style scoped>
 .hand { margin-bottom: 20px; }
+.att { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.att h3 { margin-bottom: 10px; }
+.att ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.att li { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); }
+.att li span { display: grid; line-height: 1.3; font-size: 13.5px; }
+.att em { font-style: normal; color: var(--muted); font-size: 12.5px; }
+.att .ok { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.att .ok input { accent-color: var(--ink); width: 16px; height: 16px; }
+.otbar { position: relative; height: 12px; background: var(--idle-soft); border-radius: 99px; overflow: hidden; display: flex; }
+.otbar i { display: block; height: 100%; }
+.otbar .a { background: var(--post); }
+.otbar .p { background: repeating-linear-gradient(45deg, var(--warn) 0 4px, var(--warn-soft) 4px 8px); }
+.otl { display: flex; gap: 20px; flex-wrap: wrap; margin: 10px 0 14px; color: var(--muted); }
+.otl b { color: var(--ink); }
+.who { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .terms { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 14px; justify-items: start; }
 .tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; width: 100%; align-items: start; }
 .tgrid .field { align-content: start; }

@@ -35,7 +35,7 @@ watch(() => route.path, () => (menuOpen.value = false))
       <div class="brand">
         <span class="word">STREAM</span>
         <svg class="chev" viewBox="0 0 10 16" width="10" height="16" aria-hidden="true"><path d="M1.5 1.5L8 8l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        <span class="sub">SalesFlow</span>
+        <span class="sub">One Platform</span>
         <button class="btn ghost close" aria-label="ปิดเมนู" @click="menuOpen = false"><Icon name="x" /></button>
       </div>
 

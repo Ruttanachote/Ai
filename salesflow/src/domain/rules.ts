@@ -1,6 +1,6 @@
 // Business rules shared by the web app (to explain why a button is disabled) and the
 // server (to enforce them). Pure functions only — no I/O, no Vue, no Graph.
-import { stageOf, type Project, type StageKey } from '../data/model.ts'
+import { HANDOVER_PARTIES, stageOf, type Project, type StageKey } from '../data/model.ts'
 import { addWorkingDays, type BusinessCalendar, TH_GOV_2026 } from './calendar.ts'
 
 export interface RuleResult { ok: boolean; errors: string[] }
@@ -32,6 +32,7 @@ export function requirementsFor(stage: StageKey, p: Project, today: string): str
   if (idx(stage) >= idx('pipeline') && idx(stage) >= 0) {
     if (!p.customerAccountId) e.push('ต้องเลือกลูกค้าจากทะเบียนลูกค้า (Account)')
     if (!p.team) e.push('ต้องระบุทีม DT')
+    if (!(p.sales ?? []).length) e.push('ต้องมี Sale ที่ทำงานคู่กับ SM อย่างน้อย 1 คน')
   }
   if (idx(stage) >= idx('forecast') && idx(stage) >= 0) {
     if (!validApproval(p, today)) e.push('ต้องมีใบเสนอราคาที่อนุมัติครบและยังไม่หมดอายุ')
@@ -103,6 +104,9 @@ export function handoverGate(p: Project, checklistDone: boolean): RuleResult {
   const e: string[] = []
   if (!checklistDone) e.push('Checklist Handover ยังไม่ครบ')
   if (!p.pm) e.push('ยังไม่ได้มอบหมาย PM')
+  const att = p.handover?.attendees ?? []
+  const missing = HANDOVER_PARTIES.filter((x) => !att.some((a) => a.party === x.k && a.who && a.attended))
+  if (missing.length) e.push('ประชุม Handover ยังขาด: ' + missing.map((x) => x.label).join(', '))
   const t = p.terms
   if (!t) e.push('ยังไม่ได้กรอกเงื่อนไขสัญญา (ค่าปรับ ประกัน SLA)')
   else {

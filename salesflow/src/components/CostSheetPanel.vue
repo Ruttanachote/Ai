@@ -4,7 +4,9 @@ import Icon from './Icon.vue'
 import Dialog from './Dialog.vue'
 import type { Project } from '../data/model'
 import { baht, person, thDate, TODAY_ISO } from '../data/mock'
-import { notify, session, SETTINGS } from '../store'
+import { notify, session, SETTINGS, newApprovalSteps, canDecideStep, APPROVER_OF } from '../store'
+import { APPROVAL_CHAIN } from '../data/model'
+import { costSheet } from '../domain/metrics'
 
 // One Excel workbook per project (SharePoint), tabs: Summary · Cost Sheet · Quotation.
 // The system reads named ranges after each save and shows the summary here.
@@ -20,24 +22,8 @@ const locked = computed(() => ['opportunity'].includes(props.p.stage))
 const base = computed(() => props.p.cost || 6_000_000)
 const rev = computed(() => props.p.revenue || base.value * 1.38)
 
-const lines = computed(() => [
-  { group: 'ทีมพัฒนา (Man-day)', items: [
-    { name: 'Project Manager 1 คน × 120 วัน', amt: base.value * 0.09 },
-    { name: 'System Analyst / BA 2 คน × 90 วัน', amt: base.value * 0.11 },
-    { name: 'Developer 4 คน × 140 วัน', amt: base.value * 0.24 },
-    { name: 'QA / Tester 1 คน × 60 วัน', amt: base.value * 0.04 },
-  ] },
-  { group: 'Hardware / Software', items: [
-    { name: 'Server และ Storage', amt: base.value * 0.2 },
-    { name: 'License ฐานข้อมูลและ OS (3 ปี)', amt: base.value * 0.12 },
-  ] },
-  { group: 'เงินสำรองและค่าบริการอื่น', items: [
-    { name: 'เงินกันทำ OT ทีม (5%)', amt: base.value * 0.05 },
-    { name: 'ค่าเดินทาง อบรม และจัดประชุม', amt: base.value * 0.06 },
-    { name: 'Contingency / ความเสี่ยงโครงการ', amt: base.value * 0.04 },
-    { name: 'ค่า Warranty 12 เดือน', amt: base.value * 0.05 },
-  ] },
-])
+// Same lines the OT reserve and procurement budgets are drawn from.
+const lines = computed(() => costSheet(props.p))
 const total = computed(() => lines.value.flatMap((g) => g.items).reduce((s, i) => s + i.amt, 0))
 const gp = computed(() => rev.value - total.value)
 const gpPct = computed(() => (gp.value / rev.value) * 100)
@@ -59,7 +45,7 @@ const isSubmitter = computed(() => (a.value?.submittedBy ?? props.p.sm) === sess
 const canDecide = computed(() => {
   const s = pendingStep.value
   if (!s || isSubmitter.value) return false
-  return (session.role === 'head' && s.role.includes('หัวหน้า')) || (session.role === 'exec' && s.role.includes('ผู้บริหาร')) || session.role === 'admin'
+  return canDecideStep(s, session.role)
 })
 const approved = computed(() => !!a.value && a.value.status !== 'stale' && a.value.steps.every((s) => s.status === 'approved'))
 const expired = computed(() => approved.value && !!a.value?.validUntil && a.value.validUntil < TODAY_ISO)
@@ -79,7 +65,8 @@ function recall() {
   a.value.steps.forEach((s) => { if (s.status === 'pending') s.status = 'waiting' })
   notify('ดึงคำขออนุมัติกลับแล้ว แก้ไฟล์แล้วส่งใหม่ได้')
 }
-const isOwner = computed(() => session.role === 'sm' || session.role === 'head' || session.role === 'admin')
+// SM owns sales quotations; for MA-type renewals the MA team issues the quotation itself.
+const isOwner = computed(() => (props.p.type === 'MA' ? ['ma', 'admin'] : ['sm', 'head', 'admin']).includes(session.role))
 const canSubmit = computed(() => isOwner.value && (!a.value || ['stale', 'recalled', 'rejected'].includes(a.value.status ?? '') || a.value.steps.some((s) => s.status === 'rejected') || expired.value))
 
 function submit() {
@@ -99,13 +86,9 @@ function submit() {
     eTag: `"{3F2A},${14 + nextV}"`,
     archivedPath: `Cost Sheet/Submitted/v${nextV}.xlsx`,
     validUntil: valid.toISOString().slice(0, 10),
-    steps: [
-      { who: person(session.userId)?.name ?? '', whoId: session.userId, role: 'SM ส่งขออนุมัติ', status: 'approved', at: 'วันนี้' },
-      { who: 'Supawadee W.', whoId: 'sw', role: 'หัวหน้ากลุ่ม DT4', status: 'pending' },
-      { who: 'Thanakorn C.', whoId: 'tc', role: 'ผู้บริหาร', status: 'waiting' },
-    ],
+    steps: newApprovalSteps(session.userId, props.p.type === 'MA' ? 'ทีม MA ส่งขออนุมัติ' : 'SM ส่งขออนุมัติ'),
   }
-  notify('ส่งอีเมลขออนุมัติ (ลิงก์เข้าระบบ) ถึง Supawadee W. แล้ว')
+  notify(`ส่งอีเมลขออนุมัติ (ลิงก์เข้าระบบ) ถึง ${props.p.approval.steps[1].who} แล้ว`)
 }
 function decide() {
   if (!a.value || !canDecide.value) return
@@ -213,7 +196,7 @@ function decide() {
               <p class="small">{{ s.who }}<template v-if="s.at"> · {{ s.at }}</template></p>
               <p v-if="s.note" class="note small">“{{ s.note }}”</p>
               <p v-if="s.status === 'pending'" class="small wait">รอพิจารณา — ครบกำหนด SLA 3 วันทำการ เกินแล้วส่งเตือนซ้ำและแจ้งผู้รับมอบอำนาจแทน</p>
-              <p v-if="s.status === 'pending' && s.role.includes('ผู้บริหาร')" class="small muted">ผู้รับมอบอำนาจแทนช่วงลา: Supawadee W. (ตั้งค่าใน Settings)</p>
+              <p v-if="s.status === 'pending' && s.approver === 'exec'" class="small muted">ผู้รับมอบอำนาจแทนช่วงลา: Kittiya R. (รองผู้บริหาร) (ตั้งค่าใน Settings)</p>
             </div>
           </li>
         </ol>
@@ -238,11 +221,11 @@ function decide() {
 
   <Dialog :open="sendOpen" title="ส่งขออนุมัติราคา" wide @close="sendOpen = false">
     <div class="mail">
-      <p><span>ถึง</span> Supawadee W. (หัวหน้ากลุ่ม DT4)</p>
-      <p><span>สำเนา</span> Thanakorn C. (ผู้บริหาร) — จะได้รับคำขอหลังหัวหน้ากลุ่มอนุมัติ</p>
+      <p><span>ถึง</span> {{ person(APPROVER_OF[APPROVAL_CHAIN[0].role])?.name }} ({{ APPROVAL_CHAIN[0].label }})</p>
+      <p><span>ถัดไป</span> {{ person(APPROVER_OF[APPROVAL_CHAIN[1].role])?.name }} ({{ APPROVAL_CHAIN[1].label }}) — ได้รับคำขอหลังขั้นแรกอนุมัติ</p>
       <p><span>เรื่อง</span> [ขออนุมัติราคา] {{ p.code }} {{ p.name }}</p>
       <div class="mbody">
-        เรียน คุณ Supawadee<br /><br />
+        เรียน คุณ{{ person(APPROVER_OF[APPROVAL_CHAIN[0].role])?.name }}<br /><br />
         ขออนุมัติราคาโครงการ {{ p.name }} ลูกค้า {{ p.customer }}<br />
         ราคาเสนอ {{ baht(Math.round(rev)) }} · ต้นทุน {{ baht(Math.round(total)) }} · GP {{ gpPct.toFixed(1) }}%<br /><br />
         ปุ่ม “อนุมัติ” และ “ส่งกลับแก้ไข” อยู่ในอีเมลนี้ (Outlook Actionable Message) หรือเปิดในระบบ
@@ -266,8 +249,8 @@ function decide() {
   </Dialog>
 
   <Dialog :open="saleOpen" title="ส่งใบเสนอราคาให้ Sale" @close="saleOpen = false">
-    <p>ระบบแปลงแท็บ Quotation เป็น PDF ({{ p.approval?.version }} ที่อนุมัติแล้ว) แนบในอีเมลถึง <strong>{{ p.sale || 'Sale ที่ดูแลลูกค้า' }}</strong> เพื่อส่งต่อให้ลูกค้าและยื่นประมูล</p>
-    <p class="hint">Sale ไม่ต้องเข้าระบบนี้ — รับไฟล์ทางอีเมลเท่านั้น</p>
+    <p>ระบบแปลงแท็บ Quotation เป็น PDF ({{ p.approval?.version }} ที่อนุมัติแล้ว) แนบในอีเมลถึง <strong>{{ p.sales.length ? p.sales.join(', ') : 'Sale ที่ดูแลลูกค้า' }}</strong> เพื่อส่งต่อให้ลูกค้าและยื่นประมูล</p>
+    <p class="hint">Sale ไม่ได้ใช้ One Platform — รับไฟล์ทางอีเมลเท่านั้น</p>
     <template #foot><button class="btn" @click="saleOpen = false">ยกเลิก</button><button class="btn primary" @click="saleOpen = false; notify('ส่งใบเสนอราคา PDF ให้ Sale แล้ว')">ส่งใบเสนอราคา</button></template>
   </Dialog>
 </template>

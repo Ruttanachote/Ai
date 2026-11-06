@@ -8,7 +8,7 @@ const files = readdirSync(dir)
 const js = readFileSync(join(dir, files.find((f) => f.endsWith('.js'))), 'utf8').replace(/<\/script/gi, '<\\/script')
 const css = readFileSync(join(dir, files.find((f) => f.endsWith('.css'))), 'utf8').replace(/<\/style/gi, '<\\/style')
 
-const html = `<title>Stream SalesFlow</title>
+const html = `<title>Stream One Platform</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=Bai+Jamjuree:wght@500;600;700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">

@@ -3,37 +3,41 @@ import type { Role } from './data/model'
 export interface NavItem { to: string; label: string; icon: string; roles: Role[] }
 export interface NavGroup { title: string; items: NavItem[] }
 
-const ALL: Role[] = ['sm', 'head', 'exec', 'pmo', 'pm', 'ma', 'admin']
+const ALL: Role[] = ['sm', 'head', 'deputy', 'exec', 'pmo', 'opn', 'pm', 'ma', 'callcenter', 'admin']
 
 // One module per job. A role only sees the modules it works in.
 export const NAV: NavGroup[] = [
   {
     title: 'งานขาย',
     items: [
-      { to: '/', label: 'ภาพรวมยอดขาย', icon: 'dashboard', roles: ['sm', 'head', 'exec', 'admin'] },
-      { to: '/pipeline', label: 'Pipeline board', icon: 'board', roles: ['sm', 'head', 'exec', 'admin'] },
+      { to: '/', label: 'ภาพรวมยอดขาย', icon: 'dashboard', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/pipeline', label: 'Pipeline board', icon: 'board', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
       { to: '/projects', label: 'ทะเบียนโครงการ', icon: 'list', roles: ALL },
       { to: '/projects/new', label: 'ลงทะเบียนโครงการ', icon: 'plus', roles: ['sm', 'head', 'admin'] },
-      { to: '/accounts', label: 'ทะเบียนลูกค้า', icon: 'people', roles: ['sm', 'head', 'exec', 'pmo', 'ma', 'admin'] },
+      { to: '/accounts', label: 'ทะเบียนลูกค้า', icon: 'people', roles: ['sm', 'head', 'deputy', 'exec', 'pmo', 'ma', 'admin'] },
     ],
   },
   {
     title: 'อนุมัติและการเงิน',
     items: [
-      { to: '/approvals', label: 'รออนุมัติราคา', icon: 'inbox', roles: ['head', 'exec', 'admin'] },
-      { to: '/guarantees', label: 'หลักประกัน', icon: 'shield', roles: ['head', 'exec', 'pmo', 'admin'] },
+      { to: '/approvals', label: 'รออนุมัติราคา', icon: 'inbox', roles: ['deputy', 'exec', 'admin'] },
+      { to: '/procurement', label: 'จัดซื้อและเบิกจ่าย', icon: 'file', roles: ['opn', 'pm', 'deputy', 'exec', 'admin'] },
+      { to: '/guarantees', label: 'หลักประกัน', icon: 'shield', roles: ['opn', 'head', 'deputy', 'exec', 'pmo', 'admin'] },
     ],
   },
   {
     title: 'ส่งมอบโครงการ',
     items: [
-      { to: '/delivery', label: 'Portfolio โครงการ', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'exec', 'admin'] },
+      { to: '/delivery', label: 'Portfolio โครงการ', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'deputy', 'exec', 'admin'] },
       { to: '/workload', label: 'Workload ทีม', icon: 'people', roles: ['pmo', 'pm', 'head', 'admin'] },
     ],
   },
   {
     title: 'ประกันและ MA',
-    items: [{ to: '/ma', label: 'ประกันและ MA', icon: 'shield', roles: ['ma', 'pmo', 'head', 'exec', 'sm', 'admin'] }],
+    items: [
+      { to: '/ma', label: 'ประกันและ MA', icon: 'shield', roles: ['ma', 'pmo', 'head', 'deputy', 'exec', 'sm', 'admin'] },
+      { to: '/helpdesk', label: 'Helpdesk', icon: 'ticket', roles: ['callcenter', 'ma', 'admin'] },
+    ],
   },
   {
     title: 'ระบบ',
@@ -42,7 +46,7 @@ export const NAV: NavGroup[] = [
 ]
 
 export const HOME: Record<Role, string> = {
-  sm: '/', head: '/approvals', exec: '/', pmo: '/delivery', pm: '/delivery', ma: '/ma', admin: '/settings',
+  sm: '/', head: '/', deputy: '/approvals', exec: '/', pmo: '/delivery', opn: '/procurement', pm: '/delivery', ma: '/ma', callcenter: '/helpdesk', admin: '/settings',
 }
 
 export const canSee = (path: string, role: Role) =>

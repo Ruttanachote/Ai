@@ -6,7 +6,7 @@ import Avatar from '../components/Avatar.vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
 import { projects, scope, session } from '../store'
-import { PHOTOS, TEAMS, mb, baht, daysUntil, daysSince, thDate, person } from '../data/mock'
+import { PHOTOS, SALES_TEAMS, GROUP_NAME, mb, baht, daysUntil, daysSince, thDate, person } from '../data/mock'
 import { stageOf, catOf, FORECAST_CAT, type StageKey } from '../data/model'
 import { winRate } from '../domain/rules'
 import { OPEN, isOpen, isWon, pipelineValue, bookedValue, weightedValue, teamTotals, sum } from '../domain/metrics'
@@ -18,10 +18,10 @@ const open = computed(() => mine.value.filter(isOpen))
 const wonList = computed(() => mine.value.filter(isWon))
 const visibleTeams = computed(() => {
   const s = scope.value
-  return 'teams' in s && s.teams ? TEAMS.filter((t) => s.teams!(t.code)) : TEAMS
+  return 'teams' in s && s.teams ? SALES_TEAMS.filter((t) => s.teams!(t.code)) : SALES_TEAMS
 })
 const PERSONAL_TARGET = 40_000_000
-const target = computed(() => (session.role === 'sm' ? PERSONAL_TARGET : visibleTeams.value.reduce((s, t) => s + t.target, 0)))
+const target = computed(() => (session.role === 'sm' ? PERSONAL_TARGET : visibleTeams.value.reduce((s, t) => s + (t.target ?? 0), 0)))
 const won = computed(() => sum(wonList.value, bookedValue))
 const weighted = computed(() => sum(open.value, weightedValue))
 const commit = computed(() => sum(open.value.filter((p) => catOf(p) === 'commit'), pipelineValue))
@@ -69,7 +69,8 @@ const funnel = computed(() => {
 const teams = computed(() =>
   visibleTeams.value.map((t) => {
     const { won: w, weighted: pipe } = teamTotals(projects, t.code)
-    return { ...t, won: w, pipe, wp: Math.min(100, (w / t.target) * 100), pp: Math.min(100, ((w + pipe) / t.target) * 100) }
+    const tg = t.target ?? 1
+    return { ...t, won: w, pipe, wp: Math.min(100, (w / tg) * 100), pp: Math.min(100, ((w + pipe) / tg) * 100) }
   }),
 )
 
@@ -159,17 +160,17 @@ const deadlines = computed(() =>
     </div>
 
     <section class="panel">
-      <div class="panel-head"><h2>ยอดขายเทียบเป้าราย DT</h2><span class="muted small">แถบเข้ม = ปิดแล้ว · แถบอ่อน = รวม Pipeline ถ่วงน้ำหนัก · นับตามสัดส่วนแบ่งยอดของแต่ละโครงการ</span></div>
+      <div class="panel-head"><h2>ยอดขายเทียบเป้าราย DT และทีมย่อย</h2><span class="muted small">แถบเข้ม = ปิดแล้ว · แถบอ่อน = รวม Pipeline ถ่วงน้ำหนัก · นับตามสัดส่วนแบ่งยอดของแต่ละโครงการ</span></div>
       <div class="scroll-x">
         <table class="table">
           <thead><tr><th>ทีม</th><th style="width:40%">ความคืบหน้า</th><th class="r">ปิดแล้ว</th><th class="r">Pipeline</th><th class="r">เป้าปี</th></tr></thead>
           <tbody>
             <tr v-for="t in teams" :key="t.code">
-              <td><strong>{{ t.code }}</strong> <span class="muted">{{ t.name }}</span></td>
+              <td><strong>{{ t.code }}</strong> <span class="muted">{{ t.name }}</span><p class="small muted">{{ GROUP_NAME[t.group] }}{{ t.formerly ? ' · เดิม ' + t.formerly : '' }}</p></td>
               <td><div class="tt"><i class="p" :style="{ width: t.pp + '%' }" /><i :style="{ width: t.wp + '%' }" /></div></td>
               <td class="r num">{{ baht(Math.round(t.won)) }}</td>
               <td class="r num muted">{{ baht(Math.round(t.pipe)) }}</td>
-              <td class="r num">{{ mb(t.target) }}</td>
+              <td class="r num">{{ mb(t.target ?? 0) }}</td>
             </tr>
           </tbody>
         </table>

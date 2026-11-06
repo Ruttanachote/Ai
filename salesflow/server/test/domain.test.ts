@@ -6,7 +6,7 @@ import type { Project } from '../../src/data/model.ts'
 
 const base = (o: Partial<Project> = {}): Project => ({
   id: 'p', code: 'C', name: 'Test', customer: 'X', endUser: 'X', type: 'พัฒนาระบบ', stage: 'pipeline', team: 'DT2',
-  revenue: 10_000_000, cost: 7_000_000, budget: 11_000_000, sm: 'rk', sale: '', collaborators: [], nextStep: '', cover: '',
+  revenue: 10_000_000, cost: 7_000_000, budget: 11_000_000, sm: 'rk', sales: ['Sirinya B.'], collaborators: [], nextStep: '', cover: '',
   history: [], customerAccountId: 'a1', expectedClose: '2026-12-20', ...o,
 })
 const approved = (rev = 10_000_000, cost = 7_000_000, validUntil = '2027-01-31') => ({
@@ -26,6 +26,8 @@ test('P0-7: cannot create straight into Forecast without an approved quote', () 
   assert.equal(r.ok, false)
   assert.ok(r.errors.some((e) => e.includes('ใบเสนอราคา')))
   assert.ok(validateCreate(base({ stage: 'opportunity', customerAccountId: undefined }), '2026-11-06').ok)
+  // from Pipeline on, a deal needs at least one Sale working with the SM
+  assert.ok(validateCreate(base({ stage: 'pipeline', sales: [] }), '2026-11-06').errors.some((e) => e.includes('Sale')))
 })
 
 test('P0-7: Pipeline → Forecast needs gate + approval that has not expired', () => {
@@ -83,7 +85,9 @@ test('P0-8: Close Lose needs a reason (and winner for competitor reasons); reope
 test('P0-11: handover needs contract terms, PM and (for tenders) a performance bond', () => {
   const p = base({ stage: 'handover', pm: 'ak', bid: { method: 'e-bidding' } })
   assert.equal(handoverGate(p, true).ok, false)
-  const ready = { ...p, terms: { penaltyBasis: 'whole_contract' as const, penaltyRatePerDay: 0.001, penaltyMinPerDay: 100, warrantyMonths: 12, whtRate: 0.01 as const },
+  assert.ok(handoverGate(p, true).errors.some((e) => e.includes('ประชุม Handover ยังขาด')))
+  const handover = { attendees: (['sm', 'pm', 'ma', 'opn', 'devlead'] as const).map((party) => ({ party, who: 'x', attended: true })) }
+  const ready = { ...p, handover, terms: { penaltyBasis: 'whole_contract' as const, penaltyRatePerDay: 0.001, penaltyMinPerDay: 100, warrantyMonths: 12, whtRate: 0.01 as const },
     bonds: [{ kind: 'performance' as const, pct: 5, amount: 1, form: 'BG', bank: 'B', issued: '2026-01-01', expires: '2027-01-01' }] }
   assert.deepEqual(handoverGate(ready, true).errors, [])
   assert.ok(handoverGate({ ...ready, terms: { ...ready.terms, penaltyRatePerDay: 0.01 } }, true).errors.some((e) => e.includes('0.20%')))

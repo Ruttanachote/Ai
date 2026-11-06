@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
-import type { Role, StageKey } from './data/model'
-import { PROJECTS, person } from './data/mock'
+import { APPROVAL_CHAIN, type Approval, type Role, type StageKey } from './data/model'
+import { PROJECTS, TICKETS, person, groupOf, GROUP_NAME } from './data/mock'
 
 // Demo session — in production this comes from Microsoft Entra ID (app roles claim).
 export const session = reactive({
@@ -10,7 +10,7 @@ export const session = reactive({
 })
 
 export const ROLE_USER: Record<Role, string> = {
-  sm: 'rk', head: 'sw', exec: 'tc', pmo: 'pj', pm: 'ak', ma: 'wm', admin: 'tc',
+  sm: 'rk', head: 'sw', deputy: 'kr', exec: 'tc', pmo: 'pj', opn: 'op', pm: 'ak', ma: 'wm', callcenter: 'cc', admin: 'tc',
 }
 
 export function setRole(r: Role) {
@@ -19,6 +19,8 @@ export function setRole(r: Role) {
 }
 
 export const projects = reactive(PROJECTS)
+/** Helpdesk tickets — Call center adds them, MA works them; one list for every page. */
+export const tickets = reactive(TICKETS)
 
 /**
  * The single project scope every page starts from, so a menu shows the same set of
@@ -26,23 +28,27 @@ export const projects = reactive(PROJECTS)
  *   SM   — projects they own or collaborate on
  *   Head — every project of their DT group (DT4 → DT4-1, DT4-2), including revenue splits
  *   PM   — projects they manage or work on
- *   MA   — projects in warranty, ended, or MA-type contracts
- *   Exec, PMO, Admin — everything
+ *   MA / Call center — from delivery (MA takes over at hand-off) to warranty, plus MA contracts
+ *   OPN  — won projects (procurement and project finance)
+ *   Deputy, Exec, PMO, Admin — everything
  */
 export const scope = computed(() => {
   const me = person(session.userId)
-  const group = me?.team?.split('-')[0]
+  const group = me?.team ? groupOf(me.team) : undefined
   switch (session.role) {
     case 'sm':
       return { label: 'โครงการของคุณ', list: projects.filter((p) => p.sm === session.userId || p.collaborators.includes(session.userId)) }
     case 'head': {
-      const inGroup = (t: string) => t === group || t.startsWith(group + '-')
-      return { label: `ทีม ${group} ทั้งกลุ่ม`, teams: (t: string) => inGroup(t), list: projects.filter((p) => inGroup(p.team) || (p.splits ?? []).some((x) => inGroup(x.team))) }
+      const inGroup = (t: string) => groupOf(t) === group
+      return { label: GROUP_NAME[group ?? ''] ?? `ทีม ${group}`, teams: (t: string) => inGroup(t), list: projects.filter((p) => inGroup(p.team) || (p.splits ?? []).some((x) => inGroup(x.team))) }
     }
     case 'pm':
       return { label: 'โครงการที่คุณดูแล', list: projects.filter((p) => p.pm === session.userId || p.collaborators.includes(session.userId)) }
     case 'ma':
-      return { label: 'โครงการในระยะประกันและ MA', list: projects.filter((p) => ['warranty', 'ended'].includes(p.stage) || p.type === 'MA') }
+    case 'callcenter':
+      return { label: 'โครงการในระยะประกันและ MA', list: projects.filter((p) => ['delivery', 'warranty', 'ended'].includes(p.stage) || p.type === 'MA') }
+    case 'opn':
+      return { label: 'โครงการที่ชนะแล้ว', list: projects.filter((p) => ['win', 'handover', 'delivery', 'warranty'].includes(p.stage)) }
     default:
       return { label: 'ทุกทีม DT', list: [...projects] }
   }
@@ -66,3 +72,20 @@ export function notify(text: string) {
   clearTimeout(timer)
   timer = window.setTimeout(() => (toast.show = false), 3200)
 }
+
+/** Who holds each approval role today (from Entra ID App Roles in production). */
+export const APPROVER_OF: Partial<Record<Role, string>> = { deputy: 'kr', exec: 'tc' }
+
+/** Steps for a new Cost Sheet + Quotation request: submitter, then the DT approval chain in order. */
+export function newApprovalSteps(submitterId: string, submitLabel: string): Approval['steps'] {
+  return [
+    { who: person(submitterId)?.name ?? '', whoId: submitterId, role: submitLabel, status: 'approved', at: 'วันนี้' },
+    ...APPROVAL_CHAIN.map((c, i) => ({
+      who: person(APPROVER_OF[c.role])?.name ?? c.label, whoId: APPROVER_OF[c.role], role: c.label, approver: c.role,
+      status: (i === 0 ? 'pending' : 'waiting') as 'pending' | 'waiting',
+    })),
+  ]
+}
+
+/** A step can be decided by the role it names (admin may act for support cases). */
+export const canDecideStep = (step: { approver?: Role } | undefined, role: Role) => !!step?.approver && (step.approver === role || role === 'admin')

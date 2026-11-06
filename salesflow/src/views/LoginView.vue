@@ -25,18 +25,18 @@ function signIn() {
 <template>
   <main class="login">
     <section class="visual">
-      <Photo :id="PHOTOS.login" :w="1600" alt="สำนักงานที่ทีมขายและทีมพัฒนาทำงานร่วมกัน" />
+      <Photo :id="PHOTOS.login" :w="1600" alt="สำนักงานที่ทีม DT ทำงานร่วมกัน" />
       <div class="caption">
         <div class="mark">
           <span>STREAM</span>
           <svg viewBox="0 0 10 16" width="12" height="19" aria-hidden="true"><path d="M1.5 1.5L8 8l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </div>
-        <h1>จากโอกาสขายแรก<br />ถึงวันต่อสัญญา MA<br />ในเส้นทางเดียว</h1>
+        <h1>One Platform<br />จากโอกาสขายแรก<br />ถึงวันต่อสัญญา MA</h1>
         <ol class="flow">
-          <li><b>Pre-sale</b> ลงทะเบียนโครงการ ทำ Cost Sheet และใบเสนอราคา</li>
-          <li><b>อนุมัติ</b> ส่งผู้บริหารผ่าน Outlook พร้อมเก็บทุกเวอร์ชัน</li>
-          <li><b>ส่งมอบ</b> PM วางแผน ติดตามงาน และดู Workload ทีม DT</li>
-          <li><b>MA</b> แจ้งเตือนหมดประกัน 30 วัน และเปิดสัญญาต่อ</li>
+          <li><b>Pre-sale</b> SM กับ Sale เก็บ Requirement ประเมิน Man-day ใน Cost Sheet ตาม TOR</li>
+          <li><b>อนุมัติ</b> รองผู้บริหาร แล้วผู้บริหาร DT พร้อมเก็บทุกเวอร์ชัน</li>
+          <li><b>Handover และส่งมอบ</b> SM PM MA OPN และหัวหน้าทีม Dev ส่งต่องาน PM คุมแผนและ OT</li>
+          <li><b>MA</b> ดูแลประกัน รับเคสผ่าน Helpdesk และออกใบเสนอราคาต่อสัญญาเอง</li>
         </ol>
       </div>
     </section>
@@ -44,7 +44,7 @@ function signIn() {
     <section class="form">
       <div class="box">
         <h2>เข้าสู่ระบบ</h2>
-        <p class="muted">ใช้บัญชี Microsoft ของบริษัท ระบบจะเปิดโมดูลตามตำแหน่งงานของคุณ</p>
+        <p class="muted">ใช้บัญชี Microsoft ของบริษัท ระบบจะเปิดโมดูลตามตำแหน่งงานของคุณ · เปิดใช้กับ DT SBU ก่อน แล้วขยายไป DB</p>
 
         <div class="field">
           <label for="role">บทบาทสำหรับเดโม</label>

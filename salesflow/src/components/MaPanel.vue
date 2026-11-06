@@ -3,16 +3,18 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Dialog from './Dialog.vue'
 import type { Project } from '../data/model'
-import { TICKETS, CONTRACTS, baht, daysUntil, thDate } from '../data/mock'
+import { CONTRACTS, baht, daysUntil, thDate, person, TODAY_ISO } from '../data/mock'
 import { bookedValue } from '../domain/metrics'
-import { notify, projects, session } from '../store'
+import { notify, projects, session, tickets as allTickets } from '../store'
 
 const props = defineProps<{ p: Project }>()
 const router = useRouter()
 const left = computed(() => daysUntil(props.p.endWarranty))
 const renewOpen = ref(false)
 const maPrice = ref(Math.round(bookedValue(props.p) * (CONTRACTS[props.p.id]?.uplift ?? 0.12)))
-const canAct = computed(() => ['ma', 'head', 'admin', 'sm'].includes(session.role))
+// The MA team contacts the customer and issues the renewal quotation itself.
+const canAct = computed(() => ['ma', 'admin'].includes(session.role))
+const maShare = ref(50)
 
 // Notice cadence: 90 days (internal), 60 days (SM/Sale prepare price), 30 days (letter to customer), 0 (end).
 const notices = computed(() => [
@@ -24,16 +26,20 @@ const notices = computed(() => [
   { d: 7, who: 'ลูกค้า', what: 'ติดตามคำตอบ ถ้ายังไม่ตอบ แจ้งหัวหน้ากลุ่ม' },
   { d: 0, who: 'ระบบ', what: 'หมดประกัน → ปิดโครงการ (Ended) หรือเปิดโครงการ MA ใหม่' },
 ])
-const tickets = computed(() => TICKETS.filter((t) => t.project === props.p.id))
+const tickets = computed(() => allTickets.filter((t) => t.project === props.p.id))
 
 function renew() {
   const id = 'p' + (projects.length + 1)
   projects.push({
     ...props.p, id, code: 'MA-69-' + String(projects.length + 1).padStart(4, '0'), name: 'MA ปีที่ 2 — ' + props.p.name, type: 'MA',
-    stage: 'opportunity', revenue: maPrice.value, cost: Math.round(maPrice.value * 0.55), budget: maPrice.value, parentId: props.p.id,
-    approval: undefined, milestones: undefined, tasks: undefined, startWarranty: undefined, endWarranty: undefined,
-    nextStep: 'ทำใบเสนอราคา MA และส่งขออนุมัติ',
-    history: [{ stage: 'opportunity', note: `เปิดจากโครงการเดิม ${props.p.code}`, at: 'วันนี้', by: 'Wichai M.' }],
+    // The MA team owns the renewal and issues its quotation; the deal starts at Pipeline so the Cost Sheet opens.
+    stage: 'pipeline', stageSince: TODAY_ISO, sm: session.role === 'ma' ? session.userId : 'wm', pm: undefined,
+    revenue: maPrice.value, cost: Math.round(maPrice.value * 0.55), budget: maPrice.value, parentId: props.p.id, contractValue: undefined,
+    splits: [{ team: props.p.team, pct: 100 - maShare.value }, { team: 'MA', pct: maShare.value }],
+    approval: undefined, milestones: undefined, tasks: undefined, ot: undefined, procurement: undefined, handover: undefined, terms: undefined, bonds: [],
+    startWarranty: undefined, endWarranty: undefined, loss: undefined,
+    nextStep: 'ทีม MA ทำใบเสนอราคาต่อสัญญาและส่งขออนุมัติ',
+    history: [{ stage: 'pipeline', note: `เปิดต่อสัญญา MA จากโครงการเดิม ${props.p.code}`, at: 'วันนี้', by: person(session.userId)?.name ?? 'ทีม MA' }],
   })
   renewOpen.value = false
   notify('สร้างโครงการ MA ใหม่ใต้โครงการเดิมแล้ว')
@@ -80,11 +86,16 @@ function renew() {
   </div>
 
   <Dialog :open="renewOpen" title="เปิดโครงการ MA ใหม่" @close="renewOpen = false">
-    <p>ระบบจะสร้างโครงการประเภท MA ใต้ <strong>{{ p.code }}</strong> คัดลอกลูกค้า ทีม และผู้ติดต่อ แล้วเริ่มที่สถานะ Opportunity เพื่อทำใบเสนอราคาและขออนุมัติตามขั้นตอนขาย</p>
+    <p>ระบบจะสร้างโครงการประเภท MA ใต้ <strong>{{ p.code }}</strong> ให้ทีม MA เป็นเจ้าของ คัดลอกลูกค้าและผู้ติดต่อ แล้วเริ่มที่ Pipeline เพื่อให้ทีม MA ทำใบเสนอราคาและส่งรองผู้บริหาร → ผู้บริหารอนุมัติ</p>
     <div class="field">
       <label for="mp">มูลค่า MA ต่อปี (ประมาณการ)</label>
       <input id="mp" v-model.number="maPrice" class="input num" type="number" min="0" step="10000" />
       <span class="hint">ค่าเริ่มต้น {{ Math.round((CONTRACTS[p.id]?.uplift ?? 0.12) * 100) }}% ของมูลค่าตามสัญญาเดิม ({{ baht(bookedValue(p)) }}) — ตัวเลขเดียวกับหน้าประกันและ MA</span>
+    </div>
+    <div class="field">
+      <label for="ms">ส่วนแบ่งรายได้ของทีม MA (%)</label>
+      <input id="ms" v-model.number="maShare" class="input num" type="number" min="0" max="100" step="5" />
+      <span class="hint">ที่เหลือ {{ 100 - maShare }}% นับเข้าเป้าของ {{ p.team }} ที่พัฒนาระบบ — ตั้งค่าเริ่มต้นได้ในหน้าตั้งค่า</span>
     </div>
     <template #foot><button class="btn" @click="renewOpen = false">ยกเลิก</button><button class="btn primary" @click="renew">สร้างโครงการ MA</button></template>
   </Dialog>

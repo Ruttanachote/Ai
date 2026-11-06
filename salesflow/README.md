@@ -1,4 +1,4 @@
-# Stream SalesFlow — ต้นแบบระบบบริหารโครงการขาย ส่งมอบ และ MA
+# Stream One Platform — ต้นแบบระบบบริหารโครงการขาย ส่งมอบ และ MA
 
 ต้นแบบหน้าจอ (Vue 3 + TypeScript + Vite) พร้อมข้อมูลตัวอย่าง สำหรับติดตามโครงการของทีม DT
 ตั้งแต่ Opportunity → Close Win → Delivery → Warranty → ต่อ MA
@@ -16,12 +16,14 @@ npm run build
 | บทบาท | หน้าแรก | ลองดู |
 |---|---|---|
 | Solution Manager | ภาพรวมยอดขาย | `#/projects/p2` → แท็บ Cost Sheet และใบเสนอราคา |
-| หัวหน้ากลุ่ม DT | รออนุมัติราคา | SOC as a Service (`#/projects/p11`) → เปิดโครงการใหม่จากดีลที่แพ้ |
-| ผู้บริหาร | ภาพรวมยอดขาย | อนุมัติ v3 ของโครงการ e-Service |
-| PMO | Portfolio | Handover ของ AI Document OCR (`#/projects/p7`) |
-| Project Manager | Portfolio | Smart Permit → แผนงาน Task ความเสี่ยง, Workload ทีม |
-| MA / Support | ประกันและ MA | ระบบจองคิว (`#/projects/p8`) → ต่อ MA |
-| ผู้ดูแลระบบ | สิทธิ์และการตั้งค่า | ตารางสิทธิ์ ลำดับอนุมัติ Microsoft 365 |
+| หัวหน้ากลุ่ม DT4 | ภาพรวมยอดขาย (เฉพาะกลุ่ม DT4) | SOC as a Service → เปิดโครงการใหม่จากดีลที่แพ้ |
+| รองผู้บริหาร / ผู้บริหาร DT | รออนุมัติราคา | อนุมัติใบเสนอราคา e-Service ตามลำดับ |
+| PMO (DT3-3) | Portfolio | AI Document OCR → Handover ผู้เข้าประชุม 5 ฝ่าย |
+| OPN (DT3-2) | จัดซื้อและเบิกจ่าย | อนุมัติ PR เทียบงบ Cost Sheet |
+| Project Manager | Portfolio | Smart Permit → แผนงาน → OT |
+| ทีม MA | ประกันและ MA | ระบบจองคิว → ต่อ MA (ทีม MA ออกใบเสนอราคาเอง) |
+| Call center | Helpdesk | เปิดเคส ตรวจความคุ้มครอง |
+| ผู้ดูแลระบบ | สิทธิ์และการตั้งค่า | ตารางสิทธิ์ 10 บทบาท ทีม DT 2026 |
 
 ## เว็บไซต์ต้นแบบ (ไฟล์เดียว)
 

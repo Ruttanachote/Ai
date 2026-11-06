@@ -4,18 +4,16 @@ import Avatar from '../components/Avatar.vue'
 import StageBadge from '../components/StageBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
-import { scope, session } from '../store'
+import { scope, session, canDecideStep } from '../store'
 import { baht, mb, TODAY_ISO } from '../data/mock'
 import { approvalState, pendingStep, gpPct, pipelineValue, sum, APPROVAL_LABEL } from '../domain/metrics'
 import { customerName } from '../display'
 
 // Same scope and approval state as the Cost Sheet tab and the Pipeline board chips.
-const mine = (role: string) =>
-  (session.role === 'head' && role.includes('หัวหน้า')) || (session.role === 'exec' && role.includes('ผู้บริหาร')) || session.role === 'admin'
 
 const withApproval = computed(() => scope.value.list.filter((p) => approvalState(p, TODAY_ISO) !== 'none'))
 const waiting = computed(() =>
-  withApproval.value.filter((p) => p.approval?.submittedBy !== session.userId && mine(pendingStep(p, TODAY_ISO)?.role ?? '')),
+  withApproval.value.filter((p) => p.approval?.submittedBy !== session.userId && canDecideStep(pendingStep(p, TODAY_ISO), session.role)),
 )
 const others = computed(() => withApproval.value.filter((p) => !waiting.value.includes(p)))
 const reopen = computed(() => (['head', 'exec', 'admin'].includes(session.role) ? scope.value.list.filter((p) => p.stage === 'lose') : []))
@@ -51,7 +49,7 @@ const kpis = computed(() => [
     </section>
 
     <section v-if="reopen.length" class="panel block">
-      <div class="panel-head"><h2>Close Lose ที่เปิดกลับได้</h2><span class="muted small">เฉพาะหัวหน้ากลุ่ม</span></div>
+      <div class="panel-head"><h2>งานที่แพ้ เปิดใหม่ได้</h2><span class="muted small">หัวหน้ากลุ่มและผู้บริหาร — เปิดเป็นโครงการใหม่</span></div>
       <router-link v-for="p in reopen" :key="p.id" :to="`/projects/${p.id}`" class="row">
         <span>{{ p.name }} <span class="muted small">· {{ p.nextStep }}</span></span><StageBadge :stage="p.stage" />
       </router-link>
