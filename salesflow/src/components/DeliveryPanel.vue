@@ -4,6 +4,8 @@ import Avatar from './Avatar.vue'
 import Icon from './Icon.vue'
 import type { ContractTerms, Project, Task } from '../data/model'
 import { handoverGate, isTender } from '../domain/rules'
+import { effort, health, lateTasks, paidAmount, progressPct } from '../domain/metrics'
+import KpiStrip from './KpiStrip.vue'
 import { PEOPLE, TEAMS, baht, person, thDate, TODAY, TODAY_ISO } from '../data/mock'
 import { notify, session } from '../store'
 
@@ -77,10 +79,18 @@ const move = (t: Task, dir: 1 | -1) => {
   const i = COLS.findIndex((c) => c.k === t.status)
   t.status = COLS[Math.min(3, Math.max(0, i + dir))].k
 }
-const effort = computed(() => {
-  const ts = props.p.tasks ?? []
-  return { plan: ts.reduce((s, t) => s + t.hours, 0), spent: ts.reduce((s, t) => s + t.spent, 0), late: ts.filter(late).length }
+// Same figures and RAG as the Portfolio card for this project.
+const kpis = computed(() => {
+  const e = effort(props.p)
+  const lateN = lateTasks(props.p, TODAY_ISO).length
+  return [
+    { label: 'ความคืบหน้ารวม', value: progressPct(props.p) + '%', note: health(props.p, TODAY_ISO)[0].note, tone: toneOf(health(props.p, TODAY_ISO)[0].tone) },
+    { label: 'ชั่วโมงใช้ไป / แผน', value: `${e.spent} / ${e.plan}`, note: health(props.p, TODAY_ISO)[1].note, tone: toneOf(health(props.p, TODAY_ISO)[1].tone) },
+    { label: 'Task เลยกำหนด', value: String(lateN), note: 'จาก Task board', tone: lateN ? ('bad' as const) : ('' as const) },
+    { label: 'รับชำระแล้ว', value: baht(paidAmount(props.p)), note: health(props.p, TODAY_ISO)[2].note },
+  ]
 })
+const toneOf = (t: 'ok' | 'warn' | 'bad') => (t === 'ok' ? ('' as const) : t)
 
 const risks = [
   { lvl: 'สูง', t: 'API ชำระเงินของธนาคารเปลี่ยนเวอร์ชันระหว่างพัฒนา', owner: 'dev3', act: 'นัด Tech call กับธนาคาร 8 พ.ย.' },
@@ -140,12 +150,7 @@ const crs = [
   </section>
 
   <template v-if="p.milestones">
-    <div class="stats">
-      <div><span>ความคืบหน้ารวม</span><strong class="num">{{ Math.round(p.milestones.reduce((s, m) => s + m.progress, 0) / p.milestones.length) }}%</strong></div>
-      <div><span>ชั่วโมงใช้ไป / แผน</span><strong class="num">{{ effort.spent }} / {{ effort.plan }}</strong></div>
-      <div><span>Task เลยกำหนด</span><strong class="num" :class="{ bad: effort.late }">{{ effort.late }}</strong></div>
-      <div><span>รับชำระแล้ว</span><strong class="num">{{ baht(p.milestones.filter((m) => m.paid).reduce((s, m) => s + (m.payment ?? 0), 0)) }}</strong></div>
-    </div>
+    <KpiStrip :items="kpis" />
 
     <div class="tabs" role="tablist">
       <button role="tab" :aria-selected="view === 'plan'" @click="view = 'plan'">Timeline และงวดงาน</button>
@@ -237,10 +242,6 @@ const crs = [
 .check input { width: 18px; height: 18px; accent-color: var(--ink); }
 .assign { display: grid; gap: 14px; align-content: start; }
 
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
-.stats > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; display: grid; }
-.stats span { font-size: 13px; color: var(--muted); }
-.stats strong { font-size: 22px; font-weight: 600; }
 .bad { color: var(--lose) !important; }
 
 .ginner { position: relative; min-width: 860px; padding: 28px 0 24px; }
@@ -283,5 +284,5 @@ const crs = [
 .rl li:last-child { border-bottom: 0; }
 .rl strong { font-weight: 500; }
 .empty { display: grid; gap: 10px; justify-items: start; }
-@media (max-width: 1100px) { .hgrid, .rgrid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .hgrid, .rgrid { grid-template-columns: 1fr; } }
 </style>

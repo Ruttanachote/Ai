@@ -2,39 +2,46 @@
 import { computed } from 'vue'
 import Avatar from '../components/Avatar.vue'
 import StageBadge from '../components/StageBadge.vue'
-import { projects, session } from '../store'
-import { baht } from '../data/mock'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
+import { scope, session } from '../store'
+import { baht, mb, TODAY_ISO } from '../data/mock'
+import { approvalState, pendingStep, gpPct, pipelineValue, sum, APPROVAL_LABEL } from '../domain/metrics'
+import { customerName } from '../display'
 
+// Same scope and approval state as the Cost Sheet tab and the Pipeline board chips.
 const mine = (role: string) =>
   (session.role === 'head' && role.includes('หัวหน้า')) || (session.role === 'exec' && role.includes('ผู้บริหาร')) || session.role === 'admin'
 
+const withApproval = computed(() => scope.value.list.filter((p) => approvalState(p, TODAY_ISO) !== 'none'))
 const waiting = computed(() =>
-  projects.filter((p) => !['stale', 'recalled'].includes(p.approval?.status ?? '') && p.approval?.submittedBy !== session.userId
-    && p.approval?.steps.some((s) => s.status === 'pending' && mine(s.role))),
+  withApproval.value.filter((p) => p.approval?.submittedBy !== session.userId && mine(pendingStep(p, TODAY_ISO)?.role ?? '')),
 )
-const others = computed(() =>
-  projects.filter((p) => p.approval && !waiting.value.includes(p)),
-)
-const gp = (r: number, c: number) => (r ? ((r - c) / r) * 100 : 0)
-const reopen = computed(() => (['head', 'admin'].includes(session.role) ? projects.filter((p) => p.stage === 'lose') : []))
+const others = computed(() => withApproval.value.filter((p) => !waiting.value.includes(p)))
+const reopen = computed(() => (['head', 'exec', 'admin'].includes(session.role) ? scope.value.list.filter((p) => p.stage === 'lose') : []))
+const kpis = computed(() => [
+  { label: 'ถึงคิวคุณ', value: String(waiting.value.length), note: mb(sum(waiting.value, pipelineValue)) + ' มูลค่ารวม', tone: waiting.value.length ? ('warn' as const) : ('' as const) },
+  { label: 'รอผู้อื่นพิจารณา', value: String(others.value.filter((p) => approvalState(p, TODAY_ISO) === 'pending').length), note: 'คำขอที่ยังไม่ครบทุกขั้น' },
+  { label: 'ต้องส่งใหม่', value: String(withApproval.value.filter((p) => ['stale', 'rejected', 'expired'].includes(approvalState(p, TODAY_ISO))).length), note: 'แก้ไฟล์หลังส่ง ส่งกลับ หรือหมดอายุ' },
+  { label: 'GP ต่ำกว่า 25%', value: String(waiting.value.filter((p) => (gpPct(p) ?? 100) < 25).length), note: 'ในคำขอที่ถึงคิวคุณ', tone: waiting.value.some((p) => (gpPct(p) ?? 100) < 25) ? ('bad' as const) : ('' as const) },
+])
 </script>
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <div><h1>รออนุมัติราคา</h1><p>คำขอที่ถึงคิวคุณ · อนุมัติได้จากอีเมล Outlook หรือจากหน้านี้</p></div>
-    </header>
+    <PageHeader module="อนุมัติและการเงิน" title="รออนุมัติราคา" :scope="scope.label" subtitle="อนุมัติได้จากหน้านี้หรือจากลิงก์ในอีเมล" />
+    <KpiStrip :items="kpis" />
 
     <section class="list">
       <router-link v-for="p in waiting" :key="p.id" :to="`/projects/${p.id}`" class="req">
         <Avatar :id="p.sm" :size="40" />
         <div class="main">
           <strong>{{ p.name }}</strong>
-          <p class="small muted">{{ p.code }} · {{ p.customer }} · ส่ง {{ p.approval?.version }} เมื่อ {{ p.approval?.submittedAt }}</p>
+          <p class="small muted">{{ p.code }} · {{ customerName(p) }} · ส่ง {{ p.approval?.version }} เมื่อ {{ p.approval?.submittedAt }}</p>
           <p v-for="s in p.approval?.steps.filter((x) => x.note)" :key="s.who" class="note small">{{ s.who }}: “{{ s.note }}”</p>
         </div>
-        <div class="fig"><span>ราคาเสนอ</span><b class="num">{{ baht(p.revenue) }}</b></div>
-        <div class="fig"><span>GP</span><b class="num" :class="gp(p.revenue, p.cost) < 25 ? 'bad' : 'good'">{{ gp(p.revenue, p.cost).toFixed(1) }}%</b></div>
+        <div class="fig"><span>ราคาเสนอ</span><b class="num">{{ baht(pipelineValue(p)) }}</b></div>
+        <div class="fig"><span>GP</span><b class="num" :class="(gpPct(p) ?? 0) < 25 ? 'bad' : 'good'">{{ (gpPct(p) ?? 0).toFixed(1) }}%</b></div>
         <span class="btn primary sm">พิจารณา</span>
       </router-link>
       <div v-if="!waiting.length" class="panel empty">
@@ -53,7 +60,7 @@ const reopen = computed(() => (['head', 'admin'].includes(session.role) ? projec
     <section v-if="others.length" class="panel block">
       <div class="panel-head"><h2>คำขออื่นที่ติดตามอยู่</h2></div>
       <router-link v-for="p in others" :key="p.id" :to="`/projects/${p.id}`" class="row">
-        <span>{{ p.name }} <span class="muted small">· {{ p.approval?.steps.find((s) => s.status === 'pending')?.role ?? 'อนุมัติครบแล้ว' }}</span></span>
+        <span>{{ p.name }} <span class="muted small">· {{ pendingStep(p, TODAY_ISO)?.role ?? APPROVAL_LABEL[approvalState(p, TODAY_ISO)].label }}</span></span>
         <StageBadge :stage="p.stage" />
       </router-link>
     </section>

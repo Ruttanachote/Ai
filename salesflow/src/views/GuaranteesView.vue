@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { projects } from '../store'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
+import { scope } from '../store'
 import { baht, daysUntil, mb, thDate } from '../data/mock'
-import { addDays } from '../domain/calendar'
+import { bondReturnDue } from '../domain/metrics'
 
 // Finance view of every bank guarantee still out — it ties up the company's credit line.
+// Return dates come from the same rule the project's procurement tab uses.
 const rows = computed(() =>
-  projects.flatMap((p) => (p.bonds ?? []).map((b) => {
-    const due = b.kind === 'performance' ? (p.endWarranty ? addDays(p.endWarranty, 15) : undefined) : p.bid?.result ? addDays(p.bid.result, 15) : undefined
+  scope.value.list.flatMap((p) => (p.bonds ?? []).map((b) => {
+    const due = bondReturnDue(p, b)
     const overdue = !b.returned && !!due && daysUntil(due) < 0
     const expSoon = !b.returned && daysUntil(b.expires) < 60
     return { p, b, due, overdue, expSoon }
@@ -20,17 +23,19 @@ const byBank = computed(() => {
   out.value.forEach((r) => m.set(r.b.bank, (m.get(r.b.bank) ?? 0) + r.b.amount))
   return [...m.entries()]
 })
+const kpis = computed(() => [
+  { label: 'ค้ำประกันค้างอยู่', value: mb(total.value), note: `${out.value.length} ฉบับ` },
+  { label: 'ธนาคารที่ใช้วงเงินมากสุด', value: byBank.value.length ? mb(Math.max(...byBank.value.map((x) => x[1]))) : '—', note: [...byBank.value].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'ไม่มี' },
+  { label: 'หมดอายุภายใน 60 วัน', value: String(rows.value.filter((r) => r.expSoon).length), note: 'ต่ออายุหรือขอคืน', tone: rows.value.some((r) => r.expSoon) ? ('warn' as const) : ('' as const) },
+  { label: 'เลยกำหนดขอคืน', value: String(rows.value.filter((r) => r.overdue).length), note: 'ฉบับ', tone: rows.value.some((r) => r.overdue) ? ('bad' as const) : ('' as const) },
+])
 </script>
 
 <template>
   <div class="page">
-    <header class="page-head"><div><h1>หลักประกัน</h1><p>หนังสือค้ำประกันที่ยังไม่ได้คืน ทุกโครงการ — ติดตามวันขอคืนและวันหมดอายุ</p></div></header>
+    <PageHeader module="อนุมัติและการเงิน" title="หลักประกัน" :scope="scope.label" subtitle="หนังสือค้ำประกันที่ยังไม่ได้คืน — ติดตามวันขอคืนและวันหมดอายุ" />
 
-    <section class="kpis">
-      <div><span>ค้ำประกันค้างอยู่</span><strong class="num">{{ mb(total) }}</strong><em>{{ out.length }} ฉบับ</em></div>
-      <div v-for="[bank, v] in byBank" :key="bank"><span>{{ bank }}</span><strong class="num">{{ mb(v) }}</strong><em>วงเงินค้ำที่ใช้อยู่</em></div>
-      <div><span>ถึงกำหนดขอคืนแล้ว</span><strong class="num" :class="{ bad: rows.some((r) => r.overdue) }">{{ rows.filter((r) => r.overdue).length }}</strong><em>ฉบับ</em></div>
-    </section>
+    <KpiStrip :items="kpis" />
 
     <div class="panel flush scroll-x">
       <table class="table">
@@ -53,11 +58,6 @@ const byBank = computed(() => {
 </template>
 
 <style scoped>
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
-.kpis div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; display: grid; }
-.kpis span { font-size: 13px; color: var(--muted); }
-.kpis strong { font-size: 24px; font-weight: 600; }
-.kpis em { font-style: normal; font-size: 12px; color: var(--faint); }
 .flush { padding: 4px 8px; }
 .bad { color: var(--lose); }
 .foot { margin-top: 12px; }

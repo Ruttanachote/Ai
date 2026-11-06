@@ -4,6 +4,7 @@ import { ROLES, type Role } from '../data/model'
 import { TEAMS, mb, thDate } from '../data/mock'
 import { TH_GOV_2026 } from '../domain/calendar'
 import { SETTINGS } from '../store'
+import PageHeader from '../components/PageHeader.vue'
 
 const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'teams' | 'm365'>('roles')
 const R = Object.keys(ROLES) as Role[]
@@ -61,7 +62,7 @@ function addHoliday() {
 
 <template>
   <div class="page">
-    <header class="page-head"><div><h1>สิทธิ์และการตั้งค่า</h1><p>กำหนดว่าแต่ละตำแหน่งทำอะไรได้ ลำดับอนุมัติ ทีม DT และการเชื่อม Microsoft 365</p></div></header>
+    <PageHeader module="ระบบ" title="สิทธิ์และการตั้งค่า" scope="ผู้ดูแลระบบ" subtitle="สิทธิ์ตามบทบาท ลำดับอนุมัติ ปฏิทิน ช่องทางแจ้งเตือน ทีม DT และ Microsoft 365" />
     <div class="tabs" role="tablist">
       <button role="tab" :aria-selected="tab === 'roles'" @click="tab = 'roles'">สิทธิ์ตามบทบาท</button>
       <button role="tab" :aria-selected="tab === 'approval'" @click="tab = 'approval'">ลำดับการอนุมัติ</button>

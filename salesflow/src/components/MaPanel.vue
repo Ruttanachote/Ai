@@ -3,14 +3,15 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Dialog from './Dialog.vue'
 import type { Project } from '../data/model'
-import { TICKETS, baht, daysUntil, thDate } from '../data/mock'
+import { TICKETS, CONTRACTS, baht, daysUntil, thDate } from '../data/mock'
+import { bookedValue } from '../domain/metrics'
 import { notify, projects, session } from '../store'
 
 const props = defineProps<{ p: Project }>()
 const router = useRouter()
 const left = computed(() => daysUntil(props.p.endWarranty))
 const renewOpen = ref(false)
-const maPrice = ref(Math.round(props.p.revenue * 0.12))
+const maPrice = ref(Math.round(bookedValue(props.p) * (CONTRACTS[props.p.id]?.uplift ?? 0.12)))
 const canAct = computed(() => ['ma', 'head', 'admin', 'sm'].includes(session.role))
 
 // Notice cadence: 90 days (internal), 60 days (SM/Sale prepare price), 30 days (letter to customer), 0 (end).
@@ -83,7 +84,7 @@ function renew() {
     <div class="field">
       <label for="mp">มูลค่า MA ต่อปี (ประมาณการ)</label>
       <input id="mp" v-model.number="maPrice" class="input num" type="number" min="0" step="10000" />
-      <span class="hint">ค่าเริ่มต้น 12% ของมูลค่าโครงการเดิม ({{ baht(p.revenue) }})</span>
+      <span class="hint">ค่าเริ่มต้น {{ Math.round((CONTRACTS[p.id]?.uplift ?? 0.12) * 100) }}% ของมูลค่าตามสัญญาเดิม ({{ baht(bookedValue(p)) }}) — ตัวเลขเดียวกับหน้าประกันและ MA</span>
     </div>
     <template #foot><button class="btn" @click="renewOpen = false">ยกเลิก</button><button class="btn primary" @click="renew">สร้างโครงการ MA</button></template>
   </Dialog>

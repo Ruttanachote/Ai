@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import type { Project } from '../data/model'
 import { baht, daysUntil, thDate, TODAY } from '../data/mock'
-import { addDays } from '../domain/calendar'
 import { appealWindowEnd } from '../domain/rules'
+import { bondReturnDue } from '../domain/metrics'
 import { notify, session } from '../store'
 
 // Thai public procurement (พ.ร.บ.จัดซื้อจัดจ้างฯ 2560 + ระเบียบกระทรวงการคลัง 2560).
@@ -30,7 +30,7 @@ const delta = computed(() => (b.value?.refPrice && b.value.ourBid ? ((b.value.ou
 // Bonds: performance bond returns 15 days after release from obligations (end of warranty).
 const bonds = computed(() =>
   (props.p.bonds ?? []).map((x) => {
-    const due = x.kind === 'performance' && props.p.endWarranty ? addDays(props.p.endWarranty, 15) : x.kind === 'bid' && b.value?.result ? addDays(b.value.result, 15) : undefined
+    const due = bondReturnDue(props.p, x)
     const left = daysUntil(x.expires)
     return { ...x, due, left, warn: !x.returned && left < 60 }
   }),

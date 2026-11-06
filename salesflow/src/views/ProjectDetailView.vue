@@ -16,7 +16,8 @@ import { moveStage, notify, projects, session } from '../store'
 import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account } from '../data/mock'
 import { validateMove, checkContractValue, appealWindowEnd, reopenAsNew, isTender } from '../domain/rules'
 import { SETTINGS } from '../store'
-import { allowedMoves, stageOf, probOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
+import { probability, weightedValue, dealValue, teamShare } from '../domain/metrics'
+import { allowedMoves, stageOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
 
 const props = defineProps<{ id: string }>()
 const p = computed(() => projects.find((x) => x.id === props.id))
@@ -193,7 +194,7 @@ const drop = ref(false)
             <dt>Gross Profit</dt><dd class="num strong">{{ baht(gp) }}<span v-if="p.revenue" class="muted"> · {{ ((gp / p.revenue) * 100).toFixed(1) }}%</span></dd>
             <dt>Budget ลูกค้า</dt><dd class="num">{{ baht(p.budget) }}</dd>
             <template v-if="stageOf(p.stage).phase === 'presale'">
-              <dt>โอกาสปิด</dt><dd class="num">{{ Math.round(probOf(p) * 100) }}% · ถ่วงน้ำหนัก {{ baht(Math.round((p.revenue || p.budget) * probOf(p))) }}</dd>
+              <dt>โอกาสปิด</dt><dd class="num">{{ Math.round(probability(p) * 100) }}% · ถ่วงน้ำหนัก {{ baht(Math.round(weightedValue(p))) }}</dd>
               <dt><label for="fc">Forecast category</label></dt>
               <dd>
                 <select id="fc" class="input mini" :value="catDraft ?? catOf(p)" @change="setCat"><option v-for="(l, k) in FORECAST_CAT" :key="k" :value="k">{{ l }}</option></select>
@@ -216,7 +217,7 @@ const drop = ref(false)
             <i v-for="(x, i) in p.splits ?? [{ team: p.team, pct: 100 }]" :key="x.team" :class="'s' + i" :style="{ width: x.pct + '%' }" />
           </div>
           <ul class="splitl">
-            <li v-for="(x, i) in p.splits ?? [{ team: p.team, pct: 100 }]" :key="x.team"><b :class="'s' + i" />{{ x.team }} <span class="muted">{{ TEAMS.find((t) => t.code === x.team)?.name }}</span><span class="num">{{ x.pct }}% · {{ baht(Math.round((p.revenue || p.budget) * x.pct / 100)) }}</span></li>
+            <li v-for="(x, i) in p.splits ?? [{ team: p.team, pct: 100 }]" :key="x.team"><b :class="'s' + i" />{{ x.team }} <span class="muted">{{ TEAMS.find((t) => t.code === x.team)?.name }}</span><span class="num">{{ x.pct }}% · {{ baht(Math.round(dealValue(p) * teamShare(p, x.team))) }}</span></li>
           </ul>
           <p class="hint">ยอดนับเข้าเป้าแต่ละทีมตามสัดส่วนนี้ รวมต้องเท่ากับ 100%</p>
         </section>

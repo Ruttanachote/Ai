@@ -1,24 +1,39 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Avatar from '../components/Avatar.vue'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
 import { PEOPLE, person } from '../data/mock'
+import { projects, session } from '../store'
+import { stageOf } from '../data/model'
+import { isOpen, probability } from '../domain/metrics'
 
-// Planned hours per person per week (capacity 40h). Source in production:
-// task estimates + timesheet entries; allocations come from project plans.
-const team = ref<'DT4-2' | 'DT2'>('DT4-2')
+// Planned hours per person per week (capacity 40h), keyed by project id so names, stages and
+// soft/hard booking always follow the project record. Production source: plans + timesheets.
 const WEEKS = ['3 พ.ย.', '10 พ.ย.', '17 พ.ย.', '24 พ.ย.', '1 ธ.ค.', '8 ธ.ค.', '15 ธ.ค.', '22 ธ.ค.']
-const ALLOC: Record<string, { project: string; hrs: number[]; soft?: boolean }[]> = {
-  ak: [{ project: 'Smart Permit', hrs: [24, 28, 30, 26, 20, 20, 16, 12] }, { project: 'ระบบจองคิว (MA)', hrs: [6, 4, 4, 4, 4, 4, 4, 2] }],
-  dev1: [{ project: 'Smart Permit', hrs: [36, 32, 28, 24, 30, 30, 20, 8] }],
-  dev2: [{ project: 'Smart Permit', hrs: [40, 40, 36, 30, 24, 16, 8, 0] }, { project: 'Presale e-Service', hrs: [8, 8, 0, 0, 0, 0, 0, 0], soft: true }],
-  dev3: [{ project: 'Smart Permit', hrs: [30, 30, 24, 24, 28, 32, 24, 8] }, { project: 'ระบบจองคิว (MA)', hrs: [10, 6, 4, 4, 4, 4, 4, 4] }],
-  ks: [{ project: 'Network Monitoring (MA)', hrs: [8, 8, 6, 6, 4, 4, 4, 4] }, { project: 'AI OCR (Handover)', hrs: [4, 12, 20, 24, 24, 24, 24, 16] }],
-  dev4: [{ project: 'AI OCR (Handover)', hrs: [0, 8, 32, 40, 40, 40, 36, 24] }],
-  dev5: [{ project: 'Data Lakehouse (Presale PoC)', hrs: [24, 24, 16, 8, 0, 0, 0, 0], soft: true }, { project: 'AI OCR (Handover)', hrs: [0, 0, 16, 32, 40, 40, 40, 32], soft: true }],
+const ALLOC: Record<string, { projectId: string; hrs: number[] }[]> = {
+  ak: [{ projectId: 'p6', hrs: [24, 28, 30, 26, 20, 20, 16, 12] }, { projectId: 'p8', hrs: [6, 4, 4, 4, 4, 4, 4, 2] }],
+  dev1: [{ projectId: 'p6', hrs: [36, 32, 28, 24, 30, 30, 20, 8] }],
+  dev2: [{ projectId: 'p6', hrs: [40, 40, 36, 30, 24, 16, 8, 0] }, { projectId: 'p2', hrs: [8, 8, 0, 0, 0, 0, 0, 0] }],
+  dev3: [{ projectId: 'p6', hrs: [30, 30, 24, 24, 28, 32, 24, 8] }, { projectId: 'p8', hrs: [10, 6, 4, 4, 4, 4, 4, 4] }],
+  ks: [{ projectId: 'p9', hrs: [8, 8, 6, 6, 4, 4, 4, 4] }, { projectId: 'p7', hrs: [4, 12, 20, 24, 24, 24, 24, 16] }],
+  dev4: [{ projectId: 'p7', hrs: [0, 8, 32, 40, 40, 40, 36, 24] }],
+  dev5: [{ projectId: 'p3', hrs: [24, 24, 16, 8, 0, 0, 0, 0] }, { projectId: 'p7', hrs: [0, 0, 16, 32, 40, 40, 40, 32] }],
 }
+const project = (id: string) => projects.find((p) => p.id === id)
+/** Soft booking until the project has a PM assigned in delivery; presale work is always soft. */
+const isSoft = (id: string) => {
+  const p = project(id)
+  return !p || isOpen(p) || p.stage === 'win' || p.stage === 'handover'
+}
+
+const teamsWithPeople = [...new Set(PEOPLE.filter((p) => ALLOC[p.id]).map((p) => p.team!))]
+const myTeam = person(session.userId)?.team
+const team = ref(teamsWithPeople.find((t) => t === myTeam || t.startsWith((myTeam ?? '') + '-')) ?? teamsWithPeople[0])
+
 const members = computed(() =>
   PEOPLE.filter((p) => p.team === team.value && ALLOC[p.id]).map((p) => {
-    const rows = ALLOC[p.id]
+    const rows = ALLOC[p.id].map((r) => ({ ...r, name: project(r.projectId)?.name ?? r.projectId, stage: project(r.projectId)?.stage, soft: isSoft(r.projectId) }))
     const total = WEEKS.map((_, i) => rows.filter((r) => !r.soft).reduce((s, r) => s + r.hrs[i], 0))
     const soft = WEEKS.map((_, i) => rows.filter((r) => r.soft).reduce((s, r) => s + r.hrs[i], 0))
     return { p, rows, total, soft, avg: Math.round(total.reduce((a, b) => a + b, 0) / WEEKS.length) }
@@ -26,21 +41,41 @@ const members = computed(() =>
 )
 const tone = (h: number) => (h > 40 ? 'over' : h >= 32 ? 'full' : h >= 16 ? 'mid' : h > 0 ? 'low' : 'free')
 const open = ref<string | null>(null)
-const DEMAND = [
-  { name: 'ระบบ e-Service ใบอนุญาตออนไลน์', stage: 'Pipeline', prob: 45, roles: 'PM 1 · BA 2 · Dev 4 · QA 1', md: 810, start: 'ม.ค. 70' },
-  { name: 'ระบบบริหารงานบุคคล HRMS', stage: 'Rebidding', prob: 75, roles: 'PM 1 · Dev 3 · QA 1', md: 540, start: 'ม.ค. 70' },
-  { name: 'Data Lakehouse และ BI ผู้บริหาร', stage: 'Forecast', prob: 75, roles: 'Data Eng 2 · BI 1', md: 300, start: 'ธ.ค. 69' },
-]
+
+// Demand from the pipeline: man-days from the Cost Sheet (manpower ≈ 48% of COGS at ฿6,000/day)
+// weighted by the same probability the sales dashboard uses. Capacity planning needs every
+// open deal of the team, not only the viewer's own, so this reads all projects.
+const DAY_RATE = 6000
+const demand = computed(() =>
+  projects.filter((p) => isOpen(p) && (p.team === team.value || (p.splits ?? []).some((x) => x.team === team.value)))
+    .map((p) => {
+      const md = Math.round(((p.cost || p.budget * 0.7) * 0.48) / DAY_RATE)
+      return { p, md, prob: Math.round(probability(p) * 100), weighted: Math.round(md * probability(p)) }
+    })
+    .sort((a, b) => b.weighted - a.weighted),
+)
+const kpis = computed(() => {
+  const all = members.value.flatMap((m) => m.total)
+  const util = all.length ? Math.round((all.reduce((a, b) => a + b, 0) / (all.length * 40)) * 100) : 0
+  const overWeeks = members.value.reduce((s, m) => s + m.total.filter((h) => h > 40).length, 0)
+  const atRisk = members.value.reduce((s, m) => s + m.total.filter((h, i) => h <= 40 && h + m.soft[i] > 40).length, 0)
+  return [
+    { label: 'สมาชิกทีม ' + team.value, value: String(members.value.length), note: `${WEEKS.length} สัปดาห์ข้างหน้า` },
+    { label: 'ใช้กำลังคนเฉลี่ย', value: util + '%', note: 'เฉพาะงานที่จองแน่นอน', tone: util > 90 ? ('warn' as const) : ('' as const) },
+    { label: 'สัปดาห์ที่เกิน 40 ชม.', value: String(overWeeks), note: atRisk ? `อีก ${atRisk} สัปดาห์เกินถ้ารวมการจองเบื้องต้น` : 'นับรายคนต่อสัปดาห์', tone: overWeeks ? ('bad' as const) : atRisk ? ('warn' as const) : ('' as const) },
+    { label: 'ความต้องการจาก Pipeline', value: demand.value.reduce((s, d) => s + d.weighted, 0) + ' MD', note: 'Man-day ถ่วงน้ำหนักตามโอกาสปิด' },
+  ]
+})
 </script>
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <div><h1>Workload ทีม</h1><p>ชั่วโมงที่วางแผนต่อสัปดาห์ เทียบความสามารถ 40 ชม. · ใช้เลือกทีมตอน Handover</p></div>
+    <PageHeader module="ส่งมอบโครงการ" title="Workload ทีม" :scope="'ทีม ' + team" subtitle="ชั่วโมงที่วางแผนต่อสัปดาห์ เทียบความสามารถ 40 ชม.">
       <div class="seg" role="radiogroup" aria-label="เลือกทีม">
-        <button v-for="t in ['DT4-2', 'DT2'] as const" :key="t" role="radio" :aria-checked="team === t" @click="team = t">{{ t }}</button>
+        <button v-for="t in teamsWithPeople" :key="t" role="radio" :aria-checked="team === t" @click="team = t">{{ t }}</button>
       </div>
-    </header>
+    </PageHeader>
+    <KpiStrip :items="kpis" />
 
     <section class="panel scroll-x">
       <table class="heat">
@@ -59,8 +94,8 @@ const DEMAND = [
               <td class="num avg">{{ m.avg }}</td>
             </tr>
             <template v-if="open === m.p.id">
-              <tr v-for="r in m.rows" :key="r.project" class="sub">
-                <td>{{ r.project }} <span v-if="r.soft" class="chip">จองเบื้องต้น</span></td>
+              <tr v-for="r in m.rows" :key="r.projectId" class="sub">
+                <td><router-link :to="`/projects/${r.projectId}`">{{ r.name }}</router-link> <span class="chip">{{ r.stage ? stageOf(r.stage).label : '' }}</span> <span v-if="r.soft" class="chip warn">จองเบื้องต้น</span></td>
                 <td v-for="(h, i) in r.hrs" :key="i" class="num">{{ h || '' }}</td><td />
               </tr>
             </template>
@@ -73,11 +108,12 @@ const DEMAND = [
     </section>
 
     <section class="panel demand">
-      <div class="panel-head"><h2>ความต้องการคนจาก Pipeline</h2><span class="muted small">Man-day จาก Cost Sheet × โอกาสปิด</span></div>
+      <div class="panel-head"><h2>ความต้องการคนจาก Pipeline</h2><span class="muted small">Man-day จาก Cost Sheet × โอกาสปิด (ค่าเดียวกับ Dashboard)</span></div>
       <table class="table">
-        <thead><tr><th>โครงการ</th><th>สถานะ</th><th>ตำแหน่งที่ต้องใช้</th><th class="r">Man-day</th><th class="r">ถ่วงน้ำหนัก</th><th>เริ่มประมาณ</th></tr></thead>
+        <thead><tr><th>โครงการ</th><th>สถานะ</th><th class="r">Man-day</th><th class="r">โอกาสปิด</th><th class="r">ถ่วงน้ำหนัก</th><th>คาดว่าปิด</th></tr></thead>
         <tbody>
-          <tr v-for="d in DEMAND" :key="d.name"><td>{{ d.name }}</td><td>{{ d.stage }} · {{ d.prob }}%</td><td class="small">{{ d.roles }}</td><td class="r num">{{ d.md }}</td><td class="r num"><b>{{ Math.round(d.md * d.prob / 100) }}</b></td><td class="small">{{ d.start }}</td></tr>
+          <tr v-for="d in demand" :key="d.p.id"><td><router-link :to="`/projects/${d.p.id}`">{{ d.p.name }}</router-link></td><td>{{ stageOf(d.p.stage).label }}</td><td class="r num">{{ d.md }}</td><td class="r num">{{ d.prob }}%</td><td class="r num"><b>{{ d.weighted }}</b></td><td class="small">{{ d.p.expectedClose ?? '—' }}</td></tr>
+          <tr v-if="!demand.length"><td colspan="6" class="muted">ไม่มีดีลที่เปิดอยู่ของทีมนี้</td></tr>
         </tbody>
       </table>
       <p class="hint">ใช้ดูล่วงหน้าว่าถ้าชนะงาน ทีมไหนจะขาดคน · การจองแบ่งเป็น “จองเบื้องต้น” (ยังไม่กินกำลังคน) และ “จองแน่นอน” (มอบหมาย Task ได้) หลัง Handover</p>

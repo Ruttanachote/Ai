@@ -1,36 +1,46 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ACCOUNTS, account, mb } from '../data/mock'
-import { projects } from '../store'
+import { scope } from '../store'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
+import { isOpen, isWon, bookedValue, pipelineValue, sum } from '../domain/metrics'
 import type { Sector } from '../data/model'
 
 const SECTOR: Record<Sector, string> = { government: 'หน่วยงานรัฐ', soe: 'รัฐวิสาหกิจ', enterprise: 'เอกชน', other: 'อื่น ๆ' }
 const q = ref('')
-const WON = ['win', 'handover', 'delivery', 'warranty', 'ended']
 const rows = computed(() =>
   ACCOUNTS.filter((a) => a.type === 'customer')
     .filter((a) => !q.value.trim() || [a.name, a.taxId ?? ''].some((v) => v.includes(q.value.trim())))
     .map((a) => {
-      const list = projects.filter((p) => p.customerAccountId === a.id)
+      const list = scope.value.list.filter((p) => p.customerAccountId === a.id)
       return {
         a,
         parent: account(a.parentId),
-        open: list.filter((p) => ['opportunity', 'pipeline', 'forecast', 'rebidding'].includes(p.stage)).length,
-        won: list.filter((p) => WON.includes(p.stage)).reduce((s, p) => s + (p.contractValue ?? p.revenue), 0),
+        open: list.filter(isOpen).length,
+        pipe: sum(list.filter(isOpen), pipelineValue),
+        won: sum(list.filter(isWon), bookedValue),
         total: list.length,
       }
     })
     .sort((x, y) => y.won - x.won),
 )
-const unlinked = computed(() => projects.filter((p) => !p.customerAccountId && p.customer !== 'รอระบุลูกค้า'))
+const unlinked = computed(() => scope.value.list.filter((p) => !p.customerAccountId && p.customer !== 'รอระบุลูกค้า'))
+const active = computed(() => rows.value.filter((r) => r.total))
+const kpis = computed(() => [
+  { label: 'ลูกค้าที่มีโครงการ', value: String(active.value.length), note: `จากทะเบียน ${rows.value.length} ราย` },
+  { label: 'ภาครัฐและรัฐวิสาหกิจ', value: String(active.value.filter((r) => r.a.sector !== 'enterprise').length), note: 'ขายผ่าน e-GP' },
+  { label: 'Pipeline ที่เปิดอยู่', value: mb(sum(scope.value.list.filter(isOpen), pipelineValue)), note: 'รวมทุกลูกค้า' },
+  { label: 'ยอดที่ชนะ', value: mb(sum(scope.value.list.filter(isWon), bookedValue)), note: 'ตามสัญญา' },
+])
 </script>
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <div><h1>ทะเบียนลูกค้า</h1><p>ลูกค้าและหน่วยงานผู้ใช้ เชื่อมกับทุกโครงการ ใช้แทนการพิมพ์ชื่อลูกค้าเอง</p></div>
+    <PageHeader module="งานขาย" title="ทะเบียนลูกค้า" :scope="scope.label" subtitle="ลูกค้าและหน่วยงานผู้ใช้ เชื่อมกับทุกโครงการ">
       <button class="btn primary">เพิ่มลูกค้า</button>
-    </header>
+    </PageHeader>
+    <KpiStrip :items="kpis" />
 
     <p v-if="unlinked.length" class="chip warn mig">มี {{ unlinked.length }} โครงการที่ยังไม่ได้ผูกกับทะเบียนลูกค้า — ผู้ดูแลระบบยืนยันการจับคู่ชื่อในหน้าตั้งค่า</p>
 
@@ -38,7 +48,7 @@ const unlinked = computed(() => projects.filter((p) => !p.customerAccountId && p
 
     <div class="panel flush scroll-x">
       <table class="table">
-        <thead><tr><th>ลูกค้า</th><th>ประเภท</th><th>เลขประจำตัวผู้เสียภาษี</th><th class="r">ดีลที่เปิดอยู่</th><th class="r">ยอดที่ชนะ</th></tr></thead>
+        <thead><tr><th>ลูกค้า</th><th>ประเภท</th><th>เลขประจำตัวผู้เสียภาษี</th><th class="r">Pipeline</th><th class="r">ยอดที่ชนะ</th></tr></thead>
         <tbody>
           <tr v-for="r in rows" :key="r.a.id">
             <td>
@@ -47,7 +57,7 @@ const unlinked = computed(() => projects.filter((p) => !p.customerAccountId && p
             </td>
             <td><span class="chip" :class="r.a.sector === 'enterprise' ? '' : 'presale'">{{ SECTOR[r.a.sector] }}</span></td>
             <td class="num small">{{ r.a.taxId ?? '—' }}</td>
-            <td class="r num">{{ r.open }}</td>
+            <td class="r num">{{ r.pipe ? mb(r.pipe) : '—' }}<p class="small muted">{{ r.open }} ดีล</p></td>
             <td class="r num">{{ r.won ? mb(r.won) : '—' }}</td>
           </tr>
         </tbody>

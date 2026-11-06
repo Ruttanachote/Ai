@@ -2,37 +2,35 @@
 import { computed } from 'vue'
 import StageBadge from '../components/StageBadge.vue'
 import { ACCOUNTS, account, baht, daysUntil, mb, thDate } from '../data/mock'
-import { projects } from '../store'
+import { scope } from '../store'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
+import { isOpen, isWon, bookedValue, pipelineValue, dealValue, sum } from '../domain/metrics'
 import { winRate } from '../domain/rules'
 
 const props = defineProps<{ id: string }>()
 const a = computed(() => account(props.id))
 const children = computed(() => ACCOUNTS.filter((x) => x.parentId === props.id))
 const ids = computed(() => [props.id, ...children.value.map((c) => c.id)])
-const list = computed(() => projects.filter((p) => ids.value.includes(p.customerAccountId ?? '') || ids.value.includes(p.endUserAccountId ?? '')))
-const WON = ['win', 'handover', 'delivery', 'warranty', 'ended']
-const won = computed(() => list.value.filter((p) => WON.includes(p.stage)).reduce((s, p) => s + (p.contractValue ?? p.revenue), 0))
-const pipe = computed(() => list.value.filter((p) => ['opportunity', 'pipeline', 'forecast', 'rebidding'].includes(p.stage)).reduce((s, p) => s + (p.revenue || p.budget), 0))
+const list = computed(() => scope.value.list.filter((p) => ids.value.includes(p.customerAccountId ?? '') || ids.value.includes(p.endUserAccountId ?? '')))
+const won = computed(() => sum(list.value.filter(isWon), bookedValue))
+const pipe = computed(() => sum(list.value.filter(isOpen), pipelineValue))
 const expiring = computed(() => list.value.filter((p) => p.endWarranty && daysUntil(p.endWarranty) > 0).sort((x, y) => x.endWarranty!.localeCompare(y.endWarranty!)))
 const lost = computed(() => list.value.filter((p) => p.loss))
+const kpis = computed(() => [
+  { label: 'ยอดที่ชนะทั้งหมด', value: mb(won.value), note: 'ตามสัญญา' },
+  { label: 'Pipeline ที่เปิดอยู่', value: mb(pipe.value), note: `${list.value.filter(isOpen).length} ดีล` },
+  { label: 'Win rate กับลูกค้านี้', value: Math.round(winRate(list.value) * 100) + '%', note: 'นับจากผลชนะ/แพ้' },
+  { label: 'ประกันใกล้หมด', value: expiring.value[0] ? daysUntil(expiring.value[0].endWarranty) + ' วัน' : '—', note: expiring.value[0]?.name ?? 'ไม่มีโครงการในระยะประกัน' },
+])
 </script>
 
 <template>
   <div v-if="a" class="page">
     <router-link to="/accounts" class="back small">‹ ทะเบียนลูกค้า</router-link>
-    <header class="page-head">
-      <div>
-        <h1>{{ a.name }}</h1>
-        <p>{{ a.taxId ? 'เลขประจำตัวผู้เสียภาษี ' + a.taxId + ' · ' : '' }}{{ a.province ?? '' }}<template v-if="a.parentId"> · สังกัด <router-link :to="`/accounts/${a.parentId}`">{{ account(a.parentId)?.name }}</router-link></template></p>
-      </div>
-    </header>
+    <PageHeader module="ทะเบียนลูกค้า" :title="a.name" :scope="scope.label" :subtitle="[a.taxId ? 'เลขประจำตัวผู้เสียภาษี ' + a.taxId : '', a.province, a.parentId ? 'สังกัด ' + account(a.parentId)?.name : ''].filter(Boolean).join(' · ')" />
 
-    <section class="kpis">
-      <div><span>ยอดที่ชนะทั้งหมด</span><strong class="num">{{ mb(won) }}</strong></div>
-      <div><span>Pipeline ที่เปิดอยู่</span><strong class="num">{{ mb(pipe) }}</strong></div>
-      <div><span>Win rate กับลูกค้านี้</span><strong class="num">{{ Math.round(winRate(list) * 100) }}%</strong></div>
-      <div><span>ประกันใกล้หมด</span><strong class="num">{{ expiring[0] ? daysUntil(expiring[0].endWarranty) + ' วัน' : '—' }}</strong></div>
-    </section>
+    <KpiStrip :items="kpis" />
 
     <div class="grid">
       <section class="panel">
@@ -42,7 +40,7 @@ const lost = computed(() => list.value.filter((p) => p.loss))
             <tr v-for="p in list" :key="p.id">
               <td><router-link :to="`/projects/${p.id}`">{{ p.name }}</router-link><p class="small muted">{{ p.code }} · {{ p.team }}{{ p.endUserAccountId ? ' · ผู้ใช้ ' + account(p.endUserAccountId)?.name : '' }}</p></td>
               <td><StageBadge :stage="p.stage" /></td>
-              <td class="r num">{{ baht(p.contractValue ?? (p.revenue || p.budget)) }}</td>
+              <td class="r num">{{ baht(dealValue(p)) }}</td>
             </tr>
           </tbody>
         </table>
@@ -69,13 +67,9 @@ const lost = computed(() => list.value.filter((p) => p.loss))
 
 <style scoped>
 .back { color: var(--muted); display: inline-block; margin-bottom: 8px; }
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
-.kpis div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; display: grid; }
-.kpis span { font-size: 13px; color: var(--muted); }
-.kpis strong { font-size: 24px; font-weight: 600; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 .side { display: grid; gap: 16px; }
 .side h3 { margin-bottom: 10px; }
 .plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
-@media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
 </style>

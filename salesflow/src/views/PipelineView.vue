@@ -2,29 +2,38 @@
 import { computed } from 'vue'
 import Avatar from '../components/Avatar.vue'
 import Photo from '../components/Photo.vue'
-import { projects, session } from '../store'
-import { mb, thDate } from '../data/mock'
-import { stageOf, type StageKey } from '../data/model'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
+import { scope, session } from '../store'
+import { mb, thDate, daysSince, TODAY_ISO } from '../data/mock'
+import { stageOf, catOf, type StageKey } from '../data/model'
+import { isOpen, pipelineValue, weightedValue, sum, approvalState, APPROVAL_LABEL } from '../domain/metrics'
+import { customerName } from '../display'
 
 const COLS: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win', 'lose']
-const scope = computed(() => (session.role === 'sm' ? projects.filter((p) => p.sm === session.userId) : projects))
+const list = computed(() => scope.value.list)
 const cols = computed(() =>
   COLS.map((k) => {
-    const items = scope.value.filter((p) => p.stage === k)
-    return { k, s: stageOf(k), items, total: items.reduce((a, p) => a + (p.revenue || p.budget), 0) }
+    const items = list.value.filter((p) => p.stage === k)
+    return { k, s: stageOf(k), items, total: sum(items, pipelineValue) }
   }),
 )
+const open = computed(() => list.value.filter(isOpen))
+const stale = (p: (typeof open.value)[number]) => !!p.stageSince && daysSince(p.stageSince) > (stageOf(p.stage).staleDays ?? 999)
+const kpis = computed(() => [
+  { label: 'ดีลที่เปิดอยู่', value: String(open.value.length), note: mb(sum(open.value, pipelineValue)) + ' มูลค่ารวม' },
+  { label: 'Pipeline ถ่วงน้ำหนัก', value: mb(sum(open.value, weightedValue)), note: 'มูลค่า × โอกาสปิด', to: '/' },
+  { label: 'Commit', value: mb(sum(open.value.filter((p) => catOf(p) === 'commit'), pipelineValue)), note: 'ตัวเลขส่งผู้บริหาร' },
+  { label: 'ค้างนานเกินเกณฑ์', value: String(open.value.filter(stale).length), note: 'ดูรายละเอียดใน Dashboard', tone: open.value.some(stale) ? ('warn' as const) : ('' as const) },
+])
 </script>
 
 <template>
   <div class="page wide">
-    <header class="page-head">
-      <div>
-        <h1>Pipeline board</h1>
-        <p>โครงการช่วงขายแยกตามสถานะ เปลี่ยนสถานะได้จากหน้ารายละเอียดโครงการ</p>
-      </div>
-      <router-link v-if="session.role !== 'exec'" to="/projects/new" class="btn primary">ลงทะเบียนโครงการ</router-link>
-    </header>
+    <PageHeader module="งานขาย" title="Pipeline board" :scope="scope.label" subtitle="เปลี่ยนสถานะได้จากหน้ารายละเอียดโครงการ">
+      <router-link v-if="['sm', 'head', 'admin'].includes(session.role)" to="/projects/new" class="btn primary">ลงทะเบียนโครงการ</router-link>
+    </PageHeader>
+    <KpiStrip :items="kpis" />
 
     <div class="board">
       <section v-for="c in cols" :key="c.k" class="col" :class="c.k">
@@ -38,13 +47,16 @@ const cols = computed(() =>
           <div class="body">
             <span class="code">{{ p.code }} · {{ p.team }}</span>
             <strong>{{ p.name }}</strong>
-            <span class="muted small">{{ p.customer }}</span>
+            <span class="muted small">{{ customerName(p) }}</span>
             <div class="foot">
-              <span class="num val">{{ p.revenue ? mb(p.revenue) : 'Budget ' + mb(p.budget) }}</span>
+              <span class="num val">{{ p.revenue ? mb(pipelineValue(p)) : 'Budget ' + mb(pipelineValue(p)) }}</span>
               <Avatar :id="p.sm" :size="24" />
             </div>
-            <span v-if="p.approval?.steps.some((s) => s.status === 'pending')" class="chip warn">รออนุมัติ {{ p.approval.version }}</span>
-            <span v-else-if="p.bidDue" class="chip">ยื่นซอง {{ thDate(p.bidDue) }}</span>
+            <div class="chips">
+              <span v-if="approvalState(p, TODAY_ISO) !== 'none'" class="chip" :class="APPROVAL_LABEL[approvalState(p, TODAY_ISO)].tone">{{ APPROVAL_LABEL[approvalState(p, TODAY_ISO)].label }} {{ p.approval?.version }}</span>
+              <span v-if="p.bidDue && isOpen(p)" class="chip">ยื่นซอง {{ thDate(p.bidDue) }}</span>
+              <span v-if="isOpen(p) && stale(p)" class="chip lose">ค้าง {{ daysSince(p.stageSince) }} วัน</span>
+            </div>
           </div>
         </router-link>
         <p v-if="!c.items.length" class="empty">ไม่มีโครงการในสถานะนี้</p>
@@ -70,7 +82,7 @@ const cols = computed(() =>
 .body strong { font-weight: 600; line-height: 1.4; }
 .foot { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 4px; }
 .val { font-weight: 600; }
-.body .chip { justify-self: start; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .lose .card { opacity: 0.75; }
 .empty { font-size: 13px; color: var(--faint); text-align: center; padding: 24px 0; }
 </style>

@@ -3,40 +3,37 @@ import { computed } from 'vue'
 import Photo from '../components/Photo.vue'
 import Avatar from '../components/Avatar.vue'
 import StageBadge from '../components/StageBadge.vue'
-import { projects, session } from '../store'
-import { baht, mb, person, thDate, daysUntil, TODAY } from '../data/mock'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
+import { scope } from '../store'
+import { baht, mb, person, thDate, daysUntil, TODAY_ISO } from '../data/mock'
+import { bookedValue, health, progressPct, lateTasks, paidAmount, sum } from '../domain/metrics'
+import { customerName } from '../display'
 
-const scope = computed(() => (session.role === 'pm' ? projects.filter((p) => p.pm === session.userId) : projects))
-const queue = computed(() => scope.value.filter((p) => p.stage === 'win' || p.stage === 'handover'))
-const active = computed(() => scope.value.filter((p) => p.stage === 'delivery'))
-
-function health(p: (typeof projects)[number]) {
-  const ms = p.milestones ?? []
-  const behind = ms.some((m) => m.progress < 100 && new Date(m.end) < TODAY)
-  const lateTasks = (p.tasks ?? []).filter((t) => t.status !== 'done' && new Date(t.due) < TODAY).length
-  const over = (p.tasks ?? []).reduce((s, t) => s + t.spent, 0) > (p.tasks ?? []).filter((t) => t.status === 'done' || t.spent > 0).reduce((s, t) => s + t.hours, 0)
-  return [
-    { k: 'Schedule', ok: !behind && lateTasks === 0, warn: lateTasks > 0 && !behind, note: lateTasks ? `${lateTasks} task เลยกำหนด` : 'ตามแผน' },
-    { k: 'Effort', ok: !over, warn: over, note: over ? 'ชั่วโมงเกินแผน' : 'อยู่ในแผน' },
-    { k: 'Payment', ok: true, warn: false, note: `รับแล้ว ${ms.filter((m) => m.paid).length}/${ms.length} งวด` },
-  ]
-}
+// Same health / progress numbers as each project's "แผนงานและ Task" tab.
+const queue = computed(() => scope.value.list.filter((p) => p.stage === 'win' || p.stage === 'handover'))
+const active = computed(() => scope.value.list.filter((p) => p.stage === 'delivery'))
 const payments = computed(() =>
   active.value.flatMap((p) => (p.milestones ?? []).filter((m) => !m.paid && m.payment).map((m) => ({ p, m })))
     .sort((a, b) => a.m.end.localeCompare(b.m.end)).slice(0, 5),
 )
+const kpis = computed(() => [
+  { label: 'รอ Handover', value: String(queue.value.length), note: queue.value.filter((p) => !p.pm).length + ' โครงการยังไม่มี PM', tone: queue.value.some((p) => !p.pm) ? ('warn' as const) : ('' as const) },
+  { label: 'กำลังส่งมอบ', value: String(active.value.length), note: mb(sum(active.value, bookedValue)) + ' มูลค่าตามสัญญา' },
+  { label: 'Task เลยกำหนด', value: String(sum(active.value, (p) => lateTasks(p, TODAY_ISO).length)), note: 'รวมทุกโครงการที่กำลังส่งมอบ', tone: active.value.some((p) => lateTasks(p, TODAY_ISO).length) ? ('bad' as const) : ('' as const) },
+  { label: 'รับชำระแล้ว', value: mb(sum(active.value, paidAmount)), note: 'จากงวดที่ส่งมอบแล้ว' },
+])
 </script>
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <div><h1>Portfolio โครงการ</h1><p>{{ session.role === 'pm' ? 'โครงการที่คุณดูแล' : 'ทุกโครงการหลังการขาย' }} · Handover {{ queue.length }} · กำลังส่งมอบ {{ active.length }}</p></div>
-    </header>
+    <PageHeader module="ส่งมอบโครงการ" title="Portfolio โครงการ" :scope="scope.label" subtitle="โครงการหลังชนะงาน ตั้งแต่ Handover ถึงส่งมอบ" />
+    <KpiStrip :items="kpis" />
 
     <section v-if="queue.length" class="panel q">
       <div class="panel-head"><h2>รอ Handover</h2><span class="muted small">ชนะงานแล้ว รอประชุมส่งต่อและเลือก PM / ทีม DT</span></div>
       <router-link v-for="p in queue" :key="p.id" :to="`/projects/${p.id}`" class="qrow">
-        <div><strong>{{ p.name }}</strong><p class="small muted">{{ p.customer }} · {{ mb(p.revenue) }} · SM {{ person(p.sm)?.name }}</p></div>
+        <div><strong>{{ p.name }}</strong><p class="small muted">{{ customerName(p) }} · {{ mb(bookedValue(p)) }} · SM {{ person(p.sm)?.name }}</p></div>
         <StageBadge :stage="p.stage" />
         <span class="small">{{ p.pm ? 'PM ' + person(p.pm)?.name : 'ยังไม่มี PM' }}</span>
       </router-link>
@@ -48,13 +45,13 @@ const payments = computed(() =>
         <div class="body">
           <div class="top"><span class="small muted">{{ p.code }} · {{ p.team }}</span><Avatar :id="p.pm" :size="26" /></div>
           <h3>{{ p.name }}</h3>
-          <p class="small muted">{{ p.customer }} · ส่งมอบ {{ thDate(p.endProject) }} ({{ daysUntil(p.endProject) }} วัน)</p>
+          <p class="small muted">{{ customerName(p) }} · ส่งมอบ {{ thDate(p.endProject) }} ({{ daysUntil(p.endProject) }} วัน)</p>
           <div class="prog">
-            <div class="pb"><i :style="{ width: Math.round((p.milestones ?? []).reduce((s, m) => s + m.progress, 0) / Math.max(1, (p.milestones ?? []).length)) + '%' }" /></div>
-            <span class="num small">{{ Math.round((p.milestones ?? []).reduce((s, m) => s + m.progress, 0) / Math.max(1, (p.milestones ?? []).length)) }}%</span>
+            <div class="pb"><i :style="{ width: progressPct(p) + '%' }" /></div>
+            <span class="num small">{{ progressPct(p) }}%</span>
           </div>
           <ul class="health">
-            <li v-for="h in health(p)" :key="h.k" :class="h.ok ? 'ok' : h.warn ? 'warn' : 'bad'"><b>{{ h.k }}</b>{{ h.note }}</li>
+            <li v-for="h in health(p, TODAY_ISO)" :key="h.k" :class="h.tone"><b>{{ h.k }}</b>{{ h.note }}</li>
           </ul>
         </div>
       </router-link>

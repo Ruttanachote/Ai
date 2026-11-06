@@ -1,37 +1,39 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import Photo from '../components/Photo.vue'
 import Avatar from '../components/Avatar.vue'
 import StageBadge from '../components/StageBadge.vue'
-import { projects, session } from '../store'
-import { PHOTOS, TICKETS, CONTRACTS, baht, daysUntil, thDate, addDays } from '../data/mock'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
+import { projects, scope } from '../store'
+import { TICKETS, CONTRACTS, baht, daysUntil, thDate, addDays, mb } from '../data/mock'
+import { warrantyBucket, bookedValue, sum } from '../domain/metrics'
+import { customerName } from '../display'
 
-const base = computed(() => projects.filter((p) => p.stage === 'warranty' && (session.role !== 'sm' || p.sm === session.userId)))
+// Buckets use the same thresholds as the project's "ประกันและ MA" tab; tickets and renewals
+// are limited to the projects this role can see.
+const base = computed(() => scope.value.list.filter((p) => p.stage === 'warranty'))
+const ids = computed(() => new Set(scope.value.list.map((p) => p.id)))
 const sorted = computed(() => [...base.value].sort((a, b) => daysUntil(a.endWarranty) - daysUntil(b.endWarranty)))
+const inBucket = (k: string) => sorted.value.filter((p) => warrantyBucket(daysUntil(p.endWarranty)) === k)
 const buckets = computed(() => [
-  { k: 'ภายใน 30 วัน', d: 'ใกล้หรือเลยกำหนดแจ้งต่อสัญญา ต้องตามคำตอบลูกค้า', list: sorted.value.filter((p) => daysUntil(p.endWarranty) <= 30), tone: 'hot' },
-  { k: '31–120 วัน', d: 'ส่งใบเสนอราคา MA — ลูกค้าภาครัฐต้องทันรอบตั้งงบ (ยื่นคำของบราว พ.ค.)', list: sorted.value.filter((p) => daysUntil(p.endWarranty) > 30 && daysUntil(p.endWarranty) <= 120), tone: 'warm' },
-  { k: 'มากกว่า 120 วัน', d: 'ดูแลตาม SLA และเก็บข้อมูลสุขภาพลูกค้า', list: sorted.value.filter((p) => daysUntil(p.endWarranty) > 120), tone: '' },
+  { k: 'ภายใน 30 วัน', d: 'ใกล้หรือเลยกำหนดแจ้งต่อสัญญา ต้องตามคำตอบลูกค้า', list: inBucket('due30'), tone: 'hot' },
+  { k: '31–120 วัน', d: 'ส่งใบเสนอราคา MA — ลูกค้าภาครัฐต้องทันรอบตั้งงบ (ยื่นคำของบราว พ.ค.)', list: inBucket('due120'), tone: 'warm' },
+  { k: 'มากกว่า 120 วัน', d: 'ดูแลตาม SLA และเก็บข้อมูลสุขภาพลูกค้า', list: inBucket('later'), tone: '' },
 ])
-const tickets = computed(() => TICKETS.map((t) => ({ ...t, p: projects.find((p) => p.id === t.project) })))
-const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
+const tickets = computed(() => TICKETS.filter((t) => ids.value.has(t.project)).map((t) => ({ ...t, p: scope.value.list.find((p) => p.id === t.project) })))
+const renewals = computed(() => scope.value.list.filter((p) => p.type === 'MA'))
+const kpis = computed(() => [
+  { label: 'โครงการในระยะประกัน', value: String(base.value.length), note: mb(sum(base.value, bookedValue)) + ' มูลค่าตามสัญญา' },
+  { label: 'หมดภายใน 30 วัน', value: String(buckets.value[0].list.length), note: 'ต้องตามคำตอบเรื่องต่อ MA', tone: buckets.value[0].list.length ? ('warn' as const) : ('' as const) },
+  { label: 'Ticket เปิดอยู่', value: String(tickets.value.filter((t) => t.severity !== 'CR').length), note: tickets.value.filter((t) => t.used >= 100).length + ' รายการเกิน SLA', tone: tickets.value.some((t) => t.used >= 100) ? ('bad' as const) : ('' as const) },
+  { label: 'สัญญา MA ที่ต่อแล้ว', value: String(renewals.value.length), note: mb(sum(renewals.value, bookedValue)) + ' ต่อปี' },
+])
 </script>
 
 <template>
   <div class="page">
-    <section class="hero">
-      <Photo :id="PHOTOS.server" :w="1800" alt="" />
-      <div class="hero-in">
-        <h1>ประกันและ MA</h1>
-        <p>ติดตามวันหมดประกัน ส่งหนังสือแจ้งลูกค้าล่วงหน้า 30 วัน และรับเรื่องปัญหาตาม SLA</p>
-        <div class="stats">
-          <div><strong class="num">{{ base.length }}</strong><span>โครงการในระยะประกัน</span></div>
-          <div><strong class="num">{{ buckets[0].list.length }}</strong><span>หมดภายใน 30 วัน</span></div>
-          <div><strong class="num">{{ TICKETS.filter((t) => t.severity !== 'CR').length }}</strong><span>Ticket เปิดอยู่</span></div>
-          <div><strong class="num">{{ renewals.length }}</strong><span>สัญญา MA ที่ต่อแล้ว</span></div>
-        </div>
-      </div>
-    </section>
+    <PageHeader module="ประกันและ MA" title="ประกันและ MA" :scope="scope.label" subtitle="วันหมดประกัน การแจ้งต่อสัญญา และ Ticket ตาม SLA" />
+    <KpiStrip :items="kpis" />
 
     <div class="radar">
       <section v-for="b in buckets" :key="b.k" class="bucket" :class="b.tone">
@@ -40,8 +42,8 @@ const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
           <div class="d num">{{ daysUntil(p.endWarranty) }}<span>วัน</span></div>
           <div>
             <strong>{{ p.name }}</strong>
-            <p class="small muted">{{ p.customer }} · หมด {{ thDate(p.endWarranty) }}</p>
-            <p v-if="CONTRACTS[p.id]" class="small">แจ้งต่อสัญญาภายใน {{ thDate(addDays(p.endWarranty!, -CONTRACTS[p.id].noticeDays)) }} · MA ปีถัดไป {{ baht(Math.round(p.revenue * CONTRACTS[p.id].uplift)) }}</p>
+            <p class="small muted">{{ customerName(p) }} · หมด {{ thDate(p.endWarranty) }}</p>
+            <p v-if="CONTRACTS[p.id]" class="small">แจ้งต่อสัญญาภายใน {{ thDate(addDays(p.endWarranty!, -CONTRACTS[p.id].noticeDays)) }} · MA ปีถัดไป {{ baht(Math.round(bookedValue(p) * CONTRACTS[p.id].uplift)) }}</p>
             <p v-if="CONTRACTS[p.id]" class="hs small" :class="CONTRACTS[p.id].health < 60 ? 'low' : CONTRACTS[p.id].health < 75 ? 'mid' : 'ok'" :title="CONTRACTS[p.id].reasons.join(' · ')">
               สุขภาพลูกค้า <b class="num">{{ CONTRACTS[p.id].health }}</b> · {{ CONTRACTS[p.id].reasons[0] }}
             </p>
@@ -80,7 +82,7 @@ const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
     <section class="panel ren">
       <div class="panel-head"><h2>สัญญา MA ต่อเนื่อง</h2><span class="muted small">เปิดเป็นโครงการ Type MA ใต้โครงการเดิม</span></div>
       <router-link v-for="p in renewals" :key="p.id" :to="`/projects/${p.id}`" class="row">
-        <span><strong>{{ p.name }}</strong><span class="small muted"> · {{ baht(p.revenue) }}/ปี · ต่อจาก {{ projects.find((x) => x.id === p.parentId)?.code }}</span></span>
+        <span><strong>{{ p.name }}</strong><span class="small muted"> · {{ baht(bookedValue(p)) }}/ปี · ต่อจาก {{ projects.find((x) => x.id === p.parentId)?.code }}</span></span>
         <StageBadge :stage="p.stage" />
       </router-link>
     </section>
@@ -88,15 +90,6 @@ const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
 </template>
 
 <style scoped>
-.hero { position: relative; border-radius: var(--r-lg); overflow: hidden; margin-bottom: 20px; }
-.hero .photo { position: absolute; inset: 0; }
-.hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(10 52 56 / 0.95), rgb(10 52 56 / 0.7) 60%, rgb(10 52 56 / 0.4)); }
-.hero-in { position: relative; z-index: 1; color: #fff; padding: 32px 36px; display: grid; gap: 8px; }
-.hero-in > p { color: #cfe3e3; max-width: 60ch; }
-.stats { display: flex; gap: 40px; margin-top: 18px; flex-wrap: wrap; }
-.stats div { display: grid; }
-.stats strong { font-size: 34px; font-weight: 600; line-height: 1.1; }
-.stats span { font-size: 13px; color: #cfe3e3; }
 .radar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
 .bucket { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--line-strong); border-radius: var(--r-lg); padding: 18px; display: grid; gap: 10px; align-content: start; }
 .bucket.hot { border-top-color: var(--lose); }
@@ -123,5 +116,4 @@ const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
 .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); }
 .row:last-child { border-bottom: 0; }
 @media (max-width: 1000px) { .radar { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .hero-in { padding: 24px 20px; } .stats { gap: 20px; } }
 </style>

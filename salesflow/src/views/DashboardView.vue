@@ -3,34 +3,45 @@ import { computed } from 'vue'
 import Photo from '../components/Photo.vue'
 import StageBadge from '../components/StageBadge.vue'
 import Avatar from '../components/Avatar.vue'
-import { projects, session } from '../store'
+import PageHeader from '../components/PageHeader.vue'
+import KpiStrip from '../components/KpiStrip.vue'
+import { projects, scope, session } from '../store'
 import { PHOTOS, TEAMS, mb, baht, daysUntil, daysSince, thDate, person } from '../data/mock'
-import { stageOf, catOf, probOf, FORECAST_CAT, type StageKey } from '../data/model'
+import { stageOf, catOf, FORECAST_CAT, type StageKey } from '../data/model'
 import { winRate } from '../domain/rules'
+import { OPEN, isOpen, isWon, pipelineValue, bookedValue, weightedValue, teamTotals, sum } from '../domain/metrics'
 
-const OPEN: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding']
-const WEIGHT = Object.fromEntries(OPEN.map((k) => [k, stageOf(k).weight])) as Partial<Record<StageKey, number>>
-const WON: StageKey[] = ['win', 'handover', 'delivery', 'warranty', 'ended']
-
-const mine = computed(() => (session.role === 'sm' ? projects.filter((p) => p.sm === session.userId) : projects))
-const scopeLabel = computed(() => (session.role === 'sm' ? 'ของคุณ' : 'ทุกทีม DT'))
-
-const won = computed(() => mine.value.filter((p) => WON.includes(p.stage)).reduce((s, p) => s + p.revenue, 0))
-const target = computed(() => (session.role === 'sm' ? 40_000_000 : TEAMS.reduce((s, t) => s + t.target, 0)))
-const open = computed(() => mine.value.filter((p) => WEIGHT[p.stage] !== undefined))
-const weighted = computed(() => open.value.reduce((s, p) => s + (p.revenue || p.budget) * probOf(p), 0))
-const forecast = computed(() => open.value.filter((p) => p.stage === 'forecast' || p.stage === 'rebidding').reduce((s, p) => s + p.revenue, 0))
+// Every figure on this page comes from the shared scope + metrics, so it matches the
+// Pipeline board, the project register and the account pages for the same role.
+const mine = computed(() => scope.value.list)
+const open = computed(() => mine.value.filter(isOpen))
+const wonList = computed(() => mine.value.filter(isWon))
+const visibleTeams = computed(() => {
+  const s = scope.value
+  return 'teams' in s && s.teams ? TEAMS.filter((t) => s.teams!(t.code)) : TEAMS
+})
+const PERSONAL_TARGET = 40_000_000
+const target = computed(() => (session.role === 'sm' ? PERSONAL_TARGET : visibleTeams.value.reduce((s, t) => s + t.target, 0)))
+const won = computed(() => sum(wonList.value, bookedValue))
+const weighted = computed(() => sum(open.value, weightedValue))
+const commit = computed(() => sum(open.value.filter((p) => catOf(p) === 'commit'), pipelineValue))
 const gp = computed(() => {
-  const w = mine.value.filter((p) => WON.includes(p.stage))
-  const r = w.reduce((s, p) => s + p.revenue, 0)
-  return r ? ((r - w.reduce((s, p) => s + p.cost, 0)) / r) * 100 : 0
+  const r = sum(wonList.value, (p) => p.revenue)
+  return r ? ((r - sum(wonList.value, (p) => p.cost)) / r) * 100 : 0
 })
 const pct = computed(() => Math.min(100, (won.value / target.value) * 100))
+
+const kpis = computed(() => [
+  { label: 'Pipeline ถ่วงน้ำหนัก', value: mb(weighted.value), note: `${open.value.length} โครงการที่ยังเปิดอยู่`, to: '/pipeline' },
+  { label: 'Commit ไตรมาสนี้', value: mb(commit.value), note: 'หมวด Commit (ค่าเริ่มต้น: Forecast และ Rebidding)' },
+  { label: 'Gross margin งานที่ชนะ', value: gp.value.toFixed(1) + '%', note: 'เป้าบริษัทไม่ต่ำกว่า 25%', tone: gp.value < 25 ? ('bad' as const) : ('' as const) },
+  { label: 'Win rate', value: Math.round(winRate(mine.value) * 100) + '%', note: 'นับจากผลชนะ/แพ้ที่ปิดแล้ว' },
+])
 
 const cats = computed(() =>
   (['commit', 'bestcase', 'pipeline'] as const).map((c) => {
     const list = open.value.filter((p) => catOf(p) === c)
-    return { c, label: FORECAST_CAT[c], n: list.length, v: list.reduce((s, p) => s + (p.revenue || p.budget), 0) }
+    return { c, label: FORECAST_CAT[c], n: list.length, v: sum(list, pipelineValue) }
   }),
 )
 const stalled = computed(() =>
@@ -41,24 +52,23 @@ const stalled = computed(() =>
 )
 const losses = computed(() => {
   const m = new Map<string, number>()
-  mine.value.filter((p) => p.loss).forEach((p) => m.set(p.loss!.reason, (m.get(p.loss!.reason) ?? 0) + (p.revenue || p.budget)))
+  mine.value.filter((p) => p.loss).forEach((p) => m.set(p.loss!.reason, (m.get(p.loss!.reason) ?? 0) + pipelineValue(p)))
   return [...m.entries()].sort((a, b) => b[1] - a[1])
 })
 const funnel = computed(() => {
-  const keys: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win']
+  const keys: StageKey[] = [...OPEN, 'win']
   const rows = keys.map((k) => {
-    const list = mine.value.filter((p) => (k === 'win' ? WON.includes(p.stage) : p.stage === k))
-    return { k, count: list.length, value: list.reduce((s, p) => s + (p.revenue || p.budget), 0) }
+    const list = mine.value.filter((p) => (k === 'win' ? isWon(p) : p.stage === k))
+    return { k, count: list.length, value: sum(list, k === 'win' ? bookedValue : pipelineValue) }
   })
   const max = Math.max(...rows.map((r) => r.value), 1)
   return rows.map((r) => ({ ...r, w: (r.value / max) * 100 }))
 })
 
+// Team totals credit each project by its revenue split, over all projects (a split may cross groups).
 const teams = computed(() =>
-  TEAMS.map((t) => {
-    const list = projects.filter((p) => p.team === t.code)
-    const w = list.filter((p) => WON.includes(p.stage)).reduce((s, p) => s + p.revenue, 0)
-    const pipe = list.filter((p) => WEIGHT[p.stage] !== undefined).reduce((s, p) => s + (p.revenue || p.budget) * WEIGHT[p.stage]!, 0)
+  visibleTeams.value.map((t) => {
+    const { won: w, weighted: pipe } = teamTotals(projects, t.code)
     return { ...t, won: w, pipe, wp: Math.min(100, (w / t.target) * 100), pp: Math.min(100, ((w + pipe) / t.target) * 100) }
   }),
 )
@@ -66,8 +76,8 @@ const teams = computed(() =>
 const deadlines = computed(() =>
   mine.value
     .flatMap((p) => [
-      p.bidDue ? { p, what: 'ยื่นประมูล / Bid due', date: p.bidDue } : null,
-      p.expectedClose && WEIGHT[p.stage] !== undefined ? { p, what: 'คาดว่าปิดการขาย', date: p.expectedClose } : null,
+      p.bidDue && isOpen(p) ? { p, what: 'ยื่นประมูล / Bid due', date: p.bidDue } : null,
+      p.expectedClose && isOpen(p) ? { p, what: 'คาดว่าปิดการขาย', date: p.expectedClose } : null,
       p.endWarranty && p.stage === 'warranty' ? { p, what: 'หมดประกัน', date: p.endWarranty } : null,
     ])
     .filter((x): x is NonNullable<typeof x> => !!x && daysUntil(x.date) >= 0)
@@ -78,11 +88,13 @@ const deadlines = computed(() =>
 
 <template>
   <div class="page">
+    <PageHeader module="งานขาย" title="ภาพรวมยอดขาย" :scope="scope.label" subtitle="ปีงบ 2569 · ข้อมูล ณ 6 พ.ย. 2569" />
+
     <section class="hero">
       <Photo :id="PHOTOS.meeting" :w="1800" alt="" />
       <div class="hero-in">
         <div>
-          <p class="greet">สวัสดี {{ person(session.userId)?.name }} · ยอดปิดได้ปี 2569 {{ scopeLabel }}</p>
+          <p class="greet">สวัสดี {{ person(session.userId)?.name }} · ยอดปิดได้ปี 2569</p>
           <p class="big num">{{ mb(won) }} <span>จากเป้า {{ mb(target) }}</span></p>
         </div>
         <div class="goal" role="img" :aria-label="`ทำได้ ${pct.toFixed(0)}% ของเป้า`">
@@ -92,12 +104,7 @@ const deadlines = computed(() =>
       </div>
     </section>
 
-    <section class="kpis">
-      <div class="kpi"><span>Pipeline ถ่วงน้ำหนัก</span><strong class="num">{{ mb(weighted) }}</strong><em>{{ open.length }} โครงการที่ยังเปิดอยู่</em></div>
-      <div class="kpi"><span>Forecast + Rebidding</span><strong class="num">{{ mb(forecast) }}</strong><em>โอกาส 70–80% ปิดไตรมาสนี้–หน้า</em></div>
-      <div class="kpi"><span>Gross margin งานที่ชนะ</span><strong class="num">{{ gp.toFixed(1) }}%</strong><em>เป้าบริษัทไม่ต่ำกว่า 25%</em></div>
-      <div class="kpi"><span>Win rate</span><strong class="num">{{ Math.round(winRate(mine) * 100) }}%</strong><em>นับจากผลชนะ/แพ้ ดีลที่เปิดใหม่ไม่เปลี่ยนตัวเลขย้อนหลัง</em></div>
-    </section>
+    <KpiStrip :items="kpis" />
 
     <div class="grid">
       <section class="panel">
@@ -152,7 +159,7 @@ const deadlines = computed(() =>
     </div>
 
     <section class="panel">
-      <div class="panel-head"><h2>ยอดขายเทียบเป้าราย DT</h2><span class="muted small">แถบเข้ม = ปิดแล้ว · แถบอ่อน = รวม Pipeline ถ่วงน้ำหนัก</span></div>
+      <div class="panel-head"><h2>ยอดขายเทียบเป้าราย DT</h2><span class="muted small">แถบเข้ม = ปิดแล้ว · แถบอ่อน = รวม Pipeline ถ่วงน้ำหนัก · นับตามสัดส่วนแบ่งยอดของแต่ละโครงการ</span></div>
       <div class="scroll-x">
         <table class="table">
           <thead><tr><th>ทีม</th><th style="width:40%">ความคืบหน้า</th><th class="r">ปิดแล้ว</th><th class="r">Pipeline</th><th class="r">เป้าปี</th></tr></thead>
@@ -160,7 +167,7 @@ const deadlines = computed(() =>
             <tr v-for="t in teams" :key="t.code">
               <td><strong>{{ t.code }}</strong> <span class="muted">{{ t.name }}</span></td>
               <td><div class="tt"><i class="p" :style="{ width: t.pp + '%' }" /><i :style="{ width: t.wp + '%' }" /></div></td>
-              <td class="r num">{{ baht(t.won) }}</td>
+              <td class="r num">{{ baht(Math.round(t.won)) }}</td>
               <td class="r num muted">{{ baht(Math.round(t.pipe)) }}</td>
               <td class="r num">{{ mb(t.target) }}</td>
             </tr>
@@ -169,7 +176,7 @@ const deadlines = computed(() =>
       </div>
     </section>
 
-    <p class="foot muted small"><Avatar :id="session.userId" :size="20" /> ข้อมูล ณ 6 พ.ย. 2569 · ยอดชนะนับเมื่อสถานะเป็น Close Win ขึ้นไป</p>
+    <p class="foot muted small"><Avatar :id="session.userId" :size="20" /> ยอดชนะนับตั้งแต่ Close Win ขึ้นไป ใช้มูลค่าตามสัญญา (หรือราคาที่อนุมัติถ้ายังไม่มีสัญญา)</p>
   </div>
 </template>
 
@@ -189,11 +196,6 @@ const deadlines = computed(() =>
 .legend b { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .k1 { background: #fff; } .k2 { background: rgb(255 255 255 / 0.4); }
 
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
-.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; display: grid; gap: 2px; }
-.kpi span { font-size: 13px; color: var(--muted); }
-.kpi strong { font-size: 26px; font-weight: 600; }
-.kpi em { font-style: normal; font-size: 12.5px; color: var(--faint); }
 
 .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-bottom: 20px; align-items: start; }
 .funnel { display: grid; gap: 12px; }
@@ -229,10 +231,9 @@ const deadlines = computed(() =>
 .tt i.p { background: var(--presale-soft); }
 .foot { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
 
-@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) {
   .hero-in { padding: 24px 20px; }
   .frow { grid-template-columns: 92px 1fr 80px; gap: 8px; }
-  .kpi strong { font-size: 22px; }
 }
 </style>
