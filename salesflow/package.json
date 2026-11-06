@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "vue-tsc -b"
+    "typecheck": "vue-tsc -b",
+    "api": "node server/src/main.ts",
+    "test": "node --test server/test/*.test.ts",
+    "typecheck:server": "tsc -p server/tsconfig.json"
   },
   "dependencies": {
     "vue": "^3.5.40",

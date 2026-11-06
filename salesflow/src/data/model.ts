@@ -88,10 +88,47 @@ export type ProjectType = 'ซื้อขาย' | 'เช่าซื้อ' |
 
 export interface Person { id: string; name: string; initials: string; role: Role; team?: string; color: string }
 
+export interface ApprovalSnapshot { revenue: number; cost: number; gp: number; contractValue?: number }
+
 export interface Approval {
   version: string
   submittedAt: string
-  steps: { who: string; role: string; status: 'approved' | 'pending' | 'rejected' | 'waiting'; at?: string; note?: string }[]
+  steps: { who: string; role: string; status: 'approved' | 'pending' | 'rejected' | 'waiting'; at?: string; note?: string; whoId?: string; onBehalfOf?: string; channel?: 'web' | 'email_link' }[]
+  /** stale = workbook changed after approval; recalled = SM pulled it back. */
+  status?: 'pending' | 'approved' | 'rejected' | 'recalled' | 'stale'
+  submittedBy?: string
+  /** Figures read from the workbook's named ranges at submit time — what the approvers saw. */
+  snapshot?: ApprovalSnapshot
+  snapshotHash?: string
+  /** SharePoint driveItem version + eTag captured at submit; any newer version makes the approval stale. */
+  spVersionId?: string
+  eTag?: string
+  /** Read-only record copy: Cost Sheet/Submitted/vN.xlsx (retention label retainAsRecord). */
+  archivedPath?: string
+  validUntil?: string
+  /** Post-award approval raised because the PO differs from the approved quote (P0-3). */
+  postAward?: boolean
+}
+
+export type Sector = 'government' | 'soe' | 'enterprise' | 'other'
+export interface Account {
+  id: string
+  name: string
+  taxId?: string
+  sector: Sector
+  type: 'customer' | 'end_user' | 'partner' | 'competitor'
+  parentId?: string
+  province?: string
+}
+
+export interface ContractTerms {
+  penaltyBasis: 'whole_contract' | 'undelivered_value'
+  penaltyRatePerDay: number
+  penaltyMinPerDay: number
+  warrantyMonths: number
+  slaTier?: string
+  advancePct?: number
+  whtRate: 0.01 | 0.03
 }
 
 export interface Task {
@@ -157,6 +194,14 @@ export interface Project {
   bid?: BidInfo
   bonds?: Bond[]
   penaltyRate?: number
+  customerAccountId?: string
+  endUserAccountId?: string
+  salesMotion?: 'direct' | 'tender'
+  /** Reason the SM/head overrode the default forecast category. */
+  forecastReason?: string
+  contractValue?: number
+  reopenedFromId?: string
+  terms?: ContractTerms
   parentId?: string
   approval?: Approval
   milestones?: Milestone[]
