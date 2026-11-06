@@ -7,24 +7,30 @@ import { PEOPLE, person } from '../data/mock'
 // task estimates + timesheet entries; allocations come from project plans.
 const team = ref<'DT4-2' | 'DT2'>('DT4-2')
 const WEEKS = ['3 พ.ย.', '10 พ.ย.', '17 พ.ย.', '24 พ.ย.', '1 ธ.ค.', '8 ธ.ค.', '15 ธ.ค.', '22 ธ.ค.']
-const ALLOC: Record<string, { project: string; hrs: number[] }[]> = {
+const ALLOC: Record<string, { project: string; hrs: number[]; soft?: boolean }[]> = {
   ak: [{ project: 'Smart Permit', hrs: [24, 28, 30, 26, 20, 20, 16, 12] }, { project: 'ระบบจองคิว (MA)', hrs: [6, 4, 4, 4, 4, 4, 4, 2] }],
   dev1: [{ project: 'Smart Permit', hrs: [36, 32, 28, 24, 30, 30, 20, 8] }],
-  dev2: [{ project: 'Smart Permit', hrs: [40, 40, 36, 30, 24, 16, 8, 0] }, { project: 'Presale e-Service', hrs: [8, 8, 0, 0, 0, 0, 0, 0] }],
+  dev2: [{ project: 'Smart Permit', hrs: [40, 40, 36, 30, 24, 16, 8, 0] }, { project: 'Presale e-Service', hrs: [8, 8, 0, 0, 0, 0, 0, 0], soft: true }],
   dev3: [{ project: 'Smart Permit', hrs: [30, 30, 24, 24, 28, 32, 24, 8] }, { project: 'ระบบจองคิว (MA)', hrs: [10, 6, 4, 4, 4, 4, 4, 4] }],
   ks: [{ project: 'Network Monitoring (MA)', hrs: [8, 8, 6, 6, 4, 4, 4, 4] }, { project: 'AI OCR (Handover)', hrs: [4, 12, 20, 24, 24, 24, 24, 16] }],
   dev4: [{ project: 'AI OCR (Handover)', hrs: [0, 8, 32, 40, 40, 40, 36, 24] }],
-  dev5: [{ project: 'Data Lakehouse (Presale PoC)', hrs: [24, 24, 16, 8, 0, 0, 0, 0] }, { project: 'AI OCR (Handover)', hrs: [0, 0, 16, 32, 40, 40, 40, 32] }],
+  dev5: [{ project: 'Data Lakehouse (Presale PoC)', hrs: [24, 24, 16, 8, 0, 0, 0, 0], soft: true }, { project: 'AI OCR (Handover)', hrs: [0, 0, 16, 32, 40, 40, 40, 32], soft: true }],
 }
 const members = computed(() =>
   PEOPLE.filter((p) => p.team === team.value && ALLOC[p.id]).map((p) => {
     const rows = ALLOC[p.id]
-    const total = WEEKS.map((_, i) => rows.reduce((s, r) => s + r.hrs[i], 0))
-    return { p, rows, total, avg: Math.round(total.reduce((a, b) => a + b, 0) / WEEKS.length) }
+    const total = WEEKS.map((_, i) => rows.filter((r) => !r.soft).reduce((s, r) => s + r.hrs[i], 0))
+    const soft = WEEKS.map((_, i) => rows.filter((r) => r.soft).reduce((s, r) => s + r.hrs[i], 0))
+    return { p, rows, total, soft, avg: Math.round(total.reduce((a, b) => a + b, 0) / WEEKS.length) }
   }),
 )
 const tone = (h: number) => (h > 40 ? 'over' : h >= 32 ? 'full' : h >= 16 ? 'mid' : h > 0 ? 'low' : 'free')
 const open = ref<string | null>(null)
+const DEMAND = [
+  { name: 'ระบบ e-Service ใบอนุญาตออนไลน์', stage: 'Pipeline', prob: 45, roles: 'PM 1 · BA 2 · Dev 4 · QA 1', md: 810, start: 'ม.ค. 70' },
+  { name: 'ระบบบริหารงานบุคคล HRMS', stage: 'Rebidding', prob: 75, roles: 'PM 1 · Dev 3 · QA 1', md: 540, start: 'ม.ค. 70' },
+  { name: 'Data Lakehouse และ BI ผู้บริหาร', stage: 'Forecast', prob: 75, roles: 'Data Eng 2 · BI 1', md: 300, start: 'ธ.ค. 69' },
+]
 </script>
 
 <template>
@@ -45,12 +51,16 @@ const open = ref<string | null>(null)
               <td>
                 <button class="who" :aria-expanded="open === m.p.id"><Avatar :id="m.p.id" :size="28" /><span>{{ m.p.name }}<em>{{ m.rows.length }} โครงการ</em></span></button>
               </td>
-              <td v-for="(h, i) in m.total" :key="i"><span class="cell num" :class="tone(h)">{{ h || '–' }}</span></td>
+              <td v-for="(h, i) in m.total" :key="i">
+                <span class="cell num" :class="[tone(h), { risk: h + m.soft[i] > 40 && h <= 40 }]" :title="m.soft[i] ? `จองแน่นอน ${h} ชม. + จองเบื้องต้น ${m.soft[i]} ชม.` : `${h} ชม.`">
+                  {{ h || '–' }}<sup v-if="m.soft[i]">+{{ m.soft[i] }}</sup>
+                </span>
+              </td>
               <td class="num avg">{{ m.avg }}</td>
             </tr>
             <template v-if="open === m.p.id">
               <tr v-for="r in m.rows" :key="r.project" class="sub">
-                <td>{{ r.project }}</td>
+                <td>{{ r.project }} <span v-if="r.soft" class="chip">จองเบื้องต้น</span></td>
                 <td v-for="(h, i) in r.hrs" :key="i" class="num">{{ h || '' }}</td><td />
               </tr>
             </template>
@@ -58,8 +68,19 @@ const open = ref<string | null>(null)
         </tbody>
       </table>
       <div class="legend small">
-        <span><i class="free" />ว่าง</span><span><i class="low" />1–15</span><span><i class="mid" />16–31</span><span><i class="full" />32–40</span><span><i class="over" />เกิน 40 ชม.</span>
+        <span><i class="free" />ว่าง</span><span><i class="low" />1–15</span><span><i class="mid" />16–31</span><span><i class="full" />32–40</span><span><i class="over" />เกิน 40 ชม.</span><span><i class="risk" />เกินถ้ารวมการจองเบื้องต้น</span><span><sup>+n</sup> ชั่วโมงจองเบื้องต้น (Soft booking)</span>
       </div>
+    </section>
+
+    <section class="panel demand">
+      <div class="panel-head"><h2>ความต้องการคนจาก Pipeline</h2><span class="muted small">Man-day จาก Cost Sheet × โอกาสปิด</span></div>
+      <table class="table">
+        <thead><tr><th>โครงการ</th><th>สถานะ</th><th>ตำแหน่งที่ต้องใช้</th><th class="r">Man-day</th><th class="r">ถ่วงน้ำหนัก</th><th>เริ่มประมาณ</th></tr></thead>
+        <tbody>
+          <tr v-for="d in DEMAND" :key="d.name"><td>{{ d.name }}</td><td>{{ d.stage }} · {{ d.prob }}%</td><td class="small">{{ d.roles }}</td><td class="r num">{{ d.md }}</td><td class="r num"><b>{{ Math.round(d.md * d.prob / 100) }}</b></td><td class="small">{{ d.start }}</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">ใช้ดูล่วงหน้าว่าถ้าชนะงาน ทีมไหนจะขาดคน · การจองแบ่งเป็น “จองเบื้องต้น” (ยังไม่กินกำลังคน) และ “จองแน่นอน” (มอบหมาย Task ได้) หลัง Handover</p>
     </section>
 
     <section class="panel note">
@@ -89,6 +110,9 @@ const open = ref<string | null>(null)
 .mid { background: #b9dcdd; color: #0b5d62; }
 .full { background: var(--post); color: #fff; }
 .over { background: var(--lose); color: #fff; }
+.cell.risk, i.risk { box-shadow: inset 0 0 0 2px var(--warn); }
+.cell sup { font-size: 10px; font-weight: 500; margin-left: 2px; opacity: 0.85; }
+.demand { margin-top: 20px; }
 .avg { font-weight: 600; }
 .sub td { font-size: 12.5px; color: var(--muted); padding: 2px; }
 .sub td:first-child { text-align: left; padding-left: 42px; }

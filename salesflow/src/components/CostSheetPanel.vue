@@ -59,6 +59,19 @@ const canDecide = computed(() => {
   return (session.role === 'head' && s.role.includes('หัวหน้า')) || (session.role === 'exec' && s.role.includes('ผู้บริหาร')) || session.role === 'admin'
 })
 const approved = computed(() => !!props.p.approval && props.p.approval.steps.every((s) => s.status === 'approved'))
+// SharePoint keeps saving new versions; an approval is only valid for the version it was given on.
+const staleEdit = ref(false)
+const stale = computed(() => approved.value && staleEdit.value)
+function openExcel() {
+  notify('เปิดไฟล์ใน Excel Online (แท็บใหม่)')
+  if (approved.value) staleEdit.value = true
+}
+function recall() {
+  const steps = props.p.approval!.steps
+  steps.forEach((s) => { if (s.status === 'pending' || s.status === 'waiting') s.status = 'waiting' })
+  props.p.approval = undefined
+  notify('ดึงคำขออนุมัติกลับแล้ว แก้ไฟล์แล้วส่งใหม่ได้')
+}
 const isOwner = computed(() => session.role === 'sm' || session.role === 'head' || session.role === 'admin')
 
 function submit() {
@@ -106,12 +119,16 @@ function decide() {
           <p class="muted small">SharePoint › Stream Projects › {{ p.code }} › Cost Sheet · บันทึกล่าสุด {{ versions[0].at }}</p>
         </div>
         <div class="acts">
-          <a class="btn" href="#" @click.prevent="notify('เปิดไฟล์ใน Excel Online (แท็บใหม่)')"><Icon name="excel" /> แก้ไขใน Excel Online</a>
-          <button v-if="isOwner && !pendingStep && !approved" class="btn primary" @click="sendOpen = true"><Icon name="mail" /> ส่งขออนุมัติ</button>
-          <button v-if="isOwner && approved" class="btn primary" @click="saleOpen = true"><Icon name="mail" /> ส่งใบเสนอราคาให้ Sale</button>
+          <a class="btn" href="#" @click.prevent="openExcel"><Icon name="excel" /> แก้ไขใน Excel Online</a>
+          <button v-if="isOwner && pendingStep && session.role === 'sm'" class="btn" @click="recall">ดึงคำขอกลับ</button>
+          <button v-if="isOwner && ((!pendingStep && !approved) || stale)" class="btn primary" @click="staleEdit = false; sendOpen = true"><Icon name="mail" /> ส่งขออนุมัติ</button>
+          <button v-if="isOwner && approved && !stale" class="btn primary" @click="saleOpen = true"><Icon name="mail" /> ส่งใบเสนอราคาให้ Sale</button>
         </div>
       </div>
 
+      <div v-if="stale" class="stale" role="alert">
+        <strong>ไฟล์ถูกแก้หลังอนุมัติ</strong> — มีเวอร์ชันใหม่ใน SharePoint หลังจาก {{ p.approval?.version }} ได้รับอนุมัติ ใบเสนอราคาเดิมถูกระงับการส่ง Sale จนกว่าจะส่งอนุมัติใหม่
+      </div>
       <div class="tabs" role="tablist">
         <button role="tab" :aria-selected="tab === 'cost'" @click="tab = 'cost'">แท็บ Cost Sheet</button>
         <button role="tab" :aria-selected="tab === 'quote'" @click="tab = 'quote'">แท็บ Quotation</button>
@@ -161,7 +178,8 @@ function decide() {
               <strong>{{ s.role }}</strong>
               <p class="small">{{ s.who }}<template v-if="s.at"> · {{ s.at }}</template></p>
               <p v-if="s.note" class="note small">“{{ s.note }}”</p>
-              <p v-if="s.status === 'pending'" class="small wait">รอพิจารณา — ส่งอีเมลแจ้งแล้ว</p>
+              <p v-if="s.status === 'pending'" class="small wait">รอพิจารณา — ครบกำหนด SLA 3 วันทำการ เกินแล้วส่งเตือนซ้ำและแจ้งผู้รับมอบอำนาจแทน</p>
+              <p v-if="s.status === 'pending' && s.role.includes('ผู้บริหาร')" class="small muted">ผู้รับมอบอำนาจแทนช่วงลา: Supawadee W. (ตั้งค่าใน Settings)</p>
             </div>
           </li>
         </ol>
@@ -251,6 +269,8 @@ dd.good { color: var(--win); } dd.bad { color: var(--lose); }
 .waiting { color: var(--faint); }
 .note { color: var(--ink-2); background: var(--sunken); padding: 6px 10px; border-radius: var(--r-sm); margin-top: 4px; }
 .wait { color: var(--warn); }
+.stale { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-md); padding: 12px 14px; font-size: 14px; margin-bottom: 14px; }
+.stale strong { color: var(--warn); }
 .decide { display: flex; gap: 8px; margin-top: 4px; }
 .vers { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .vers li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; }

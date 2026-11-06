@@ -4,14 +4,14 @@ import Photo from '../components/Photo.vue'
 import Avatar from '../components/Avatar.vue'
 import StageBadge from '../components/StageBadge.vue'
 import { projects, session } from '../store'
-import { PHOTOS, TICKETS, baht, daysUntil, thDate } from '../data/mock'
+import { PHOTOS, TICKETS, CONTRACTS, baht, daysUntil, thDate, addDays } from '../data/mock'
 
 const base = computed(() => projects.filter((p) => p.stage === 'warranty' && (session.role !== 'sm' || p.sm === session.userId)))
 const sorted = computed(() => [...base.value].sort((a, b) => daysUntil(a.endWarranty) - daysUntil(b.endWarranty)))
 const buckets = computed(() => [
-  { k: 'ภายใน 30 วัน', d: 'ส่งหนังสือแจ้งลูกค้าแล้วหรือยัง', list: sorted.value.filter((p) => daysUntil(p.endWarranty) <= 30), tone: 'hot' },
-  { k: '31–90 วัน', d: 'เตรียมใบเสนอราคา MA', list: sorted.value.filter((p) => daysUntil(p.endWarranty) > 30 && daysUntil(p.endWarranty) <= 90), tone: 'warm' },
-  { k: 'มากกว่า 90 วัน', d: 'ดูแลตาม SLA', list: sorted.value.filter((p) => daysUntil(p.endWarranty) > 90), tone: '' },
+  { k: 'ภายใน 30 วัน', d: 'ใกล้หรือเลยกำหนดแจ้งต่อสัญญา ต้องตามคำตอบลูกค้า', list: sorted.value.filter((p) => daysUntil(p.endWarranty) <= 30), tone: 'hot' },
+  { k: '31–120 วัน', d: 'ส่งใบเสนอราคา MA — ลูกค้าภาครัฐต้องทันรอบตั้งงบ (ยื่นคำของบราว พ.ค.)', list: sorted.value.filter((p) => daysUntil(p.endWarranty) > 30 && daysUntil(p.endWarranty) <= 120), tone: 'warm' },
+  { k: 'มากกว่า 120 วัน', d: 'ดูแลตาม SLA และเก็บข้อมูลสุขภาพลูกค้า', list: sorted.value.filter((p) => daysUntil(p.endWarranty) > 120), tone: '' },
 ])
 const tickets = computed(() => TICKETS.map((t) => ({ ...t, p: projects.find((p) => p.id === t.project) })))
 const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
@@ -38,7 +38,14 @@ const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
         <header><h2>{{ b.k }}</h2><p class="small muted">{{ b.d }}</p></header>
         <router-link v-for="p in b.list" :key="p.id" :to="`/projects/${p.id}`" class="w">
           <div class="d num">{{ daysUntil(p.endWarranty) }}<span>วัน</span></div>
-          <div><strong>{{ p.name }}</strong><p class="small muted">{{ p.customer }} · หมด {{ thDate(p.endWarranty) }}</p><p class="small">{{ p.nextStep }}</p></div>
+          <div>
+            <strong>{{ p.name }}</strong>
+            <p class="small muted">{{ p.customer }} · หมด {{ thDate(p.endWarranty) }}</p>
+            <p v-if="CONTRACTS[p.id]" class="small">แจ้งต่อสัญญาภายใน {{ thDate(addDays(p.endWarranty!, -CONTRACTS[p.id].noticeDays)) }} · MA ปีถัดไป {{ baht(Math.round(p.revenue * CONTRACTS[p.id].uplift)) }}</p>
+            <p v-if="CONTRACTS[p.id]" class="hs small" :class="CONTRACTS[p.id].health < 60 ? 'low' : CONTRACTS[p.id].health < 75 ? 'mid' : 'ok'" :title="CONTRACTS[p.id].reasons.join(' · ')">
+              สุขภาพลูกค้า <b class="num">{{ CONTRACTS[p.id].health }}</b> · {{ CONTRACTS[p.id].reasons[0] }}
+            </p>
+          </div>
         </router-link>
         <p v-if="!b.list.length" class="small muted none">ไม่มีโครงการในช่วงนี้</p>
       </section>
@@ -48,15 +55,21 @@ const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
       <div class="panel-head"><h2>คิว Ticket ตาม SLA</h2><button class="btn sm">รับเรื่องใหม่</button></div>
       <div class="scroll-x">
         <table class="table">
-          <thead><tr><th>ระดับ</th><th>เรื่อง</th><th>โครงการ</th><th>สถานะ</th><th>SLA</th><th class="r">เวลาที่เหลือ</th><th>ผู้รับผิดชอบ</th></tr></thead>
+          <thead><tr><th>ระดับ</th><th>เรื่อง</th><th>โครงการ</th><th>สถานะ</th><th>ตอบรับ</th><th style="min-width:150px">แก้ไขเสร็จ (SLA)</th><th>ผู้รับผิดชอบ</th></tr></thead>
           <tbody>
             <tr v-for="t in tickets" :key="t.id">
               <td><span class="chip" :class="t.severity === 'P1' ? 'lose' : t.severity === 'CR' ? 'presale' : 'warn'">{{ t.severity }}</span></td>
               <td><strong class="tt">{{ t.title }}</strong><p class="small muted">{{ t.id }} · {{ t.opened }}</p></td>
               <td class="small">{{ t.p?.name }}</td>
               <td class="small">{{ t.status }}</td>
-              <td class="small">{{ t.sla }}</td>
-              <td class="r small" :class="t.left.startsWith('เกิน') ? 'bad' : t.severity === 'P1' ? 'warnc' : 'muted'">{{ t.left }}</td>
+              <td class="small" :class="{ bad: t.resp.includes('ช้า') }">{{ t.resp }}</td>
+              <td>
+                <template v-if="t.severity !== 'CR'">
+                  <div class="slab" :class="{ paused: t.paused, w50: t.used >= 50, br: t.used >= 100 }"><i :style="{ width: Math.min(100, t.used) + '%' }" /></div>
+                  <span class="small" :class="t.used >= 100 ? 'bad' : t.used >= 75 ? 'warnc' : 'muted'">{{ t.paused ? 'หยุดนับ — รอลูกค้า' : t.left }} · {{ t.sla }}</span>
+                </template>
+                <span v-else class="small muted">ประเมินเป็นงานขายเพิ่ม</span>
+              </td>
               <td><Avatar :id="t.owner" :size="26" /></td>
             </tr>
           </tbody>
@@ -97,6 +110,13 @@ const renewals = computed(() => projects.filter((p) => p.type === 'MA'))
 .warm .d { color: var(--warn); }
 .none { padding: 12px 0; }
 .tt { font-weight: 500; }
+.slab { height: 6px; background: var(--idle-soft); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
+.slab i { display: block; height: 100%; background: var(--post); }
+.slab.w50 i { background: var(--warn); }
+.slab.br i { background: var(--lose); }
+.slab.paused i { background: repeating-linear-gradient(45deg, var(--faint) 0 4px, var(--line-strong) 4px 8px); }
+.hs { margin-top: 4px; }
+.hs.ok b { color: var(--win); } .hs.mid b { color: var(--warn); } .hs.low b { color: var(--lose); }
 .bad { color: var(--lose); font-weight: 600; }
 .warnc { color: var(--warn); font-weight: 600; }
 .ren { margin-top: 20px; }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Photo from '../components/Photo.vue'
 import StageRail from '../components/StageRail.vue'
 import StageBadge from '../components/StageBadge.vue'
@@ -10,20 +10,22 @@ import FolderGrid from '../components/FolderGrid.vue'
 import CostSheetPanel from '../components/CostSheetPanel.vue'
 import DeliveryPanel from '../components/DeliveryPanel.vue'
 import MaPanel from '../components/MaPanel.vue'
+import ProcurementPanel from '../components/ProcurementPanel.vue'
 import { moveStage, notify, projects, session } from '../store'
-import { baht, person, thDate } from '../data/mock'
-import { allowedMoves, stageOf, type StageKey } from '../data/model'
+import { baht, person, thDate, daysSince, TEAMS } from '../data/mock'
+import { allowedMoves, stageOf, probOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
 
 const props = defineProps<{ id: string }>()
 const p = computed(() => projects.find((x) => x.id === props.id))
 const parent = computed(() => projects.find((x) => x.id === p.value?.parentId))
 const children = computed(() => projects.filter((x) => x.parentId === props.id))
 
-type Tab = 'overview' | 'cost' | 'delivery' | 'ma' | 'history'
+type Tab = 'overview' | 'cost' | 'proc' | 'delivery' | 'ma' | 'history'
 const tab = ref<Tab>('overview')
 const post = computed(() => !!p.value && ['win', 'handover', 'delivery', 'warranty', 'ended', 'cancelled'].includes(p.value.stage))
 const tabs = computed(() => {
   const t: { k: Tab; l: string }[] = [{ k: 'overview', l: 'ภาพรวมและเอกสาร' }, { k: 'cost', l: 'Cost Sheet และใบเสนอราคา' }]
+  if (p.value?.bid || post.value) t.push({ k: 'proc', l: 'ประมูล หลักประกัน ค่าปรับ' })
   if (post.value) t.push({ k: 'delivery', l: p.value?.stage === 'win' || p.value?.stage === 'handover' ? 'Handover' : 'แผนงานและ Task' })
   if (p.value && ['warranty', 'ended'].includes(p.value.stage)) t.push({ k: 'ma', l: 'ประกันและ MA' })
   t.push({ k: 'history', l: 'ประวัติโครงการ' })
@@ -33,10 +35,39 @@ const tabs = computed(() => {
 const moves = computed(() => (p.value ? allowedMoves(p.value.stage, session.role) : []))
 const target = ref<StageKey | null>(null)
 const reason = ref('')
-const needsReason = computed(() => target.value === 'lose' || target.value === 'cancelled' || (p.value?.stage === 'lose' && target.value === 'pipeline'))
+const needsReason = computed(() => target.value === 'cancelled' || (p.value?.stage === 'lose' && target.value === 'pipeline'))
+// Forward moves must pass the current stage's exit criteria; exits (Lose/Cancelled) skip them.
+const forward = computed(() => !!target.value && !['lose', 'cancelled'].includes(target.value) && p.value?.stage !== 'lose')
+const gate = ref<boolean[]>([])
+const loss = ref({ reason: '', competitor: '', price: null as number | null })
+watch(target, () => {
+  gate.value = p.value ? stageOf(p.value.stage).exit.map(() => false) : []
+  loss.value = { reason: '', competitor: '', price: null }
+})
+const canConfirm = computed(() => {
+  if (needsReason.value && !reason.value.trim()) return false
+  if (target.value === 'lose' && !loss.value.reason) return false
+  if (forward.value && gate.value.some((g) => !g)) return false
+  return true
+})
+const aging = computed(() => {
+  if (!p.value?.stageSince) return null
+  const d = daysSince(p.value.stageSince)
+  const lim = stageOf(p.value.stage).staleDays
+  return { d, stale: !!lim && d > lim, lim }
+})
+function setCat(e: Event) {
+  if (p.value) p.value.forecastCat = (e.target as HTMLSelectElement).value as ForecastCat
+}
 function confirmMove() {
-  if (!p.value || !target.value) return
+  if (!p.value || !target.value || !canConfirm.value) return
   const to = stageOf(target.value).label
+  if (target.value === 'lose') {
+    p.value.loss = { reason: loss.value.reason, competitor: loss.value.competitor || undefined, price: loss.value.price ?? undefined }
+    reason.value = reason.value || `แพ้งาน: ${loss.value.reason}${loss.value.competitor ? ' · ผู้ชนะ ' + loss.value.competitor : ''}`
+  }
+  p.value.stageSince = new Date().toISOString().slice(0, 10)
+  p.value.forecastCat = undefined
   moveStage(p.value.id, target.value, reason.value || `เปลี่ยนสถานะเป็น ${to}`, person(session.userId)?.name ?? '')
   notify(`เปลี่ยนสถานะเป็น ${to} แล้ว`)
   target.value = null
@@ -63,6 +94,7 @@ const drop = ref(false)
           <StageBadge :stage="p.stage" />
           <span class="chip dark">{{ p.type }}</span>
           <span class="chip dark">{{ p.team }}</span>
+          <span v-if="aging" class="chip" :class="aging.stale ? 'lose' : 'dark'" :title="aging.stale ? `เกินเกณฑ์ ${aging.lim} วันของสถานะนี้` : ''">อยู่ในสถานะนี้ {{ aging.d }} วัน{{ aging.stale ? ' · ค้างนาน' : '' }}</span>
         </div>
         <h1>{{ p.name }}</h1>
         <p class="sub">{{ p.code }} · {{ p.customer }}<template v-if="parent"> · ต่อจาก <router-link :to="`/projects/${parent.id}`">{{ parent.code }}</router-link></template></p>
@@ -94,7 +126,26 @@ const drop = ref(false)
             <dt>Cost (COGS)</dt><dd class="num">{{ baht(p.cost) }}<em v-if="!p.cost">รอ Cost Sheet อนุมัติ</em></dd>
             <dt>Gross Profit</dt><dd class="num strong">{{ baht(gp) }}<span v-if="p.revenue" class="muted"> · {{ ((gp / p.revenue) * 100).toFixed(1) }}%</span></dd>
             <dt>Budget ลูกค้า</dt><dd class="num">{{ baht(p.budget) }}</dd>
+            <template v-if="stageOf(p.stage).phase === 'presale'">
+              <dt>โอกาสปิด</dt><dd class="num">{{ Math.round(probOf(p) * 100) }}% · ถ่วงน้ำหนัก {{ baht(Math.round((p.revenue || p.budget) * probOf(p))) }}</dd>
+              <dt><label for="fc">Forecast category</label></dt>
+              <dd><select id="fc" class="input mini" :value="catOf(p)" @change="setCat"><option v-for="(l, k) in FORECAST_CAT" :key="k" :value="k">{{ l }}</option></select></dd>
+            </template>
+            <template v-if="p.loss">
+              <dt>เหตุผลที่แพ้</dt><dd>{{ p.loss.reason }}<em v-if="p.loss.competitor" class="lossnote">ผู้ชนะ {{ p.loss.competitor }}{{ p.loss.price ? ' · ' + baht(p.loss.price) : '' }}</em></dd>
+            </template>
           </dl>
+        </section>
+
+        <section class="panel">
+          <h3>แบ่งยอดขายระหว่างทีม DT</h3>
+          <div class="split" role="img" :aria-label="(p.splits ?? [{ team: p.team, pct: 100 }]).map((x) => x.team + ' ' + x.pct + '%').join(', ')">
+            <i v-for="(x, i) in p.splits ?? [{ team: p.team, pct: 100 }]" :key="x.team" :class="'s' + i" :style="{ width: x.pct + '%' }" />
+          </div>
+          <ul class="splitl">
+            <li v-for="(x, i) in p.splits ?? [{ team: p.team, pct: 100 }]" :key="x.team"><b :class="'s' + i" />{{ x.team }} <span class="muted">{{ TEAMS.find((t) => t.code === x.team)?.name }}</span><span class="num">{{ x.pct }}% · {{ baht(Math.round((p.revenue || p.budget) * x.pct / 100)) }}</span></li>
+          </ul>
+          <p class="hint">ยอดนับเข้าเป้าแต่ละทีมตามสัดส่วนนี้ รวมต้องเท่ากับ 100%</p>
         </section>
 
         <section class="panel">
@@ -146,6 +197,7 @@ const drop = ref(false)
     <CostSheetPanel v-if="tab === 'cost'" :p="p" />
     <DeliveryPanel v-if="tab === 'delivery'" :p="p" />
     <MaPanel v-if="tab === 'ma'" :p="p" />
+    <ProcurementPanel v-if="tab === 'proc'" :p="p" />
 
     <section v-if="tab === 'history'" class="panel">
       <ol class="hist">
@@ -161,13 +213,27 @@ const drop = ref(false)
       <p v-if="target">{{ stageOf(target).hint }}</p>
       <p v-if="target === 'win'" class="chip warn">ต้องแนบ PO หรือสัญญาในโฟลเดอร์ Official PO / Contract — ระบบจะแจ้ง PMO ให้จัด Handover</p>
       <p v-if="target === 'cancelled'" class="chip lose">ยกเลิกแล้วกู้คืนไม่ได้ ยอดขายจะถูกหักออกจากเป้าของ SM</p>
+      <fieldset v-if="forward && stageOf(p.stage).exit.length" class="gate">
+        <legend>ยืนยันเงื่อนไขก่อนออกจาก {{ stageOf(p.stage).label }}</legend>
+        <label v-for="(c, i) in stageOf(p.stage).exit" :key="c"><input v-model="gate[i]" type="checkbox" /> {{ c }}</label>
+      </fieldset>
+      <template v-if="target === 'lose'">
+        <div class="field">
+          <label for="lr">เหตุผลที่แพ้ (บังคับ)</label>
+          <select id="lr" v-model="loss.reason" class="input"><option value="" disabled>เลือกเหตุผล</option><option v-for="r in LOSS_REASONS" :key="r">{{ r }}</option></select>
+        </div>
+        <div class="two">
+          <div class="field"><label for="lc">ผู้ชนะ / คู่แข่ง</label><input id="lc" v-model="loss.competitor" class="input" /></div>
+          <div class="field"><label for="lp">ราคาที่ชนะ (บาท)</label><input id="lp" v-model.number="loss.price" class="input num" type="number" min="0" /></div>
+        </div>
+      </template>
       <div class="field">
         <label for="rs">{{ needsReason ? 'เหตุผล (บังคับ)' : 'บันทึก (ไม่บังคับ)' }}</label>
         <textarea id="rs" v-model="reason" class="input" rows="3" />
       </div>
       <template #foot>
         <button class="btn" @click="target = null">ยกเลิก</button>
-        <button class="btn primary" :disabled="needsReason && !reason.trim()" @click="confirmMove">
+        <button class="btn primary" :disabled="!canConfirm" @click="confirmMove">
           {{ target === 'cancelled' ? 'ยกเลิกโครงการ' : p.stage === 'lose' ? 'เปิดกลับเป็น Pipeline' : `ย้ายไป ${target ? stageOf(target).label : ''}` }}
         </button>
       </template>
@@ -217,6 +283,21 @@ const drop = ref(false)
 .drop:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
 .sr { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .child { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; color: var(--ink); border-bottom: 1px solid var(--line); }
+.input.mini { min-height: 32px; padding: 2px 8px; font-size: 13.5px; width: auto; }
+.lossnote { color: var(--muted) !important; }
+.split { display: flex; height: 10px; border-radius: 99px; overflow: hidden; gap: 2px; margin-bottom: 12px; }
+.split i, .splitl b { background: var(--presale); }
+.split .s1, .splitl .s1 { background: var(--post); }
+.split .s2, .splitl .s2 { background: var(--warn); }
+.splitl { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.splitl li { display: flex; align-items: center; gap: 8px; }
+.splitl b { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.splitl .num { margin-left: auto; }
+.gate { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; margin: 0; display: grid; gap: 6px; }
+.gate legend { font-size: 13px; font-weight: 600; padding: 0 4px; }
+.gate label { display: flex; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; }
+.gate input { width: 17px; height: 17px; accent-color: var(--ink); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .hist { list-style: none; margin: 0; padding: 0; display: grid; }
 .hist li { display: grid; grid-template-columns: 130px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
 .hist li:last-child { border-bottom: 0; }

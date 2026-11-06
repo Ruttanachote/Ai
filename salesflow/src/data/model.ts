@@ -15,23 +15,41 @@ export interface Stage {
   phase: Phase
   owner: string
   hint: string
+  /** Default probability (0–1) used for the weighted pipeline. */
+  weight: number
+  /** Exit criteria the owner confirms before leaving this stage (Salesforce "Path" style gate). */
+  exit: string[]
+  /** Days in stage before the deal is flagged as stalled. */
+  staleDays?: number
 }
 
+export type ForecastCat = 'pipeline' | 'bestcase' | 'commit' | 'closed' | 'omitted'
+export const FORECAST_CAT: Record<ForecastCat, string> = {
+  pipeline: 'Pipeline', bestcase: 'Best case', commit: 'Commit', closed: 'Closed', omitted: 'ไม่นับ',
+}
+export const LOSS_REASONS = [
+  'ราคาสูงกว่าคู่แข่ง', 'คุณสมบัติไม่ผ่าน TOR', 'ลูกค้าตัดงบ / ยกเลิกโครงการ', 'คู่แข่งได้เปรียบความสัมพันธ์',
+  'ยื่นเอกสารไม่ครบ / ไม่ทันเวลา', 'Solution ไม่ตรงความต้องการ', 'ลูกค้าเลื่อนไปปีงบถัดไป', 'อื่น ๆ',
+]
+
 export const STAGES: Stage[] = [
-  { key: 'opportunity', label: 'Opportunity', th: 'โอกาส', prob: '10–20%', phase: 'presale', owner: 'SM', hint: 'Requirement ลูกค้าตรงกับสินค้าหรือบริการที่เรามี' },
-  { key: 'pipeline', label: 'Pipeline', th: 'กำลังเจรจา', prob: '40–50%', phase: 'presale', owner: 'SM', hint: 'มีโอกาสปิดได้ภายในปีนี้ ลูกค้าเริ่มเจรจาแล้ว' },
-  { key: 'forecast', label: 'Forecast', th: 'คาดการณ์ปิด', prob: '70–80%', phase: 'presale', owner: 'SM', hint: 'ตกลงกับลูกค้าแล้ว คาดว่าปิดในไตรมาสนี้หรือหน้า' },
-  { key: 'rebidding', label: 'Rebidding', th: 'ยื่นประมูล', prob: '70–80%', phase: 'presale', owner: 'SM', hint: 'กำลังเตรียมหรือยื่นประมูลแข่งบนเว็บไซต์' },
-  { key: 'win', label: 'Close Win', th: 'ชนะงาน', prob: '100%', phase: 'result', owner: 'SM', hint: 'ได้ PO หรือสัญญาแล้ว' },
-  { key: 'lose', label: 'Close Lose', th: 'ไม่ได้งาน', prob: '0%', phase: 'result', owner: 'หัวหน้ากลุ่ม', hint: 'จบโครงการ หัวหน้ากลุ่มเปิดกลับเป็น Pipeline ได้' },
-  { key: 'handover', label: 'Handover', th: 'ส่งต่องาน', prob: '—', phase: 'postsale', owner: 'PMO', hint: 'ประชุมส่งต่องานจาก Pre-sale ให้ PM' },
-  { key: 'delivery', label: 'In Delivery', th: 'กำลังส่งมอบ', prob: '—', phase: 'postsale', owner: 'PM', hint: 'PM และทีม Dev กำลังพัฒนาและส่งมอบ' },
-  { key: 'warranty', label: 'Warranty', th: 'รับประกัน', prob: '—', phase: 'postsale', owner: 'MA', hint: 'Go-Live แล้ว ทีม MA ดูแล' },
-  { key: 'ended', label: 'Ended', th: 'ปิดโครงการ', prob: '—', phase: 'postsale', owner: 'MA', hint: 'หมดประกัน ถ้าต่อสัญญาเปิดเป็นโครงการ MA ใหม่' },
-  { key: 'cancelled', label: 'Cancelled', th: 'ยกเลิก', prob: '—', phase: 'postsale', owner: 'หัวหน้ากลุ่ม', hint: 'ยกเลิกหลังชนะงาน (Close Win ถึง In Delivery)' },
+  { key: 'opportunity', label: 'Opportunity', th: 'โอกาส', prob: '10–20%', phase: 'presale', owner: 'SM', hint: 'Requirement ลูกค้าตรงกับสินค้าหรือบริการที่เรามี' , weight: 0.15, exit: ['ระบุลูกค้าและ End User', 'ระบุประเภทโครงการและทีม DT', 'มี Budget หรือช่วงงบประมาณของลูกค้า'], staleDays: 45 },
+  { key: 'pipeline', label: 'Pipeline', th: 'กำลังเจรจา', prob: '40–50%', phase: 'presale', owner: 'SM', hint: 'มีโอกาสปิดได้ภายในปีนี้ ลูกค้าเริ่มเจรจาแล้ว' , weight: 0.45, exit: ['ใบเสนอราคาได้รับอนุมัติครบทุกขั้น', 'ทราบวิธีจัดซื้อ (e-bidding / เฉพาะเจาะจง / เอกชน)', 'กำหนด Expected Close'], staleDays: 60 },
+  { key: 'forecast', label: 'Forecast', th: 'คาดการณ์ปิด', prob: '70–80%', phase: 'presale', owner: 'SM', hint: 'ตกลงกับลูกค้าแล้ว คาดว่าปิดในไตรมาสนี้หรือหน้า' , weight: 0.75, exit: ['ลูกค้ายืนยันขอบเขตและราคา', 'มีร่างสัญญาหรือ PO', 'กำหนดผู้ลงนามฝั่งลูกค้า'], staleDays: 45 },
+  { key: 'rebidding', label: 'Rebidding', th: 'ยื่นประมูล', prob: '70–80%', phase: 'presale', owner: 'SM', hint: 'กำลังเตรียมหรือยื่นประมูลแข่งบนเว็บไซต์' , weight: 0.75, exit: ['บันทึกเลขโครงการ e-GP และราคากลาง', 'วางหลักประกันซองแล้ว', 'ยื่นข้อเสนอก่อนกำหนด'], staleDays: 30 },
+  { key: 'win', label: 'Close Win', th: 'ชนะงาน', prob: '100%', phase: 'result', owner: 'SM', hint: 'ได้ PO หรือสัญญาแล้ว' , weight: 1, exit: ['อัปโหลด PO หรือสัญญาที่ลงนาม', 'มูลค่า PO ตรงกับใบเสนอราคาที่อนุมัติ', 'วางหลักประกันสัญญาแล้ว (ถ้ามี)'] },
+  { key: 'lose', label: 'Close Lose', th: 'ไม่ได้งาน', prob: '0%', phase: 'result', owner: 'หัวหน้ากลุ่ม', hint: 'จบโครงการ หัวหน้ากลุ่มเปิดกลับเป็น Pipeline ได้' , weight: 0, exit: [] },
+  { key: 'handover', label: 'Handover', th: 'ส่งต่องาน', prob: '—', phase: 'postsale', owner: 'PMO', hint: 'ประชุมส่งต่องานจาก Pre-sale ให้ PM' , weight: 0, exit: ['Checklist Handover ครบ', 'มอบหมาย PM และทีม DT', 'ยืนยันงวดงานและค่าปรับตามสัญญา'] },
+  { key: 'delivery', label: 'In Delivery', th: 'กำลังส่งมอบ', prob: '—', phase: 'postsale', owner: 'PM', hint: 'PM และทีม Dev กำลังพัฒนาและส่งมอบ' , weight: 0, exit: ['ลูกค้าตรวจรับงวดสุดท้าย', 'อัปโหลดใบตรวจรับใน Document Inspection', 'ส่งมอบคู่มือและอบรมแล้ว'] },
+  { key: 'warranty', label: 'Warranty', th: 'รับประกัน', prob: '—', phase: 'postsale', owner: 'MA', hint: 'Go-Live แล้ว ทีม MA ดูแล' , weight: 0, exit: ['หมดระยะประกัน', 'ลูกค้าตอบเรื่องต่อ MA แล้ว', 'ขอคืนหลักประกันสัญญา'] },
+  { key: 'ended', label: 'Ended', th: 'ปิดโครงการ', prob: '—', phase: 'postsale', owner: 'MA', hint: 'หมดประกัน ถ้าต่อสัญญาเปิดเป็นโครงการ MA ใหม่' , weight: 0, exit: [] },
+  { key: 'cancelled', label: 'Cancelled', th: 'ยกเลิก', prob: '—', phase: 'postsale', owner: 'หัวหน้ากลุ่ม', hint: 'ยกเลิกหลังชนะงาน (Close Win ถึง In Delivery)' , weight: 0, exit: [] },
 ]
 
 export const stageOf = (k: StageKey) => STAGES.find((s) => s.key === k)!
+export const probOf = (p: { stage: StageKey; probability?: number }) => p.probability ?? stageOf(p.stage).weight
+export const catOf = (p: { stage: StageKey; forecastCat?: ForecastCat }): ForecastCat =>
+  p.forecastCat ?? (p.stage === 'opportunity' ? 'pipeline' : p.stage === 'pipeline' ? 'bestcase' : ['forecast', 'rebidding'].includes(p.stage) ? 'commit' : p.stage === 'lose' || p.stage === 'cancelled' ? 'omitted' : 'closed')
 
 /** Main happy path used by the stage rail. Lose / Cancelled are side exits. */
 export const RAIL: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win', 'handover', 'delivery', 'warranty', 'ended']
@@ -87,7 +105,22 @@ export interface Task {
   milestone: string
 }
 
-export interface Milestone { name: string; start: string; end: string; progress: number; payment?: number; paid?: boolean }
+export type MilestoneState = 'planned' | 'delivered' | 'inspected' | 'invoiced' | 'paid'
+export interface Milestone { name: string; start: string; end: string; progress: number; payment?: number; paid?: boolean; state?: MilestoneState; deliveredAt?: string }
+
+/** Thai e-GP procurement sub-workflow (พ.ร.บ.จัดซื้อจัดจ้างฯ 2560). */
+export interface BidInfo {
+  method: 'e-bidding' | 'e-market' | 'คัดเลือก' | 'เฉพาะเจาะจง' | 'เอกชน'
+  egpNo?: string
+  refPrice?: number
+  announce?: string
+  submit?: string
+  result?: string
+  signed?: string
+  ourBid?: number
+  smeAdvantage?: boolean
+}
+export interface Bond { kind: 'bid' | 'performance'; pct: number; amount: number; form: string; bank: string; issued: string; expires: string; returned?: string }
 
 export interface Project {
   id: string
@@ -113,6 +146,17 @@ export interface Project {
   endWarranty?: string
   nextStep: string
   cover: string
+  /** Probability override (0–1); falls back to the stage weight. */
+  probability?: number
+  forecastCat?: ForecastCat
+  /** ISO date the project entered its current stage — drives aging / stalled alerts. */
+  stageSince?: string
+  /** Revenue credit split between DT teams (must total 100%). */
+  splits?: { team: string; pct: number }[]
+  loss?: { reason: string; competitor?: string; price?: number }
+  bid?: BidInfo
+  bonds?: Bond[]
+  penaltyRate?: number
   parentId?: string
   approval?: Approval
   milestones?: Milestone[]

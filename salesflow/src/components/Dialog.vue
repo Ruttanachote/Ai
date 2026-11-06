@@ -42,7 +42,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
 </template>
 
 <style scoped>
-.back { position: fixed; inset: 0; background: rgb(22 27 38 / 0.45); display: grid; place-items: center; z-index: 80; padding: 16px; }
+.back { position: fixed; inset: 0; background: rgb(22 27 38 / 0.45); display: flex; align-items: center; justify-content: center; z-index: 80; padding: 16px; }
 .dlg { background: var(--surface); border-radius: var(--r-lg); width: 100%; max-width: 520px; max-height: calc(100vh - 32px); display: flex; flex-direction: column; box-shadow: var(--shadow-pop); }
 .dlg.wide { max-width: 720px; }
 header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 8px; }
@@ -53,4 +53,7 @@ footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px 
 .dlg-enter-active .dlg, .dlg-leave-active .dlg { transition: transform var(--t-med) var(--ease); }
 .dlg-enter-from, .dlg-leave-to { opacity: 0; }
 .dlg-enter-from .dlg, .dlg-leave-to .dlg { transform: translateY(8px) scale(0.99); }
+</style>
+<style>
+.dlg .content .chip { white-space: normal; height: auto; padding: 8px 12px; border-radius: 8px; line-height: 1.5; }
 </style>

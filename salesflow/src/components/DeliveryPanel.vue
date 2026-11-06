@@ -132,7 +132,7 @@ const crs = [
                 <i :style="{ width: m.progress + '%' }" /><span class="num" :class="{ dim: m.progress < 20 }">{{ m.progress }}%</span>
               </div>
             </div>
-            <div class="gpay num small">{{ m.payment ? baht(m.payment) : '' }}<span v-if="m.paid" class="chip win">รับแล้ว</span></div>
+            <div class="gpay num small">{{ m.payment ? baht(m.payment) : '' }}<span class="chip" :class="m.state === 'paid' ? 'win' : m.state === 'planned' || !m.state ? '' : 'warn'">{{ ({ planned: 'ยังไม่ส่งมอบ', delivered: 'ส่งมอบแล้ว', inspected: 'ตรวจรับแล้ว', invoiced: 'วางบิลแล้ว', paid: 'รับเงินแล้ว' } as Record<string, string>)[m.state ?? 'planned'] }}</span></div>
           </div>
         </div>
       </div>

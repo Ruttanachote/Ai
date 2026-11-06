@@ -123,19 +123,18 @@ Opportunity → Pipeline → Forecast → Rebidding → Close Win → Handover �
 
 ---
 
-## 6. การเชื่อมต่อ Microsoft 365
+## 6. การเชื่อมต่อ Microsoft 365 (ปรับปรุงหลังวิเคราะห์เชิงลึก)
 
-| บริการ | ใช้ทำ | Graph permission (Application / Delegated) |
+| บริการ | ใช้ทำ | วิธีที่ถูกต้อง |
 |---|---|---|
-| Entra ID | SSO (MSAL), App Roles | `openid`, `profile`, `User.Read` |
-| SharePoint | ไซต์ “Stream Projects” โฟลเดอร์ต่อโครงการ | `Sites.Selected` (จำกัดไซต์เดียว) |
-| Excel Online | คัดลอก Template, อ่าน Named range | `Files.ReadWrite` บนไซต์ที่เลือก |
-| Outlook | ขออนุมัติ, ส่ง Sale, หนังสือแจ้งลูกค้า | `Mail.Send` (ผ่าน shared mailbox `salesflow@`) |
-| Teams | นัดประชุม Handover, แจ้งเตือนช่องทีม | `OnlineMeetings.ReadWrite`, `ChannelMessage.Send` |
+| Entra ID | SSO, App Roles | แยก 2 App registration: Web app (delegated + App Roles) และ Worker (certificate, app-only) |
+| SharePoint | โฟลเดอร์ต่อโครงการ | `Sites.Selected` จำกัดไซต์ "Stream Projects" · copy เป็น async (202 + poll) · ตรวจไฟล์ถูกแก้ด้วย webhook ที่ drive root + `delta` |
+| Excel Online | Cost Sheet + Quotation | **อ่าน Named range ด้วย token ของผู้ใช้ (delegated) ตอนกด Sync/ส่งอนุมัติ** — Workbook API ไม่รองรับ app-only · เก็บ snapshot ตัวเลขลง DB ทุกครั้งที่ส่งอนุมัติ |
+| PDF ใบเสนอราคา | ส่ง Sale | **แอปสร้าง PDF เองจาก snapshot ที่อนุมัติ** (`?format=pdf` จำกัด 2 MB และเลือกชีตไม่ได้) |
+| Outlook | อีเมลอนุมัติ ส่ง Sale แจ้งลูกค้า | `Mail.Send` จาก `salesflow@` จำกัดด้วย Exchange RBAC for Applications · ช่องทางหลักคือลิงก์เข้าแอป; Actionable Messages (Entra token, `Action.Execute`) เป็นช่องทางเสริมเฟส 2 |
+| Teams | นัด Handover แจ้งเตือนทีม | นัดเป็น calendar event `isOnlineMeeting=true` · แจ้งเตือนช่องผ่าน Teams Workflows/bot (Connector ถูกยกเลิกปี 2026 และ `ChannelMessage.Send` app-only ใช้ไม่ได้) |
 
-งานตั้งเวลา (แจ้งเตือนประกัน, SLA, ผู้อนุมัติเกินกำหนด) รันเป็น Background job รายชั่วโมง
-
----
+งาน SLA ต้องรันทุก 1–5 นาที (ไม่ใช่รายชั่วโมง) · ข้อมูล M365 ของไทยอยู่ใน Asia-Pacific geography → บันทึกเป็นการโอนข้อมูลข้ามประเทศตาม PDPA
 
 ## 7. โครงสร้างข้อมูลหลัก
 
@@ -164,3 +163,20 @@ Team(code, name, parentCode, annualTarget)  ·  User(id, entraId, roles[], teamC
 2. **Delivery** — Handover checklist, Milestone/Gantt, Task, Timesheet, Workload
 3. **MA** — Warranty radar, แจ้งเตือน 90/60/30/7, หนังสือแจ้งลูกค้า, Ticket/SLA, ต่อ MA
 4. **ต่อยอด** — Teams integration, รายงานต้นทุนจริง vs Baseline, Lessons learned, Power BI
+
+---
+
+## 9. สิ่งที่ปรับในต้นแบบรอบวิเคราะห์เชิงลึก
+
+รายงานเต็ม: [`reports/วิเคราะห์ปรับปรุงระบบ SalesFlow.md`](../../reports/)
+
+| ด้าน | สิ่งที่เพิ่ม |
+|---|---|
+| Pipeline | โอกาสปิดเป็นตัวเลข + Forecast category (Pipeline / Best case / Commit) · เงื่อนไขก่อนออกจากแต่ละสถานะ (บังคับติ๊กครบ) · นับวันในสถานะ + แจ้งดีลค้างนาน |
+| Close Lose | บังคับเลือกเหตุผล ผู้ชนะ ราคาที่ชนะ · Dashboard สรุปเหตุผลที่แพ้ |
+| อนุมัติราคา | แจ้งเตือนเมื่อไฟล์ถูกแก้หลังอนุมัติ (ระงับส่ง Sale จนอนุมัติใหม่) · SM ดึงคำขอกลับได้ · SLA ต่อขั้นและผู้รับมอบอำนาจแทน |
+| ภาครัฐ | แท็บ “ประมูล หลักประกัน ค่าปรับ”: ไทม์ไลน์ e-GP พร้อมนับวันอุทธรณ์ 7 วันทำการ, ทะเบียนหลักประกันซอง/สัญญา 5% พร้อมวันขอคืน, ค่าปรับสะสมเทียบเพดาน 10%, เงินรับสุทธิหัก ณ ที่จ่าย 1% |
+| แบ่งยอด | แบ่งยอดขายระหว่างทีม DT เป็น % (รวม 100%) |
+| Delivery | สถานะงวดงาน (ส่งมอบ → ตรวจรับ → วางบิล → รับเงิน) |
+| Workload | จองเบื้องต้น (Soft) แยกจากจองแน่นอน (Hard) · ความต้องการคนจาก Pipeline ถ่วงน้ำหนัก |
+| MA | นาฬิกา SLA แยกตอบรับ/แก้ไข หยุดนับเมื่อรอลูกค้า เตือน 50/75/100% · แจ้งต่อ MA ตามกำหนดแจ้งในสัญญาและรอบงบภาครัฐ (180/120/90/60/30/7 วัน) · คะแนนสุขภาพลูกค้า |

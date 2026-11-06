@@ -4,10 +4,11 @@ import Photo from '../components/Photo.vue'
 import StageBadge from '../components/StageBadge.vue'
 import Avatar from '../components/Avatar.vue'
 import { projects, session } from '../store'
-import { PHOTOS, TEAMS, mb, baht, daysUntil, thDate, person } from '../data/mock'
-import { stageOf, type StageKey } from '../data/model'
+import { PHOTOS, TEAMS, mb, baht, daysUntil, daysSince, thDate, person } from '../data/mock'
+import { stageOf, catOf, probOf, FORECAST_CAT, type StageKey } from '../data/model'
 
-const WEIGHT: Partial<Record<StageKey, number>> = { opportunity: 0.15, pipeline: 0.45, forecast: 0.75, rebidding: 0.75 }
+const OPEN: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding']
+const WEIGHT = Object.fromEntries(OPEN.map((k) => [k, stageOf(k).weight])) as Partial<Record<StageKey, number>>
 const WON: StageKey[] = ['win', 'handover', 'delivery', 'warranty', 'ended']
 
 const mine = computed(() => (session.role === 'sm' ? projects.filter((p) => p.sm === session.userId) : projects))
@@ -16,7 +17,7 @@ const scopeLabel = computed(() => (session.role === 'sm' ? 'ของคุณ' 
 const won = computed(() => mine.value.filter((p) => WON.includes(p.stage)).reduce((s, p) => s + p.revenue, 0))
 const target = computed(() => (session.role === 'sm' ? 40_000_000 : TEAMS.reduce((s, t) => s + t.target, 0)))
 const open = computed(() => mine.value.filter((p) => WEIGHT[p.stage] !== undefined))
-const weighted = computed(() => open.value.reduce((s, p) => s + (p.revenue || p.budget) * WEIGHT[p.stage]!, 0))
+const weighted = computed(() => open.value.reduce((s, p) => s + (p.revenue || p.budget) * probOf(p), 0))
 const forecast = computed(() => open.value.filter((p) => p.stage === 'forecast' || p.stage === 'rebidding').reduce((s, p) => s + p.revenue, 0))
 const gp = computed(() => {
   const w = mine.value.filter((p) => WON.includes(p.stage))
@@ -25,6 +26,23 @@ const gp = computed(() => {
 })
 const pct = computed(() => Math.min(100, (won.value / target.value) * 100))
 
+const cats = computed(() =>
+  (['commit', 'bestcase', 'pipeline'] as const).map((c) => {
+    const list = open.value.filter((p) => catOf(p) === c)
+    return { c, label: FORECAST_CAT[c], n: list.length, v: list.reduce((s, p) => s + (p.revenue || p.budget), 0) }
+  }),
+)
+const stalled = computed(() =>
+  open.value
+    .map((p) => ({ p, d: daysSince(p.stageSince), lim: stageOf(p.stage).staleDays ?? 999 }))
+    .filter((x) => x.d > x.lim)
+    .sort((a, b) => b.d - b.lim - (a.d - a.lim)),
+)
+const losses = computed(() => {
+  const m = new Map<string, number>()
+  mine.value.filter((p) => p.loss).forEach((p) => m.set(p.loss!.reason, (m.get(p.loss!.reason) ?? 0) + (p.revenue || p.budget)))
+  return [...m.entries()].sort((a, b) => b[1] - a[1])
+})
 const funnel = computed(() => {
   const keys: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win']
   const rows = keys.map((k) => {
@@ -107,6 +125,31 @@ const deadlines = computed(() =>
       </section>
     </div>
 
+    <div class="grid3">
+      <section class="panel">
+        <div class="panel-head"><h2>Forecast ตามความมั่นใจ</h2></div>
+        <ul class="cats">
+          <li v-for="c in cats" :key="c.c"><span>{{ c.label }}<em>{{ c.n }} งาน</em></span><b class="num">{{ mb(c.v) }}</b></li>
+        </ul>
+        <p class="hint">SM ปรับหมวดได้ในหน้าโครงการ ผู้บริหารใช้ยอด Commit เป็นตัวเลขส่งไตรมาส</p>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>ดีลค้างนาน</h2><span class="muted small">เกินเกณฑ์วันของสถานะ</span></div>
+        <ul v-if="stalled.length" class="stl">
+          <li v-for="x in stalled" :key="x.p.id"><router-link :to="`/projects/${x.p.id}`">{{ x.p.name }}</router-link><span class="small"><b class="num">{{ x.d }}</b> วันใน {{ stageOf(x.p.stage).label }} (เกณฑ์ {{ x.lim }})</span></li>
+        </ul>
+        <p v-else class="muted small">ไม่มีดีลที่ค้างเกินเกณฑ์</p>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>เหตุผลที่แพ้</h2></div>
+        <ul v-if="losses.length" class="cats">
+          <li v-for="[r, v] in losses" :key="r"><span>{{ r }}</span><b class="num">{{ mb(v) }}</b></li>
+        </ul>
+        <p v-else class="muted small">ยังไม่มีงานที่แพ้ในช่วงนี้</p>
+        <p class="hint">บังคับเลือกเหตุผล ผู้ชนะ และราคาที่ชนะ ทุกครั้งที่ปิดเป็น Close Lose</p>
+      </section>
+    </div>
+
     <section class="panel">
       <div class="panel-head"><h2>ยอดขายเทียบเป้าราย DT</h2><span class="muted small">แถบเข้ม = ปิดแล้ว · แถบอ่อน = รวม Pipeline ถ่วงน้ำหนัก</span></div>
       <div class="scroll-x">
@@ -169,6 +212,17 @@ const deadlines = computed(() =>
 .day.hot { background: var(--lose-soft); color: var(--lose); }
 .day.hot b { color: var(--lose); }
 
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; align-items: start; }
+.cats { list-style: none; margin: 0 0 10px; padding: 0; display: grid; }
+.cats li { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.cats li:last-child { border-bottom: 0; }
+.cats span { display: grid; line-height: 1.3; }
+.cats em { font-style: normal; font-size: 12px; color: var(--faint); }
+.cats b { font-size: 18px; }
+.stl { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.stl li { display: grid; gap: 2px; padding-left: 10px; border-left: 3px solid var(--lose); }
+.stl b { color: var(--lose); }
+@media (max-width: 1100px) { .grid3 { grid-template-columns: 1fr; } }
 .tt { position: relative; height: 8px; background: var(--sunken); border-radius: 999px; overflow: hidden; min-width: 160px; }
 .tt i { position: absolute; inset: 0 auto 0 0; background: var(--ink); border-radius: 999px; }
 .tt i.p { background: var(--presale-soft); }
