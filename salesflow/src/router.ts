@@ -1,9 +1,10 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createMemoryHistory, createRouter, createWebHashHistory } from 'vue-router'
 import { session } from './store'
 import { canSee, HOME } from './nav'
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  // Embedded builds (hosted page inside a sandboxed frame) keep routes in memory.
+  history: import.meta.env.VITE_EMBED ? createMemoryHistory() : createWebHashHistory(),
   scrollBehavior: () => ({ top: 0 }),
   routes: [
     { path: '/login', component: () => import('./views/LoginView.vue') },

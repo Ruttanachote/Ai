@@ -10,7 +10,8 @@
     "typecheck": "vue-tsc -b",
     "api": "node server/src/main.ts",
     "test": "node --test server/test/*.test.ts",
-    "typecheck:server": "tsc -p server/tsconfig.json"
+    "typecheck:server": "tsc -p server/tsconfig.json",
+    "build:artifact": "vue-tsc -b && vite build --config vite.artifact.config.ts --mode artifact && node scripts/build-artifact.mjs"
   },
   "dependencies": {
     "vue": "^3.5.40",

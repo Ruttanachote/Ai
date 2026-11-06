@@ -8,3 +8,4 @@ web/dist
 *.wav
 .DS_Store
 salesflow/dist
+salesflow/dist-artifact

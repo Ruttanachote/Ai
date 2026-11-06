@@ -9,6 +9,8 @@ import { validApproval } from '../domain/rules'
 const props = defineProps<{ id: string }>()
 const frame = ref<HTMLIFrameElement>()
 const print = () => frame.value?.contentWindow?.print()
+// The hosted page cannot open the print dialog — show the document inline and point to the server PDF.
+const embed = !!import.meta.env.VITE_EMBED
 const p = computed(() => projects.find((x) => x.id === props.id))
 const a = computed(() => (p.value ? validApproval(p.value, '2026-11-06') ?? p.value.approval : undefined))
 const ok = computed(() => !!p.value && !!a.value && a.value.status !== 'stale' && a.value.steps.every((s) => s.status === 'approved'))
@@ -36,16 +38,19 @@ const html = computed(() => {
     <div class="bar">
       <router-link :to="`/projects/${id}`" class="btn ghost">‹ กลับไปโครงการ</router-link>
       <span v-if="!ok" class="chip warn">ฉบับร่าง — ยังไม่ได้รับอนุมัติครบ ส่งให้ Sale ไม่ได้</span>
-      <button class="btn primary" :disabled="!html" @click="print">พิมพ์ / บันทึก PDF</button>
+      <button v-if="!embed" class="btn primary" :disabled="!html" @click="print">พิมพ์ / บันทึก PDF</button>
+      <span v-else class="hint note">ระบบจริงสร้างไฟล์ PDF จากหน้านี้ที่ server แล้วแนบอีเมลให้ Sale</span>
     </div>
-    <iframe v-if="html" ref="frame" class="doc" :srcdoc="html" title="ใบเสนอราคา" />
+    <iframe v-if="html && !embed" ref="frame" class="doc" :srcdoc="html" title="ใบเสนอราคา" />
+    <div v-else-if="html" class="doc inline" v-html="html" />
   </div>
 </template>
 
 <style scoped>
 .wrap { min-height: 100vh; background: #e9ebef; padding: 16px; display: grid; justify-items: center; gap: 12px; }
 .bar { width: 100%; max-width: 820px; display: flex; gap: 10px; align-items: center; }
-.bar .primary { margin-left: auto; }
+.bar .primary, .bar .note { margin-left: auto; }
+.inline { height: auto; padding: 18mm 16mm; overflow-x: auto; }
 .doc { width: 100%; max-width: 820px; height: 1120px; border: 0; background: #fff; box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.3); }
 @media print { .bar { display: none; } .wrap { padding: 0; background: #fff; } .doc { box-shadow: none; height: 100vh; } }
 </style>
