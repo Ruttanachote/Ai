@@ -52,7 +52,7 @@ function submit() {
 
 <template>
   <div class="page">
-    <PageHeader module="อนุมัติและการเงิน" title="จัดซื้อและเบิกจ่าย" :scope="scope.label" subtitle="คำขอซื้อเทียบงบ Hardware / Software ใน Cost Sheet ที่อนุมัติ · OPN (DT3-2) อนุมัติ">
+    <PageHeader module="Finance" title="Procurement" :scope="scope.label" subtitle="คำขอซื้อเทียบงบ Hardware / Software ใน Cost Sheet ที่อนุมัติ · OPN (DT3-2) อนุมัติ">
       <button v-if="canRequest" class="btn primary" @click="open = true; draft.projectId = mine[0]?.id ?? ''">ขอซื้อ (PR)</button>
     </PageHeader>
     <KpiStrip :items="kpis" />

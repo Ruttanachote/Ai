@@ -5,45 +5,51 @@ export interface NavGroup { title: string; items: NavItem[] }
 
 const ALL: Role[] = ['sm', 'head', 'deputy', 'exec', 'pmo', 'opn', 'pm', 'ma', 'callcenter', 'admin']
 
-// One module per job. A role only sees the modules it works in.
+// Menus follow the project lifecycle: shared records (projects, customers) and my work first, then Sales → Delivery → Service,
+// with finance and admin last. A role only sees the menus it works in.
 export const NAV: NavGroup[] = [
   {
-    title: 'งานขาย',
+    title: 'Overview',
     items: [
-      { to: '/', label: 'ภาพรวมยอดขาย', icon: 'dashboard', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
-      { to: '/pipeline', label: 'Pipeline board', icon: 'board', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
-      { to: '/projects', label: 'ทะเบียนโครงการ', icon: 'list', roles: ALL },
-      { to: '/projects/new', label: 'ลงทะเบียนโครงการ', icon: 'plus', roles: ['sm', 'head', 'admin'] },
-      { to: '/accounts', label: 'ทะเบียนลูกค้า', icon: 'people', roles: ['sm', 'head', 'deputy', 'exec', 'pmo', 'ma', 'admin'] },
+      { to: '/', label: 'Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/my-work', label: 'My Work', icon: 'check', roles: ['pm', 'dev', 'head', 'admin'] },
+      { to: '/approvals', label: 'Approvals', icon: 'inbox', roles: ['deputy', 'exec', 'admin'] },
+      { to: '/projects', label: 'Projects', icon: 'list', roles: ALL },
+      { to: '/accounts', label: 'Customers', icon: 'people', roles: ['sm', 'head', 'deputy', 'exec', 'pmo', 'ma', 'admin'] },
     ],
   },
   {
-    title: 'อนุมัติและการเงิน',
+    title: 'Sales',
     items: [
-      { to: '/approvals', label: 'รออนุมัติราคา', icon: 'inbox', roles: ['deputy', 'exec', 'admin'] },
-      { to: '/procurement', label: 'จัดซื้อและเบิกจ่าย', icon: 'file', roles: ['opn', 'pm', 'deputy', 'exec', 'admin'] },
-      { to: '/guarantees', label: 'หลักประกัน', icon: 'shield', roles: ['opn', 'head', 'deputy', 'exec', 'pmo', 'admin'] },
+      { to: '/pipeline', label: 'Pipeline', icon: 'board', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/projects/new', label: 'New Project', icon: 'plus', roles: ['sm', 'head', 'admin'] },
     ],
   },
   {
-    title: 'ส่งมอบโครงการ',
+    title: 'Delivery',
     items: [
-      { to: '/delivery', label: 'Portfolio โครงการ', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'deputy', 'exec', 'admin'] },
-      { to: '/my-work', label: 'งานของฉัน', icon: 'check', roles: ['pm', 'dev', 'head', 'admin'] },
-      { to: '/work', label: 'พื้นที่งานโครงการ', icon: 'board', roles: ['pm', 'dev', 'pmo', 'head', 'admin'] },
-      { to: '/workload', label: 'Workload ทีม', icon: 'people', roles: ['pmo', 'pm', 'head', 'admin'] },
+      { to: '/delivery', label: 'Portfolio', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/work', label: 'Workspaces', icon: 'board', roles: ['pm', 'dev', 'pmo', 'head', 'admin'] },
+      { to: '/workload', label: 'Team Workload', icon: 'people', roles: ['pmo', 'pm', 'head', 'admin'] },
     ],
   },
   {
-    title: 'ประกันและ MA',
+    title: 'Service',
     items: [
-      { to: '/ma', label: 'ประกันและ MA', icon: 'shield', roles: ['ma', 'pmo', 'head', 'deputy', 'exec', 'sm', 'admin'] },
+      { to: '/ma', label: 'Warranty & MA', icon: 'shield', roles: ['ma', 'pmo', 'head', 'deputy', 'exec', 'sm', 'admin'] },
       { to: '/helpdesk', label: 'Helpdesk', icon: 'ticket', roles: ['callcenter', 'ma', 'admin'] },
     ],
   },
   {
-    title: 'ระบบ',
-    items: [{ to: '/settings', label: 'สิทธิ์และการตั้งค่า', icon: 'settings', roles: ['admin'] }],
+    title: 'Finance',
+    items: [
+      { to: '/procurement', label: 'Procurement', icon: 'file', roles: ['opn', 'pm', 'deputy', 'exec', 'admin'] },
+      { to: '/guarantees', label: 'Guarantees', icon: 'lock', roles: ['opn', 'head', 'deputy', 'exec', 'pmo', 'admin'] },
+    ],
+  },
+  {
+    title: 'Admin',
+    items: [{ to: '/settings', label: 'Settings', icon: 'settings', roles: ['admin'] }],
   },
 ]
 

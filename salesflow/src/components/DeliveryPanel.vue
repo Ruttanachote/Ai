@@ -157,7 +157,7 @@ function crToWork(c: (typeof crs)[number]) {
           <select id="team" v-model="pick.team" class="input" :disabled="!canAssign">
             <option v-for="t in SALES_TEAMS" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option>
           </select>
-          <span class="hint">ดูความว่างของทีมได้ที่เมนู Workload ทีม</span>
+          <span class="hint">ดูความว่างของทีมได้ที่เมนู Team Workload</span>
         </div>
         <button v-if="canAssign" class="btn primary" :disabled="!pick.pm" @click="assign">มอบหมาย PM และนัดประชุม Handover</button>
         <p v-else class="hint">PMO หรือหัวหน้ากลุ่มเป็นผู้มอบหมาย PM</p>

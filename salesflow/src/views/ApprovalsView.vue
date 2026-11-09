@@ -27,7 +27,7 @@ const kpis = computed(() => [
 
 <template>
   <div class="page">
-    <PageHeader module="อนุมัติและการเงิน" title="รออนุมัติราคา" :scope="scope.label" subtitle="อนุมัติได้จากหน้านี้หรือจากลิงก์ในอีเมล" />
+    <PageHeader module="Overview" title="Approvals" :scope="scope.label" subtitle="อนุมัติได้จากหน้านี้หรือจากลิงก์ในอีเมล" />
     <KpiStrip :items="kpis" />
 
     <section class="list">

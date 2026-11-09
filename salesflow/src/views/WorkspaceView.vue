@@ -31,8 +31,8 @@ const canManage = computed(() => !!p.value && manages(p.value))
 
 type View = 'summary' | 'list' | 'board' | 'calendar' | 'timeline' | 'backlog' | 'reports' | 'docs' | 'forms' | 'settings'
 const VIEW_LABEL: Record<View, { l: string; icon: string }> = {
-  summary: { l: 'สรุป', icon: 'dashboard' }, list: { l: 'รายการ', icon: 'list' }, board: { l: 'บอร์ด', icon: 'board' }, calendar: { l: 'ปฏิทิน', icon: 'clock' },
-  timeline: { l: 'Timeline', icon: 'gantt' }, backlog: { l: 'Backlog', icon: 'inbox' }, reports: { l: 'รายงาน', icon: 'chart' }, settings: { l: 'ตั้งค่า', icon: 'settings' }, docs: { l: 'เอกสาร', icon: 'file' }, forms: { l: 'แบบฟอร์ม', icon: 'ticket' },
+  summary: { l: 'Summary', icon: 'dashboard' }, list: { l: 'List', icon: 'list' }, board: { l: 'Board', icon: 'board' }, calendar: { l: 'Calendar', icon: 'clock' },
+  timeline: { l: 'Timeline', icon: 'gantt' }, backlog: { l: 'Backlog', icon: 'inbox' }, reports: { l: 'Reports', icon: 'chart' }, settings: { l: 'Settings', icon: 'settings' }, docs: { l: 'Docs', icon: 'file' }, forms: { l: 'Forms', icon: 'ticket' },
 }
 // Template decides the order and which views open first; the rest stay one click away.
 const views = computed<View[]>(() => {
@@ -82,7 +82,7 @@ function switchTemplate(t: WorkspaceTemplate) {
 
 <template>
   <div v-if="p" class="page wide">
-    <router-link to="/work" class="back small">‹ พื้นที่งานโครงการ</router-link>
+    <router-link to="/work" class="back small">‹ Workspaces</router-link>
 
     <TemplatePicker v-if="!p.workspace && canManage" :p="p" @create="create" @cancel="router.push('/work')" />
     <section v-else-if="!p.workspace" class="panel empty">

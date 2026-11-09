@@ -27,8 +27,8 @@ const kpis = computed(() => [
 
 <template>
   <div v-if="a" class="page">
-    <router-link to="/accounts" class="back small">‹ ทะเบียนลูกค้า</router-link>
-    <PageHeader module="ทะเบียนลูกค้า" :title="a.name" :scope="scope.label" :subtitle="[a.taxId ? 'เลขประจำตัวผู้เสียภาษี ' + a.taxId : '', a.province, a.parentId ? 'สังกัด ' + account(a.parentId)?.name : ''].filter(Boolean).join(' · ')" />
+    <router-link to="/accounts" class="back small">‹ Customers</router-link>
+    <PageHeader module="Customers" :title="a.name" :scope="scope.label" :subtitle="[a.taxId ? 'เลขประจำตัวผู้เสียภาษี ' + a.taxId : '', a.province, a.parentId ? 'สังกัด ' + account(a.parentId)?.name : ''].filter(Boolean).join(' · ')" />
 
     <KpiStrip :items="kpis" />
 

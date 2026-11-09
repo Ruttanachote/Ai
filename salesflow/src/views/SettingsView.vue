@@ -70,7 +70,7 @@ function addHoliday() {
 
 <template>
   <div class="page">
-    <PageHeader module="ระบบ" title="สิทธิ์และการตั้งค่า" scope="ผู้ดูแลระบบ" subtitle="สิทธิ์ตามบทบาท ลำดับอนุมัติ ปฏิทิน ช่องทางแจ้งเตือน ทีม DT และ Microsoft 365" />
+    <PageHeader module="Admin" title="Settings" scope="ผู้ดูแลระบบ" subtitle="สิทธิ์ตามบทบาท ลำดับอนุมัติ ปฏิทิน ช่องทางแจ้งเตือน ทีม DT และ Microsoft 365" />
     <div class="tabs" role="tablist">
       <button role="tab" :aria-selected="tab === 'roles'" @click="tab = 'roles'">สิทธิ์ตามบทบาท</button>
       <button role="tab" :aria-selected="tab === 'approval'" @click="tab = 'approval'">ลำดับการอนุมัติ</button>
