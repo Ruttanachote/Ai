@@ -33,7 +33,6 @@ watch(() => route.path, () => (menuOpen.value = false))
   <div v-else class="shell" :class="{ open: menuOpen }">
     <aside class="side">
       <div class="brand">
-        <span class="word">STREAM</span>
         <svg class="chev" viewBox="0 0 10 16" width="10" height="16" aria-hidden="true"><path d="M1.5 1.5L8 8l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
         <span class="sub">One Platform</span>
         <button class="btn ghost close" aria-label="ปิดเมนู" @click="menuOpen = false"><Icon name="x" /></button>
@@ -88,9 +87,8 @@ watch(() => route.path, () => (menuOpen.value = false))
 .shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
 .side { background: var(--ink); color: #c9ced8; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; padding: 20px 14px; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 8px; padding: 4px 10px 22px; color: #fff; }
-.word { font-family: var(--display); font-weight: 700; letter-spacing: 0.22em; font-size: 15px; }
 .chev { color: var(--brand); }
-.sub { font-size: 13px; color: #8d95a5; margin-left: 2px; }
+.sub { font-family: var(--display); font-weight: 600; font-size: 16px; color: #fff; }
 .close { display: none; margin-left: auto; color: #fff; }
 .group { margin-bottom: 18px; }
 .gtitle { font-size: 12px; color: #7d8596; padding: 0 10px 6px; }
