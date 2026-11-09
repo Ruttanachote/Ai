@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Icon from './components/Icon.vue'
 import Avatar from './components/Avatar.vue'
-import { session, setRole, toast } from './store'
+import { notifications, session, setRole, toast } from './store'
 import { NAV, HOME } from './nav'
 import { ROLES, type Role } from './data/model'
 import { person } from './data/mock'
@@ -25,7 +25,18 @@ function signOut() {
   session.signedIn = false
   router.push('/login')
 }
-watch(() => route.path, () => (menuOpen.value = false))
+watch(() => route.path, () => { menuOpen.value = false; bellOpen.value = false })
+// Notifications for the signed-in user (work assigned, status moved by automation, OT decisions).
+const bellOpen = ref(false)
+const mine = computed(() => notifications.filter((n) => n.to === session.userId))
+const unread = computed(() => mine.value.filter((n) => !n.read).length)
+function openNote(n: { link: string; read: boolean }) { n.read = true; bellOpen.value = false; router.push(n.link) }
+const readAll = () => mine.value.forEach((n) => (n.read = true))
+const onDoc = (e: Event) => { if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as HTMLElement).closest?.('.bwrap')) bellOpen.value = false }
+watch(bellOpen, (o) => {
+  if (o) { document.addEventListener('mousedown', onDoc); document.addEventListener('keydown', onDoc) }
+  else { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onDoc) }
+})
 </script>
 
 <template>
@@ -71,7 +82,14 @@ watch(() => route.path, () => (menuOpen.value = false))
             <option v-for="(r, k) in ROLES" :key="k" :value="k">{{ r.label }}</option>
           </select>
         </label>
-        <button class="btn ghost bell" aria-label="การแจ้งเตือน"><Icon name="bell" /><span class="pip" /></button>
+        <div class="bwrap">
+          <button class="btn ghost bell" :aria-label="`การแจ้งเตือน ${unread} รายการใหม่`" :aria-expanded="bellOpen" @click="bellOpen = !bellOpen"><Icon name="bell" /><span v-if="unread" class="pip">{{ unread }}</span></button>
+          <div v-if="bellOpen" class="notes" role="dialog" aria-label="การแจ้งเตือน">
+            <header><strong>การแจ้งเตือน</strong><button v-if="unread" class="lnk" @click="readAll">อ่านทั้งหมด</button></header>
+            <button v-for="n in mine" :key="n.id" class="note" :class="{ new: !n.read }" @click="openNote(n)"><span>{{ n.text }}</span><small>{{ n.at }}</small></button>
+            <p v-if="!mine.length" class="empty">ไม่มีการแจ้งเตือน</p>
+          </div>
+        </div>
       </header>
       <router-view :key="route.fullPath" />
     </div>
@@ -111,7 +129,17 @@ watch(() => route.path, () => (menuOpen.value = false))
 .role { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .role .input { width: auto; min-height: 36px; padding: 4px 8px; font-size: 14px; }
 .bell { position: relative; padding: 0 9px; }
-.pip { position: absolute; top: 8px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); }
+.pip { position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--brand); color: #fff; font-size: 10.5px; font-weight: 700; line-height: 16px; }
+.bwrap { position: relative; }
+.notes { position: absolute; right: 0; top: 46px; width: min(360px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-pop); padding: 6px; display: grid; max-height: 420px; overflow-y: auto; z-index: 30; }
+.notes header { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; font-size: 14px; }
+.lnk { border: 0; background: none; color: var(--action); font: 13px var(--font); cursor: pointer; }
+.note { border: 0; background: none; text-align: left; display: grid; gap: 2px; padding: 9px 10px 9px 18px; border-radius: var(--r-sm); font: 13.5px var(--font); color: var(--ink-2); cursor: pointer; position: relative; }
+.note:hover { background: var(--sunken); }
+.note.new { color: var(--ink); }
+.note.new::before { content: ''; position: absolute; left: 6px; top: 15px; width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+.note small { color: var(--muted); font-size: 12px; }
+.empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13.5px; }
 .scrim { display: none; }
 
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: var(--r-md); display: flex; gap: 8px; align-items: center; box-shadow: var(--shadow-pop); z-index: 100; font-size: 14px; max-width: calc(100vw - 32px); }

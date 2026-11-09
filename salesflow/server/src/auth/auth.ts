@@ -10,7 +10,7 @@ export type { Role }
 /** Entra ID App Role values → One Platform roles. Sale has no role: Sale does not sign in. */
 export const APP_ROLE_VALUES: Record<string, Role> = {
   'OnePlatform.SM': 'sm', 'OnePlatform.Head': 'head', 'OnePlatform.Deputy': 'deputy', 'OnePlatform.Exec': 'exec',
-  'OnePlatform.PMO': 'pmo', 'OnePlatform.OPN': 'opn', 'OnePlatform.PM': 'pm', 'OnePlatform.MA': 'ma',
+  'OnePlatform.PMO': 'pmo', 'OnePlatform.OPN': 'opn', 'OnePlatform.PM': 'pm', 'OnePlatform.Dev': 'dev', 'OnePlatform.MA': 'ma',
   'OnePlatform.CallCenter': 'callcenter', 'OnePlatform.Admin': 'admin',
 }
 

@@ -30,6 +30,7 @@ const P: Record<string, string> = {
   x: 'M6 6l12 12M18 6L6 18',
   ticket: 'M4 8a2 2 0 0 0 0 4v4h16v-4a2 2 0 0 1 0-4V4H4zM10 4v12',
   flag: 'M5 21V4M5 4h11l-2 4 2 4H5',
+  chart: 'M4 20h16M7 16v-5M12 16V7M17 16v-8',
 }
 </script>
 

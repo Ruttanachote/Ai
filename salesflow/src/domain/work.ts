@@ -68,8 +68,9 @@ export function suggestKey(p: Project) {
 }
 
 /** Seed a new workspace: epics from contract milestones (milestone template) or two sprints (scrum). */
-export function createWorkspace(p: Project, template: WorkspaceTemplate, key: string, by: string, today: string) {
-  p.workspace = { template, key, nextNo: 1, createdAt: today }
+export function createWorkspace(p: Project, template: WorkspaceTemplate, key: string, by: string, today: string, setup?: (p: Project) => void) {
+  p.workspace = { template, key, nextNo: 1, createdAt: today, estimate: template === 'scrum' ? 'points' : 'hours' }
+  setup?.(p)
   const existing = p.tasks ?? []
   p.tasks = existing
   if (template === 'scrum') {

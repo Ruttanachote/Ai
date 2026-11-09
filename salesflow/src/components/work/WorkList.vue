@@ -6,8 +6,10 @@ import WorkTypeIcon from './WorkTypeIcon.vue'
 import PriorityIcon from './PriorityIcon.vue'
 import { person, thDate, TODAY_ISO } from '../../data/mock'
 import { PRIORITIES, WORK_STATUS, WORK_TYPES, type Project, type Task, type WorkStatus } from '../../data/model'
-import { groupKey, keyOf, newItem, record, STATUS_TH, tree, typeOf, type GroupBy } from '../../domain/work'
-import { session } from '../../store'
+import { groupKey, keyOf, newItem, record, tree, typeOf, type GroupBy } from '../../domain/work'
+import { allowedTargets, statusOf, workflowOf } from '../../domain/workflow'
+import { notify, session } from '../../store'
+import { edited, isAdmin, move } from './actions'
 
 // Spreadsheet-style list: hierarchy (epic → story/task → sub-task), inline status and assignee
 // edits, grouping, and quick create at the bottom.
@@ -31,7 +33,7 @@ const groups = computed(() => {
 })
 function groupLabel(k: string) {
   switch (props.group) {
-    case 'status': return WORK_STATUS[k as WorkStatus].label
+    case 'status': return WORK_STATUS[k as WorkStatus]?.label ?? k
     case 'assignee': return person(k)?.name ?? 'ยังไม่มอบหมาย'
     case 'priority': return PRIORITIES[k as keyof typeof PRIORITIES].label
     case 'type': return WORK_TYPES[k as keyof typeof WORK_TYPES].label
@@ -41,8 +43,13 @@ function groupLabel(k: string) {
 const hasChildren = (t: Task) => props.list.some((x) => x.parentId === t.id)
 const toggle = (t: Task) => { const s = new Set(collapsed.value); s.has(t.id) ? s.delete(t.id) : s.add(t.id); collapsed.value = s }
 const touch = (t: Task) => { t.updated = TODAY_ISO }
-const onStatus = (t: Task) => { touch(t); record(props.p, session.userId, t, `เปลี่ยนสถานะเป็น ${STATUS_TH[t.status]}`, TODAY_ISO) }
-const onAssign = (t: Task) => { touch(t); record(props.p, session.userId, t, t.assignee ? `มอบหมายให้ ${person(t.assignee)?.name}` : 'ยกเลิกการมอบหมาย', TODAY_ISO) }
+function onStatus(t: Task, e: Event) {
+  const el = e.target as HTMLSelectElement
+  if (!move(props.p, t, el.value)) el.value = statusOf(props.p, t).id
+}
+const targets = (t: Task) => allowedTargets(props.p, t, session.userId, isAdmin())
+let prevAssignee = ''
+const onAssign = (t: Task) => { edited(t, 'ผู้รับผิดชอบ', person(prevAssignee)?.name, person(t.assignee)?.name); touch(t); record(props.p, session.userId, t, t.assignee ? `มอบหมายให้ ${person(t.assignee)?.name}` : 'ยกเลิกการมอบหมาย', TODAY_ISO) }
 // Row menu (⋯): open, assign to me, duplicate, delete with confirmation.
 const menu = ref<string | null>(null)
 // Close on Esc or any click outside the open menu; focus its first item when it opens.
@@ -87,8 +94,10 @@ function create() {
 }
 const allSel = computed(() => props.list.length > 0 && props.list.every((t) => selected.value.has(t.id)))
 const selectAll = () => { selected.value = allSel.value ? new Set() : new Set(props.list.map((t) => t.id)) }
-function bulkStatus(s: WorkStatus) {
-  props.list.filter((t) => selected.value.has(t.id)).forEach((t) => { t.status = s; touch(t) })
+function bulkStatus(to: string) {
+  const sel = props.list.filter((t) => selected.value.has(t.id))
+  const moved = sel.filter((t) => move(props.p, t, to, true)).length
+  notify(moved === sel.length ? `ย้าย ${moved} งานแล้ว` : `ย้ายได้ ${moved} จาก ${sel.length} งาน — ที่เหลือ Workflow ไม่อนุญาต (เปิดงานเพื่อดูเหตุผล)`)
   selected.value = new Set()
 }
 </script>
@@ -97,7 +106,7 @@ function bulkStatus(s: WorkStatus) {
   <div class="wl">
     <div v-if="selected.size" class="bulk" role="status">
       <span>เลือก {{ selected.size }} รายการ</span>
-      <button v-for="(s, k) in WORK_STATUS" :key="k" class="btn sm" @click="bulkStatus(k)">ย้ายไป {{ s.label }}</button>
+      <button v-for="s in workflowOf(p).statuses" :key="s.id" class="btn sm" @click="bulkStatus(s.id)">ย้ายไป {{ s.name }}</button>
       <button class="btn sm ghost" @click="selected = new Set()">ยกเลิกการเลือก</button>
     </div>
     <div class="scroll-x frame">
@@ -106,11 +115,11 @@ function bulkStatus(s: WorkStatus) {
           <tr>
             <th class="ck"><input type="checkbox" :checked="allSel" aria-label="เลือกทั้งหมด" @change="selectAll" /></th>
             <th class="work">งาน</th><th>ผู้รับผิดชอบ</th><th>ผู้แจ้ง</th><th>ความสำคัญ</th><th>สถานะ</th>
-            <th>{{ p.workspace?.template === 'scrum' ? 'Sprint' : 'งวดงาน' }}</th><th>กำหนดเสร็จ</th><th class="r">ชม. ใช้/ประมาณ</th><th>สร้าง</th><th>แก้ไขล่าสุด</th><th class="mn"><span class="sr">เมนู</span></th>
+            <th>{{ p.workspace?.template === 'scrum' ? 'Sprint' : 'งวดงาน' }}</th><th>กำหนดเสร็จ</th><th class="r">{{ p.workspace?.estimate === 'points' ? 'Points' : '' }}</th><th class="r">ชม. ใช้/ประมาณ</th><th>สร้าง</th><th>แก้ไขล่าสุด</th><th class="mn"><span class="sr">เมนู</span></th>
           </tr>
         </thead>
         <tbody v-for="g in groups" :key="g.k">
-          <tr v-if="g.label" class="gh"><td colspan="13"><strong>{{ g.label }}</strong> <span class="muted">{{ g.rows.length }}</span></td></tr>
+          <tr v-if="g.label" class="gh"><td colspan="14"><strong>{{ g.label }}</strong> <span class="muted">{{ g.rows.length }}</span></td></tr>
           <tr v-for="{ t, depth } in g.rows" :key="t.id" :class="{ sel: selected.has(t.id) }">
             <td class="ck"><input type="checkbox" :checked="selected.has(t.id)" :aria-label="`เลือก ${keyOf(t)}`" @change="selected.has(t.id) ? selected.delete(t.id) : selected.add(t.id); selected = new Set(selected)" /></td>
             <td class="work">
@@ -126,7 +135,7 @@ function bulkStatus(s: WorkStatus) {
             <td>
               <label class="as">
                 <Avatar :id="t.assignee || undefined" :label="t.assignee ? undefined : '?'" :size="22" />
-                <select v-model="t.assignee" class="bare" :aria-label="`ผู้รับผิดชอบ ${keyOf(t)}`" @change="onAssign(t)">
+                <select v-model="t.assignee" class="bare" :aria-label="`ผู้รับผิดชอบ ${keyOf(t)}`" @focus="prevAssignee = t.assignee" @change="onAssign(t)">
                   <option value="">ยังไม่มอบหมาย</option>
                   <option v-for="id in team" :key="id" :value="id">{{ person(id)?.name }}</option>
                 </select>
@@ -135,12 +144,13 @@ function bulkStatus(s: WorkStatus) {
             <td class="small"><span class="as"><Avatar :id="t.reporter" :size="22" />{{ person(t.reporter)?.name ?? '—' }}</span></td>
             <td><PriorityIcon :p="t.priority" label /></td>
             <td>
-              <select v-model="t.status" class="st" :class="WORK_STATUS[t.status].tone" :aria-label="`สถานะ ${keyOf(t)}`" @change="onStatus(t)">
-                <option v-for="(s, k) in WORK_STATUS" :key="k" :value="k">{{ s.label }}</option>
+              <select class="st" :class="WORK_STATUS[t.status].tone" :value="statusOf(p, t).id" :aria-label="`สถานะ ${keyOf(t)}`" @change="onStatus(t, $event)">
+                <option v-for="s in targets(t)" :key="s.id" :value="s.id">{{ s.name }}</option>
               </select>
             </td>
             <td class="small">{{ p.workspace?.template === 'scrum' ? (p.workspace.sprints?.find((s) => s.id === t.sprint)?.name ?? 'Backlog') : (t.milestone || '—') }}</td>
             <td class="small" :class="{ bad: late(t) }">{{ t.due ? thDate(t.due) : 'ยังไม่กำหนด' }}</td>
+            <td class="r num small">{{ p.workspace?.estimate === 'points' ? (t.storyPoints ?? '—') : '' }}</td>
             <td class="r num small" :class="{ bad: t.hours && t.spent > t.hours }">{{ t.hours ? `${t.spent} / ${t.hours}` : '—' }}</td>
             <td class="small muted">{{ thDate(t.created) }}</td>
             <td class="small muted">{{ thDate(t.updated) }}</td>
@@ -148,7 +158,7 @@ function bulkStatus(s: WorkStatus) {
               <button class="dots" :aria-label="`เมนูของ ${keyOf(t)}`" :aria-expanded="menu === t.id" @click="menu = menu === t.id ? null : t.id">⋯</button>
               <div v-if="menu === t.id" class="pop" role="menu">
                 <button role="menuitem" @click="emit('open', t); menu = null">เปิดรายละเอียด</button>
-                <button role="menuitem" @click="t.assignee = session.userId; onAssign(t); menu = null">มอบหมายให้ฉัน</button>
+                <button role="menuitem" @click="prevAssignee = t.assignee; t.assignee = session.userId; onAssign(t); menu = null">มอบหมายให้ฉัน</button>
                 <button role="menuitem" @click="duplicate(t)">คัดลอกงาน</button>
                 <button role="menuitem" class="del" @click="confirmDel = t; menu = null">ลบงาน</button>
               </div>

@@ -6,6 +6,8 @@ import { TODAY_ISO } from '../../data/mock'
 import { WORK_STATUS, type Project, type Task } from '../../data/model'
 import { keyOf, newItem, record, tree, typeOf, addDays } from '../../domain/work'
 import { session } from '../../store'
+import { canEdit, edited } from './actions'
+import { thDate } from '../../data/mock'
 
 // Epics with their children as bars from start to due. Weeks across the top; the red line is today.
 const props = defineProps<{ p: Project; list: Task[] }>()
@@ -46,6 +48,48 @@ function create() {
 }
 const toggle = (id: string) => { const s = new Set(collapsed.value); s.has(id) ? s.delete(id) : s.add(id); collapsed.value = s }
 const hasKids = (t: Task) => props.list.some((c) => c.parentId === t.id)
+
+// Drag a bar to shift its dates, drag its right edge to change the due date (whole days).
+const editable = computed(() => canEdit(props.p))
+const drag = ref<{ t: Task; mode: 'move' | 'end'; x0: number; w: number; s0: string; d0: string; delta: number } | null>(null)
+const dayMs = 86_400_000
+function down(e: PointerEvent, t: Task, mode: 'move' | 'end') {
+  if (!editable.value || e.button !== 0) return
+  const track = (e.currentTarget as HTMLElement).closest('.track') as HTMLElement
+  drag.value = { t, mode, x0: e.clientX, w: track.getBoundingClientRect().width, s0: t.start || t.due, d0: t.due, delta: 0 }
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', up, { once: true })
+}
+function onMove(e: PointerEvent) {
+  const d = drag.value
+  if (!d) return
+  const days = Math.round(((e.clientX - d.x0) / d.w) * ((range.value.e - range.value.s) / dayMs))
+  if (days === d.delta) return
+  d.delta = days
+  if (d.mode === 'move') { d.t.start = addDays(d.s0, days); d.t.due = addDays(d.d0, days) }
+  else d.t.due = addDays(d.d0, days) < d.s0 ? d.s0 : addDays(d.d0, days)
+}
+function up() {
+  window.removeEventListener('pointermove', onMove)
+  const d = drag.value
+  drag.value = null
+  if (!d || !d.delta) return
+  if (d.mode === 'move') edited(d.t, 'ช่วงเวลา', `${thDate(d.s0)} – ${thDate(d.d0)}`, `${thDate(d.t.start)} – ${thDate(d.t.due)}`)
+  else edited(d.t, 'กำหนดเสร็จ', thDate(d.d0), thDate(d.t.due))
+  justDragged = true
+  setTimeout(() => (justDragged = false), 0)
+}
+let justDragged = false
+const click = (t: Task) => { if (!justDragged) emit('open', t) }
+function keyBar(e: KeyboardEvent, t: Task) {
+  if (!editable.value || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return
+  const n = e.key === 'ArrowRight' ? 1 : -1
+  const from = `${thDate(t.start || t.due)} – ${thDate(t.due)}`
+  if (e.shiftKey) t.due = addDays(t.due, n)
+  else { t.start = addDays(t.start || t.due, n); t.due = addDays(t.due, n) }
+  edited(t, 'ช่วงเวลา', from, `${thDate(t.start)} – ${thDate(t.due)}`)
+  e.preventDefault()
+}
 </script>
 
 <template>
@@ -61,10 +105,14 @@ const hasKids = (t: Task) => props.list.some((c) => c.parentId === t.id)
         </div>
         <div class="track">
           <span v-for="w in weeks" :key="w.left" class="gl" :style="{ left: w.left + '%' }" />
-          <button class="bar" :class="[t.status, { late: t.status !== 'done' && t.due < TODAY_ISO }]" :style="{ left: x(t.start || t.due) + '%', width: Math.max(1.2, x(t.due) - x(t.start || t.due) + 100 / ((range.e - range.s) / 86_400_000)) + '%' }"
-            :title="`${keyOf(t)} · ${WORK_STATUS[t.status].label} · ${t.start ?? ''} → ${t.due}`" @click="emit('open', t)">
+          <button class="bar" :class="[t.status, { late: t.status !== 'done' && t.due < TODAY_ISO, grab: editable, dragging: drag?.t.id === t.id }]" :style="{ left: x(t.start || t.due) + '%', width: Math.max(1.2, x(t.due) - x(t.start || t.due) + 100 / ((range.e - range.s) / 86_400_000)) + '%' }"
+            :title="`${keyOf(t)} · ${WORK_STATUS[t.status].label} · ${thDate(t.start || t.due)} → ${thDate(t.due)}${editable ? ' — ลากเพื่อเลื่อน ลากขอบขวาเพื่อเปลี่ยนกำหนดเสร็จ' : ''}`"
+            :aria-label="`${keyOf(t)} ${thDate(t.start || t.due)} ถึง ${thDate(t.due)}${editable ? ' — ลูกศรซ้ายขวาเลื่อนวัน Shift+ลูกศรเปลี่ยนกำหนดเสร็จ' : ''}`"
+            @pointerdown="down($event, t, 'move')" @click="click(t)" @keydown="keyBar($event, t)">
             <Avatar v-if="t.assignee && typeOf(t) !== 'epic'" :id="t.assignee" :size="16" />
+            <span v-if="editable" class="rz" @pointerdown.stop="down($event, t, 'end')" />
           </button>
+          <span v-if="drag?.t.id === t.id" class="tip" :style="{ left: x(t.start || t.due) + '%' }">{{ thDate(t.start || t.due) }} – {{ thDate(t.due) }}</span>
         </div>
       </div>
       <div class="today" :style="{ left: `calc(320px + (100% - 320px) * ${x(TODAY_ISO) / 100})` }"><em>วันนี้</em></div>
@@ -90,6 +138,11 @@ const hasKids = (t: Task) => props.list.some((c) => c.parentId === t.id)
 .create .input.mini { min-height: 30px; font-size: 13.5px; width: 100%; }
 .gl { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--line); }
 .bar { position: absolute; top: 9px; height: 18px; border: 0; border-radius: 5px; background: var(--presale); cursor: pointer; display: flex; align-items: center; justify-content: flex-end; padding: 0 2px; }
+.bar.grab { cursor: grab; touch-action: none; }
+.bar.dragging { cursor: grabbing; opacity: 0.85; }
+.rz { position: absolute; right: -3px; top: -2px; bottom: -2px; width: 8px; cursor: ew-resize; border-radius: 3px; }
+.bar:hover .rz { background: rgb(0 0 0 / 0.18); }
+.tip { position: absolute; top: -2px; transform: translateY(-100%); font-size: 11px; background: var(--ink); color: #fff; padding: 2px 6px; border-radius: 4px; white-space: nowrap; z-index: 3; pointer-events: none; }
 .bar.todo { background: var(--line-strong); }
 .bar.review { background: var(--warn); }
 .bar.done { background: var(--win); }

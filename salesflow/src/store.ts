@@ -10,7 +10,7 @@ export const session = reactive({
 })
 
 export const ROLE_USER: Record<Role, string> = {
-  sm: 'rk', head: 'sw', deputy: 'kr', exec: 'tc', pmo: 'pj', opn: 'op', pm: 'ak', ma: 'wm', callcenter: 'cc', admin: 'tc',
+  sm: 'rk', head: 'sw', deputy: 'kr', exec: 'tc', pmo: 'pj', opn: 'op', pm: 'ak', dev: 'dev3', ma: 'wm', callcenter: 'cc', admin: 'tc',
 }
 
 export function setRole(r: Role) {
@@ -44,6 +44,8 @@ export const scope = computed(() => {
     }
     case 'pm':
       return { label: 'โครงการที่คุณดูแล', list: projects.filter((p) => p.pm === session.userId || p.collaborators.includes(session.userId)) }
+    case 'dev':
+      return { label: 'โครงการที่คุณเป็นสมาชิก', list: projects.filter((p) => p.workspace?.members?.some((m) => m.userId === session.userId)) }
     case 'ma':
     case 'callcenter':
       return { label: 'โครงการในระยะประกันและ MA', list: projects.filter((p) => ['delivery', 'warranty', 'ended'].includes(p.stage) || p.type === 'MA') }
@@ -89,3 +91,13 @@ export function newApprovalSteps(submitterId: string, submitLabel: string): Appr
 
 /** A step can be decided by the role it names (admin may act for support cases). */
 export const canDecideStep = (step: { approver?: Role } | undefined, role: Role) => !!step?.approver && (step.approver === role || role === 'admin')
+
+/** In-app notifications (also sent by e-mail / Teams through the server outbox in production). */
+export const notifications = reactive<{ id: number; to: string; text: string; link: string; at: string; read: boolean }[]>([
+  { id: 1, to: 'ak', text: 'SPP-4 หน้าจอตรวจสอบเอกสารของเจ้าหน้าที่ — ย้ายไป Code Review', link: '/work/p6', at: '6 พ.ย. 10:24', read: false },
+  { id: 2, to: 'dev3', text: 'คุณถูกมอบหมาย SPP-7 ปรับ callback รับผลการชำระเงิน', link: '/work/p6', at: '5 พ.ย. 17:41', read: false },
+])
+let nid = 10
+export function pushNotices(list: { to: string; text: string; projectId: string }[]) {
+  list.forEach((n) => notifications.unshift({ id: nid++, to: n.to, text: n.text, link: `/work/${n.projectId}`, at: 'เมื่อสักครู่', read: false }))
+}

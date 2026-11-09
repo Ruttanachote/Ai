@@ -9,23 +9,25 @@ import PageHeader from '../components/PageHeader.vue'
 const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'teams' | 'm365'>('roles')
 const R = Object.keys(ROLES) as Role[]
 type Level = 'full' | 'own' | 'view' | ''
-// Columns follow ROLES: SM, หัวหน้ากลุ่ม, รองผู้บริหาร, ผู้บริหาร, PMO, OPN, PM, MA, Call center, Admin
+// Columns follow ROLES: SM, หัวหน้ากลุ่ม, รองผู้บริหาร, ผู้บริหาร, PMO, OPN, PM, Dev, MA, Call center, Admin
 const MATRIX: { cap: string; v: Level[] }[] = [
-  { cap: 'ลงทะเบียน / แก้ไขโครงการช่วงขาย', v: ['own', 'own', 'view', 'view', 'view', '', '', '', '', 'full'] },
-  { cap: 'แก้ไข Cost Sheet และใบเสนอราคา (Man-day ตาม TOR)', v: ['own', 'view', 'view', 'view', '', '', '', '', '', 'full'] },
-  { cap: 'อนุมัติ Cost Sheet และใบเสนอราคา', v: ['', '', 'full', 'full', '', '', '', '', '', 'full'] },
-  { cap: 'เปลี่ยนสถานะ Opportunity → Close Win', v: ['own', 'own', 'full', 'full', '', '', '', '', '', 'full'] },
-  { cap: 'เปิดโครงการใหม่จากงานที่แพ้ / ยกเลิกหลังชนะ', v: ['', 'own', 'full', 'full', '', '', '', '', '', 'full'] },
-  { cap: 'จัดประชุม Handover · มอบหมาย PM', v: ['view', 'view', 'view', 'view', 'full', 'view', 'view', 'view', '', 'full'] },
-  { cap: 'แผนงาน Task ความเสี่ยง CR', v: ['view', 'own', 'view', 'view', 'full', '', 'own', 'view', '', 'full'] },
-  { cap: 'อนุมัติ OT ในเงินกันของ Cost Sheet', v: ['', '', '', '', '', '', 'own', '', '', 'full'] },
-  { cap: 'ขอซื้อ (PR) ตามงบ Cost Sheet', v: ['', '', '', '', '', 'view', 'own', '', '', 'full'] },
-  { cap: 'อนุมัติเบิกจ่ายจัดซื้อ', v: ['', '', 'view', 'view', '', 'full', 'view', '', '', 'full'] },
-  { cap: 'ประกัน หนังสือแจ้งลูกค้า ต่อสัญญา MA', v: ['view', 'view', 'view', 'view', 'view', '', '', 'full', 'view', 'full'] },
-  { cap: 'ออกใบเสนอราคาต่อสัญญา MA', v: ['', '', '', '', '', '', '', 'full', '', 'full'] },
-  { cap: 'รับเคส Helpdesk / Ticket', v: ['', '', '', '', '', '', '', 'full', 'full', 'full'] },
-  { cap: 'Dashboard ยอดขาย', v: ['own', 'own', 'full', 'full', '', '', '', '', '', 'full'] },
-  { cap: 'จัดการผู้ใช้ สิทธิ์ ทีม และ Template', v: ['', '', '', '', '', '', '', '', '', 'full'] },
+  { cap: 'ลงทะเบียน / แก้ไขโครงการช่วงขาย', v: ['own', 'own', 'view', 'view', 'view', '', '', '', '', '', 'full'] },
+  { cap: 'แก้ไข Cost Sheet และใบเสนอราคา (Man-day ตาม TOR)', v: ['own', 'view', 'view', 'view', '', '', '', '', '', '', 'full'] },
+  { cap: 'อนุมัติ Cost Sheet และใบเสนอราคา', v: ['', '', 'full', 'full', '', '', '', '', '', '', 'full'] },
+  { cap: 'เปลี่ยนสถานะ Opportunity → Close Win', v: ['own', 'own', 'full', 'full', '', '', '', '', '', '', 'full'] },
+  { cap: 'เปิดโครงการใหม่จากงานที่แพ้ / ยกเลิกหลังชนะ', v: ['', 'own', 'full', 'full', '', '', '', '', '', '', 'full'] },
+  { cap: 'จัดประชุม Handover · มอบหมาย PM', v: ['view', 'view', 'view', 'view', 'full', 'view', 'view', '', 'view', '', 'full'] },
+  { cap: 'แผนงาน Task ความเสี่ยง CR', v: ['view', 'own', 'view', 'view', 'full', '', 'own', 'own', 'view', '', 'full'] },
+  { cap: 'บอร์ดงาน · บันทึกเวลา · ขอ OT (Dev / QA / BA)', v: ['', 'view', '', '', 'view', '', 'full', 'own', '', '', 'full'] },
+  { cap: 'ตั้งค่า Workflow / สมาชิก / Automation ของพื้นที่งาน', v: ['', '', '', '', 'view', '', 'own', '', '', '', 'full'] },
+  { cap: 'อนุมัติ OT ในเงินกันของ Cost Sheet', v: ['', '', '', '', '', '', 'own', '', '', '', 'full'] },
+  { cap: 'ขอซื้อ (PR) ตามงบ Cost Sheet', v: ['', '', '', '', '', 'view', 'own', '', '', '', 'full'] },
+  { cap: 'อนุมัติเบิกจ่ายจัดซื้อ', v: ['', '', 'view', 'view', '', 'full', 'view', '', '', '', 'full'] },
+  { cap: 'ประกัน หนังสือแจ้งลูกค้า ต่อสัญญา MA', v: ['view', 'view', 'view', 'view', 'view', '', '', '', 'full', 'view', 'full'] },
+  { cap: 'ออกใบเสนอราคาต่อสัญญา MA', v: ['', '', '', '', '', '', '', '', 'full', '', 'full'] },
+  { cap: 'รับเคส Helpdesk / Ticket', v: ['', '', '', '', '', '', '', '', 'full', 'full', 'full'] },
+  { cap: 'Dashboard ยอดขาย', v: ['own', 'own', 'full', 'full', '', '', '', '', '', '', 'full'] },
+  { cap: 'จัดการผู้ใช้ สิทธิ์ ทีม และ Template', v: ['', '', '', '', '', '', '', '', '', '', 'full'] },
 ]
 const LBL: Record<Level, string> = { full: 'ทั้งหมด', own: 'ของตัวเอง', view: 'ดูได้', '': '—' }
 const RULES = [

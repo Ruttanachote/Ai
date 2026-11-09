@@ -1,4 +1,4 @@
-import type { Account, Person, Project, Team } from './model'
+import type { Account, Person, Project, Task, Team } from './model'
 
 // Unsplash footage — loaded by the viewer's browser; components fall back to a tone if blocked.
 export const img = (id: string, w = 1200) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=70`
@@ -31,11 +31,13 @@ export const PEOPLE: Person[] = [
   { id: 'wm', name: 'Wichai M.', initials: 'WM', role: 'ma', team: 'MA', color: '#4C7A2B' },
   { id: 'cc', name: 'Nipa S.', initials: 'NS', role: 'callcenter', team: 'MA', color: '#9C6B1F' },
   { id: 'dl', name: 'Somkiat L.', initials: 'SL', role: 'head', team: 'DT4-LC', color: '#3E5C76' },
-  { id: 'dev1', name: 'Phuwadol T.', initials: 'PT', role: 'pm', team: 'DT4-LC', color: '#6B7280' },
-  { id: 'dev2', name: 'Jiraporn L.', initials: 'JL', role: 'pm', team: 'DT4-LC', color: '#A15C38' },
-  { id: 'dev3', name: 'Somchai R.', initials: 'SR', role: 'pm', team: 'DT4-LC', color: '#3F6E8C' },
-  { id: 'dev4', name: 'Ploy N.', initials: 'PN', role: 'pm', team: 'DT4-AI', color: '#9A4060' },
-  { id: 'dev5', name: 'Krit V.', initials: 'KV', role: 'pm', team: 'DT4-AI', color: '#53689A' },
+  { id: 'dev1', name: 'Phuwadol T.', initials: 'PT', role: 'dev', team: 'DT4-LC', color: '#6B7280' },
+  { id: 'dev2', name: 'Jiraporn L.', initials: 'JL', role: 'dev', team: 'DT4-LC', color: '#A15C38' },
+  { id: 'dev3', name: 'Somchai R.', initials: 'SR', role: 'dev', team: 'DT4-LC', color: '#3F6E8C' },
+  { id: 'dev4', name: 'Ploy N.', initials: 'PN', role: 'dev', team: 'DT4-AI', color: '#9A4060' },
+  { id: 'dev5', name: 'Krit V.', initials: 'KV', role: 'dev', team: 'DT4-AI', color: '#53689A' },
+  { id: 'qa1', name: 'Nattaya S.', initials: 'NS', role: 'dev', team: 'DT4-LC', color: '#5E7D4F' },
+  { id: 'ba1', name: 'Kanokwan P.', initials: 'KP', role: 'dev', team: 'DT4-AI', color: '#8A6A2E' },
 ]
 export const person = (id?: string) => PEOPLE.find((p) => p.id === id)
 
@@ -277,4 +279,92 @@ export const CONTRACTS: Record<string, { noticeDays: number; uplift: number; gov
   p9: { noticeDays: 60, uplift: 0.15, gov: true, health: 84, reasons: ['SLA ผ่าน 97%', 'ลูกค้าตอบรับต่อ MA'] },
   p10: { noticeDays: 30, uplift: 0.12, gov: true, health: 78, reasons: ['CR ค้างประเมิน 1 รายการ'] },
   p12: { noticeDays: 60, uplift: 0.1, gov: true, health: 55, reasons: ['P3 เกิน SLA', 'ผู้ใช้หลักฝั่งลูกค้าเปลี่ยนคน'] },
+}
+
+// ── PM workspace seed: members, workflow, DoD and a Scrum project (p13) ──────────────────
+import { defaultAutomation, defaultWorkflow } from '../domain/workflow.ts'
+{
+  const p6 = PROJECTS.find((p) => p.id === 'p6')!
+  const ws = p6.workspace!
+  ws.workflow = defaultWorkflow('milestone')
+  ws.automation = defaultAutomation(ws.workflow)
+  ws.estimate = 'hours'
+  ws.hourlyRate = 600
+  ws.members = [
+    { userId: 'ak', role: 'pm' }, { userId: 'dl', role: 'lead' }, { userId: 'dev1', role: 'dev' }, { userId: 'dev2', role: 'dev' },
+    { userId: 'dev3', role: 'dev' }, { userId: 'qa1', role: 'qa' }, { userId: 'pj', role: 'viewer' },
+  ]
+  const T = (id: string) => p6.tasks!.find((t) => t.id === id)!
+  T('t1').history = [{ at: '21 ต.ค. 09:30', day: '2026-10-21', who: 'qa1', field: 'สถานะ', from: 'UAT ลูกค้า', to: 'Done' }]
+  T('t1').acceptance = [{ text: 'ยื่นคำขอพร้อมไฟล์แนบได้', done: true }, { text: 'ตรวจสถานะคำขอผ่าน API ได้', done: true }]
+  T('t2').statusId = 'review'
+  T('t2').acceptance = [{ text: 'เจ้าหน้าที่อนุมัติ / ตีกลับคำขอได้', done: true }, { text: 'ส่งกลับให้ประชาชนแก้ไขพร้อมเหตุผล (CR-03)', done: false }, { text: 'บันทึกประวัติการตรวจทุกครั้ง', done: true }]
+  T('t2').history = [{ at: '6 พ.ย. 10:24', day: '2026-11-06', who: 'dev2', field: 'สถานะ', from: 'In Progress', to: 'Code Review' }]
+  T('t2').attachments = [{ name: 'mockup-ตรวจเอกสาร-v2.fig', size: '3.2 MB', by: 'dev2', at: '2026-10-14', folder: 'Smart Permit/Work/SPP-4' }]
+  T('t3').acceptance = [{ text: 'สร้าง QR ตามยอดค่าธรรมเนียม', done: true }, { text: 'รับ callback และอัปเดตสถานะชำระ', done: false }]
+  T('t3').worklogs = [{ who: 'dev3', day: '2026-11-05', hours: 6, note: 'ปรับ endpoint v3' }, { who: 'dev3', day: '2026-10-27', hours: 12, overtime: true, note: 'แก้ปัญหาเชื่อมต่อ Thai QR ก่อน UAT รอบ 1' }]
+  T('t4').coAssignees = ['dev1']
+  T('b1').acceptance = [{ text: 'อัปโหลดไฟล์ 50MB ได้โดยไม่ค้าง', done: false }, { text: 'แสดงแถบความคืบหน้าการอัปโหลด', done: false }]
+  T('b1').statusId = 'readyqa'; T('b1').status = 'review'; T('b1').assignee = 'qa1'
+
+  const d = (n: number) => { const x = new Date('2026-11-02T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10) }
+  const done = (day: string, who: string) => [{ at: thDate(day), day, who, field: 'สถานะ', from: 'QA', to: 'Done' }]
+  type Seed = [string, string, 'story' | 'task' | 'bug' | 'epic' | 'subtask', string, string, number, string, string?, string?]
+  // [id, title, type, assignee, statusId, points, sprint, parentId, doneDay]
+  const rows: Seed[] = [
+    ['m-e1', 'สมัครสมาชิกและยืนยันตัวตน', 'epic', 'ks', 'doing', 0, ''],
+    ['m-e2', 'แจ้งเรื่องร้องเรียนพร้อมพิกัด', 'epic', 'ks', 'doing', 0, ''],
+    ['m1', 'หน้าลงทะเบียนด้วยเบอร์โทร + OTP', 'story', 'dev4', 'done', 5, 's1', 'm-e1', '2026-10-15'],
+    ['m2', 'เชื่อม ThaID สำหรับยืนยันตัวตน', 'story', 'dev5', 'done', 8, 's2', 'm-e1', '2026-10-28'],
+    ['m3', 'โปรไฟล์ผู้ใช้และที่อยู่', 'story', 'dev4', 'done', 3, 's3', 'm-e1', '2026-11-03'],
+    ['m4', 'ถ่ายรูปและปักหมุดจุดที่พบปัญหา', 'story', 'dev5', 'done', 5, 's3', 'm-e2', '2026-11-05'],
+    ['m5', 'ส่งเรื่องเข้าระบบ Back office ของเทศบาล', 'story', 'dev4', 'qa', 8, 's3', 'm-e2'],
+    ['m6', 'ติดตามสถานะเรื่องร้องเรียน (Push notification)', 'story', 'dev5', 'review', 5, 's3', 'm-e2'],
+    ['m7', 'แผนที่รวมเรื่องร้องเรียนใกล้ฉัน', 'story', 'dev4', 'doing', 3, 's3', 'm-e2'],
+    ['m8', 'แอปปิดเองเมื่อถ่ายรูปบน Android 12', 'bug', 'dev5', 'todo', 2, 's3', 'm-e2'],
+    ['m9', 'ประเมินความพึงพอใจหลังปิดเรื่อง', 'story', '', 'todo', 3, 's4', 'm-e2'],
+    ['m10', 'ข่าวประชาสัมพันธ์จากเทศบาล', 'story', '', 'todo', 5, '', ''],
+    ['m11', 'โหมดผู้สูงอายุ (ตัวอักษรใหญ่)', 'story', '', 'todo', 3, '', ''],
+    ['m12', 'เขียน User story ระบบนัดหมายออนไลน์', 'task', 'ba1', 'doing', 2, 's3', ''],
+  ]
+  const wf = defaultWorkflow('scrum')
+  let no = 1
+  const tasks: Task[] = rows.map(([id, title, type, assignee, statusId, pts, sprint, parentId, dd]) => {
+    const st = wf.statuses.find((s) => s.id === statusId)!
+    return {
+      id, key: `CSA-${no++}`, type, title, assignee, reporter: type === 'task' ? 'ks' : 'ba1', status: st.category, statusId, priority: type === 'bug' ? 'high' : 'medium',
+      storyPoints: pts || undefined, sprint: sprint || undefined, parentId: parentId || undefined, hours: pts * 6, spent: st.category === 'done' ? pts * 6 : Math.round(pts * 2),
+      due: type === 'epic' ? '2026-12-18' : sprint === 's3' ? '2026-11-13' : '', start: sprint === 's3' ? '2026-11-02' : undefined,
+      milestone: ['s1', 's2', 's3'].includes(sprint) || parentId === 'm-e1' || id === 'm-e1' || id === 'm-e2' ? 'Sprint 1–3 · สมัครและแจ้งเรื่อง' : 'Sprint 4–6 · บริการเทศบาล', created: '2026-09-28', updated: dd ?? '2026-11-05',
+      history: dd ? done(dd, 'qa1') : undefined,
+      acceptance: type === 'story' ? [{ text: 'ผ่านเกณฑ์ตาม User story', done: st.category === 'done' || statusId === 'qa' }, { text: 'ทดสอบบน iOS และ Android', done: st.category === 'done' }] : undefined,
+    }
+  })
+  PROJECTS.push({
+    customerAccountId: 'a-dtp', salesMotion: 'direct',
+    id: 'p13', code: 'DEL-69-0031', name: 'City Super App (Mobile)', customer: 'เทศบาลนครสมุทรสาคร', endUser: 'กองยุทธศาสตร์และงบประมาณ', type: 'พัฒนาระบบ',
+    stage: 'delivery', team: 'DT4-CNA', revenue: 6_800_000, cost: 4_500_000, budget: 7_000_000, sm: 'np', sales: ['Kittipat O.'], pm: 'ks', collaborators: ['dev4', 'dev5'],
+    nextStep: 'Sprint 3 — ส่งเรื่องร้องเรียนเข้า Back office', cover: PHOTOS.team, stageSince: '2026-09-25',
+    milestones: [
+      { name: 'Sprint 1–3 · สมัครและแจ้งเรื่อง', start: '2026-10-05', end: '2026-11-13', progress: 60, payment: 2_720_000, state: 'planned' },
+      { name: 'Sprint 4–6 · บริการเทศบาล', start: '2026-11-16', end: '2026-12-25', progress: 0, payment: 2_720_000, state: 'planned' },
+      { name: 'Go-Live และส่งต่อ MA', start: '2027-01-04', end: '2027-01-29', progress: 0, payment: 1_360_000, state: 'planned' },
+    ],
+    workspace: {
+      template: 'scrum', key: 'CSA', nextNo: no, createdAt: '2026-09-28', estimate: 'points', hourlyRate: 650, workflow: wf, automation: defaultAutomation(wf),
+      members: [{ userId: 'ks', role: 'pm' }, { userId: 'dev4', role: 'dev' }, { userId: 'dev5', role: 'dev' }, { userId: 'ba1', role: 'ba' }, { userId: 'qa1', role: 'qa' }, { userId: 'dev3', role: 'dev' }],
+      sprints: [
+        { id: 's1', name: 'CSA Sprint 1', start: '2026-10-05', end: '2026-10-16', state: 'closed', committed: 21, completed: 18, goal: 'ลงทะเบียนด้วย OTP' },
+        { id: 's2', name: 'CSA Sprint 2', start: '2026-10-19', end: '2026-10-30', state: 'closed', committed: 24, completed: 22, goal: 'ยืนยันตัวตน ThaID' },
+        { id: 's3', name: 'CSA Sprint 3', start: d(0), end: d(11), state: 'active', goal: 'แจ้งเรื่องร้องเรียนครบวงจร' },
+        { id: 's4', name: 'CSA Sprint 4', start: d(14), end: d(25), state: 'planned' },
+      ],
+      activity: [
+        { who: 'dev5', at: '5 พ.ย. 15:20', day: '2026-11-05', key: 'CSA-6', title: 'ถ่ายรูปและปักหมุดจุดที่พบปัญหา', text: 'เปลี่ยนสถานะเป็น Done', status: 'done' },
+        { who: 'dev4', at: '5 พ.ย. 11:02', day: '2026-11-05', key: 'CSA-7', title: 'ส่งเรื่องเข้าระบบ Back office ของเทศบาล', text: 'เปลี่ยนสถานะเป็น QA', status: 'review' },
+      ],
+    },
+    tasks,
+    history: [{ stage: 'delivery', note: 'Kick-off Sprint 1', at: '5 ต.ค. 69', by: 'Kanya S.' }],
+  })
 }

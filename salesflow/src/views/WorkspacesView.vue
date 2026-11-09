@@ -9,6 +9,7 @@ import { TODAY_ISO } from '../data/mock'
 import { WORKSPACE_TEMPLATES } from '../data/model'
 import { lateTasks, progressPct } from '../domain/metrics'
 import { customerName } from '../display'
+import { canManage } from '../components/work/actions'
 
 // Entry to the PM module: every post-handover project and whether its workspace exists.
 const list = computed(() => scope.value.list.filter((p) => ['handover', 'delivery', 'warranty'].includes(p.stage) || p.workspace))
@@ -40,7 +41,7 @@ const kpis = computed(() => {
             <td class="r num">{{ p.workspace ? progressPct(p) + '%' : '—' }}</td>
             <td class="r num" :class="{ bad: lateTasks(p, TODAY_ISO).length }">{{ p.workspace ? lateTasks(p, TODAY_ISO).length : '—' }}</td>
             <td><Avatar :id="p.pm" :label="p.pm ? undefined : '?'" :size="26" /></td>
-            <td><router-link :to="`/work/${p.id}`" class="btn sm" :class="{ primary: !p.workspace }">{{ p.workspace ? 'เปิด' : 'สร้างพื้นที่งาน' }}</router-link></td>
+            <td><router-link v-if="p.workspace || canManage(p)" :to="`/work/${p.id}`" class="btn sm" :class="{ primary: !p.workspace }">{{ p.workspace ? 'เปิด' : 'สร้างพื้นที่งาน' }}</router-link></td>
           </tr>
           <tr v-if="!list.length"><td colspan="8" class="muted">ยังไม่มีโครงการหลัง Handover</td></tr>
         </tbody>

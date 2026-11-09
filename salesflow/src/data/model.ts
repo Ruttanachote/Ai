@@ -54,7 +54,7 @@ export const catOf = (p: { stage: StageKey; forecastCat?: ForecastCat }): Foreca
 /** Main happy path used by the stage rail. Lose / Cancelled are side exits. */
 export const RAIL: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win', 'handover', 'delivery', 'warranty', 'ended']
 
-export type Role = 'sm' | 'head' | 'deputy' | 'exec' | 'pmo' | 'opn' | 'pm' | 'ma' | 'callcenter' | 'admin'
+export type Role = 'sm' | 'head' | 'deputy' | 'exec' | 'pmo' | 'opn' | 'pm' | 'dev' | 'ma' | 'callcenter' | 'admin'
 
 // Sale is not a platform user — Sale names are kept on each project for reference only.
 export const ROLES: Record<Role, { label: string; th: string }> = {
@@ -65,6 +65,7 @@ export const ROLES: Record<Role, { label: string; th: string }> = {
   pmo: { label: 'PMO (DT3-3)', th: 'จัดประชุม Handover มอบหมาย PM และทีม Dev' },
   opn: { label: 'OPN (DT3-2)', th: 'จัดซื้อและการเงินโครงการ อนุมัติการเบิกจ่ายจัดซื้อ' },
   pm: { label: 'Project Manager', th: 'รับงานหลัง Handover คุมขอบเขต แผน ความเสี่ยง อนุมัติ OT ในวงเงินที่กันไว้' },
+  dev: { label: 'ทีมพัฒนา (Dev / QA / BA)', th: 'ทำงานบนบอร์ดของโครงการที่เป็นสมาชิก บันทึกเวลา ไม่เห็นราคาและต้นทุน' },
   ma: { label: 'ทีม MA', th: 'ดูแลช่วงรับประกัน ติดต่อลูกค้าเรื่องต่อ MA ออกใบเสนอราคาต่อสัญญาเอง' },
   callcenter: { label: 'Call center (ทีม MA)', th: 'รับเคสลูกค้าผ่าน Helpdesk ช่วงรับประกัน' },
   admin: { label: 'ผู้ดูแลระบบ', th: 'ผู้ใช้ สิทธิ์ ทีม และการเชื่อมต่อ M365' },
@@ -180,6 +181,7 @@ export const WORK_TYPES: Record<WorkType, { label: string; color: string }> = {
 export const PRIORITIES: Record<Priority, { label: string; rank: number }> = {
   highest: { label: 'สูงสุด', rank: 0 }, high: { label: 'สูง', rank: 1 }, medium: { label: 'ปานกลาง', rank: 2 }, low: { label: 'ต่ำ', rank: 3 }, lowest: { label: 'ต่ำสุด', rank: 4 },
 }
+/** Status categories (the fixed meaning behind custom workflow statuses). */
 export const WORK_STATUS: Record<WorkStatus, { label: string; tone: string }> = {
   todo: { label: 'ยังไม่เริ่ม', tone: '' }, doing: { label: 'กำลังทำ', tone: 'presale' }, review: { label: 'รอตรวจ', tone: 'warn' }, done: { label: 'เสร็จ', tone: 'win' },
 }
@@ -207,6 +209,15 @@ export interface Task {
   description?: string
   labels?: string[]
   comments?: { who: string; at: string; text: string }[]
+  /** Custom workflow status id; `status` keeps the category so every metric still works. */
+  statusId?: string
+  storyPoints?: number
+  coAssignees?: string[]
+  acceptance?: { text: string; done: boolean }[]
+  attachments?: { name: string; size: string; by: string; at: string; folder: string }[]
+  history?: { at: string; day: string; who: string; field: string; from?: string; to?: string }[]
+  worklogs?: { who: string; day: string; hours: number; overtime?: boolean; note?: string }[]
+  crId?: string
 }
 
 export type WorkspaceTemplate = 'kanban' | 'milestone' | 'scrum'
@@ -215,12 +226,23 @@ export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplate, { label: string; th:
   milestone: { label: 'ตามงวดงาน', th: 'แผนตามงวดงานในสัญญา มีรายการ ปฏิทิน และ Timeline เหมาะกับโครงการรัฐที่ส่งมอบเป็นงวด', views: ['summary', 'list', 'board', 'calendar', 'timeline'] },
   scrum: { label: 'Scrum', th: 'วางแผนเป็น Sprint 2 สัปดาห์ จัดลำดับ Backlog และติดตามความเร็วทีม เหมาะกับงานพัฒนาที่ขอบเขตปรับได้', views: ['summary', 'backlog', 'board', 'list', 'timeline'] },
 }
-export interface Sprint { id: string; name: string; start: string; end: string; goal?: string; state: 'planned' | 'active' | 'closed' }
+export interface Sprint { id: string; name: string; start: string; end: string; goal?: string; state: 'planned' | 'active' | 'closed'; committed?: number; completed?: number }
+
+/** Workflow per workspace. Each status maps to a category so dashboards keep one meaning of "done". */
+export interface WorkflowStatus { id: string; name: string; category: WorkStatus; wipLimit?: number }
+/** No transitions listed = any move allowed. `roles` limits who may make the move. */
+export interface Transition { from: string; to: string; roles?: MemberRole[] }
+export interface Workflow { statuses: WorkflowStatus[]; transitions: Transition[]; requireAcceptanceForDone: boolean }
+export type MemberRole = 'pm' | 'lead' | 'dev' | 'qa' | 'ba' | 'viewer'
+export const MEMBER_ROLES: Record<MemberRole, string> = { pm: 'PM', lead: 'หัวหน้าทีม Dev', dev: 'Developer', qa: 'QA', ba: 'BA', viewer: 'ดูอย่างเดียว' }
+export interface WorkspaceMember { userId: string; role: MemberRole }
+export interface AutomationRule { id: string; on: boolean; label: string; when: { toStatus: string }; then: { assignRole?: MemberRole; notify?: 'assignee' | 'pm' | 'reporter' } }
 export interface WorkActivity { who: string; at: string; day: string; key: string; title: string; text: string; status?: WorkStatus }
 export interface WorkDoc { id: string; title: string; kind: 'page' | 'meeting' | 'report' | 'whiteboard'; owner: string; created: string; updated: string; folder: string; parentId?: string }
 export interface FormField { label: string; kind: 'text' | 'long' | 'select' | 'date'; options?: string[]; required?: boolean }
 export interface WorkForm { id: string; name: string; template: string; createsType: WorkType; priority: Priority; fields: FormField[]; updated: string; by: string; submissions: number; audience: 'ลูกค้า' | 'ทีมภายใน' }
-export interface Workspace { template: WorkspaceTemplate; key: string; nextNo: number; sprints?: Sprint[]; createdAt: string; activity?: WorkActivity[]; docs?: WorkDoc[]; forms?: WorkForm[] }
+export interface Workspace { template: WorkspaceTemplate; key: string; nextNo: number; sprints?: Sprint[]; createdAt: string; activity?: WorkActivity[]; docs?: WorkDoc[]; forms?: WorkForm[]
+  members?: WorkspaceMember[]; workflow?: Workflow; automation?: AutomationRule[]; estimate?: 'points' | 'hours'; hourlyRate?: number }
 
 export type MilestoneState = 'planned' | 'delivered' | 'inspected' | 'invoiced' | 'paid'
 export interface Milestone { name: string; start: string; end: string; progress: number; payment?: number; paid?: boolean; state?: MilestoneState; deliveredAt?: string }

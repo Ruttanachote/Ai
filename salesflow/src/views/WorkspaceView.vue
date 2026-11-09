@@ -13,39 +13,43 @@ import WorkBacklog from '../components/work/WorkBacklog.vue'
 import WorkDocs from '../components/work/WorkDocs.vue'
 import WorkForms from '../components/work/WorkForms.vue'
 import WorkDrawer from '../components/work/WorkDrawer.vue'
+import WorkReports from '../components/work/WorkReports.vue'
+import WorkSettings from '../components/work/WorkSettings.vue'
+import { canManage as manages } from '../components/work/actions'
+import { defaultAutomation, defaultWorkflow } from '../domain/workflow'
 import StageBadge from '../components/StageBadge.vue'
 import { notify, projects, session } from '../store'
-import { PEOPLE, TODAY_ISO } from '../data/mock'
-import { PRIORITIES, WORK_STATUS, WORK_TYPES, WORKSPACE_TEMPLATES, type Task, type WorkspaceTemplate } from '../data/model'
+import { TODAY_ISO } from '../data/mock'
+import { PRIORITIES, WORK_STATUS, WORK_TYPES, WORKSPACE_TEMPLATES, type MemberRole, type Task, type WorkspaceTemplate } from '../data/model'
 import { createWorkspace, emptyFilter, matches, type GroupBy } from '../domain/work'
 import { customerName } from '../display'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
 const p = computed(() => projects.find((x) => x.id === props.id))
-const canManage = computed(() => !!p.value && ((session.role === 'pm' && p.value.pm === session.userId) || ['pmo', 'admin'].includes(session.role)))
+const canManage = computed(() => !!p.value && manages(p.value))
 
-type View = 'summary' | 'list' | 'board' | 'calendar' | 'timeline' | 'backlog' | 'docs' | 'forms'
+type View = 'summary' | 'list' | 'board' | 'calendar' | 'timeline' | 'backlog' | 'reports' | 'docs' | 'forms' | 'settings'
 const VIEW_LABEL: Record<View, { l: string; icon: string }> = {
   summary: { l: 'สรุป', icon: 'dashboard' }, list: { l: 'รายการ', icon: 'list' }, board: { l: 'บอร์ด', icon: 'board' }, calendar: { l: 'ปฏิทิน', icon: 'clock' },
-  timeline: { l: 'Timeline', icon: 'gantt' }, backlog: { l: 'Backlog', icon: 'inbox' }, docs: { l: 'เอกสาร', icon: 'file' }, forms: { l: 'แบบฟอร์ม', icon: 'ticket' },
+  timeline: { l: 'Timeline', icon: 'gantt' }, backlog: { l: 'Backlog', icon: 'inbox' }, reports: { l: 'รายงาน', icon: 'chart' }, settings: { l: 'ตั้งค่า', icon: 'settings' }, docs: { l: 'เอกสาร', icon: 'file' }, forms: { l: 'แบบฟอร์ม', icon: 'ticket' },
 }
 // Template decides the order and which views open first; the rest stay one click away.
 const views = computed<View[]>(() => {
   const t = p.value?.workspace?.template ?? 'milestone'
   const first = WORKSPACE_TEMPLATES[t].views as View[]
-  const rest = (['summary', 'list', 'board', 'calendar', 'timeline', 'docs', 'forms'] as View[]).filter((v) => !first.includes(v))
+  const rest = (['summary', 'list', 'board', 'calendar', 'timeline', 'reports', 'docs', 'forms', 'settings'] as View[]).filter((v) => !first.includes(v))
   return [...first, ...rest]
 })
 const view = ref<View>('summary')
 watch(() => p.value?.workspace?.template, (t) => { if (t) view.value = WORKSPACE_TEMPLATES[t].views[0] as View }, { immediate: true })
 
+// Assignable people = workspace members (except viewers); older workspaces fall back to who is on the items.
 const team = computed(() => {
   const x = p.value
   if (!x) return []
-  const ids = new Set<string>([x.pm, x.sm, ...x.collaborators, ...(x.tasks ?? []).flatMap((t) => [t.assignee, t.reporter ?? ''])].filter((v): v is string => !!v))
-  PEOPLE.filter((u) => u.team === x.team && u.role === 'pm').forEach((u) => ids.add(u.id))
-  return [...ids]
+  if (x.workspace?.members?.length) return x.workspace.members.filter((m) => m.role !== 'viewer').map((m) => m.userId)
+  return [...new Set<string>([x.pm, ...x.collaborators, ...(x.tasks ?? []).map((t) => t.assignee)].filter((v): v is string => !!v))]
 })
 
 const f = reactive(emptyFilter())
@@ -60,7 +64,12 @@ function clear() { Object.assign(f, emptyFilter()) }
 const openItem = ref<Task | null>(null)
 function create(template: WorkspaceTemplate, key: string) {
   if (!p.value) return
-  createWorkspace(p.value, template, key, session.userId, TODAY_ISO)
+  createWorkspace(p.value, template, key, session.userId, TODAY_ISO, (x) => {
+    const wf = defaultWorkflow(template)
+    x.workspace!.workflow = wf
+    x.workspace!.automation = defaultAutomation(wf)
+    x.workspace!.members = [...new Set([x.pm ?? session.userId, ...x.collaborators])].map((userId, i) => ({ userId, role: (i === 0 ? 'pm' : 'dev') as MemberRole }))
+  })
   notify(`สร้างพื้นที่งาน ${key} แบบ ${WORKSPACE_TEMPLATES[template].label} แล้ว`)
 }
 function switchTemplate(t: WorkspaceTemplate) {
@@ -92,14 +101,14 @@ function switchTemplate(t: WorkspaceTemplate) {
         <select v-if="canManage" class="input mini" :value="p.workspace.template" aria-label="เปลี่ยนรูปแบบ" @change="switchTemplate(($event.target as HTMLSelectElement).value as WorkspaceTemplate)">
           <option v-for="(t, k) in WORKSPACE_TEMPLATES" :key="k" :value="k">รูปแบบ: {{ t.label }}</option>
         </select>
-        <router-link :to="`/projects/${p.id}`" class="btn sm">ข้อมูลโครงการ</router-link>
+        <router-link v-if="session.role !== 'dev'" :to="`/projects/${p.id}`" class="btn sm">ข้อมูลโครงการ</router-link>
       </header>
 
       <nav class="tabs vt" role="tablist">
         <button v-for="v in views" :key="v" role="tab" :aria-selected="view === v" @click="view = v"><Icon :name="VIEW_LABEL[v].icon" :size="15" /> {{ VIEW_LABEL[v].l }}</button>
       </nav>
 
-      <div v-if="!['docs', 'forms'].includes(view)" class="tools">
+      <div v-if="!['docs', 'forms', 'settings', 'reports'].includes(view)" class="tools">
         <label class="srch"><Icon name="search" :size="16" /><input v-model="f.q" placeholder="ค้นหางาน รหัส หรือ Label" aria-label="ค้นหางาน" /></label>
         <div class="who" role="group" aria-label="กรองตามผู้รับผิดชอบ">
           <button v-for="id in team" :key="id" class="av" :class="{ on: f.assignees.includes(id) }" :aria-pressed="f.assignees.includes(id)" @click="toggle(f.assignees, id)"><Avatar :id="id" :size="28" /></button>
@@ -127,12 +136,14 @@ function switchTemplate(t: WorkspaceTemplate) {
 
       <WorkSummary v-if="view === 'summary'" :p="p" :list="shown" @open="openItem = $event" />
       <WorkList v-else-if="view === 'list'" :p="p" :list="shown" :group="group" :team="team" @open="openItem = $event" />
-      <WorkBoard v-else-if="view === 'board'" :p="p" :list="shown" :all="all" :wip-limit="p.workspace.template === 'kanban' ? 4 : undefined" @open="openItem = $event" />
+      <WorkBoard v-else-if="view === 'board'" :p="p" :list="shown" :all="all" @open="openItem = $event" />
       <WorkCalendar v-else-if="view === 'calendar'" :p="p" :list="shown" @open="openItem = $event" />
       <WorkTimeline v-else-if="view === 'timeline'" :p="p" :list="shown" @open="openItem = $event" />
       <WorkBacklog v-else-if="view === 'backlog'" :p="p" :list="shown" @open="openItem = $event" />
       <WorkDocs v-else-if="view === 'docs'" :p="p" />
       <WorkForms v-else-if="view === 'forms'" :p="p" />
+      <WorkReports v-else-if="view === 'reports'" :p="p" />
+      <WorkSettings v-else-if="view === 'settings'" :p="p" />
     </template>
 
     <WorkDrawer :p="p" :item="openItem" :team="team" @close="openItem = null" @open="openItem = $event" />

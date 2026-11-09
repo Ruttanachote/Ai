@@ -8,6 +8,7 @@ import { effort, health, lateTasks, paidAmount, progressPct, otBudget } from '..
 import KpiStrip from './KpiStrip.vue'
 import { PEOPLE, SALES_TEAMS, baht, groupOf, person, thDate, TODAY, TODAY_ISO } from '../data/mock'
 import { notify, session } from '../store'
+import { newItem, record } from '../domain/work'
 
 const props = defineProps<{ p: Project }>()
 const view = ref<'plan' | 'tasks' | 'ot' | 'risks'>('plan')
@@ -119,10 +120,20 @@ const risks = [
   { lvl: 'กลาง', t: 'ผู้ใช้งานฝั่งลูกค้าว่างทดสอบ UAT ได้แค่ 2 วัน/สัปดาห์', owner: 'ak', act: 'แบ่ง UAT เป็น 3 รอบย่อย' },
   { lvl: 'ต่ำ', t: 'Server ลูกค้าส่งมอบล่าช้า 1 สัปดาห์', owner: 'ak', act: 'ใช้ Staging ของบริษัทชั่วคราว' },
 ]
-const crs = [
-  { id: 'CR-03', t: 'เพิ่มหน้าจอรายงานสถิติรายอำเภอ', md: 6, cost: 72_000, status: 'รอลูกค้าอนุมัติ' },
-  { id: 'CR-02', t: 'เปลี่ยน OTP จาก SMS เป็น ThaiD', md: 4, cost: 0, status: 'อนุมัติ — อยู่ในขอบเขตเดิม' },
-]
+const crs = reactive([
+  { id: 'CR-03', t: 'เพิ่มหน้าจอรายงานสถิติรายอำเภอ', md: 6, cost: 72_000, status: 'รอลูกค้าอนุมัติ', approved: false },
+  { id: 'CR-02', t: 'เปลี่ยน OTP จาก SMS เป็น ThaiD', md: 4, cost: 0, status: 'อนุมัติ — อยู่ในขอบเขตเดิม', approved: true },
+])
+// An approved CR becomes a story in the workspace (estimate = Man-day × 8), linked both ways.
+const crItem = (id: string) => (props.p.tasks ?? []).find((t) => t.crId === id)
+const canPlanCr = computed(() => !!props.p.workspace && (session.role === 'admin' || session.role === 'pmo' || props.p.pm === session.userId))
+function crToWork(c: (typeof crs)[number]) {
+  if (!props.p.workspace || crItem(c.id)) return
+  const t = newItem(props.p, { title: c.t, type: 'story', crId: c.id, hours: c.md * 8, labels: ['CR'], priority: 'high', description: `จาก ${c.id} · ${c.md} Man-day${c.cost ? ' · ค่าใช้จ่ายเพิ่ม ' + baht(c.cost) : ''}` }, session.userId, TODAY_ISO)
+  props.p.tasks = [...(props.p.tasks ?? []), t]
+  record(props.p, session.userId, t, `สร้างงานจาก ${c.id}`, TODAY_ISO)
+  notify(`สร้าง ${t.key} จาก ${c.id} ในพื้นที่งานแล้ว`)
+}
 </script>
 
 <template>
@@ -278,6 +289,8 @@ const crs = [
           <li v-for="c in crs" :key="c.id">
             <span class="chip">{{ c.id }}</span>
             <div><strong>{{ c.t }}</strong><p class="small muted">{{ c.md }} Man-day · {{ c.cost ? baht(c.cost) : 'ไม่มีค่าใช้จ่ายเพิ่ม' }} · {{ c.status }}</p></div>
+            <router-link v-if="crItem(c.id)" :to="`/work/${p.id}`" class="btn sm ghost">{{ crItem(c.id)!.key }} · {{ crItem(c.id)!.status === 'done' ? 'เสร็จ' : 'ในแผนงาน' }}</router-link>
+            <button v-else-if="c.approved && canPlanCr" class="btn sm" @click="crToWork(c)">สร้างงานในพื้นที่งาน</button>
           </li>
         </ul>
       </div>

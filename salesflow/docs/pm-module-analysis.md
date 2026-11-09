@@ -219,3 +219,30 @@ interface SprintReport { sprintId: string; committed: number; completed: number;
 4. ต้องบันทึกชั่วโมงทำงานรายวัน (Timesheet) จริงหรือไม่ — กระทบทั้ง Workload, OT และต้นทุนจริง
 5. ใช้ GitHub, GitLab หรือ Azure DevOps
 6. ลูกค้าควรเห็นอะไรได้บ้าง (เฉพาะแบบฟอร์ม/รายงาน หรือดูความคืบหน้าแบบอ่านอย่างเดียว)
+
+---
+
+## 11. สถานะหลังรื้อโมดูล PM (P1 ทำแล้ว + P2 บางส่วน)
+
+ค่าเริ่มต้นที่ใช้ตอบคำถามข้อ 10 (ปรับได้ภายหลัง): ทีม Dev / QA / BA ใช้บอร์ดใน One Platform โดยตรง · Workflow มาตรฐาน DT = To Do → In Progress → Code Review → Ready for QA → QA → (UAT ลูกค้า สำหรับแบบตามงวดงาน) → Done · หน่วยประเมินเลือกได้ต่อพื้นที่งาน (Scrum = Story point, อื่น ๆ = ชั่วโมง) · บันทึกเวลารายงาน และติ๊ก “ทำนอกเวลา” เพื่อขอ OT
+
+| เรื่อง | สิ่งที่ทำ | ไฟล์หลัก |
+|---|---|---|
+| บทบาท `dev` + สมาชิก | Role ใหม่ “ทีมพัฒนา (Dev / QA / BA)” (`OnePlatform.Dev`), หน้าแรก `/my-work`, เห็นเฉพาะพื้นที่งานที่เป็นสมาชิก ไม่เห็นข้อมูลโครงการ/ราคา · สมาชิกมีบทบาทในโครงการ PM / หัวหน้าทีม / Dev / QA / BA / ดูอย่างเดียว | `model.ts`, `store.ts`, `WorkSettings.vue` |
+| Workflow ปรับได้ | สถานะ + กลุ่ม (ยังไม่เริ่ม/กำลังทำ/รอตรวจ/เสร็จ) + WIP ต่อคอลัมน์ · ตารางการย้ายที่อนุญาต + จำกัดบทบาท (ไป Done ได้เฉพาะ QA/PM/หัวหน้าทีม) · ทุกหน้าย้ายงานผ่าน engine เดียว | `domain/workflow.ts`, `work/actions.ts` |
+| Definition of Done | Acceptance criteria ในการ์ด ต้องติ๊กครบก่อนเข้าสถานะกลุ่ม “เสร็จ” (เปิด/ปิดได้) | `WorkDrawer.vue` |
+| History รายการ์ด | บันทึก จาก → ถึง ของสถานะ ผู้รับผิดชอบ วันที่ Sprint ความสำคัญ Label ไฟล์แนบ เวลา (รวม Automation) | `logChange()` |
+| การ์ดงาน | Label แก้ได้ · ผู้ร่วมทำ · Story point · ไฟล์แนบ (SharePoint › โครงการ/Work/KEY) · แท็บ เวลา / ประวัติ | `WorkDrawer.vue` |
+| Worklog → OT | บันทึกชั่วโมงรายวัน เพิ่ม “ใช้ไป” อัตโนมัติ · OT สร้างคำขอให้ PM อนุมัติในเงินกัน Cost Sheet ตามอัตราของพื้นที่งาน | `addWorklog()` |
+| Automation | ย้ายไป Ready for QA → มอบหมาย QA ที่งานน้อยสุด + แจ้ง · ย้ายไป Done → แจ้งผู้แจ้งงาน · เปิด/ปิด/เพิ่มกฎได้ | `runAutomation()` |
+| แจ้งเตือน | กระดิ่งบนแถบบน (ยังไม่อ่าน/อ่านทั้งหมด) + หน้า งานของฉัน — ใน Production ส่งต่ออีเมล/Teams ผ่าน Outbox | `App.vue`, `store.ts` |
+| Epic ↔ งวดงาน | ความคืบหน้างวดคำนวณจากงานใน Epic ของงวด · Epic เสร็จครบ = งวดพร้อมส่งมอบ | `syncMilestones()` |
+| Sprint | Burndown (จากวันที่เข้า Done จริงใน History) · Velocity · ปิด Sprint แบบเลือกปลายทางงานค้าง + บันทึกยอดตั้งใจ/เสร็จ · ความเร็วเฉลี่ยช่วยวางแผน | `burndown()`, `completeSprint()`, `WorkReports.vue` |
+| รายงาน | Burndown, Velocity, งวดงานตามสัญญา, เวลาและ OT ของทีม | `WorkReports.vue` |
+| Timeline | ลากแถบเพื่อเลื่อนวัน ลากขอบขวาเปลี่ยนกำหนดเสร็จ (คีย์บอร์ด ← → / Shift) บันทึกใน History | `WorkTimeline.vue` |
+| CR → งาน | CR ที่อนุมัติ กด “สร้างงานในพื้นที่งาน” ได้ Story ติดป้าย CR ประมาณชั่วโมง = Man-day × 8 และลิงก์กลับ | `DeliveryPanel.vue` |
+| งานของฉัน | รวมงานทุกโครงการ แบ่ง เลยกำหนด / 7 วัน / ถัดไป / ไม่กำหนดวัน · เปลี่ยนสถานะได้ทันที · OT ของฉัน | `MyWorkView.vue` |
+
+ข้อมูลตัวอย่าง: Smart Permit (SPP, ตามงวดงาน, มี QA และ UAT) และ City Super App (CSA, Scrum, Sprint 3 กำลังดำเนินการ, Velocity 2 Sprint) — ทดสอบ engine ใน `server/test/workflow.test.ts` (9 กรณี)
+
+ยังไม่ทำ (P2/P3 ที่เหลือ): ความสัมพันธ์งาน/Dependency, Baseline, Saved filter, Git integration, Custom field, Swimlane, JQL, Cumulative flow, พอร์ทัลลูกค้า และการบันทึกลงฐานข้อมูลจริง (ต้นแบบเก็บในหน่วยความจำ)
