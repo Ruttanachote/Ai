@@ -102,7 +102,7 @@ const move = (t: Task, dir: 1 | -1) => {
   const i = COLS.findIndex((c) => c.k === t.status)
   t.status = COLS[Math.min(3, Math.max(0, i + dir))].k
 }
-// Same figures and RAG as the Portfolio card for this project.
+// Same figures and RAG as the Project Overview card for this project.
 const kpis = computed(() => {
   const e = effort(props.p)
   const lateN = lateTasks(props.p, TODAY_ISO).length

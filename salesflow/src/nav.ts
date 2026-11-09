@@ -28,7 +28,7 @@ export const NAV: NavGroup[] = [
   {
     title: 'Project Management',
     items: [
-      { to: '/delivery', label: 'Project Portfolio', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/delivery', label: 'Project Overview', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'deputy', 'exec', 'admin'] },
       { to: '/work', label: 'Project Workspace', icon: 'board', roles: ['pm', 'dev', 'pmo', 'head', 'admin'] },
       { to: '/workload', label: 'Resource Workload', icon: 'people', roles: ['pmo', 'pm', 'head', 'admin'] },
     ],

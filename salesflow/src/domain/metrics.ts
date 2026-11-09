@@ -75,7 +75,7 @@ export function bondReturnDue(p: Project, b: Bond) {
 export type WarrantyBucket = 'due30' | 'due120' | 'later'
 export const warrantyBucket = (daysLeft: number): WarrantyBucket => (daysLeft <= 30 ? 'due30' : daysLeft <= 120 ? 'due120' : 'later')
 
-/* ---------------- delivery (Portfolio, project plan tab, workload) ---------------- */
+/* ---------------- delivery (Project Overview, project plan tab, workload) ---------------- */
 
 export function progressPct(p: Project) {
   const ms = p.milestones ?? []
@@ -89,7 +89,7 @@ export function effort(p: Project) {
 export const paidAmount = (p: Project) => (p.milestones ?? []).filter((m) => m.paid).reduce((s, m) => s + (m.payment ?? 0), 0)
 
 export type Health = { k: 'Schedule' | 'Effort' | 'Payment'; tone: 'ok' | 'warn' | 'bad'; note: string }
-/** RAG used on the Portfolio cards and the project plan tab. */
+/** RAG used on the Project Overview cards and the project plan tab. */
 export function health(p: Project, today: string): Health[] {
   const ms = p.milestones ?? []
   const behind = ms.some((m) => m.progress < 100 && m.end < today)
