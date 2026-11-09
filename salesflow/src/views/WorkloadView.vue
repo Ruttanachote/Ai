@@ -131,7 +131,7 @@ const kpis = computed(() => {
 <style scoped>
 .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 3px; gap: 2px; }
 .seg button { border: 0; background: none; padding: 0 14px; border-radius: 4px; font: 500 14px var(--font); color: var(--muted); cursor: pointer; min-height: 32px; }
-.seg button[aria-checked='true'] { background: var(--ink); color: #fff; }
+.seg button[aria-checked='true'] { background: var(--ink); color: var(--on-ink); }
 .heat { width: 100%; border-collapse: separate; border-spacing: 4px; min-width: 820px; }
 .heat th { font-weight: 500; font-size: 12.5px; color: var(--muted); text-align: center; padding: 4px; }
 .heat th:first-child { text-align: left; }

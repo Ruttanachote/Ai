@@ -156,7 +156,7 @@ function switchTemplate(t: WorkspaceTemplate) {
 .back { color: var(--muted); display: inline-block; margin-bottom: 10px; }
 .empty { display: grid; gap: 6px; }
 .wh { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
-.badge { width: 44px; height: 44px; border-radius: var(--r-sm); background: var(--ink); color: #fff; display: grid; place-items: center; font: 700 12px var(--display); letter-spacing: 0.04em; }
+.badge { width: 44px; height: 44px; border-radius: var(--r-sm); background: var(--ink); color: var(--on-ink); display: grid; place-items: center; font: 700 12px var(--display); letter-spacing: 0.04em; }
 .tt { flex: 1; min-width: 240px; }
 .tt h1 { font-size: 24px; }
 .tt p { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }

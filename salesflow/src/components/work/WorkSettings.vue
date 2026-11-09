@@ -184,7 +184,7 @@ const CATS = Object.keys(WORK_STATUS) as WorkStatus[]
 .side button { display: flex; justify-content: space-between; border: 0; background: none; text-align: left; padding: 9px 12px; border-radius: var(--r-sm); font: 14px var(--font); color: var(--ink-2); cursor: pointer; }
 .side button span { color: var(--muted); font-size: 12px; }
 .side button:hover { background: var(--sunken); }
-.side button[aria-current='true'] { background: var(--ink); color: #fff; }
+.side button[aria-current='true'] { background: var(--ink); color: var(--on-ink); }
 .side button[aria-current='true'] span { color: rgb(255 255 255 / 0.7); }
 .ro { padding: 8px 12px; }
 .panel { display: grid; gap: 12px; align-content: start; overflow-x: auto; }

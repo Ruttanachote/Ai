@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, h, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { NButton, NDataTable, NEmpty, NInput, NRadioButton, NRadioGroup, NSelect, type DataTableColumns } from 'naive-ui'
+import Icon from '../components/Icon.vue'
 import StageBadge from '../components/StageBadge.vue'
 import Avatar from '../components/Avatar.vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
 import { scope, session } from '../store'
 import { baht, mb, person, TODAY_ISO } from '../data/mock'
-import { stageOf, type Phase } from '../data/model'
+import { STAGES, stageOf, type Phase, type Project } from '../data/model'
 import { dealValue, gpPct, isOpen, isWon, bookedValue, pipelineValue, sum, approvalState, APPROVAL_LABEL } from '../domain/metrics'
 import { customerName } from '../display'
 
@@ -23,6 +26,40 @@ const list = computed(() =>
     return !t || [p.name, customerName(p), p.code, p.team].some((v) => v.toLowerCase().includes(t))
   }),
 )
+// Register table (Naive UI): sortable columns, stage/team filters in the header, pagination,
+// row click opens the project. Same scope + metrics as every other page.
+const router = useRouter()
+const typeOptions = [{ label: 'ทุกประเภท', value: 'all' }, ...['ซื้อขาย', 'เช่าซื้อ', 'พัฒนาระบบ', 'MA'].map((v) => ({ label: v, value: v }))]
+const teams = computed(() => [...new Set(base.value.map((p) => p.team))].sort())
+const columns = computed<DataTableColumns<Project>>(() => [
+  {
+    title: 'โครงการ', key: 'name', minWidth: 300, sorter: (a, b) => a.name.localeCompare(b.name, 'th'),
+    render: (p) => h('div', [
+      h(RouterLink, { to: `/projects/${p.id}`, class: 'name', onClick: (e: Event) => e.stopPropagation() }, { default: () => p.name }),
+      h('p', { class: 'muted small' }, `${p.code} · ${customerName(p)} · ${p.type}${p.parentId ? ' · ต่อจากโครงการเดิม' : ''}`),
+    ]),
+  },
+  {
+    title: 'สถานะ', key: 'stage', width: 150, sorter: (a, b) => STAGES.findIndex((x) => x.key === a.stage) - STAGES.findIndex((x) => x.key === b.stage),
+    filterOptions: STAGES.filter((st) => base.value.some((p) => p.stage === st.key)).map((st) => ({ label: st.label, value: st.key })), filter: (v, p) => p.stage === v,
+    render: (p) => h(StageBadge, { stage: p.stage }),
+  },
+  { title: 'ใบเสนอราคา', key: 'approval', width: 150, render: (p) => { const a = APPROVAL_LABEL[approvalState(p, TODAY_ISO)]; return h('span', { class: ['chip', a.tone] }, a.label) } },
+  { title: 'ทีม', key: 'team', width: 100, filterOptions: teams.value.map((t) => ({ label: t, value: t })), filter: (v, p) => p.team === v },
+  {
+    title: 'มูลค่า', key: 'value', width: 150, align: 'right', sorter: (a, b) => dealValue(a) - dealValue(b),
+    render: (p) => h('div', { class: 'num' }, [dealValue(p) ? baht(dealValue(p)) : '—', h('p', { class: 'small muted' }, isWon(p) ? 'ตามสัญญา' : p.revenue ? 'ราคาเสนอ' : 'Budget')]),
+  },
+  { title: 'GP', key: 'gp', width: 80, align: 'right', sorter: (a, b) => (gpPct(a) ?? -1) - (gpPct(b) ?? -1), render: (p) => h('span', { class: 'num' }, gpPct(p) === null ? '—' : gpPct(p)!.toFixed(1) + '%') },
+  {
+    title: 'ผู้รับผิดชอบ', key: 'owner', width: 200,
+    render: (p) => h('span', { class: 'ppl' }, [h(Avatar, { id: p.sm, size: 26 }), p.pm ? h(Avatar, { id: p.pm, size: 26 }) : null, h('span', { class: 'small muted' }, person(p.pm ?? p.sm)?.name)]),
+  },
+])
+const rowProps = (p: Project) => ({ style: 'cursor: pointer', onClick: () => router.push(`/projects/${p.id}`) })
+const page = ref(1)
+const clear = () => { q.value = ''; phase.value = 'all'; type.value = 'all' }
+
 const kpis = computed(() => [
   { label: 'โครงการทั้งหมด', value: String(list.value.length), note: list.value.length === base.value.length ? 'ไม่ได้กรอง' : `กรองจาก ${base.value.length}` },
   { label: 'ช่วงขาย', value: mb(sum(list.value.filter(isOpen), pipelineValue)), note: `${list.value.filter(isOpen).length} ดีล` },
@@ -39,56 +76,29 @@ const kpis = computed(() => [
     <KpiStrip :items="kpis" />
 
     <div class="filters">
-      <input v-model="q" class="input" placeholder="ค้นหาชื่อ ลูกค้า รหัส หรือทีม" aria-label="ค้นหาโครงการ" />
-      <div class="seg" role="radiogroup" aria-label="ช่วงงาน">
-        <button v-for="o in [{ k: 'all', l: 'ทั้งหมด' }, { k: 'presale', l: 'ช่วงขาย' }, { k: 'result', l: 'ผลการขาย' }, { k: 'postsale', l: 'หลังขาย' }]" :key="o.k"
-          role="radio" :aria-checked="phase === o.k" @click="phase = o.k as Phase | 'all'">{{ o.l }}</button>
-      </div>
-      <select v-model="type" class="input" aria-label="ประเภทโครงการ">
-        <option value="all">ทุกประเภท</option>
-        <option>ซื้อขาย</option><option>เช่าซื้อ</option><option>พัฒนาระบบ</option><option>MA</option>
-      </select>
+      <NInput v-model:value="q" clearable placeholder="ค้นหาชื่อ ลูกค้า รหัส หรือทีม" aria-label="ค้นหาโครงการ" class="q"><template #prefix><Icon name="search" :size="16" /></template></NInput>
+      <NRadioGroup v-model:value="phase" aria-label="ช่วงงาน">
+        <NRadioButton v-for="o in [{ k: 'all', l: 'ทั้งหมด' }, { k: 'presale', l: 'ช่วงขาย' }, { k: 'result', l: 'ผลการขาย' }, { k: 'postsale', l: 'หลังขาย' }]" :key="o.k" :value="o.k">{{ o.l }}</NRadioButton>
+      </NRadioGroup>
+      <NSelect v-model:value="type" :options="typeOptions" class="ty" aria-label="ประเภทโครงการ" />
     </div>
 
-    <div class="panel flush scroll-x">
-      <table class="table">
-        <thead><tr><th>โครงการ</th><th>สถานะ</th><th>ใบเสนอราคา</th><th>ทีม</th><th class="r">มูลค่า</th><th class="r">GP</th><th>ผู้รับผิดชอบ</th></tr></thead>
-        <tbody>
-          <tr v-for="p in list" :key="p.id">
-            <td>
-              <router-link :to="`/projects/${p.id}`" class="name">{{ p.name }}</router-link>
-              <p class="muted small">{{ p.code }} · {{ customerName(p) }} · {{ p.type }}<template v-if="p.parentId"> · ต่อจากโครงการเดิม</template></p>
-            </td>
-            <td><StageBadge :stage="p.stage" /></td>
-            <td><span class="chip" :class="APPROVAL_LABEL[approvalState(p, TODAY_ISO)].tone">{{ APPROVAL_LABEL[approvalState(p, TODAY_ISO)].label }}</span></td>
-            <td>{{ p.team }}</td>
-            <td class="r num">{{ dealValue(p) ? baht(dealValue(p)) : '—' }}<p class="small muted">{{ isWon(p) ? 'ตามสัญญา' : p.revenue ? 'ราคาเสนอ' : 'Budget' }}</p></td>
-            <td class="r num">{{ gpPct(p) === null ? '—' : gpPct(p)!.toFixed(1) + '%' }}</td>
-            <td>
-              <span class="ppl"><Avatar :id="p.sm" :size="26" /><Avatar v-if="p.pm" :id="p.pm" :size="26" />
-                <span class="small muted">{{ person(p.pm ?? p.sm)?.name }}</span></span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="!list.length" class="empty">
-        <p><strong>ไม่พบโครงการที่ตรงกับตัวกรอง</strong></p>
-        <button class="btn sm" @click="q = ''; phase = 'all'; type = 'all'">ล้างตัวกรอง</button>
-      </div>
-    </div>
+    <NDataTable :columns="columns" :data="list" :row-key="(p: Project) => p.id" :row-props="rowProps" :bordered="false" :scroll-x="1150"
+      :pagination="{ page, pageSize: 10, onUpdatePage: (n: number) => (page = n), showSizePicker: false }" class="reg">
+      <template #empty>
+        <NEmpty description="ไม่พบโครงการที่ตรงกับตัวกรอง"><template #extra><NButton size="small" @click="clear">ล้างตัวกรอง</NButton></template></NEmpty>
+      </template>
+    </NDataTable>
   </div>
 </template>
 
 <style scoped>
-.filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-.filters > .input:first-child { max-width: 320px; }
-.filters select { width: auto; }
-.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 3px; gap: 2px; }
-.seg button { border: 0; background: none; padding: 0 12px; border-radius: 4px; font: 500 13.5px var(--font); color: var(--muted); cursor: pointer; min-height: 32px; }
-.seg button[aria-checked='true'] { background: var(--ink); color: #fff; }
-.flush { padding: 4px 8px; }
-.name { font-weight: 600; color: var(--ink); }
-.ppl { display: flex; align-items: center; gap: 4px; }
-.ppl .small { margin-left: 6px; white-space: nowrap; }
-.empty { text-align: center; padding: 40px 0; display: grid; gap: 12px; justify-items: center; }
+.filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.q { max-width: 340px; }
+.ty { width: 160px; }
+.reg { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.reg :deep(.name) { font-weight: 600; color: var(--ink); }
+.reg :deep(.ppl) { display: flex; align-items: center; gap: 4px; }
+.reg :deep(.ppl .small) { margin-left: 6px; white-space: nowrap; }
+.reg :deep(.n-data-table__pagination) { padding: 10px 14px; }
 </style>

@@ -66,10 +66,13 @@ export function moveStage(id: string, to: StageKey, note: string, by: string) {
   p.history.push({ stage: to, note, at: 'วันนี้', by })
 }
 
-export const toast = reactive({ text: '', show: false })
+/** Feedback messages — rendered by Naive UI's message API in App (see Feedback.vue). */
+export const toast = reactive({ text: '', show: false, seq: 0, kind: 'success' as 'success' | 'warning' | 'error' | 'info' })
 let timer: number | undefined
-export function notify(text: string) {
+export function notify(text: string, kind: 'success' | 'warning' | 'error' | 'info' = 'success') {
   toast.text = text
+  toast.kind = kind
+  toast.seq += 1
   toast.show = true
   clearTimeout(timer)
   timer = window.setTimeout(() => (toast.show = false), 3200)

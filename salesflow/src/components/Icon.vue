@@ -31,6 +31,10 @@ const P: Record<string, string> = {
   ticket: 'M4 8a2 2 0 0 0 0 4v4h16v-4a2 2 0 0 1 0-4V4H4zM10 4v12',
   flag: 'M5 21V4M5 4h11l-2 4 2 4H5',
   chart: 'M4 20h16M7 16v-5M12 16V7M17 16v-8',
+  sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
+  monitor: 'M4 5h16v11H4zM9 20h6M12 16v4',
+  collapse: 'M4 5h16v14H4zM9 5v14M15 10l-2 2 2 2',
 }
 </script>
 

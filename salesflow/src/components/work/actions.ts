@@ -10,7 +10,7 @@ export const me = () => session.userId
 
 export function move(p: Project, t: Task, to: string, quiet = false) {
   const r = moveItem(p, t, to, me(), TODAY_ISO, { isAdmin: isAdmin() })
-  if (!r.ok) { if (!quiet) notify(r.reason ?? 'ย้ายไม่ได้'); return false }
+  if (!r.ok) { if (!quiet) notify(r.reason ?? 'ย้ายไม่ได้', 'warning'); return false }
   pushNotices(r.notices)
   return true
 }

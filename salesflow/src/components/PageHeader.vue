@@ -23,6 +23,6 @@ defineProps<{ title: string; subtitle?: string; scope?: string; module?: string 
 .mod { font-size: 13px; color: var(--muted); }
 h1 { text-wrap: balance; }
 .sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); }
-.scope { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 500; }
+.scope { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--ink); color: var(--on-ink); font-size: 12px; font-weight: 500; }
 .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 </style>

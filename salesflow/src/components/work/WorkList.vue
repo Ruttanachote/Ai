@@ -215,6 +215,6 @@ tr.sel td { background: var(--presale-soft); }
 .pop button:hover { background: var(--sunken); }
 .pop .del { color: var(--lose); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 14px; background: var(--ink); color: #fff; font-size: 13.5px; }
+.bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 14px; background: var(--ink); color: var(--on-ink); font-size: 13.5px; }
 .bulk .btn { background: transparent; color: #fff; border-color: rgb(255 255 255 / 0.35); }
 </style>

@@ -90,7 +90,7 @@ function submit() {
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px; display: grid; gap: 8px; }
 .art { height: 140px; border-radius: var(--r-sm); display: grid; place-items: center; }
-.sheet { width: 46%; height: 78%; background: #fff; border-radius: 6px; padding: 12px; display: grid; gap: 6px; align-content: start; box-shadow: 0 4px 12px -6px rgb(0 0 0 / 0.3); }
+.sheet { width: 46%; height: 78%; background: var(--surface); border-radius: 6px; padding: 12px; display: grid; gap: 6px; align-content: start; box-shadow: 0 4px 12px -6px rgb(0 0 0 / 0.3); }
 .sheet i { height: 6px; border-radius: 3px; background: #dfe2e8; }
 .sheet i.s { width: 60%; }
 .card h3 { font-size: 15px; }

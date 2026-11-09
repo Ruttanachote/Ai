@@ -113,7 +113,7 @@ header h3 { font-size: 13px; color: var(--ink-2); display: flex; gap: 6px; align
 .card.late { border-left: 3px solid var(--lose); }
 .card.drag { opacity: 0.4; }
 .card strong { font-weight: 500; font-size: 14px; line-height: 1.4; }
-.epic { justify-self: start; font-size: 11px; font-weight: 600; color: #6a3fc4; background: #efe9fb; padding: 1px 6px; border-radius: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epic { justify-self: start; font-size: 11px; font-weight: 600; color: var(--epic); background: var(--epic-soft); padding: 1px 6px; border-radius: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tags { display: flex; gap: 4px; flex-wrap: wrap; }
 .lab, .acc, .cr { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--idle-soft); color: var(--ink-2); }
 .cr { background: var(--warn-soft); color: var(--warn); font-weight: 600; }

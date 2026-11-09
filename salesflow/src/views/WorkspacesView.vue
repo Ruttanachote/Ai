@@ -53,6 +53,6 @@ const kpis = computed(() => {
 <style scoped>
 .flush { padding: 4px 8px; }
 .nm { font-weight: 600; color: var(--ink); }
-.key { font: 600 12px var(--display); background: var(--ink); color: #fff; padding: 2px 8px; border-radius: 4px; }
+.key { font: 600 12px var(--display); background: var(--ink); color: var(--on-ink); padding: 2px 8px; border-radius: 4px; }
 .bad { color: var(--lose); }
 </style>

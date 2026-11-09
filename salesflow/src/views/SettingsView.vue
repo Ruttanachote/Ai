@@ -152,7 +152,7 @@ function addHoliday() {
 .mx td { text-align: center; }
 .mx td:first-child { text-align: left; }
 .lv { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 4px; }
-.lv.full { background: var(--ink); color: #fff; }
+.lv.full { background: var(--ink); color: var(--on-ink); }
 .lv.own { background: var(--presale-soft); color: var(--presale); }
 .lv.view { background: var(--idle-soft); color: var(--ink-2); }
 .lv.none { color: var(--faint); }

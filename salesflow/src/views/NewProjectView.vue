@@ -150,7 +150,7 @@ fieldset { border: 0; padding: 0; margin: 0; }
 legend { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
 .types { display: flex; gap: 8px; flex-wrap: wrap; }
 .types label { display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; min-height: 40px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); cursor: pointer; font-size: 14px; }
-.types label.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+.types label.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
 .types input { position: absolute; opacity: 0; }
 .types label:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
 .err { font-size: 12.5px; color: var(--lose); }
