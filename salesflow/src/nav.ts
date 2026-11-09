@@ -29,6 +29,7 @@ export const NAV: NavGroup[] = [
     title: 'ส่งมอบโครงการ',
     items: [
       { to: '/delivery', label: 'Portfolio โครงการ', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/work', label: 'พื้นที่งานโครงการ', icon: 'board', roles: ['pm', 'pmo', 'head', 'admin'] },
       { to: '/workload', label: 'Workload ทีม', icon: 'people', roles: ['pmo', 'pm', 'head', 'admin'] },
     ],
   },
@@ -46,7 +47,7 @@ export const NAV: NavGroup[] = [
 ]
 
 export const HOME: Record<Role, string> = {
-  sm: '/', head: '/', deputy: '/approvals', exec: '/', pmo: '/delivery', opn: '/procurement', pm: '/delivery', ma: '/ma', callcenter: '/helpdesk', admin: '/settings',
+  sm: '/', head: '/', deputy: '/approvals', exec: '/', pmo: '/delivery', opn: '/procurement', pm: '/work', ma: '/ma', callcenter: '/helpdesk', admin: '/settings',
 }
 
 export const canSee = (path: string, role: Role) =>

@@ -184,6 +184,7 @@ const crs = [
 
   <template v-if="p.milestones">
     <KpiStrip :items="kpis" />
+    <div class="wslink"><span class="small muted">จัดการงานแบบรายการ บอร์ด ปฏิทิน Timeline เอกสาร และแบบฟอร์ม</span><router-link :to="`/work/${p.id}`" class="btn sm primary">เปิดพื้นที่งาน {{ p.workspace?.key ?? '' }}</router-link></div>
 
     <div class="tabs" role="tablist">
       <button role="tab" :aria-selected="view === 'plan'" @click="view = 'plan'">Timeline และงวดงาน</button>
@@ -292,6 +293,7 @@ const crs = [
 
 <style scoped>
 .hand { margin-bottom: 20px; }
+.wslink { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: -6px 0 16px; }
 .att { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 .att h3 { margin-bottom: 10px; }
 .att ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }

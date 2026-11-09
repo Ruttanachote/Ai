@@ -166,16 +166,61 @@ export interface ContractTerms {
   whtRate: 0.01 | 0.03
 }
 
+export type WorkType = 'epic' | 'story' | 'task' | 'subtask' | 'bug'
+export type Priority = 'highest' | 'high' | 'medium' | 'low' | 'lowest'
+export type WorkStatus = 'todo' | 'doing' | 'review' | 'done'
+
+export const WORK_TYPES: Record<WorkType, { label: string; color: string }> = {
+  epic: { label: 'Epic', color: '#7b4fd6' },
+  story: { label: 'Story', color: '#2e8a55' },
+  task: { label: 'Task', color: '#2f6fd8' },
+  subtask: { label: 'Sub-task', color: '#4d7ea8' },
+  bug: { label: 'Bug', color: '#c4382f' },
+}
+export const PRIORITIES: Record<Priority, { label: string; rank: number }> = {
+  highest: { label: 'สูงสุด', rank: 0 }, high: { label: 'สูง', rank: 1 }, medium: { label: 'ปานกลาง', rank: 2 }, low: { label: 'ต่ำ', rank: 3 }, lowest: { label: 'ต่ำสุด', rank: 4 },
+}
+export const WORK_STATUS: Record<WorkStatus, { label: string; tone: string }> = {
+  todo: { label: 'ยังไม่เริ่ม', tone: '' }, doing: { label: 'กำลังทำ', tone: 'presale' }, review: { label: 'รอตรวจ', tone: 'warn' }, done: { label: 'เสร็จ', tone: 'win' },
+}
+
+/** A work item in the PM workspace (list, board, calendar, timeline all read the same items). */
 export interface Task {
   id: string
   title: string
   assignee: string
-  status: 'todo' | 'doing' | 'review' | 'done'
+  status: WorkStatus
+  /** '' = not scheduled yet (shown in the calendar's unscheduled panel). */
   due: string
   hours: number
   spent: number
   milestone: string
+  key?: string
+  type?: WorkType
+  priority?: Priority
+  reporter?: string
+  parentId?: string
+  sprint?: string
+  start?: string
+  created?: string
+  updated?: string
+  description?: string
+  labels?: string[]
+  comments?: { who: string; at: string; text: string }[]
 }
+
+export type WorkspaceTemplate = 'kanban' | 'milestone' | 'scrum'
+export const WORKSPACE_TEMPLATES: Record<WorkspaceTemplate, { label: string; th: string; views: string[] }> = {
+  kanban: { label: 'Kanban', th: 'งานไหลต่อเนื่อง ดูบอร์ดและจำกัดงานที่กำลังทำ เหมาะกับงาน MA หรือทีมที่รับงานย่อยตลอด', views: ['summary', 'board', 'list', 'calendar'] },
+  milestone: { label: 'ตามงวดงาน', th: 'แผนตามงวดงานในสัญญา มีรายการ ปฏิทิน และ Timeline เหมาะกับโครงการรัฐที่ส่งมอบเป็นงวด', views: ['summary', 'list', 'board', 'calendar', 'timeline'] },
+  scrum: { label: 'Scrum', th: 'วางแผนเป็น Sprint 2 สัปดาห์ จัดลำดับ Backlog และติดตามความเร็วทีม เหมาะกับงานพัฒนาที่ขอบเขตปรับได้', views: ['summary', 'backlog', 'board', 'list', 'timeline'] },
+}
+export interface Sprint { id: string; name: string; start: string; end: string; goal?: string; state: 'planned' | 'active' | 'closed' }
+export interface WorkActivity { who: string; at: string; day: string; key: string; title: string; text: string; status?: WorkStatus }
+export interface WorkDoc { id: string; title: string; kind: 'page' | 'meeting' | 'report' | 'whiteboard'; owner: string; created: string; updated: string; folder: string; parentId?: string }
+export interface FormField { label: string; kind: 'text' | 'long' | 'select' | 'date'; options?: string[]; required?: boolean }
+export interface WorkForm { id: string; name: string; template: string; createsType: WorkType; priority: Priority; fields: FormField[]; updated: string; by: string; submissions: number; audience: 'ลูกค้า' | 'ทีมภายใน' }
+export interface Workspace { template: WorkspaceTemplate; key: string; nextNo: number; sprints?: Sprint[]; createdAt: string; activity?: WorkActivity[]; docs?: WorkDoc[]; forms?: WorkForm[] }
 
 export type MilestoneState = 'planned' | 'delivered' | 'inspected' | 'invoiced' | 'paid'
 export interface Milestone { name: string; start: string; end: string; progress: number; payment?: number; paid?: boolean; state?: MilestoneState; deliveredAt?: string }
@@ -247,5 +292,7 @@ export interface Project {
   approval?: Approval
   milestones?: Milestone[]
   tasks?: Task[]
+  /** PM workspace — created by the PM after Handover by choosing a template. */
+  workspace?: Workspace
   history: { stage: StageKey; note: string; at: string; by: string }[]
 }

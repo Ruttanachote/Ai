@@ -81,7 +81,7 @@ export function progressPct(p: Project) {
   const ms = p.milestones ?? []
   return ms.length ? Math.round(ms.reduce((s, m) => s + m.progress, 0) / ms.length) : 0
 }
-export const lateTasks = (p: Project, today: string) => (p.tasks ?? []).filter((t) => t.status !== 'done' && t.due < today)
+export const lateTasks = (p: Project, today: string) => (p.tasks ?? []).filter((t) => t.status !== 'done' && !!t.due && t.due < today)
 export function effort(p: Project) {
   const ts = p.tasks ?? []
   return { plan: ts.reduce((s, t) => s + t.hours, 0), spent: ts.reduce((s, t) => s + t.spent, 0) }

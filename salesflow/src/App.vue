@@ -15,7 +15,7 @@ const me = computed(() => person(session.userId))
 const groups = computed(() =>
   NAV.map((g) => ({ ...g, items: g.items.filter((i) => i.roles.includes(session.role)) })).filter((g) => g.items.length),
 )
-const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path === to || (to === '/projects' && /^\/projects\/(?!new)/.test(route.path)))
+const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path === to || (to === '/projects' && /^\/projects\/(?!new)/.test(route.path)) || (to === '/work' && route.path.startsWith('/work/')))
 
 function switchRole(e: Event) {
   setRole((e.target as HTMLSelectElement).value as Role)
