@@ -20,7 +20,7 @@ defineProps<{ items: Kpi[] }>()
 .kpi.link:hover { border-color: var(--line-strong); text-decoration: none; }
 .l { font-size: 13px; color: var(--muted); }
 .v { font-size: 24px; font-weight: 600; line-height: 1.25; }
-.n { font-style: normal; font-size: 12.5px; color: var(--faint); }
+.n { font-family: var(--desc); font-style: normal; font-size: 13px; color: var(--faint); }
 .good .v { color: var(--win); }
 .warn .v { color: var(--warn); }
 .bad .v { color: var(--lose); }

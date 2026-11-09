@@ -53,7 +53,7 @@ watchEffect(() => {
   for (const [k, v] of Object.entries(map)) r.style.setProperty(`--${k}`, v)
 })
 
-const FONT = "'Anuphan', system-ui, sans-serif"
+const FONT = "'Prompt', system-ui, sans-serif"
 export const naiveTheme = computed(() => (isDark.value ? darkTheme : null))
 export const overrides = computed<GlobalThemeOverrides>(() => {
   const t = isDark.value ? T.dark : T.light

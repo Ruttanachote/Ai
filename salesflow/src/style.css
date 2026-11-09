@@ -38,8 +38,9 @@
   --raised: #fff;
   --glass: rgb(243 245 249 / 0.86);
 
-  --font: 'Anuphan', system-ui, sans-serif;
-  --display: 'Bai Jamjuree', 'Anuphan', sans-serif;
+  --font: 'Prompt', system-ui, sans-serif;      /* ทั้งระบบ: เมนู หัวข้อ ปุ่ม ตาราง */
+  --display: 'Prompt', system-ui, sans-serif;
+  --desc: 'Sarabun', 'Prompt', sans-serif;       /* คำอธิบาย: subtitle, hint, ข้อความรอง */
 
   --t-fast: 120ms;
   --t-med: 220ms;
@@ -50,7 +51,8 @@
 html, body { margin: 0; }
 body {
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 14.5px;
+  font-weight: 400;
   line-height: 1.6;
   color: var(--ink);
   background: var(--paper);
@@ -61,7 +63,7 @@ body {
 [data-theme='dark'] .panel { box-shadow: none; }
 [data-theme='dark'] img { opacity: 0.92; }
 h1, h2, h3, h4 { font-family: var(--display); margin: 0; line-height: 1.25; letter-spacing: -0.005em; }
-h1 { font-size: 28px; font-weight: 600; }
+h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
 h2 { font-size: 20px; font-weight: 600; }
 h3 { font-size: 16px; font-weight: 600; }
 p { margin: 0; }
@@ -69,6 +71,8 @@ a { color: var(--action); text-decoration: none; }
 a:hover { text-decoration: underline; }
 .num { font-family: var(--display); font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
+/* Descriptions use Sarabun: muted/secondary copy, hints, subtitles, KPI notes, empty states. */
+p.muted, span.muted, .hint, .muted.small, p.small, .desc, .n-empty__description, .n-form-item-feedback { font-family: var(--desc); }
 .small { font-size: 13px; }
 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
