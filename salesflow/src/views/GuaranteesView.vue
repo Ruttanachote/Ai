@@ -33,7 +33,7 @@ const kpis = computed(() => [
 
 <template>
   <div class="page">
-    <PageHeader module="Finance" title="Guarantees" :scope="scope.label" subtitle="หนังสือค้ำประกันที่ยังไม่ได้คืน — ติดตามวันขอคืนและวันหมดอายุ" />
+    <PageHeader module="Finance & Procurement" title="Bank Guarantees" :scope="scope.label" subtitle="หนังสือค้ำประกันที่ยังไม่ได้คืน — ติดตามวันขอคืนและวันหมดอายุ" />
 
     <KpiStrip :items="kpis" />
 

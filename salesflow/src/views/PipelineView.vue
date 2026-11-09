@@ -30,7 +30,7 @@ const kpis = computed(() => [
 
 <template>
   <div class="page wide">
-    <PageHeader module="Sales" title="Pipeline" :scope="scope.label" subtitle="เปลี่ยนสถานะได้จากหน้ารายละเอียดโครงการ">
+    <PageHeader module="Sales Management" title="Sales Pipeline" :scope="scope.label" subtitle="เปลี่ยนสถานะได้จากหน้ารายละเอียดโครงการ">
       <router-link v-if="['sm', 'head', 'admin'].includes(session.role)" to="/projects/new" class="btn primary">ลงทะเบียนโครงการ</router-link>
     </PageHeader>
     <KpiStrip :items="kpis" />

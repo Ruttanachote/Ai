@@ -58,7 +58,7 @@ function create() {
     <div class="wrap">
       <form class="panel form" novalidate @submit.prevent="create">
         <header>
-          <h1>ลงทะเบียนโครงการ</h1>
+          <h1>Opportunity Registration</h1>
           <p class="muted">กรอกเท่าที่รู้ตอนนี้ ข้อมูลอื่นเพิ่มได้ภายหลัง โครงการจะเริ่มที่สถานะ Opportunity</p>
         </header>
 

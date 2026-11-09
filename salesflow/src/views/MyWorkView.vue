@@ -46,7 +46,7 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
 
 <template>
   <div class="page">
-    <PageHeader module="Overview" title="My Work" scope="ทุกโครงการที่คุณได้รับมอบหมาย" subtitle="เรียงตามกำหนดเสร็จและความสำคัญ — เปลี่ยนสถานะได้ที่นี่ หรือเปิดงานเพื่อบันทึกเวลา" />
+    <PageHeader module="General" title="My Tasks" scope="ทุกโครงการที่คุณได้รับมอบหมาย" subtitle="เรียงตามกำหนดเสร็จและความสำคัญ — เปลี่ยนสถานะได้ที่นี่ หรือเปิดงานเพื่อบันทึกเวลา" />
     <KpiStrip :items="kpis" />
 
     <div class="cols">
@@ -69,7 +69,7 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
         <section v-if="!open.length" class="panel empty">
           <h3>ไม่มีงานค้าง</h3>
           <p class="muted">งานที่ PM มอบหมายจะขึ้นที่นี่ทันที พร้อมแจ้งเตือนทาง Teams</p>
-          <router-link to="/work" class="btn sm">Open Workspaces</router-link>
+          <router-link to="/work" class="btn sm">Open Project Workspace</router-link>
         </section>
         <section v-if="doneRecent.length" class="panel flush">
           <h3>เสร็จใน 14 วัน <span class="muted">{{ doneRecent.length }}</span></h3>

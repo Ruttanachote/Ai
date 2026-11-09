@@ -82,7 +82,7 @@ function switchTemplate(t: WorkspaceTemplate) {
 
 <template>
   <div v-if="p" class="page wide">
-    <router-link to="/work" class="back small">‹ Workspaces</router-link>
+    <router-link to="/work" class="back small">‹ Project Workspace</router-link>
 
     <TemplatePicker v-if="!p.workspace && canManage" :p="p" @create="create" @cancel="router.push('/work')" />
     <section v-else-if="!p.workspace" class="panel empty">

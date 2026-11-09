@@ -27,7 +27,7 @@ const kpis = computed(() => {
 
 <template>
   <div class="page">
-    <PageHeader module="Delivery" title="Workspaces" :scope="scope.label" subtitle="รายการ บอร์ด ปฏิทิน Timeline เอกสาร และแบบฟอร์มของแต่ละโครงการ" />
+    <PageHeader module="Project Management" title="Project Workspace" :scope="scope.label" subtitle="รายการ บอร์ด ปฏิทิน Timeline เอกสาร และแบบฟอร์มของแต่ละโครงการ" />
     <KpiStrip :items="kpis" />
     <div class="panel flush scroll-x">
       <table class="table">

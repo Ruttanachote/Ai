@@ -9,47 +9,47 @@ const ALL: Role[] = ['sm', 'head', 'deputy', 'exec', 'pmo', 'opn', 'pm', 'ma', '
 // with finance and admin last. A role only sees the menus it works in.
 export const NAV: NavGroup[] = [
   {
-    title: 'Overview',
+    title: 'General',
     items: [
-      { to: '/', label: 'Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
-      { to: '/my-work', label: 'My Work', icon: 'check', roles: ['pm', 'dev', 'head', 'admin'] },
-      { to: '/approvals', label: 'Approvals', icon: 'inbox', roles: ['deputy', 'exec', 'admin'] },
-      { to: '/projects', label: 'Projects', icon: 'list', roles: ALL },
-      { to: '/accounts', label: 'Customers', icon: 'people', roles: ['sm', 'head', 'deputy', 'exec', 'pmo', 'ma', 'admin'] },
+      { to: '/my-work', label: 'My Tasks', icon: 'check', roles: ['pm', 'dev', 'head', 'admin'] },
+      { to: '/approvals', label: 'Approval Requests', icon: 'inbox', roles: ['deputy', 'exec', 'admin'] },
+      { to: '/projects', label: 'Project Register', icon: 'list', roles: ALL },
+      { to: '/accounts', label: 'Customer Accounts', icon: 'people', roles: ['sm', 'head', 'deputy', 'exec', 'pmo', 'ma', 'admin'] },
     ],
   },
   {
-    title: 'Sales',
+    title: 'Sales Management',
     items: [
-      { to: '/pipeline', label: 'Pipeline', icon: 'board', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
-      { to: '/projects/new', label: 'New Project', icon: 'plus', roles: ['sm', 'head', 'admin'] },
+      { to: '/', label: 'Sales Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/pipeline', label: 'Sales Pipeline', icon: 'board', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/projects/new', label: 'Opportunity Registration', icon: 'plus', roles: ['sm', 'head', 'admin'] },
     ],
   },
   {
-    title: 'Delivery',
+    title: 'Project Management',
     items: [
-      { to: '/delivery', label: 'Portfolio', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'deputy', 'exec', 'admin'] },
-      { to: '/work', label: 'Workspaces', icon: 'board', roles: ['pm', 'dev', 'pmo', 'head', 'admin'] },
-      { to: '/workload', label: 'Team Workload', icon: 'people', roles: ['pmo', 'pm', 'head', 'admin'] },
+      { to: '/delivery', label: 'Project Portfolio', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'deputy', 'exec', 'admin'] },
+      { to: '/work', label: 'Project Workspace', icon: 'board', roles: ['pm', 'dev', 'pmo', 'head', 'admin'] },
+      { to: '/workload', label: 'Resource Workload', icon: 'people', roles: ['pmo', 'pm', 'head', 'admin'] },
     ],
   },
   {
-    title: 'Service',
+    title: 'After-Sales Service',
     items: [
-      { to: '/ma', label: 'Warranty & MA', icon: 'shield', roles: ['ma', 'pmo', 'head', 'deputy', 'exec', 'sm', 'admin'] },
-      { to: '/helpdesk', label: 'Helpdesk', icon: 'ticket', roles: ['callcenter', 'ma', 'admin'] },
+      { to: '/ma', label: 'Warranty & Maintenance', icon: 'shield', roles: ['ma', 'pmo', 'head', 'deputy', 'exec', 'sm', 'admin'] },
+      { to: '/helpdesk', label: 'Service Desk', icon: 'ticket', roles: ['callcenter', 'ma', 'admin'] },
     ],
   },
   {
-    title: 'Finance',
+    title: 'Finance & Procurement',
     items: [
-      { to: '/procurement', label: 'Procurement', icon: 'file', roles: ['opn', 'pm', 'deputy', 'exec', 'admin'] },
-      { to: '/guarantees', label: 'Guarantees', icon: 'lock', roles: ['opn', 'head', 'deputy', 'exec', 'pmo', 'admin'] },
+      { to: '/procurement', label: 'Purchase Requisitions', icon: 'file', roles: ['opn', 'pm', 'deputy', 'exec', 'admin'] },
+      { to: '/guarantees', label: 'Bank Guarantees', icon: 'lock', roles: ['opn', 'head', 'deputy', 'exec', 'pmo', 'admin'] },
     ],
   },
   {
-    title: 'Admin',
-    items: [{ to: '/settings', label: 'Settings', icon: 'settings', roles: ['admin'] }],
+    title: 'System Administration',
+    items: [{ to: '/settings', label: 'System Settings', icon: 'settings', roles: ['admin'] }],
   },
 ]
 

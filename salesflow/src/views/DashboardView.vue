@@ -89,7 +89,7 @@ const deadlines = computed(() =>
 
 <template>
   <div class="page">
-    <PageHeader module="Overview" title="Dashboard" :scope="scope.label" subtitle="ปีงบ 2569 · ข้อมูล ณ 6 พ.ย. 2569" />
+    <PageHeader module="Sales Management" title="Sales Dashboard" :scope="scope.label" subtitle="ปีงบ 2569 · ข้อมูล ณ 6 พ.ย. 2569" />
 
     <section class="hero">
       <Photo :id="PHOTOS.meeting" :w="1800" alt="" />
