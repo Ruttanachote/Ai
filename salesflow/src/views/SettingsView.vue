@@ -3,12 +3,13 @@ import { computed, reactive, ref, watch } from 'vue'
 import { ROLES, type Role } from '../data/model'
 import { TEAMS, GROUP_NAME, mb, thDate } from '../data/mock'
 import { TH_GOV_2026 } from '../domain/calendar'
-import { jobLog, outbox, runScheduler, SETTINGS, weeklyReports } from '../store'
+import { jobLog, leaves, outbox, projects, runScheduler, SETTINGS, weeklyReports } from '../store'
+import { person } from '../data/mock'
 import { RULES as JOB_RULES } from '../domain/scheduler'
 
 import PageHeader from '../components/PageHeader.vue'
 
-const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'jobs' | 'teams' | 'm365'>('roles')
+const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'jobs' | 'audit' | 'teams' | 'm365'>('roles')
 const R = Object.keys(ROLES) as Role[]
 type Level = 'full' | 'own' | 'view' | ''
 // Columns follow ROLES: SM, หัวหน้ากลุ่ม, รองผู้บริหาร, ผู้บริหาร, PMO, OPN, PM, Dev, MA, Call center, Admin
@@ -21,6 +22,14 @@ const MATRIX: { cap: string; v: Level[] }[] = [
   { cap: 'จัดประชุม Handover · มอบหมาย PM', v: ['view', 'view', 'view', 'view', 'full', 'view', 'view', '', 'view', '', 'full'] },
   { cap: 'แผนงาน Task ความเสี่ยง CR', v: ['view', 'own', 'view', 'view', 'full', '', 'own', 'own', 'view', '', 'full'] },
   { cap: 'บอร์ดงาน · บันทึกเวลา · ขอ OT (Dev / QA / BA)', v: ['', 'view', '', '', 'view', '', 'full', 'own', '', '', 'full'] },
+  { cap: 'Requirement · TOR Final · Proposal', v: ['own', 'view', 'view', 'view', 'view', '', '', '', '', '', 'full'] },
+  { cap: 'ตรวจ TOR Final ก่อนส่งลูกค้า', v: ['', 'own', '', '', '', '', '', '', '', '', 'full'] },
+  { cap: 'Solution Catalog', v: ['view', 'full', 'view', 'view', 'view', '', '', '', '', '', 'full'] },
+  { cap: 'งวดงาน · Final Check · ตรวจรับ · Risk · Stakeholder', v: ['view', 'view', 'view', 'view', 'full', '', 'own', 'view', '', '', 'full'] },
+  { cap: 'ขอคน (PM) / จัดคน (หัวหน้าทีม)', v: ['', 'own', '', '', 'full', '', 'own', '', '', '', 'full'] },
+  { cap: 'รับมอบเข้าประกัน · รอบ Preventive Maintenance', v: ['view', 'view', 'view', 'view', 'view', '', 'view', 'own', 'full', 'view', 'full'] },
+  { cap: 'ปฏิทินกลาง', v: ['own', 'own', 'full', 'full', 'full', 'own', 'own', 'own', 'own', 'own', 'full'] },
+  { cap: 'Audit log · งานอัตโนมัติ', v: ['', '', '', '', '', '', '', '', '', '', 'full'] },
   { cap: 'My Tasks · Timesheet · แจ้งลา', v: ['own', 'own', 'own', 'own', 'own', 'own', 'own', 'own', 'own', 'own', 'full'] },
   { cap: 'ตั้งค่า Workflow / สมาชิก / Automation ของพื้นที่งาน', v: ['', '', '', '', 'view', '', 'own', '', '', '', 'full'] },
   { cap: 'อนุมัติ OT ในเงินกันของ Cost Sheet', v: ['', '', '', '', '', '', 'own', '', '', '', 'full'] },
@@ -60,6 +69,21 @@ const CHANNELS = reactive([
   { k: 'am', name: 'ปุ่มอนุมัติในอีเมล (Actionable Message)', what: 'เฟส 2 — ต้องลงทะเบียนกับ Microsoft, ใช้บนเบราว์เซอร์มือถือไม่ได้, หมดอายุ 1 เดือน', on: false, fixed: false },
 ])
 watch(CHANNELS, (c) => { SETTINGS.channels.email = !!c.find((x) => x.k === 'email')?.on; SETTINGS.channels.teams = !!c.find((x) => x.k === 'teams')?.on }, { deep: true, immediate: true })
+// C-04 Audit log: who changed what, from every record that keeps history.
+const aq = ref('')
+const audit = computed(() => {
+  const rows: { k: string; when: string; who: string; src: string; text: string }[] = []
+  for (const p of projects) {
+    for (const h of p.history) rows.push({ k: '', when: h.at, who: h.by, src: `${p.code} · สถานะ`, text: `${h.stage} — ${h.note}` })
+    for (const s of p.approval?.steps ?? []) if (s.at && s.status !== 'waiting') rows.push({ k: '', when: s.at, who: s.who, src: `${p.code} · อนุมัติราคา`, text: `${s.role}: ${s.status}${s.note ? ' — ' + s.note : ''}` })
+    for (const t of p.tasks ?? []) for (const h of t.history ?? []) rows.push({ k: h.day, when: `${h.day} ${h.at}`, who: person(h.who)?.name ?? h.who, src: `${t.key ?? t.id}`, text: `${h.field}: ${h.from ?? '—'} → ${h.to ?? '—'}` })
+    if (p.torReview?.decidedAt) rows.push({ k: p.torReview.decidedAt, when: p.torReview.decidedAt, who: person(p.torReview.by)?.name ?? '', src: `${p.code} · TOR`, text: `TOR Final v${p.torReview.version}: ${p.torReview.status}` })
+  }
+  for (const l of leaves) for (const g of l.log) rows.push({ k: l.createdAt, when: `${l.createdAt} ${g.at}`, who: person(g.who)?.name ?? g.who, src: 'การลา', text: g.text })
+  for (const m of outbox) rows.push({ k: m.at, when: m.at, who: m.from, src: m.kind === 'email' ? 'อีเมล' : 'Teams', text: `ถึง ${m.to}: ${m.subject}` })
+  const q = aq.value.trim().toLowerCase()
+  return rows.filter((r) => !q || [r.who, r.src, r.text].some((v) => v.toLowerCase().includes(q))).sort((a, b) => b.k.localeCompare(a.k))
+})
 const ran = ref('')
 function runNow(weekly = false) { const n = runScheduler(weekly); ran.value = n ? `ส่งแจ้งเตือนใหม่ ${n} รายการ` : 'ไม่มีรายการใหม่ (ส่งครบแล้ว)' }
 const WEBHOOKS = reactive(TEAMS.map((t) => ({ team: t.code, url: t.code === 'DT4-2' ? 'https://prod-27.southeastasia.logic.azure.com/workflows/…' : '' })))
@@ -83,6 +107,7 @@ function addHoliday() {
       <button role="tab" :aria-selected="tab === 'calendar'" @click="tab = 'calendar'">ปฏิทินวันทำการ</button>
       <button role="tab" :aria-selected="tab === 'channels'" @click="tab = 'channels'">ช่องทางแจ้งเตือน</button>
       <button role="tab" :aria-selected="tab === 'jobs'" @click="tab = 'jobs'">งานอัตโนมัติ · Outbox</button>
+      <button role="tab" :aria-selected="tab === 'audit'" @click="tab = 'audit'">Audit log</button>
       <button role="tab" :aria-selected="tab === 'teams'" @click="tab = 'teams'">ทีม DT และเป้า</button>
       <button role="tab" :aria-selected="tab === 'm365'" @click="tab = 'm365'">Microsoft 365</button>
     </div>
@@ -160,6 +185,13 @@ function addHoliday() {
       </div>
     </section>
 
+    <section v-if="tab === 'audit'" class="panel scroll-x">
+      <div class="panel-head"><h2>Audit log</h2><input v-model="aq" class="input aq" placeholder="ค้นหาคน รหัสงาน หรือข้อความ" aria-label="ค้นหา Audit log" /></div>
+      <p class="small muted">รวมประวัติสถานะโครงการ การอนุมัติ TOR การเปลี่ยนแปลงงาน การลา และข้อความที่ระบบส่ง · {{ audit.length }} รายการ</p>
+      <table class="table"><thead><tr><th>เมื่อ</th><th>โดย</th><th>ที่มา</th><th>การเปลี่ยนแปลง</th></tr></thead>
+        <tbody><tr v-for="(r, i) in audit.slice(0, 200)" :key="i"><td class="small nowrap">{{ r.when }}</td><td class="small">{{ r.who }}</td><td class="small"><span class="chip">{{ r.src }}</span></td><td class="small">{{ r.text }}</td></tr></tbody></table>
+    </section>
+
     <section v-if="tab === 'teams'" class="panel">
       <table class="table">
         <thead><tr><th>รหัส</th><th>ชื่อทีม</th><th>กลุ่ม</th><th>บทบาท</th><th>เดิม</th><th class="r">เป้ายอดขายปี 2569</th></tr></thead>
@@ -220,4 +252,6 @@ function addHoliday() {
 .acts { display: flex; gap: 6px; }
 .mt { margin-top: 16px; }
 .win { color: var(--win); }
+.aq { max-width: 320px; }
+.nowrap { white-space: nowrap; }
 </style>

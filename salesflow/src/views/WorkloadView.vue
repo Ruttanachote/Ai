@@ -12,7 +12,10 @@ import LeaveDialog from '../components/LeaveDialog.vue'
 import { awayOn } from '../domain/leave'
 import { isWorkday } from '../domain/calendar'
 import { addDays } from '../domain/work'
-import { leaves } from '../store'
+import { leaves, notify, pushNotices } from '../store'
+import { MEMBER_ROLES, type Project, type StaffRequest } from '../data/model'
+import Dialog from '../components/Dialog.vue'
+import { groupOf } from '../data/mock'
 import { thDate, TODAY_ISO } from '../data/mock'
 
 // Planned hours per person per week (capacity 40h), keyed by project id so names, stages and
@@ -58,6 +61,25 @@ const calDays = computed(() => {
 })
 const away = (id: string, d: string) => awayOn(leaves, id, d)
 const leaveOpen = ref(false)
+
+// P-03: staff requests from PMs for this team head's group.
+const canFill = computed(() => ['head', 'admin', 'pmo'].includes(session.role))
+const requests = computed(() => projects.flatMap((p) => (p.staffRequests ?? []).filter((r) => r.status === 'pending' && (session.role !== 'head' || groupOf(p.team) === groupOf(person(session.userId)?.team ?? ''))).map((r) => ({ p, r }))))
+const filling = ref<{ p: Project; r: StaffRequest; pick: string[] } | null>(null)
+const busy = (id: string, r: StaffRequest) => projects.reduce((s, p) => s + (p.tasks ?? []).filter((t) => t.assignee === id && t.status !== 'done').length, 0) + (leaves.some((l) => l.status === 'active' && l.who === id && l.from <= r.to && l.to >= r.from) ? 100 : 0)
+const candidates = computed(() => (filling.value ? PEOPLE.filter((u) => u.role === 'dev' && groupOf(u.team ?? '') === groupOf(filling.value!.p.team)).sort((a, b) => busy(a.id, filling.value!.r) - busy(b.id, filling.value!.r)) : []))
+function fill() {
+  const f = filling.value
+  if (!f || !f.pick.length) return
+  f.r.status = 'filled'; f.r.filled = [...f.pick]; f.r.decidedBy = session.userId
+  const ws = f.p.workspace
+  if (ws) ws.members = [...(ws.members ?? []), ...f.pick.filter((id) => !ws.members?.some((m) => m.userId === id)).map((userId) => ({ userId, role: f.r.role }))]
+  pushNotices([{ to: f.r.by, projectId: f.p.id, text: `ได้ ${f.pick.map((x) => person(x)?.name).join(', ')} เป็น ${MEMBER_ROLES[f.r.role]} ใน ${f.p.name}` },
+    ...f.pick.map((id) => ({ to: id, projectId: f.p.id, text: `คุณเข้าร่วม ${f.p.name} เป็น ${MEMBER_ROLES[f.r.role]}` }))])
+  notify('จัดคนให้โครงการแล้ว — เพิ่มเป็นสมาชิกพื้นที่งานอัตโนมัติ')
+  filling.value = null
+}
+function decline(r: StaffRequest) { r.status = 'declined'; r.decidedBy = session.userId; pushNotices([{ to: r.by, projectId: '', text: 'หัวหน้าทีมไม่อนุมัติคำขอคน — ติดต่อหัวหน้าทีมเพื่อปรับช่วงเวลา' }]) }
 
 // Demand from the pipeline: man-days from the Cost Sheet (manpower ≈ 48% of COGS at ฿6,000/day)
 // weighted by the same probability the sales dashboard uses. Capacity planning needs every
@@ -123,6 +145,21 @@ const kpis = computed(() => {
         <span><i class="free" />ว่าง</span><span><i class="low" />1–15</span><span><i class="mid" />16–31</span><span><i class="full" />32–40</span><span><i class="over" />เกิน 40 ชม.</span><span><i class="risk" />เกินถ้ารวมการจองเบื้องต้น</span><span><sup>+n</sup> ชั่วโมงจองเบื้องต้น (Soft booking)</span>
       </div>
     </section>
+
+    <section v-if="requests.length" class="panel reqs">
+      <div class="panel-head"><h2>คำขอคนจาก PM</h2><span class="muted small">เลือกคนจากงานค้างน้อยและไม่ลาช่วงนั้น · เพิ่มเป็นสมาชิกพื้นที่งานอัตโนมัติ</span></div>
+      <table class="table"><tbody><tr v-for="x in requests" :key="x.r.id">
+        <td><strong>{{ x.p.name }}</strong><p class="small muted">ขอโดย {{ person(x.r.by)?.name }} · {{ thDate(x.r.at) }}<template v-if="x.r.note"> · {{ x.r.note }}</template></p></td>
+        <td>{{ MEMBER_ROLES[x.r.role] }} × {{ x.r.count }}</td><td class="small">{{ thDate(x.r.from) }} – {{ thDate(x.r.to) }}</td>
+        <td class="r"><template v-if="canFill"><button class="btn sm primary" @click="filling = { ...x, pick: [] }">จัดคน</button> <button class="btn sm ghost" @click="decline(x.r)">ไม่อนุมัติ</button></template></td>
+      </tr></tbody></table>
+    </section>
+    <Dialog :open="!!filling" :title="`จัด ${filling ? MEMBER_ROLES[filling.r.role] : ''} ให้ ${filling?.p.name ?? ''}`" @close="filling = null">
+      <p class="small muted">ต้องการ {{ filling?.r.count }} คน · เรียงจากงานค้างน้อย · คนที่ลาช่วงนั้นอยู่ท้ายรายการ</p>
+      <label v-for="u in candidates" :key="u.id" class="cand"><input v-model="filling!.pick" type="checkbox" :value="u.id" /> {{ u.name }} · {{ u.position }} · {{ u.team }}
+        <span class="small muted">งานค้าง {{ busy(u.id, filling!.r) % 100 }}{{ busy(u.id, filling!.r) >= 100 ? ' · ลาช่วงนี้' : '' }}</span></label>
+      <template #foot><button class="btn" @click="filling = null">ยกเลิก</button><button class="btn primary" :disabled="!filling?.pick.length" @click="fill">จัดคน</button></template>
+    </Dialog>
 
     <section class="panel scroll-x leaves">
       <div class="panel-head"><h2>การลาของทีม</h2><button class="btn sm" @click="leaveOpen = true">แจ้งลา</button></div>
@@ -202,4 +239,6 @@ const kpis = computed(() => {
 .cell { display: inline-block; min-width: 34px; padding: 2px 4px; border-radius: 6px; background: var(--lose-soft); color: var(--lose); font-weight: 600; }
 .cell.am, .cell.pm { background: var(--warn-soft); color: var(--warn); }
 .lh { font-size: 15px; margin-top: 6px; }
+.reqs { margin-top: 16px; }
+.cand { display: flex; gap: 8px; align-items: center; font-size: 14px; padding: 4px 0; }
 </style>

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import Avatar from '../Avatar.vue'
 import Dialog from '../Dialog.vue'
-import { PEOPLE, person } from '../../data/mock'
+import { PEOPLE, groupOf, person, thDate, TODAY_ISO } from '../../data/mock'
 import { MEMBER_ROLE_DESC, MEMBER_ROLES, WORK_STATUS, type MemberRole, type Project, type WorkStatus } from '../../data/model'
 import { defaultAutomation, defaultWorkflow, statusOf, workflowOf } from '../../domain/workflow'
-import { notify } from '../../store'
+import { notify, pushNotices, session } from '../../store'
 import { canManage } from './actions'
 
 // Workspace settings (PM / PMO / Admin): members and their roles, workflow statuses and
@@ -25,6 +25,15 @@ const wf = computed(() => workflowOf(props.p))
 
 // Members
 const candidates = computed(() => PEOPLE.filter((u) => !ws.value.members!.some((m) => m.userId === u.id)).sort((a, b) => Number(b.team === props.p.team) - Number(a.team === props.p.team)))
+// P-03: PM asks the dev team head for people (role, count, period); the head fills it.
+const rq = reactive({ open: false, role: 'fe' as MemberRole, count: 1, from: TODAY_ISO, to: TODAY_ISO, note: '' })
+const headOf = computed(() => PEOPLE.find((u) => u.role === 'head' && (u.team === props.p.team || groupOf(u.team ?? '') === groupOf(props.p.team)))?.id)
+function request() {
+  props.p.staffRequests = [{ id: 'sr' + Date.now().toString(36), role: rq.role, count: rq.count, from: rq.from, to: rq.to, note: rq.note.trim() || undefined, status: 'pending', by: session.userId, at: TODAY_ISO }, ...(props.p.staffRequests ?? [])]
+  if (headOf.value) pushNotices([{ to: headOf.value, projectId: props.p.id, text: `${props.p.name} ขอ ${MEMBER_ROLES[rq.role]} ${rq.count} คน (${thDate(rq.from)} – ${thDate(rq.to)})` }])
+  rq.open = false
+  notify(`ส่งคำขอคนถึง ${person(headOf.value)?.name ?? 'หัวหน้าทีม'} แล้ว`)
+}
 const add = ref({ userId: '', role: 'dev' as MemberRole })
 function addMember() {
   if (!add.value.userId) return
@@ -102,6 +111,13 @@ const CATS = Object.keys(WORK_STATUS) as WorkStatus[]
           </tr>
         </tbody>
       </table>
+      <div class="rqs">
+        <div class="panel-head"><h3>คำขอคนจากหัวหน้าทีม</h3><button v-if="manager" class="btn sm" @click="rq.open = true">+ ขอคน</button></div>
+        <ul><li v-for="r in p.staffRequests ?? []" :key="r.id" class="small">
+          <span class="chip" :class="r.status === 'filled' ? 'win' : r.status === 'declined' ? 'lose' : 'warn'">{{ r.status === 'filled' ? 'ได้คนแล้ว' : r.status === 'declined' ? 'ไม่อนุมัติ' : 'รอหัวหน้าทีม' }}</span>
+          {{ MEMBER_ROLES[r.role] }} × {{ r.count }} · {{ thDate(r.from) }} – {{ thDate(r.to) }}<template v-if="r.filled?.length"> → {{ r.filled.map((x) => person(x)?.name).join(', ') }}</template><template v-if="r.note"> · {{ r.note }}</template></li>
+          <li v-if="!(p.staffRequests ?? []).length" class="small muted">ยังไม่มีคำขอ — ขอคนตามบทบาทและช่วงเวลา หัวหน้าทีมเลือกคนจากภาระงานและวันลา</li></ul>
+      </div>
       <form v-if="manager" class="addm" @submit.prevent="addMember">
         <select v-model="add.userId" class="input mini" aria-label="เลือกคน"><option value="">เลือกคนในองค์กร…</option><option v-for="u in candidates" :key="u.id" :value="u.id">{{ u.name }} · {{ u.team }}</option></select>
         <select v-model="add.role" class="input mini" aria-label="บทบาท" :title="MEMBER_ROLE_DESC[add.role]"><option v-for="(l, k) in MEMBER_ROLES" :key="k" :value="k">{{ l }}</option></select>
@@ -172,6 +188,16 @@ const CATS = Object.keys(WORK_STATUS) as WorkStatus[]
       </div>
     </section>
 
+    <Dialog :open="rq.open" title="ขอคนจากหัวหน้าทีม" @close="rq.open = false">
+      <div class="g2">
+        <div class="field"><label for="rr">บทบาท</label><select id="rr" v-model="rq.role" class="input"><option v-for="(l, k) in MEMBER_ROLES" :key="k" :value="k">{{ l }}</option></select></div>
+        <div class="field"><label for="rc">จำนวน</label><input id="rc" v-model.number="rq.count" type="number" min="1" max="10" class="input" /></div>
+        <div class="field"><label for="rf">ตั้งแต่</label><input id="rf" v-model="rq.from" type="date" class="input" /></div>
+        <div class="field"><label for="rt">ถึง</label><input id="rt" v-model="rq.to" type="date" class="input" :min="rq.from" /></div>
+      </div>
+      <div class="field"><label for="rn">รายละเอียดงาน</label><textarea id="rn" v-model="rq.note" class="input" rows="2" /></div>
+      <template #foot><button class="btn" @click="rq.open = false">ยกเลิก</button><button class="btn primary" :disabled="!(rq.count > 0) || rq.to < rq.from" @click="request">ส่งคำขอ</button></template>
+    </Dialog>
     <Dialog :open="!!removing" :title="`เอา ${person(removing ?? '')?.name ?? ''} ออก`" @close="removing = null">
       <p>{{ person(removing ?? '')?.name }} จะไม่เห็นพื้นที่งานนี้อีก<template v-if="removing && openCount(removing)"> · ยังมีงานค้าง {{ openCount(removing) }} งาน ซึ่งจะยังอยู่ในชื่อเดิมจนกว่าจะมอบหมายใหม่</template></p>
       <template #foot><button class="btn" @click="removing = null">ยกเลิก</button><button class="btn primary" @click="removeMember(removing!)">เอาออก</button></template>
@@ -195,6 +221,8 @@ const CATS = Object.keys(WORK_STATUS) as WorkStatus[]
 .input.mini { min-height: 32px; padding: 2px 8px; font-size: 13.5px; width: auto; }
 .num.input { width: 100px; }
 .rd { margin-top: 2px; max-width: 320px; }
+.rqs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .addm { display: flex; gap: 8px; flex-wrap: wrap; }
 .mv button { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 10px; padding: 2px 4px; }
 .mv button:disabled { opacity: 0.3; cursor: default; }

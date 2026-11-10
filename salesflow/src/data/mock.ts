@@ -425,11 +425,12 @@ export const CATALOG: CatalogItem[] = [
 // ── PM records: deliverables per installment, stakeholders, risks, meetings ─────────────
 {
   const p6 = PROJECTS.find((x) => x.id === 'p6')!
-  const [m1, m2, m3, m4] = p6.milestones!
-  Object.assign(m1, { pct: 20, deliverables: [{ name: 'รายงานออกแบบระบบ (SA)', owner: 'sa1', status: 'ready' }, { name: 'Prototype หน้าจอ (UX/UI)', owner: 'ux1', status: 'ready' }], finalCheck: { by: 'ak', at: '2026-09-14' }, sentAt: '2026-09-15', acceptance: { doc: 'หนังสือตรวจรับงวด1.pdf', at: '2026-09-25', by: 'ak' } })
+  const [m0, m1, m2, m3, m4] = p6.milestones!
+  Object.assign(m0, { pct: 10, deliverables: [{ name: 'แผนการดำเนินงาน + รายงาน Requirement', owner: 'ak', status: 'ready' }], finalCheck: { by: 'ak', at: '2026-07-28' }, sentAt: '2026-07-29', acceptance: { doc: 'หนังสือตรวจรับงวด1.pdf', at: '2026-08-08', by: 'ak' } })
+  Object.assign(m1, { pct: 20, deliverables: [{ name: 'รายงานออกแบบระบบ (SA)', owner: 'sa1', status: 'ready' }, { name: 'Prototype หน้าจอ (UX/UI)', owner: 'ux1', status: 'ready' }], finalCheck: { by: 'ak', at: '2026-09-14' }, sentAt: '2026-09-15', acceptance: { doc: 'หนังสือตรวจรับงวด2.pdf', at: '2026-09-25', by: 'ak' } })
   Object.assign(m2, { pct: 30, deliverables: [{ name: 'ระบบยื่นคำขอ + ตรวจเอกสาร (ติดตั้งบน Staging)', owner: 'dev1', status: 'review' }, { name: 'รายงานผลทดสอบระบบ', owner: 'qa1', status: 'draft' }, { name: 'คู่มือติดตั้งระบบ', owner: 'ops1', status: 'draft' }] })
   Object.assign(m3, { pct: 20, deliverables: [{ name: 'รายงานผล UAT', owner: 'qa1', status: 'draft' }, { name: 'คู่มือผู้ใช้', owner: 'dev1', status: 'draft' }] })
-  Object.assign(m4, { pct: 30, deliverables: [{ name: 'เอกสารส่งมอบระบบ + Source code', owner: 'ak', status: 'draft' }] })
+  Object.assign(m4, { pct: 20, deliverables: [{ name: 'เอกสารส่งมอบระบบ + Source code', owner: 'ak', status: 'draft' }] })
   p6.stakeholders = [
     { id: 'sh1', side: 'customer', name: 'นายวีระ ชัยมงคล', position: 'ผู้อำนวยการกองช่าง', email: 'weera@chiangrai.go.th', phone: '053-711-xxx', focal: true, topics: 'ขั้นตอนอนุมัติใบอนุญาต' },
     { id: 'sh2', side: 'customer', name: 'นางสาวกมลวรรณ ศรีสุข', position: 'นักวิชาการคอมพิวเตอร์', email: 'kamonwan@chiangrai.go.th', topics: 'Server · ระบบชำระเงิน' },
@@ -444,4 +445,8 @@ export const CATALOG: CatalogItem[] = [
   p6.meetings = [{ id: 'mt1', kind: 'kickoff', title: 'Kick-off Smart Permit Platform', date: '2026-07-01', time: '10:00', attendees: ['sh1', 'sh2', 'ak', 'rk', 'dl'], place: 'ศาลากลาง / Microsoft Teams', sentAt: '2026-06-28', by: 'ak' }]
   const p13 = PROJECTS.find((x) => x.id === 'p13')!
   p13.milestones!.forEach((m, i) => { m.pct = [40, 40, 20][i]; m.deliverables = [{ name: `เอกสารส่งมอบ ${m.name}`, owner: 'ks', status: 'draft' }] })
+}
+{
+  const p6 = PROJECTS.find((x) => x.id === 'p6')!
+  p6.staffRequests = [{ id: 'sr1', role: 'qa', count: 1, from: '2026-11-16', to: '2026-12-18', note: 'ช่วย QA ทดสอบ UAT รอบ 2', status: 'pending', by: 'ak', at: '2026-11-05' }]
 }
