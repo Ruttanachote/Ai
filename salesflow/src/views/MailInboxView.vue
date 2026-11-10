@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router'
 import Icon from '../components/Icon.vue'
 import Avatar from '../components/Avatar.vue'
 import Dialog from '../components/Dialog.vue'
+import SignAttach from '../components/SignAttach.vue'
 import { baht, person, thDate } from '../data/mock'
 import { session, decideApproval, notify, mailRead, mailStarred, canDecideStep } from '../store'
 import { myMails, mailboxOf, MAIL_STATE, type ApprovalMail, type MailState } from '../components/exec/mail'
@@ -53,14 +54,15 @@ const decide = ref<null | 'approve' | 'reject'>(null)
 const note = ref('')
 const FIX_DOCS = ['Cost Sheet', 'ใบเสนอราคา (Quotation)', 'Proposal']
 const fix = ref<string[]>([])
-const canSend = computed(() => decide.value === 'approve' || (note.value.trim().length > 0 && fix.value.length > 0))
+const signOk = ref(false)
+const canSend = computed(() => (decide.value === 'approve' ? signOk.value : note.value.trim().length > 0 && fix.value.length > 0))
 function send() {
   if (!mail.value || !decide.value || !canSend.value) return
   const m = mail.value
   const next = m.a.steps[m.a.steps.indexOf(m.step) + 1]
   decideApproval(m.p, decide.value, note.value.trim(), fix.value, 'mail_inbox')
   notify(decide.value === 'approve' ? (next ? `อนุมัติแล้ว ส่งต่อ ${next.who}` : 'อนุมัติครบทุกขั้น แจ้ง SM ทางอีเมลแล้ว') : 'ส่งกลับให้ SM แก้ไขแล้ว')
-  decide.value = null; note.value = ''; fix.value = []
+  decide.value = null; note.value = ''; fix.value = []; signOk.value = false
 }
 const stepTone = (s: string) => (s === 'approved' ? 'win' : s === 'rejected' ? 'lose' : s === 'pending' ? 'warn' : '')
 const STEP_LABEL: Record<string, string> = { approved: 'อนุมัติ', rejected: 'ส่งกลับ', pending: 'รอพิจารณา', waiting: 'ยังไม่ถึงคิว' }
@@ -167,6 +169,7 @@ const CHANNEL: Record<string, string> = { web: 'ในระบบ', email_link:
                 <span class="chip" :class="stepTone(s.status)">{{ s.approver ? STEP_LABEL[s.status] : 'ส่งคำขอ' }}</span>
                 <span class="small muted">{{ s.at }}<template v-if="s.channel"> · {{ CHANNEL[s.channel] }}</template></span>
                 <p v-if="s.note" class="note small">“{{ s.note }}”</p>
+                <img v-if="s.signature" :src="s.signature" class="sig" :alt="`ลายเซ็น ${s.who}`" />
               </li>
             </ol>
           </section>
@@ -180,6 +183,7 @@ const CHANNEL: Record<string, string> = { web: 'ในระบบ', email_link:
           </footer>
           <footer v-else-if="mail.state === 'approved' || mail.state === 'returned'" class="done" :class="mail.state">
             <p><b>● {{ mail.state === 'approved' ? 'Approved By' : 'Rejected By' }}:</b> {{ mail.step.who }} | {{ mail.step.at }}</p>
+            <img v-if="mail.step.signature" :src="mail.step.signature" class="sig big" :alt="`ลายเซ็น ${mail.step.who}`" />
             <p class="small"><span class="muted">Note:</span> {{ mail.step.note ?? '-' }}</p>
           </footer>
           <footer v-else-if="mail.state === 'upcoming'" class="done">
@@ -199,6 +203,7 @@ const CHANNEL: Record<string, string> = { web: 'ในระบบ', email_link:
         <label for="dn">{{ decide === 'approve' ? 'Note (ไม่บังคับ)' : 'สิ่งที่ต้องแก้ไข' }}</label>
         <textarea id="dn" v-model="note" class="input" rows="3" />
       </div>
+      <SignAttach v-if="decide === 'approve'" v-model:confirmed="signOk" action="อนุมัติ" />
       <fieldset v-if="decide === 'reject'" class="field fx">
         <legend>เอกสารที่ต้องแก้</legend>
         <label v-for="d in FIX_DOCS" :key="d"><input v-model="fix" type="checkbox" :value="d" /> {{ d }}</label>
@@ -312,4 +317,6 @@ const CHANNEL: Record<string, string> = { web: 'ในระบบ', email_link:
   .decide { flex-direction: column; align-items: stretch; }
   .btns { flex-direction: column-reverse; }
 }
+.sig { grid-column: 2 / 4; height: 34px; max-width: 160px; object-fit: contain; background: #fff; border: 1px solid var(--line); border-radius: 4px; margin-top: 4px; }
+.sig.big { height: 56px; max-width: 240px; display: block; margin: 4px 0 8px; }
 </style>

@@ -17,6 +17,7 @@ const router = createRouter({
     { path: '/projects/:id/quotation/:qid', component: () => import('./views/QuotationFormView.vue'), props: true },
     { path: '/exec', component: () => import('./views/ExecDashboardView.vue') },
     { path: '/exec/tracker', component: () => import('./views/TrackerView.vue') },
+    { path: '/profile', component: () => import('./views/ProfileView.vue') },
     { path: '/inbox', component: () => import('./views/MailInboxView.vue') },
     { path: '/approvals', component: () => import('./views/ApprovalsView.vue') },
     { path: '/delivery', component: () => import('./views/DeliveryView.vue') },

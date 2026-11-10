@@ -8,6 +8,7 @@ import { NDrawer, NDrawerContent } from 'naive-ui'
 import Icon from '../Icon.vue'
 import Dialog from '../Dialog.vue'
 import Avatar from '../Avatar.vue'
+import SignAttach from '../SignAttach.vue'
 import { DOC_STATUS, type CostSheet, type Project, type Quotation } from '../../data/model'
 import { PEOPLE, TODAY_ISO, baht, person, thDate } from '../../data/mock'
 import { APPROVER_OF, canDecideStep, decideApproval, notify, session } from '../../store'
@@ -32,11 +33,13 @@ const canDecide = computed(() => !!pending.value && canDecideStep(pending.value,
 const decideOpen = ref<null | 'approve' | 'reject'>(null)
 const note = ref('')
 const fix = ref<string[]>([])
+const signOk = ref(false)
+const sendSign = ref(false)
 function decide() {
   if (!decideOpen.value) return
   decideApproval(props.p, decideOpen.value, note.value, fix.value, 'web')
   notify(decideOpen.value === 'approve' ? 'อนุมัติแล้ว' : 'ส่งกลับให้ SM แก้ไขแล้ว — ต้องสร้าง revision ใหม่')
-  decideOpen.value = null; note.value = ''; fix.value = []
+  decideOpen.value = null; note.value = ''; fix.value = []; signOk.value = false
 }
 
 /* ---------- send to approve (slide-over) ---------- */
@@ -52,6 +55,7 @@ const sendErr = computed(() => ({
   qt: !selQt.value ? 'สร้าง Quotation จาก Cost Sheet นี้ก่อน' : '',
   summary: send.summary.trim().length < 10 ? 'สรุปผลการประชุมอย่างน้อย 10 ตัวอักษร' : '',
   attendees: !send.attendees.length ? 'เลือกผู้เข้าประชุม' : '',
+  sign: !sendSign.value ? 'ลงนามและยืนยันก่อนส่ง' : '',
 }))
 const busy = computed(() => a.value?.status === 'pending')
 function openSend() {
@@ -64,7 +68,7 @@ function submit() {
   send.tried = true
   if (Object.values(sendErr.value).some(Boolean)) return
   sendToApprove(props.p, selCs.value!, selQt.value!, send.message, { date: send.date, place: send.place, attendees: [...send.attendees], summary: send.summary.trim() })
-  send.open = false; send.message = ''; send.summary = ''
+  send.open = false; send.message = ''; send.summary = ''; sendSign.value = false
 }
 function cancel() { cancelApproval(props.p); notify('ยกเลิกคำขออนุมัติแล้ว — เอกสารเป็น Cancelled สร้าง revision ใหม่เพื่อส่งอีกครั้ง') }
 
@@ -150,7 +154,7 @@ const STEP: Record<string, string> = { approved: 'อนุมัติ', reject
           <p class="prog"><b>{{ done }} of {{ a.steps.length }}</b> steps completed<span class="chip" :class="approved ? 'win' : a.status === 'rejected' ? 'lose' : a.status === 'recalled' ? '' : 'warn'">{{ approved ? 'Approved' : a.status === 'rejected' ? 'Rejected' : a.status === 'recalled' ? 'Cancelled' : 'Pending' }}</span></p>
           <p class="small muted">{{ a.archivedPath ?? a.version }} · ส่ง {{ a.submittedAt }}</p>
           <ol class="steps">
-            <li v-for="s in a.steps" :key="s.role" :class="s.status"><span class="dot" /><div><strong>{{ s.role }}</strong><p class="small">{{ s.who }}<template v-if="s.at"> · {{ s.at }}</template> · {{ s.approver ? STEP[s.status] : 'ส่งคำขอ' }}</p><p v-if="s.note" class="note small">“{{ s.note }}”</p></div></li>
+            <li v-for="s in a.steps" :key="s.role" :class="s.status"><span class="dot" /><div><strong>{{ s.role }}</strong><p class="small">{{ s.who }}<template v-if="s.at"> · {{ s.at }}</template> · {{ s.approver ? STEP[s.status] : 'ส่งคำขอ' }}</p><p v-if="s.note" class="note small">“{{ s.note }}”</p><img v-if="s.signature" :src="s.signature" class="sig" :alt="`ลายเซ็น ${s.who}`" /></div></li>
           </ol>
           <div class="sa">
             <template v-if="canDecide"><button class="btn danger sm" @click="decideOpen = 'reject'">Reject</button><button class="btn primary sm" @click="decideOpen = 'approve'">Approve</button></template>
@@ -192,6 +196,8 @@ const STEP: Record<string, string> = { approved: 'อนุมัติ', reject
           <div class="field" :class="{ bad: send.tried && sendErr.summary }"><label for="sms">สรุปผลการประชุม</label><textarea id="sms" v-model="send.summary" class="input" rows="2" /><span v-if="send.tried && sendErr.summary" class="msg">{{ sendErr.summary }}</span></div>
         </fieldset>
         <div class="field"><label for="smsg">หมายเหตุถึงผู้อนุมัติ (ไม่บังคับ)</label><textarea id="smsg" v-model="send.message" class="input" rows="2" /></div>
+        <SignAttach v-model:confirmed="sendSign" action="ส่งขออนุมัติ" />
+        <span v-if="send.tried && sendErr.sign" class="msg">{{ sendErr.sign }}</span>
         <div class="sfoot"><button class="btn" @click="send.open = false">ยกเลิก</button><button class="btn primary" @click="submit">ส่งขออนุมัติ</button></div>
       </div>
     </NDrawerContent>
@@ -199,8 +205,9 @@ const STEP: Record<string, string> = { approved: 'อนุมัติ', reject
 
   <Dialog :open="!!decideOpen" :title="decideOpen === 'approve' ? `Approve ${a?.version}` : 'Reject · ส่งกลับให้ SM แก้ไข'" @close="decideOpen = null">
     <div class="field"><label for="dn2">{{ decideOpen === 'approve' ? 'Note (ไม่บังคับ)' : 'เหตุผล (บังคับ)' }}</label><textarea id="dn2" v-model="note" class="input" rows="3" /></div>
+    <SignAttach v-if="decideOpen === 'approve'" v-model:confirmed="signOk" action="อนุมัติ" />
     <fieldset v-if="decideOpen === 'reject'" class="field fx"><legend>เอกสารที่ต้องแก้</legend><label v-for="d in ['Cost Sheet', 'Quotation']" :key="d"><input v-model="fix" type="checkbox" :value="d" /> {{ d }}</label></fieldset>
-    <template #foot><button class="btn" @click="decideOpen = null">ยกเลิก</button><button class="btn" :class="decideOpen === 'approve' ? 'primary' : 'danger'" :disabled="decideOpen === 'reject' && (!note.trim() || !fix.length)" @click="decide">{{ decideOpen === 'approve' ? 'Approve' : 'Reject' }}</button></template>
+    <template #foot><button class="btn" @click="decideOpen = null">ยกเลิก</button><button class="btn" :class="decideOpen === 'approve' ? 'primary' : 'danger'" :disabled="decideOpen === 'reject' ? !note.trim() || !fix.length : !signOk" @click="decide">{{ decideOpen === 'approve' ? 'Approve' : 'Reject' }}</button></template>
   </Dialog>
 
   <Dialog :open="upl.open" title="Upload Cost Sheet (.xlsx)" @close="upl.open = false">
@@ -267,4 +274,5 @@ const STEP: Record<string, string> = { approved: 'อนุมัติ', reject
 .sfoot { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
 @media (max-width: 1100px) { .cq { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .row2 { grid-template-columns: 1fr; } }
+.sig { display: block; height: 34px; max-width: 160px; object-fit: contain; background: #fff; border: 1px solid var(--line); border-radius: 4px; margin-top: 4px; }
 </style>

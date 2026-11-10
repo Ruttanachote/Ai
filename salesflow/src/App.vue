@@ -64,6 +64,7 @@ const MODES: { k: Mode; label: string; icon: string }[] = [{ k: 'light', label: 
 const profileOptions = computed(() => [
   { type: 'render', key: 'who', render: () => h('div', { class: 'pf' }, [h('strong', me.value?.name), h('span', me.value?.position ? `${me.value.position} · ${me.value.team}` : ROLES[session.role].label)]) },
   { type: 'divider', key: 'd1' },
+  { key: 'profile', label: 'โปรไฟล์ของฉัน', icon: icon('people') },
   { key: 'role', label: 'ดูในบทบาท (เดโม)', icon: icon('people'), children: roleOptions.value },
   { key: 'mode', label: 'ธีม', icon: icon(isDark.value ? 'moon' : 'sun'), children: MODES.map((m) => ({ key: 'mode:' + m.k, label: m.label, icon: theme.mode === m.k ? icon('check') : icon(m.icon) })) },
   { type: 'divider', key: 'd2' },
@@ -71,6 +72,7 @@ const profileOptions = computed(() => [
 ])
 function onProfile(key: string) {
   if (key === 'logout') { session.signedIn = false; router.push('/login') }
+  else if (key === 'profile') router.push('/profile')
   else if (key.startsWith('mode:')) setMode(key.slice(5) as Mode)
   else if (key.startsWith('acct:')) switchRole('dev', key.slice(5))
   else if (key in ROLES) switchRole(key as Role)

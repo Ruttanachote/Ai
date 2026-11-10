@@ -14,6 +14,12 @@ const th = (iso: string) => (iso ? new Date(iso).toLocaleDateString('th-TH', { d
 
 export function quoteHtml(p: Project, q: Quotation): string {
   const t = quoteTotals(q)
+  // e-Signatures from the approval this quotation went through (submitter + final approver).
+  const a = p.approval && p.approval.quotationId === q.id ? p.approval : undefined
+  const subSig = a?.steps[0]?.signature
+  const finalStep = a?.steps.filter((s) => s.approver).at(-1)
+  const appSig = finalStep?.status === 'approved' ? finalStep.signature : undefined
+  const img = (u?: string) => (u ? `<img src="${u}" style="height:48px;max-width:200px;object-fit:contain;display:block;margin:0 auto 4px">` : '<div style="height:52px"></div>')
   const cust = account(p.customerAccountId)?.name ?? p.customer
   const lines = q.items.map((i, k) => `<tr><td class="c">${k + 1}</td><td>${esc(i.partNo ?? '')}</td><td>${esc(i.description)}</td><td class="r">${i.qty.toLocaleString('en-US')}</td><td class="r">${m(i.unitPrice)}</td><td class="r">${m(i.qty * i.unitPrice)}</td></tr>`).join('')
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(q.docNo)} rev.${q.revision}</title>
@@ -27,7 +33,7 @@ td{border-bottom:1px solid #e4e4e7;padding:6px;vertical-align:top}.r{text-align:
 .tot{width:48%;margin-left:auto;margin-top:6px}.tot td{border:0;padding:3px 6px}.gt td{background:#E2332B;color:#fff;font-weight:700;font-size:15px}
 .words{text-align:right;color:#555;margin:4px 0 2px}.cur{color:#555;margin:2px 0 10px}h3{font-size:14px;color:#E2332B;margin:12px 0 4px}
 .cond td{border:0;padding:2px 6px}.cond td:first-child{width:150px;font-weight:600}.thanks{margin:14px 0 0}
-.sig{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:46px;text-align:center}.sig div{border-top:1px solid #999;padding-top:6px;line-height:1.5}.sig small{color:#666}
+.sig{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:30px;text-align:center}.sig>div{line-height:1.5}.sig>div>img+*,.sig>div>div+*{border-top:1px solid #999;padding-top:6px}.sig small{color:#666}
 .draft{position:fixed;top:40%;left:18%;font-size:90px;color:rgba(226,51,43,.08);transform:rotate(-25deg);font-weight:700}
 </style></head><body>
 ${q.status !== 'APPROVED' ? `<div class="draft">${q.status === 'PENDING' ? 'รออนุมัติ' : 'DRAFT'}</div>` : ''}
@@ -45,8 +51,8 @@ ${q.status !== 'APPROVED' ? `<div class="draft">${q.status === 'PENDING' ? 'ร�
 <tr><td>Term of delivery</td><td>${esc(q.termOfDelivery)}</td></tr><tr><td>Vat7%</td><td>${q.vatIncluded ? 'include' : 'exclude'}</td></tr>
 <tr><td>Warranty</td><td>${esc(q.warranty)}</td></tr><tr><td>Sales Person</td><td>${esc(q.salesPerson)}</td></tr>${q.remark ? `<tr><td>Remark</td><td>${esc(q.remark)}</td></tr>` : ''}</table>
 <p class="thanks">Thank you for your business.</p>
-<div class="sig"><div>Sincerely by<br><b>${esc(q.salesPerson.split(',')[0] || '—')}</b><br><small>Account Manager<br>Stream I.T. Consulting Limited</small></div>
-<div>Verify and Approved by<br><b>${esc((q.approvedBy ?? '').split(' (')[0] || '—')}</b><br><small>${esc((q.approvedBy ?? '').match(/\((.+)\)/)?.[1] ?? '')}<br>Stream I.T. Consulting Limited</small></div>
-<div>Accepted by<br><b>(Name Printed)</b><br><small>(Title)<br>${esc(cust)}</small></div></div>
+<div class="sig"><div>${img(subSig)}Sincerely by<br><b>${esc(q.salesPerson.split(',')[0] || '—')}</b><br><small>Account Manager<br>Stream I.T. Consulting Limited</small></div>
+<div>${img(appSig)}Verify and Approved by<br><b>${esc((q.approvedBy ?? '').split(' (')[0] || '—')}</b><br><small>${esc((q.approvedBy ?? '').match(/\((.+)\)/)?.[1] ?? '')}<br>Stream I.T. Consulting Limited</small></div>
+<div>${img()}Accepted by<br><b>(Name Printed)</b><br><small>(Title)<br>${esc(cust)}</small></div></div>
 </body></html>`
 }

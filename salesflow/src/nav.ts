@@ -79,6 +79,6 @@ export const HOME: Record<Role, string> = {
 }
 
 /** Pages reached from inside a menu rather than from the menu itself. */
-const EXTRA: Record<string, Role[]> = { '/projects/new': ['sm', 'admin'] }
+const EXTRA: Record<string, Role[]> = { '/projects/new': ['sm', 'admin'], '/profile': [...ALL, 'dev'] }
 export const canSee = (path: string, role: Role) =>
   (EXTRA[path]?.includes(role) ?? false) || NAV.flatMap((g) => g.items).some((i) => i.to === path && i.roles.includes(role))

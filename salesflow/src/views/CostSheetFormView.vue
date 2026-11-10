@@ -151,9 +151,9 @@ const signers = computed(() => {
   const mine = !!a && a.costSheetId === cs.value?.id
   const steps = mine ? a!.steps.filter((x) => x.approver) : []
   return [
-    { role: 'Prepared By (SM)', who: person(cs.value?.createdBy)?.name ?? '', at: thDate(cs.value?.preparedAt) },
-    ...(mine ? steps.map((x) => ({ role: x.role, who: x.status === 'approved' ? x.who : `${x.who} (${x.status === 'pending' ? 'รอพิจารณา' : x.status === 'rejected' ? 'ส่งกลับ' : 'ยังไม่ถึงคิว'})`, at: x.at ?? '' }))
-      : [{ role: 'รองผู้บริหาร DT', who: '', at: '' }, { role: 'ผู้บริหาร DT', who: '', at: '' }]),
+    { role: 'Prepared By (SM)', who: person(cs.value?.createdBy)?.name ?? '', at: thDate(cs.value?.preparedAt), sig: mine ? a!.steps[0]?.signature : undefined },
+    ...(mine ? steps.map((x) => ({ role: x.role, who: x.status === 'approved' ? x.who : `${x.who} (${x.status === 'pending' ? 'รอพิจารณา' : x.status === 'rejected' ? 'ส่งกลับ' : 'ยังไม่ถึงคิว'})`, at: x.at ?? '', sig: x.signature }))
+      : [{ role: 'รองผู้บริหาร DT', who: '', at: '', sig: undefined }, { role: 'ผู้บริหาร DT', who: '', at: '', sig: undefined }]),
   ]
 })
 const secOf = (g: CostGroup): CostSection => COST_GROUPS[g].section
@@ -241,7 +241,7 @@ const secOf = (g: CostGroup): CostSection => COST_GROUPS[g].section
             <tr v-else-if="r.k === 'add'"><td class="rh">{{ ri + 1 }}</td><td /><td colspan="13"><button class="addrow" @click="addCost(r.g)">+ เพิ่ม {{ COST_GROUPS[r.g].label }}</button></td></tr>
             <tr v-else-if="r.k === 'total'" class="tot" :class="r.tone"><td class="rh">{{ ri + 1 }}</td><td /><td colspan="4" class="lbl">{{ r.l }}</td><td class="fm" :class="{ b: r.strong }" @click="pick(`F${ri + 1}`, r.f)">{{ r.val }}</td><td colspan="5" /><td colspan="3" class="small" :class="r.tone">{{ r.l === 'Margin' && r.tone === 'warn' ? v.warn.gm : '' }}</td></tr>
             <template v-else-if="r.k === 'sign'">
-              <tr><td class="rh">{{ ri + 1 }}</td><td colspan="2" class="lbl">Approved By:</td><td v-for="s in signers" :key="s.role" colspan="3" class="sign"><span class="small muted">{{ s.role }}</span><b>{{ s.who || '—' }}</b><span class="small muted">Date: {{ s.at || '—' }}</span></td><td :colspan="Math.max(1, 12 - signers.length * 3)" /></tr>
+              <tr><td class="rh">{{ ri + 1 }}</td><td colspan="2" class="lbl">Approved By:</td><td v-for="s in signers" :key="s.role" colspan="3" class="sign"><span class="small muted">{{ s.role }}</span><img v-if="s.sig" :src="s.sig" class="sg" :alt="`ลายเซ็น ${s.who}`" /><b>{{ s.who || '—' }}</b><span class="small muted">Date: {{ s.at || '—' }}</span></td><td :colspan="Math.max(1, 12 - signers.length * 3)" /></tr>
               <tr v-if="t.revenue < t.totalExpense" :class="{ bad: err('lossReason') }"><td class="rh">·</td><td colspan="2" class="lbl">เหตุผลที่ขาดทุน</td><td colspan="12" class="in"><input v-model="cs.lossReason" aria-label="เหตุผลที่ขาดทุน" :disabled="readonly" /></td></tr>
             </template>
             <tr v-else-if="r.k === 'remark'"><td class="rh">{{ ri + 1 }}</td><td colspan="2" class="lbl">Remark:</td><td colspan="12" class="in"><input v-model="cs.remark" aria-label="Remark" :disabled="readonly" /></td></tr>
@@ -324,6 +324,7 @@ td.fm:focus { outline: 2px solid #107c41; outline-offset: -2px; }
 .del:hover { background: #fde7e9; color: #c4382f; }
 .addrow { border: 0; background: none; color: #107c41; font: 13px var(--font); cursor: pointer; padding: 2px 4px; }
 .addrow:hover { text-decoration: underline; }
+td.sign .sg { height: 40px; max-width: 100%; object-fit: contain; display: block; }
 td.sign { height: 56px; vertical-align: top; padding-top: 4px; white-space: normal; }
 td.sign b, td.sign span { display: block; }
 .xtabs { display: flex; align-items: center; gap: 2px; border-top: 1px solid #e1dfdd; background: #f3f2f1; padding: 0 12px; min-height: 34px; font-size: 13px; }

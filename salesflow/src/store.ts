@@ -92,7 +92,7 @@ export const APPROVER_OF: Partial<Record<Role, string>> = { deputy: 'kr', exec: 
 /** Steps for a new Cost Sheet + Quotation request: submitter, then the DT approval chain in order. */
 export function newApprovalSteps(submitterId: string, submitLabel: string): Approval['steps'] {
   return [
-    { who: person(submitterId)?.name ?? '', whoId: submitterId, role: submitLabel, status: 'approved', at: 'วันนี้' },
+    { who: person(submitterId)?.name ?? '', whoId: submitterId, role: submitLabel, status: 'approved', at: 'วันนี้', signature: signatures[submitterId]?.dataUrl, signedAt: signatures[submitterId] ? TODAY_ISO : undefined },
     ...APPROVAL_CHAIN.map((c, i) => ({
       who: person(APPROVER_OF[c.role])?.name ?? c.label, whoId: APPROVER_OF[c.role], role: c.label, approver: c.role,
       status: (i === 0 ? 'pending' : 'waiting') as 'pending' | 'waiting',
@@ -174,6 +174,9 @@ export function decideApproval(p: Project, kind: 'approve' | 'reject', note: str
   const s = a.steps[i]
   s.status = kind === 'approve' ? 'approved' : 'rejected'
   s.at = 'วันนี้'
+  // The approver's e-signature goes with the decision (approve only).
+  const sig = signatures[session.userId]
+  if (kind === 'approve' && sig) { s.signature = sig.dataUrl; s.signedAt = TODAY_ISO }
   s.channel = channel
   s.note = ((kind === 'reject' && fixDocs.length ? `[แก้: ${fixDocs.join(', ')}] ` : '') + note) || undefined
   const cs = p.costSheets?.find((c) => c.id === a.costSheetId)
@@ -258,3 +261,26 @@ export function setSmTarget(who: string, amount: number, note?: string) {
   smTargetLog.unshift({ who, at: TODAY_ISO, from: smTargets[who], to: amount, note })
   smTargets[who] = amount
 }
+
+/* ---------------- Profile + e-Signature ---------------- */
+/** Roles that sign approval documents: SM submits, executives approve (admin for support). */
+export const SIGNER_ROLES: Role[] = ['sm', 'deputy', 'exec', 'head', 'ma', 'admin']
+export interface SignatureRec { dataUrl: string; method: 'draw' | 'type'; updatedAt: string }
+/** A handwriting-style demo signature for seeded people (production: drawn by the person). */
+const demoSig = (name: string) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120"><text x="18" y="78" font-family="'Segoe Script','Brush Script MT','Snell Roundhand',cursive" font-size="46" fill="#1f2a5a">${name}</text><path d="M20 92 C 120 82, 220 104, 330 86" stroke="#1f2a5a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`)
+export const signatures = reactive<Record<string, SignatureRec>>({
+  kr: { dataUrl: demoSig('Kittiya R.'), method: 'type', updatedAt: '2026-10-01' },
+  tc: { dataUrl: demoSig('Thanakorn C.'), method: 'type', updatedAt: '2026-10-01' },
+  np: { dataUrl: demoSig('Nattapong P.'), method: 'type', updatedAt: '2026-10-02' },
+})
+export const signatureLog = reactive<{ who: string; at: string; text: string }[]>([])
+export function setSignature(who: string, dataUrl: string, method: 'draw' | 'type') {
+  signatureLog.unshift({ who, at: TODAY_ISO, text: signatures[who] ? 'เปลี่ยนลายเซ็น' : 'สร้างลายเซ็น' })
+  signatures[who] = { dataUrl, method, updatedAt: TODAY_ISO }
+}
+export function removeSignature(who: string) { delete signatures[who]; signatureLog.unshift({ who, at: TODAY_ISO, text: 'ลบลายเซ็น' }) }
+/** Profile details the person can edit (the rest comes from Microsoft Entra ID). */
+export const profiles = reactive<Record<string, { phone?: string; notify: { email: boolean; teams: boolean; inapp: boolean } }>>({})
+export const profileOf = (id: string) => (profiles[id] ??= { phone: '', notify: { email: true, teams: true, inapp: true } })
+// Seeded approvals: attach the approvers' demo signatures to steps they already approved.
+for (const p of PROJECTS) for (const s of p.approval?.steps ?? []) if (s.status === 'approved' && s.whoId && signatures[s.whoId]) { s.signature = signatures[s.whoId].dataUrl; s.signedAt = s.at }

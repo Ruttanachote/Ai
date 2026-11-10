@@ -145,7 +145,9 @@ export interface Approval {
   version: string
   submittedAt: string
   /** `approver` says which role decides this step (the submit step has none). */
-  steps: { who: string; role: string; status: 'approved' | 'pending' | 'rejected' | 'waiting'; at?: string; note?: string; whoId?: string; approver?: Role; onBehalfOf?: string; channel?: 'web' | 'email_link' | 'mail_inbox' }[]
+  steps: { who: string; role: string; status: 'approved' | 'pending' | 'rejected' | 'waiting'; at?: string; note?: string; whoId?: string; approver?: Role; onBehalfOf?: string; channel?: 'web' | 'email_link' | 'mail_inbox'
+    /** e-Signature (PNG data URL) the person attached when submitting / approving, and when. */
+    signature?: string; signedAt?: string }[]
   /** stale = workbook changed after approval; recalled = SM pulled it back. */
   status?: 'pending' | 'approved' | 'rejected' | 'recalled' | 'stale'
   submittedBy?: string
