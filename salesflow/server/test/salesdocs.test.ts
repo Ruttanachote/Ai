@@ -1,68 +1,85 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { CostSheet, Quotation } from '../../src/data/model.ts'
-import { costTotals, foldersFor, linesFromCostSheet, quoteTotals, standardName, uploadError, validateCostSheet, validateQuotation } from '../../src/domain/salesdocs.ts'
+import { costTotals, foldersFor, linesFromCostSheet, lineCost, quoteTotals, standardName, uploadError, validateCostSheet, validateQuotation } from '../../src/domain/salesdocs.ts'
 
-const cs = (o: Partial<CostSheet> = {}): CostSheet => ({
-  id: 'c', docNo: 'CS-2026-0001', revision: 1, status: 'DRAFT', source: 'form', projectMonths: 6, preparedAt: '2026-11-10', createdBy: 'rk',
-  items: [
-    { id: '1', category: 'manpower', description: 'Dev', role: 'Developer', manday: 100, rate: 5000 },
-    { id: '2', category: 'hardware', description: 'Server', qty: 2, unitCost: 100000 },
-    { id: '3', category: 'software', description: 'License', qty: 10, unitCost: 1000, months: 12 },
+// The example in Cost_Sheet_Template (ระบบสะสมคะแนนร้านชาไข่มุก).
+const example = (o: Partial<CostSheet> = {}): CostSheet => ({
+  id: 'c', docNo: 'CS-2026-0001', revision: 1, status: 'DRAFT', source: 'form', preparedAt: '2026-10-26', createdBy: 'rk',
+  revenue: [
+    { id: 'r1', type: 'Hardware', description: 'ใส่คำอธิบายตัวอย่าง', qty: 1, unitPrice: 80_000_000 },
+    { id: 'r2', type: 'Software', description: 'ใส่คำอธิบายตัวอย่าง', qty: 1, unitPrice: 3_200_000 },
   ],
-  revenue: 1_200_000, entertainment: { mode: 'pct', value: 1 }, contingency: { mode: 'baht', value: 20000 }, ...o,
+  payments: [0.1, 0.4, 0.3, 0.1, 0.1],
+  costs: [
+    { id: 'c1', group: 'consulting', description: 'ใส่คำอธิบายตัวอย่าง', qty: 1, unitPrice: 10_000_000 },
+    { id: 'c2', group: 'contingency', sub: 'Contingency (5%)', description: '', qty: 0.05 },
+  ],
+  ...o,
 })
 
-test('cost rows follow their category formula and the summary is calculated', () => {
-  const t = costTotals(cs())
-  assert.equal(t.cogs, 500000 + 200000 + 120000)
-  assert.equal(t.manday, 100)
-  assert.equal(t.gp, 380000)
-  assert.equal(t.gmPct, 31.67)
-  assert.equal(t.entertainment, 12000)
-  assert.equal(t.cm, 380000 - 12000 - 20000)
+test('matches the template example: revenue, payments, COGS, GP, margin, contingency, CM', () => {
+  const t = costTotals(example())
+  assert.equal(t.revenue, 83_200_000)
+  assert.equal(t.revenueVat, 89_024_000)
+  assert.deepEqual(t.byPayment, [8_320_000, 33_280_000, 24_960_000, 8_320_000, 8_320_000])
+  assert.equal(t.cogs, 41_600_000) // Consulting cost = F18 × D37 / (1 + D37)
+  assert.equal(t.gp, 41_600_000)
+  assert.equal(t.gmPct, 50)
+  assert.equal(t.contingency, 4_160_000) // F18 × 5%
+  assert.equal(t.totalExpense, 45_760_000)
+  assert.equal(t.cm, 37_440_000)
+  assert.equal(t.cmPct, 45)
 })
 
-test('spec example: Revenue 1,000,000 and COGS 700,000 give GP 300,000 and 30%', () => {
-  const t = costTotals(cs({ items: [{ id: 'x', category: 'other', description: 'x', amount: 700000 }], revenue: 1_000_000, entertainment: { mode: 'baht', value: 0 }, contingency: { mode: 'baht', value: 0 } }))
-  assert.equal(t.gp, 300000)
-  assert.equal(t.gmPct, 30)
+test('row formulas per group: D×E, training ×3, interest on hardware + software', () => {
+  const cs = example({ costs: [
+    { id: 'h', group: 'hardware', description: 'x', qty: 2, unitPrice: 100 },
+    { id: 's', group: 'software', description: 'x', qty: 1, unitPrice: 300 },
+    { id: 't', group: 'training', description: 'x', qty: 2, unitPrice: 10 },
+    { id: 'f', group: 'financial', sub: 'Interest', description: 'x', qty: 0.05, unitPrice: 2 },
+    { id: 'm', group: 'manday', description: 'x', qty: 10, unitPrice: 6500 },
+    { id: 'i', group: 'inter', sub: 'Imp SVC', description: 'x', qty: 1, unitPrice: 999 },
+  ] })
+  assert.equal(lineCost(cs.costs[2], cs), 60)
+  assert.equal(lineCost(cs.costs[3], cs), 50) // 0.05 × 2 × (200 + 300)
+  const t = costTotals(cs)
+  assert.equal(t.cogs, 560)
+  assert.equal(t.manday, 10)
+  assert.equal(t.directVariable, 50 + 65_000)
+  assert.equal(t.transfer, 999) // internal transfer is shown but not in Total Expense
+  assert.equal(t.totalExpense, 560 + 65_050)
 })
 
-test('a loss-making cost sheet needs a reason; low GM only warns', () => {
-  const v = validateCostSheet(cs({ revenue: 500000 }))
-  assert.ok(v.errors.lossReason)
-  assert.ok(validateCostSheet(cs({ revenue: 500000, lossReason: 'กลยุทธ์เข้าตลาด' })).errors.lossReason === undefined)
-  assert.ok(validateCostSheet(cs({ revenue: 900000 })).warn.gm)
-  assert.ok(validateCostSheet(cs({ items: [] })).errors.items)
+test('validation: payments must total 100%, loss needs a reason, low margin warns', () => {
+  assert.ok(validateCostSheet(example({ payments: [0.5, 0.4, 0, 0, 0] })).errors.payments)
+  const loss = example({ costs: [{ id: 'x', group: 'outsource', description: 'x', qty: 1, unitPrice: 90_000_000 }] })
+  assert.ok(validateCostSheet(loss).errors.lossReason)
+  assert.equal(validateCostSheet({ ...loss, lossReason: 'กลยุทธ์' }).errors.lossReason, undefined)
+  assert.ok(validateCostSheet(example({ costs: [{ id: 'x', group: 'outsource', description: 'x', qty: 1, unitPrice: 70_000_000 }] })).warn.gm)
 })
 
 const qt = (o: Partial<Quotation> = {}): Quotation => ({
-  id: 'q', docNo: 'QT-2026-0001', revision: 1, status: 'DRAFT', costSheetId: 'c', issueDate: '2026-11-10', validUntil: '2026-12-10', contact: 's1', projectName: 'P',
-  items: [{ id: 'a', description: 'งานพัฒนา', qty: 1, unit: 'งาน', unitPrice: 1_000_000 }, { id: 'b', description: 'License', qty: 2, unit: 'License', unitPrice: 150_000 }],
-  discount: { mode: 'baht', value: 100_000 }, duration: '6 เดือน', terms: [{ no: 1, pct: 30, condition: 'เซ็นสัญญา' }, { no: 2, pct: 70, condition: 'ตรวจรับ' }],
-  warranty: '', exclusions: '', remark: '', createdBy: 'rk', createdAt: '2026-11-10', ...o,
+  id: 'q', docNo: 'QT-2026-0001', revision: 7, status: 'DRAFT', costSheetId: 'c', issueDate: '2026-10-26', validUntil: '2026-11-25', contact: 'Witthawat Yapanun', projectName: 'ระบบสะสมคะแนนร้านชาไข่มุก',
+  items: linesFromCostSheet(example()).map((l, i) => ({ id: String(i), ...l })), discount: 0,
+  termOfPayment: '', termOfDelivery: '', vatIncluded: true, warranty: '', salesPerson: 'Witthawat Yapanun', remark: '', createdBy: 'rk', createdAt: '2026-10-26', ...o,
 })
 
-test('quotation totals: discount, VAT 7%, grand total', () => {
+test('quotation lines mirror the cost sheet revenue; totals match the template example', () => {
   const t = quoteTotals(qt())
-  assert.equal(t.gross, 1_300_000)
-  assert.equal(t.subtotal, 1_200_000)
-  assert.equal(t.vat, 84_000)
-  assert.equal(t.grand, 1_284_000)
+  assert.equal(qt().items.length, 2)
+  assert.equal(t.total, 83_200_000)
+  assert.equal(t.subtotal, 83_200_000)
+  assert.equal(t.vat, 5_824_000)
+  assert.equal(t.grand, 89_024_000)
+  assert.deepEqual(validateQuotation(qt(), 83_200_000), { errors: {}, warn: {} })
 })
 
-test('quotation rules: terms = 100%, discount ≤ total, valid-until ≥ issue date, subtotal matches cost sheet', () => {
-  assert.ok(validateQuotation(qt({ terms: [{ no: 1, pct: 50, condition: '' }] })).errors.terms)
-  assert.ok(validateQuotation(qt({ discount: { mode: 'baht', value: 2_000_000 } })).errors.discount)
-  assert.ok(validateQuotation(qt({ validUntil: '2026-11-01' })).errors.validUntil)
-  assert.ok(validateQuotation(qt(), 1_100_000).warn.match)
-  assert.deepEqual(validateQuotation(qt(), 1_200_000), { errors: {}, warn: {} })
-})
-
-test('lines prefilled from a cost sheet add up to its revenue', () => {
-  const lines = linesFromCostSheet(cs())
-  assert.equal(Math.round(lines.reduce((a, l) => a + l.unitPrice * l.qty, 0) * 100) / 100, 1_200_000)
+test('quotation rules: discount ≤ total, valid-until ≥ date, contact required, discount flags a mismatch', () => {
+  assert.ok(validateQuotation(qt({ discount: 90_000_000 })).errors.discount)
+  assert.ok(validateQuotation(qt({ validUntil: '2026-10-01' })).errors.validUntil)
+  assert.ok(validateQuotation(qt({ contact: '' })).errors.contact)
+  assert.ok(validateQuotation(qt({ discount: 200_000 }), 83_200_000).warn.match)
 })
 
 test('upload rules and standard names', () => {

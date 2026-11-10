@@ -3,7 +3,7 @@
 // the document API (presigned upload to object storage); here they update the in-memory project.
 import type { Activity, ActivityType, CostSheet, PreMeeting, Project, ProjectDocument, Quotation } from './data/model'
 import { TODAY_ISO, person } from './data/mock'
-import { folderOf, standardName, docNo, addDaysIso, costTotals, linesFromCostSheet } from './domain/salesdocs'
+import { folderOf, standardName, docNo, addDaysIso, costTotals, linesFromCostSheet, DEFAULT_PAYMENTS, paymentText } from './domain/salesdocs'
 import { newApprovalSteps, notify, outbox, session, SETTINGS } from './store'
 
 let n = 1
@@ -71,10 +71,17 @@ export function logDownload(p: Project, d: ProjectDocument, no: number) {
 const seqOf = (p: Project) => Number(p.costSheets?.[0]?.docNo.slice(-4)) || 100 + Number(p.id.replace(/\D/g, ''))
 export function blankCostSheet(p: Project): CostSheet {
   const rev = (p.costSheets?.reduce((m, c) => Math.max(m, c.revision), 0) ?? 0) + 1
+  // A fresh workbook from the template: header from the project, one revenue line, the standard cost groups.
   return {
-    id: uid('cs'), docNo: docNo('CS', 2026, seqOf(p)), revision: rev, status: 'DRAFT', source: 'form', projectMonths: 6, maMonths: 12,
-    preparedAt: TODAY_ISO, createdBy: session.userId, items: [{ id: uid('i'), category: 'manpower', description: '', role: 'Developer', manday: 0, rate: 6500 }],
-    revenue: p.revenue || p.budget || 0, entertainment: { mode: 'pct', value: 0.5 }, contingency: { mode: 'pct', value: 2 },
+    id: uid('cs'), docNo: docNo('CS', 2026, seqOf(p)), revision: rev, status: 'DRAFT', source: 'form',
+    refNo: String(69000000 + seqOf(p)), profitCenter: p.team, preparedAt: TODAY_ISO, createdBy: session.userId,
+    revenue: [{ id: uid('r'), type: p.type === 'MA' ? 'MA SVC' : p.type === 'เช่าซื้อ' ? 'Rental SVC' : 'Software', description: p.name, qty: 1, unitPrice: p.budget || 0 }],
+    payments: [...DEFAULT_PAYMENTS],
+    costs: [
+      { id: uid('c'), group: 'manday', description: 'ทีมพัฒนา', qty: 0, unitPrice: 6500 },
+      { id: uid('c'), group: 'contingency', sub: 'Contingency (5%)', description: 'สำรองความเสี่ยง', qty: 0.05 },
+      { id: uid('c'), group: 'inter', sub: 'Prime SM', description: 'Solution Management', qty: 1, unitPrice: 0 },
+    ],
   }
 }
 /** Copy a revision as the next DRAFT revision (approved / rejected documents are never edited). */
@@ -95,11 +102,10 @@ export function blankQuotation(p: Project, cs: CostSheet): Quotation {
   const rev = (p.quotations?.reduce((m, q) => Math.max(m, q.revision), 0) ?? 0) + 1
   return {
     id: uid('qt'), docNo: cs.docNo.replace('CS', 'QT'), revision: rev, status: 'DRAFT', costSheetId: cs.id,
-    issueDate: TODAY_ISO, validUntil: addDaysIso(TODAY_ISO, 30), contact: p.stakeholders?.find((s) => s.side === 'customer')?.id, projectName: p.name,
-    items: linesFromCostSheet(cs).map((l) => ({ id: uid('q'), ...l })), discount: { mode: 'baht', value: 0 },
-    duration: `${cs.projectMonths ?? 6} เดือนนับจากวันลงนามสัญญา / PO`,
-    terms: [{ no: 1, pct: 30, condition: 'ลงนามสัญญา' }, { no: 2, pct: 70, condition: 'ตรวจรับงานงวดสุดท้าย' }],
-    warranty: `รับประกัน ${cs.maMonths ?? 12} เดือนนับจากวันตรวจรับ`, exclusions: '', remark: '', createdBy: session.userId, createdAt: TODAY_ISO,
+    issueDate: TODAY_ISO, validUntil: addDaysIso(TODAY_ISO, 30), contact: p.stakeholders?.find((s) => s.side === 'customer')?.name ?? '', phone: p.stakeholders?.find((s) => s.side === 'customer')?.phone, email: p.stakeholders?.find((s) => s.side === 'customer')?.email, projectName: p.name,
+    items: linesFromCostSheet(cs).map((l) => ({ id: uid('q'), ...l })), discount: 0,
+    termOfPayment: paymentText(cs.payments), termOfDelivery: 'ภายใน 180 วันนับจากวันลงนามสัญญา / PO', vatIncluded: true,
+    warranty: 'รับประกัน 12 เดือนนับจากวันตรวจรับ', salesPerson: p.sales.join(', '), approvedBy: 'Thanakorn C. (ผู้บริหาร DT)', remark: '', createdBy: session.userId, createdAt: TODAY_ISO,
   }
 }
 export function saveQuotation(p: Project, q: Quotation) {

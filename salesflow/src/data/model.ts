@@ -461,32 +461,42 @@ export const DOC_STATUS: Record<DocStatus, { label: string; tone: '' | 'warn' | 
   DRAFT: { label: 'Draft', tone: '' }, PENDING: { label: 'รออนุมัติ', tone: 'warn' }, APPROVED: { label: 'Approved', tone: 'win' },
   REJECTED: { label: 'Rejected', tone: 'lose' }, CANCELLED: { label: 'Cancelled', tone: '' },
 }
-export type CostCategory = 'manpower' | 'hardware' | 'software' | 'cloud' | 'subcontract' | 'ma' | 'other'
-export interface CostItem {
-  id: string; category: CostCategory; description: string
-  role?: string; manday?: number; rate?: number
-  qty?: number; unitCost?: number; months?: number; vendor?: string; amount?: number
-  note?: string
-}
+/* Cost Sheet follows the company workbook "Cost_Sheet_Template" (Estimated Cost Sheet). */
+export type RevenueType = 'Hardware' | 'Software' | 'Imp SVC' | 'MA SVC' | 'Rental SVC' | 'Other'
+export interface RevenueLine { id: string; type: RevenueType; description: string; qty: number; unitPrice: number; partNo?: string; note?: string }
+/** Cost groups, numbered as in the template: 1–7 COGS · 8–10 Direct & Labour · 11–13 Variable · Internal transfer. */
+export type CostGroup =
+  | 'hardware' | 'software' | 'rental' | 'outsource' | 'training' | 'accessories' | 'consulting'
+  | 'manday' | 'logistic' | 'financial'
+  | 'operational' | 'entertainment' | 'contingency'
+  | 'intra' | 'inter'
+export interface CostLine { id: string; group: CostGroup; description: string; sub?: string; qty?: number; unitPrice?: number; partNo?: string; note?: string; profitCenter?: string }
 export interface CostSheet {
   id: string; docNo: string; revision: number; status: DocStatus
   source: 'form' | 'upload'; fileName?: string
-  projectMonths?: number; maMonths?: number; preparedAt: string; createdBy: string
-  items: CostItem[]
-  revenue: number
-  entertainment: { mode: 'baht' | 'pct'; value: number }
-  contingency: { mode: 'baht' | 'pct'; value: number }
+  /** Project Reference Number in the template header. */
+  refNo?: string
+  profitCenter?: string
+  preparedAt: string; createdBy: string
+  revenue: RevenueLine[]
+  /** Payment#1–#5 as fractions of each revenue line (row 11 of the template). */
+  payments: number[]
+  costs: CostLine[]
+  remark?: string
   lossReason?: string
   approvedAt?: string
 }
-export interface QuotationLine { id: string; description: string; qty: number; unit: string; unitPrice: number }
-export interface PayTerm { no: number; pct: number; condition: string }
+/** Quotation follows "Quotation_Template": lines mirror the Cost Sheet revenue lines. */
+export interface QuotationLine { id: string; description: string; qty: number; unit?: string; unitPrice: number; partNo?: string }
 export interface Quotation {
   id: string; docNo: string; revision: number; status: DocStatus; costSheetId: string
-  issueDate: string; validUntil: string; contact?: string; projectName: string
+  issueDate: string; validUntil: string
+  contact?: string; phone?: string; email?: string
+  projectName: string
   items: QuotationLine[]
-  discount: { mode: 'baht' | 'pct'; value: number }
-  duration: string; terms: PayTerm[]; warranty: string; exclusions: string; remark: string
+  discount: number
+  termOfPayment: string; termOfDelivery: string; vatIncluded: boolean; warranty: string; salesPerson: string
+  approvedBy?: string; remark: string
   createdBy: string; createdAt: string; approvedAt?: string
   source?: 'form' | 'upload'; fileName?: string
 }

@@ -193,7 +193,8 @@ ch('salesdocs', 'เอกสารการขาย Cost Sheet และ Quota
 {img('44-documents', 'โฟลเดอร์เอกสารของโครงการ')}
 <h3>Cost Sheet และ Quotation</h3>
 {steps('แท็บ <b>Cost Sheet และใบเสนอราคา</b> (หรือโฟลเดอร์ Cost Sheet) กด <b>+ Create (Excel Online)</b> — ระบบสร้างไฟล์ .xlsx จาก Template ในโฟลเดอร์ SharePoint ของโครงการและเปิดใน Excel Online (บัญชี Microsoft 365) กรอกช่องสีขาวตาม Template ช่องสีเทาดึงจากโครงการ ช่องสีฟ้าเป็นสูตร',
-       'กด <b>บันทึกและสร้าง Quotation</b> — ระบบเติมรายการราคาให้ Subtotal เท่ากับ Revenue กรอกผู้ติดต่อ งวดชำระ (รวม 100%) แล้วพรีวิว PDF',
+       'กรอกตาม Template ของบริษัท: <b>REVENUE</b> (Type · Income Description · Qty · Unit Price) และสัดส่วน Payment#1–#5 (รวม 100%) → <b>COST OF GOODS SOLD</b> กลุ่ม 1–7 → <b>DIRECT &amp; LABOUR</b> 8–10 → <b>VARIABLE</b> 11–13 (Contingency 5% ของรายได้) ระบบคำนวณ Gross Profit, Margin, Total Expense และ Contribution Margin ตามสูตรในไฟล์',
+       'กด <b>บันทึกและสร้าง Quotation</b> — รายการดึงจากรายได้ใน Cost Sheet กรอก Customer, Special Discount และ Conditions แล้วพรีวิว PDF',
        'กด <b>Send to Approve</b> เลือก Cost Sheet + Quotation บันทึกการประชุมก่อนส่ง แล้วส่ง — ผู้อนุมัติได้อีเมลและเห็นใน Mail Inbox',
        'อนุมัติครบ 3 ขั้น เอกสารล็อก และ Revenue / COGS / GP / CM ของโครงการอัปเดตอัตโนมัติ · ถูก Reject ให้กด <b>สร้าง revision ใหม่</b>')}
 {img('45-costsheet', 'Cost Sheet ใน Excel Online')}

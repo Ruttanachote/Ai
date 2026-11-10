@@ -85,9 +85,8 @@ function saveUpload() {
   if (!upl.file || upl.err || !(Number(upl.revenue) >= 0) || !(Number(upl.cogs) >= 0) || upl.revenue === null || upl.cogs === null) return
   const cs = blankCostSheet(props.p)
   cs.source = 'upload'; cs.fileName = upl.file.name
-  cs.items = [{ id: 'u1', category: 'other', description: `ต้นทุนรวมจากไฟล์ ${upl.file.name}`, amount: Number(upl.cogs) }]
-  cs.revenue = Number(upl.revenue)
-  cs.entertainment = { mode: 'baht', value: 0 }; cs.contingency = { mode: 'baht', value: 0 }
+  cs.revenue = [{ id: 'u1', type: 'Other', description: `รายได้จากไฟล์ ${upl.file.name}`, qty: 1, unitPrice: Number(upl.revenue) }]
+  cs.costs = [{ id: 'u2', group: 'outsource', description: `COGS จากไฟล์ ${upl.file.name}`, qty: 1, unitPrice: Number(upl.cogs) }]
   saveCostSheet(props.p, cs)
   log(props.p, 'file', `อัปโหลด Cost Sheet ${upl.file.name} เป็น rev.${cs.revision}`)
   upl.open = false; upl.file = null; upl.revenue = null; upl.cogs = null; upl.tried = false

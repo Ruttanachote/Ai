@@ -27,3 +27,33 @@
 
 ## ยังไม่ทำ (Phase 2 ตาม spec หรือต้องมีระบบจริง)
 ZIP ทั้งโฟลเดอร์ / ชุดยื่นซอง · Preview ไฟล์ Office (ต้องแปลงฝั่ง server) · คอมเมนต์ต่อไฟล์ + @mention · ลิงก์แชร์ภายใน · อ่าน Named range จากไฟล์ .xlsx ที่อัปโหลด · เทียบหมวดต้นทุนกับไฟล์ Cost Sheet ตัวจริงของบริษัท (spec ขอไฟล์ .xlsx จริง 1 ไฟล์)
+
+## ปรับตามไฟล์จริง `Cost_Sheet_template_example.xlsx` (10 พ.ย. 2569)
+ระบบเปลี่ยนโครงสร้างให้ตรงกับไฟล์ของบริษัททุกแถว (ทดสอบด้วยตัวเลขตัวอย่างในไฟล์ ได้ผลตรงทุกค่า)
+
+### ชีต Cost_Sheet_Template
+| ส่วน | ช่องที่กรอก | สูตร (ตามไฟล์) |
+|---|---|---|
+| Header | Profit/Cost Center · Project Name · Project Reference Number · Customer · Date · Prepared By | ดึงจากโครงการ |
+| REVENUE | Type (Hardware / Software / Imp SVC / MA SVC / Rental SVC / Other) · Income Description · Qty · Unit Price · Part No. · Note · สัดส่วน Payment#1–#5 (แถว 11) | Total = D×E · Payment#n = $F×n$11 · Total Revenue = SUM · Include VAT = ×1.07 |
+| COST OF GOODS SOLD | 1 Hardware · 2 Software · 3 Rental Cost · 4 Outsource · 5 Training Cost · 6 Accessories · 7 Consulting cost | D×E · Training = D×E×3 · Consulting = Total Revenue × Fx ÷ (1+Fx) |
+| สรุป COGS | — | Total COGS = SUM(1–7) · Gross Profit = Revenue − COGS · Margin = IF(Revenue=0,0,GP/Revenue) |
+| DIRECT & LABOUR | 8 Manday / Man month · 9 Logistic (Air freight) · 10 Financial cost (Interest) | D×E · Interest = D×E×(Hardware+Software) · Manday รวมในคอลัมน์ D |
+| VARIABLE | 11 Operational Support (Implementation · Transportation · On-Going support · Oversea Training · Hotel) · 12 Entertainment · 13 Contingency (5%) | D×E · Contingency = Total Revenue × D |
+| สรุป | — | Total Direct & Labour and Variable = SUM(8–13) · Total Expense = COGS + ข้างต้น · Contribution Margin = Revenue − Total Expense · Margin |
+| Internal Transfer Charge | Intra-SBU / Inter-SBU (Imp SVC, Prime SM) · Profit Center Code | D×E — แสดงไว้ ไม่รวมใน Total Expense (ตามไฟล์) |
+| Approved By · Remark | ลายเซ็นตามลำดับอนุมัติ · หมายเหตุ | — |
+
+### ชีต Quotation_Template
+- **ส่วนหัว:** Customer (Name, Company Name, Phone/Fax, Email) · Quotation No. · Date · [Version Revise] · Project
+- **รายการ:** ITEM · PART NO. · Product Description · QTY. · Unit Price · Amount — **ดึงจากรายได้ใน Cost Sheet** (ไฟล์ใช้สูตรอ้าง Cost_Sheet_Template!C/D/E/F/L)
+- **สรุปราคา:** Total → Special Discount → Subtotal → Vat 7% → Grand Total
+- **Conditions:** Price validity · Term of payment (ค่าเริ่มต้นจาก Payment#1–#5) · Term of delivery · Vat7% include · Warranty · Sales Person
+- **ลายเซ็น:** Sincerely by (Account Manager) · Verify and Approved by · Accepted by (ลูกค้า)
+
+### จุดในไฟล์ที่ควรยืนยัน
+1. **Training Cost:** สูตรคูณ 3 (`=D33*E33*3`) ตั้งใจให้คูณ 3 ทุกครั้งใช่ไหม
+2. **Consulting cost:** สูตร `=F18*D37/(1+D37)` คิดจาก Total Revenue ไม่ได้ใช้ Unit Price ในช่อง E (ในตัวอย่าง Fx = 1 จึงเป็น 50% ของรายได้)
+3. **คอลัมน์ Payment#1–#5 ของต้นทุน:** ในไฟล์มีแค่ผลรวมระดับกลุ่ม ไม่มีสูตรในรายการย่อย ระบบจึงแบ่งงวดเฉพาะรายได้
+4. **ลำดับผู้อนุมัติในไฟล์:** BD Executive / Manager · DC-SM VP · DC-PS VP · EVP / SEVP ต่างจากระบบตอนนี้ที่ใช้ 2 ขั้น (รองผู้บริหาร DT → ผู้บริหาร DT)
+5. **ช่อง Total Revenue คอลัมน์ E:** ไฟล์รวม Unit Price (`=SUM(E12:E17)`) ระบบแสดงตามไฟล์ แต่ค่านี้ไม่ได้ใช้คำนวณ

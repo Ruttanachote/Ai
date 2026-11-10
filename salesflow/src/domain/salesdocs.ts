@@ -1,7 +1,7 @@
 // Sales documents (spec: "Project Details & ไฟล์เอกสารการขาย" + "Template: Cost Sheet & Quotation").
 // Folder master, upload rules, standard file names, Cost Sheet / Quotation maths and validation.
 // Pure functions shared by the web app and the server tests. Money is rounded to 2 decimals.
-import type { CostCategory, CostItem, CostSheet, ProjectType, Quotation, StageKey } from '../data/model.ts'
+import type { CostGroup, CostLine, CostSheet, ProjectType, Quotation, RevenueType, StageKey } from '../data/model.ts'
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
 
@@ -64,108 +64,127 @@ export function standardName(projectCode: string, folderName: string, version: n
   return `${projectCode}_${type}_v${version}_${dateIso.replace(/-/g, '')}.${extOf(original) || 'bin'}`
 }
 
-/* ---------------- Cost Sheet ---------------- */
-export const COST_CATEGORIES: Record<CostCategory, { label: string; formula: string }> = {
-  manpower: { label: 'Manpower (Professional Service)', formula: 'Manday × Rate/MD' },
-  hardware: { label: 'Hardware', formula: 'จำนวน × ต้นทุน/หน่วย' },
-  software: { label: 'Software / License / Subscription', formula: 'จำนวน × ต้นทุน × ระยะเวลา' },
-  cloud: { label: 'Cloud / Infrastructure', formula: 'ค่าใช้จ่าย/เดือน × เดือน' },
-  subcontract: { label: 'Subcontract / Outsource', formula: 'มูลค่า' },
-  ma: { label: 'MA / Warranty', formula: 'เดือน × ต้นทุน/เดือน' },
-  other: { label: 'Other (เดินทาง อบรม เอกสาร)', formula: 'มูลค่า' },
-}
-export const ROLES_MD = ['PM', 'SA', 'BA', 'UX/UI', 'Developer', 'Tester', 'DevOps', 'Engineer']
+/* ---------------- Cost Sheet (company workbook "Cost_Sheet_Template") ---------------- */
+export const REVENUE_TYPES: RevenueType[] = ['Hardware', 'Software', 'Imp SVC', 'MA SVC', 'Rental SVC', 'Other']
+export const DEFAULT_PAYMENTS = [0.1, 0.4, 0.3, 0.1, 0.1]
 
-/** Cost of one row, by its category's formula. */
-export function itemCost(i: CostItem): number {
-  const n = (v?: number) => Number(v) || 0
-  switch (i.category) {
-    case 'manpower': return r2(n(i.manday) * n(i.rate))
-    case 'hardware': return r2(n(i.qty) * n(i.unitCost))
-    case 'software': return r2(n(i.qty) * n(i.unitCost) * (n(i.months) || 1))
-    case 'cloud': return r2(n(i.unitCost) * n(i.months))
-    case 'ma': return r2(n(i.months) * n(i.unitCost))
-    default: return r2(n(i.amount))
+export type CostSection = 'cogs' | 'direct' | 'variable' | 'transfer'
+export interface GroupDef { no: number | string; label: string; section: CostSection; formula: string; qtyLabel: string; priceLabel: string; subs?: string[] }
+/** Groups, numbers, labels and row formulas exactly as in the template (column D × E unless noted). */
+export const COST_GROUPS: Record<CostGroup, GroupDef> = {
+  hardware: { no: 1, label: 'Hardware', section: 'cogs', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price' },
+  software: { no: 2, label: 'Software', section: 'cogs', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price' },
+  rental: { no: 3, label: 'Rental Cost', section: 'cogs', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price' },
+  outsource: { no: 4, label: 'Outsource', section: 'cogs', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price' },
+  training: { no: 5, label: 'Training Cost', section: 'cogs', formula: '=D×E×3', qtyLabel: 'Qty', priceLabel: 'Unit Price' },
+  accessories: { no: 6, label: 'Accessories', section: 'cogs', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price' },
+  consulting: { no: 7, label: 'Consulting cost', section: 'cogs', formula: '=Total Revenue×Fx÷(1+Fx)', qtyLabel: 'Fx', priceLabel: '—' },
+  manday: { no: 8, label: 'Manday / Man month', section: 'direct', formula: '=D×E', qtyLabel: 'Manday', priceLabel: 'Rate' },
+  logistic: { no: 9, label: 'Logistic', section: 'direct', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price', subs: ['Air freight'] },
+  financial: { no: 10, label: 'Financial cost', section: 'direct', formula: '=D×E×(Hardware+Software)', qtyLabel: 'Rate', priceLabel: 'Period', subs: ['Interest'] },
+  operational: { no: 11, label: 'Operational Support Cost', section: 'variable', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price', subs: ['Implementation', 'Transportation cost', 'On-Going support', 'Oversea Training', 'Hotel'] },
+  entertainment: { no: 12, label: 'Entertainment', section: 'variable', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price', subs: ['Miscellaneous/Entertainment'] },
+  contingency: { no: 13, label: 'Contingency', section: 'variable', formula: '=Total Revenue×D', qtyLabel: '%', priceLabel: '—', subs: ['Contingency (5%)'] },
+  intra: { no: '11', label: 'Intra-SBU transfer charge', section: 'transfer', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price', subs: ['Imp SVC'] },
+  inter: { no: '12', label: 'Inter-SBU transfer charge', section: 'transfer', formula: '=D×E', qtyLabel: 'Qty', priceLabel: 'Unit Price', subs: ['Imp SVC', 'Prime SM'] },
+}
+export const SECTIONS: { k: CostSection; label: string }[] = [
+  { k: 'cogs', label: 'COST OF GOODS SOLD' }, { k: 'direct', label: 'DIRECT & LABOUR COST' }, { k: 'variable', label: 'VARIABLE COST' }, { k: 'transfer', label: 'Internal Transfer Charge' },
+]
+export const groupsOf = (sec: CostSection) => (Object.keys(COST_GROUPS) as CostGroup[]).filter((g) => COST_GROUPS[g].section === sec)
+
+const n = (v?: number) => Number(v) || 0
+export const revenueTotal = (cs: Pick<CostSheet, 'revenue'>) => r2(cs.revenue.reduce((a, l) => a + n(l.qty) * n(l.unitPrice), 0))
+/** One cost row, by its group's formula in the template. */
+export function lineCost(l: CostLine, cs: Pick<CostSheet, 'revenue' | 'costs'>): number {
+  const rev = revenueTotal(cs)
+  switch (l.group) {
+    case 'training': return r2(n(l.qty) * n(l.unitPrice) * 3)
+    case 'consulting': return n(l.qty) ? r2((rev * n(l.qty)) / (1 + n(l.qty))) : 0
+    case 'contingency': return r2(rev * n(l.qty))
+    case 'financial': {
+      const hwsw = cs.costs.filter((c) => c.group === 'hardware' || c.group === 'software').reduce((a, c) => a + n(c.qty) * n(c.unitPrice), 0)
+      return r2(n(l.qty) * n(l.unitPrice) * hwsw)
+    }
+    default: return r2(n(l.qty) * n(l.unitPrice))
+  }
+}
+export interface CostTotals {
+  revenue: number; revenueVat: number; byPayment: number[]
+  groups: Record<CostGroup, number>
+  cogs: number; gp: number; gmPct: number
+  directVariable: number; totalExpense: number; cm: number; cmPct: number
+  manday: number; entertainment: number; contingency: number; transfer: number; paymentsPct: number
+}
+/** Every summary row is a formula in the template — never typed. */
+export function costTotals(cs: Pick<CostSheet, 'revenue' | 'costs' | 'payments'>): CostTotals {
+  const revenue = revenueTotal(cs)
+  const groups = Object.fromEntries(Object.keys(COST_GROUPS).map((k) => [k, 0])) as Record<CostGroup, number>
+  for (const l of cs.costs) groups[l.group] = r2(groups[l.group] + lineCost(l, cs))
+  const sumOf = (sec: CostSection) => r2(groupsOf(sec).reduce((a, g) => a + groups[g], 0))
+  const cogs = sumOf('cogs')
+  const gp = r2(revenue - cogs)
+  const directVariable = r2(sumOf('direct') + sumOf('variable'))
+  const totalExpense = r2(cogs + directVariable)
+  const cm = r2(revenue - totalExpense)
+  return {
+    revenue, revenueVat: r2(revenue * 1.07),
+    byPayment: cs.payments.map((p) => r2(cs.revenue.reduce((a, l) => a + n(l.qty) * n(l.unitPrice) * p, 0))),
+    groups, cogs, gp, gmPct: revenue ? r2((gp / revenue) * 100) : 0,
+    directVariable, totalExpense, cm, cmPct: revenue ? r2((cm / revenue) * 100) : 0,
+    manday: cs.costs.filter((l) => l.group === 'manday').reduce((a, l) => a + n(l.qty), 0),
+    entertainment: groups.entertainment, contingency: groups.contingency, transfer: sumOf('transfer'),
+    paymentsPct: r2(cs.payments.reduce((a, p) => a + p, 0) * 100),
   }
 }
 
-export interface CostTotals {
-  cogs: number; manday: number; revenue: number; gp: number; gmPct: number
-  entertainment: number; contingency: number; cm: number; cmPct: number
-  byCategory: Record<CostCategory, number>
-}
-/** Every summary figure is calculated — never typed. */
-export function costTotals(cs: Pick<CostSheet, 'items' | 'revenue' | 'entertainment' | 'contingency'>): CostTotals {
-  const byCategory = Object.fromEntries(Object.keys(COST_CATEGORIES).map((k) => [k, 0])) as Record<CostCategory, number>
-  for (const i of cs.items) byCategory[i.category] = r2(byCategory[i.category] + itemCost(i))
-  const cogs = r2(Object.values(byCategory).reduce((a, b) => a + b, 0))
-  const manday = cs.items.filter((i) => i.category === 'manpower').reduce((a, i) => a + (Number(i.manday) || 0), 0)
-  const revenue = r2(Number(cs.revenue) || 0)
-  const gp = r2(revenue - cogs)
-  const entertainment = r2(cs.entertainment.mode === 'pct' ? (revenue * cs.entertainment.value) / 100 : cs.entertainment.value)
-  const contingency = r2(cs.contingency.mode === 'pct' ? (cogs * cs.contingency.value) / 100 : cs.contingency.value)
-  const cm = r2(gp - entertainment - contingency)
-  return { cogs, manday, revenue, gp, gmPct: revenue ? r2((gp / revenue) * 100) : 0, entertainment, contingency, cm, cmPct: revenue ? r2((cm / revenue) * 100) : 0, byCategory }
-}
-
-/** Field-level problems (shown under each field); `warn` never blocks saving. */
+/** Field-level problems (shown in the sheet); `warn` never blocks saving. */
 export function validateCostSheet(cs: CostSheet, gmFloor = 25): { errors: Record<string, string>; warn: Record<string, string> } {
   const errors: Record<string, string> = {}
   const warn: Record<string, string> = {}
-  if (!cs.items.length) errors.items = 'เพิ่มรายการอย่างน้อย 1 รายการ'
-  cs.items.forEach((i, k) => {
-    const nums = [i.manday, i.rate, i.qty, i.unitCost, i.months, i.amount].filter((v) => v !== undefined && v !== null)
-    if (nums.some((v) => Number(v) < 0 || Number.isNaN(Number(v)))) errors[`item${k}`] = 'กรอกเป็นตัวเลขที่ไม่ติดลบ'
-    else if (!i.description.trim() && i.category !== 'manpower') errors[`item${k}`] = 'ระบุรายการ'
+  const neg = (v?: number) => v !== undefined && v !== null && (Number(v) < 0 || Number.isNaN(Number(v)))
+  if (!cs.revenue.length) errors.revenue = 'เพิ่มรายการรายได้อย่างน้อย 1 รายการ'
+  cs.revenue.forEach((l, k) => {
+    if (neg(l.qty) || neg(l.unitPrice)) errors[`rev${k}`] = 'กรอกเป็นตัวเลขที่ไม่ติดลบ'
+    else if (!l.description.trim()) errors[`rev${k}`] = 'ระบุ Income Description'
   })
-  if (!(cs.projectMonths && cs.projectMonths > 0)) errors.projectMonths = 'ระบุระยะเวลาโครงการ (เดือน)'
-  if (!(Number(cs.revenue) >= 0)) errors.revenue = 'กรอกเป็นตัวเลขที่ไม่ติดลบ'
+  cs.costs.forEach((l, k) => { if (neg(l.qty) || neg(l.unitPrice)) errors[`cost${k}`] = 'กรอกเป็นตัวเลขที่ไม่ติดลบ' })
+  if (cs.payments.some((p) => p < 0)) errors.payments = 'กรอกเป็นตัวเลขที่ไม่ติดลบ'
   const t = costTotals(cs)
-  if (t.revenue < t.cogs && !cs.lossReason?.trim()) errors.lossReason = 'โครงการขาดทุน กรุณาระบุเหตุผล'
-  if (t.revenue && t.gmPct < gmFloor) warn.gm = `GP ต่ำกว่าเกณฑ์ ${gmFloor}% — ต้องผ่านการพิจารณาของผู้บริหาร`
+  if (Math.round(t.paymentsPct * 100) !== 10000) errors.payments = `Payment#1–#5 รวมได้ ${t.paymentsPct}% ต้องเท่ากับ 100%`
+  if (t.revenue < t.totalExpense && !cs.lossReason?.trim()) errors.lossReason = 'โครงการขาดทุน กรุณาระบุเหตุผล'
+  if (t.revenue && t.gmPct < gmFloor) warn.gm = `Margin ต่ำกว่าเกณฑ์ ${gmFloor}% — ต้องผ่านการพิจารณาของผู้บริหาร`
   return { errors, warn }
 }
 
-/* ---------------- Quotation ---------------- */
+/* ---------------- Quotation (company workbook "Quotation_Template") ---------------- */
 export const QT_UNITS = ['งาน', 'ชุด', 'License', 'เดือน', 'ปี', 'Manday']
-export interface QuoteTotals { gross: number; discount: number; subtotal: number; vat: number; grand: number; termsPct: number }
-export function quoteTotals(q: Pick<Quotation, 'items' | 'discount' | 'terms'>): QuoteTotals {
-  const gross = r2(q.items.reduce((a, i) => a + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0))
-  const discount = r2(q.discount.mode === 'pct' ? (gross * q.discount.value) / 100 : q.discount.value)
-  const subtotal = r2(gross - discount)
+export interface QuoteTotals { total: number; discount: number; subtotal: number; vat: number; grand: number }
+/** Total = Σ amount · Subtotal = Total − Special Discount · VAT 7% · Grand Total. */
+export function quoteTotals(q: Pick<Quotation, 'items' | 'discount'>): QuoteTotals {
+  const total = r2(q.items.reduce((a, i) => a + n(i.qty) * n(i.unitPrice), 0))
+  const discount = r2(n(q.discount))
+  const subtotal = r2(total - discount)
   const vat = r2(subtotal * 0.07)
-  return { gross, discount, subtotal, vat, grand: r2(subtotal + vat), termsPct: q.terms.reduce((a, t) => a + (Number(t.pct) || 0), 0) }
+  return { total, discount, subtotal, vat, grand: r2(subtotal + vat) }
 }
 export function validateQuotation(q: Quotation, costRevenue?: number): { errors: Record<string, string>; warn: Record<string, string> } {
   const errors: Record<string, string> = {}
   const warn: Record<string, string> = {}
   const t = quoteTotals(q)
-  if (!q.items.length) errors.items = 'เพิ่มรายการอย่างน้อย 1 รายการ'
-  q.items.forEach((i, k) => {
-    if (!i.description.trim()) errors[`item${k}`] = 'ระบุรายการ / ขอบเขตงาน'
-    else if (!(Number(i.qty) > 0)) errors[`item${k}`] = 'จำนวนต้องมากกว่า 0'
-    else if (!(Number(i.unitPrice) >= 0)) errors[`item${k}`] = 'กรอกเป็นตัวเลขที่ไม่ติดลบ'
-  })
-  if (t.discount > t.gross) errors.discount = 'ส่วนลดมากกว่าราคารวม'
+  if (!q.items.length) errors.items = 'ไม่มีรายการ — เพิ่มรายได้ใน Cost Sheet ก่อน'
   if (t.discount < 0) errors.discount = 'กรอกเป็นตัวเลขที่ไม่ติดลบ'
-  if (Math.round(t.termsPct * 100) !== 10000) errors.terms = `งวดชำระรวมได้ ${t.termsPct}% ต้องเท่ากับ 100%`
+  else if (t.discount > t.total) errors.discount = 'ส่วนลดมากกว่าราคารวม'
   if (!q.validUntil || q.validUntil < q.issueDate) errors.validUntil = 'วันยืนราคาต้องไม่ก่อนวันที่ออก'
-  if (!q.contact) errors.contact = 'เลือกผู้ติดต่อลูกค้า'
-  if (costRevenue !== undefined && Math.abs(t.subtotal - costRevenue) >= 0.01) warn.match = `Subtotal ${t.subtotal.toLocaleString('en-US')} ไม่ตรงกับ Revenue ใน Cost Sheet ${costRevenue.toLocaleString('en-US')}`
+  if (!q.contact?.trim()) errors.contact = 'ระบุผู้ติดต่อลูกค้า'
+  if (costRevenue !== undefined && Math.abs(t.subtotal - costRevenue) >= 0.01) warn.match = `Subtotal ${t.subtotal.toLocaleString('en-US')} ไม่ตรงกับ Total Revenue ใน Cost Sheet ${costRevenue.toLocaleString('en-US')} — ถ้าให้ส่วนลด ให้ปรับราคาใน Cost Sheet ด้วย`
   return { errors, warn }
 }
-
-/** Quotation lines prefilled from a Cost Sheet: one line per used category, priced so the subtotal equals the Cost Sheet revenue. */
-export function linesFromCostSheet(cs: CostSheet): { description: string; qty: number; unit: string; unitPrice: number }[] {
-  const t = costTotals(cs)
-  const used = (Object.keys(t.byCategory) as CostCategory[]).filter((k) => t.byCategory[k] > 0)
-  if (!used.length || !t.cogs) return [{ description: 'ค่าดำเนินโครงการ', qty: 1, unit: 'งาน', unitPrice: t.revenue }]
-  const lines = used.map((k) => ({ description: COST_CATEGORIES[k].label.split(' (')[0], qty: 1, unit: k === 'manpower' ? 'งาน' : k === 'ma' ? 'ปี' : 'ชุด', unitPrice: Math.round((t.byCategory[k] / t.cogs) * t.revenue) }))
-  // Whole baht per line; the last line absorbs the rounding so the subtotal equals the revenue.
-  const diff = r2(t.revenue - lines.reduce((a, l) => a + l.unitPrice, 0))
-  lines[lines.length - 1].unitPrice = r2(lines[lines.length - 1].unitPrice + diff)
-  return lines
+/** Quotation lines are the Cost Sheet revenue lines (Description, Part No., Qty, Unit Price, Amount). */
+export function linesFromCostSheet(cs: CostSheet): { description: string; qty: number; unitPrice: number; partNo?: string }[] {
+  return cs.revenue.filter((l) => l.description.trim() && n(l.qty) * n(l.unitPrice) > 0).map((l) => ({ description: l.description, qty: l.qty, unitPrice: l.unitPrice, partNo: l.partNo }))
 }
+export const paymentText = (payments: number[]) => payments.map((p, i) => `งวดที่ ${i + 1} ${Math.round(p * 1000) / 10}%`).filter((_, i) => payments[i] > 0).join(' · ')
 
 /** CS-2026-0058 rev.1 / QT-2026-0058 rev.1 */
 export const docNo = (kind: 'CS' | 'QT', year: number, seq: number) => `${kind}-${year}-${String(seq).padStart(4, '0')}`

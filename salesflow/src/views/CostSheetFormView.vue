@@ -1,15 +1,16 @@
 <script setup lang="ts">
-// Cost Sheet as an Excel Online workbook (Microsoft 365). "Create" makes a new workbook from the
-// company template in the project's SharePoint folder (Graph: copy template → open in Excel for
-// the web); the SM fills the template cells, formulas calculate, and the system reads the named
-// ranges on save. In the prototype the grid below stands in for the embedded Excel Online editor.
-// Approved or pending revisions open read-only — any change is a new revision.
+// Cost Sheet as an Excel Online workbook (Microsoft 365), laid out row for row like the company
+// file "Cost_Sheet_Template": header → REVENUE (with Payment#1–#5) → COST OF GOODS SOLD (groups 1–7)
+// → Gross Profit / Margin → DIRECT & LABOUR COST (8–10) → VARIABLE COST (11–13) → Total Expense /
+// Contribution Margin → Internal Transfer Charge → Approved By → Remark. Formulas match the file.
+// "Create" copies the template into the project's SharePoint folder; the system reads the named
+// range (OnePlatform_CostSheet_…) on save. Approved / pending revisions open read-only.
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Icon from '../components/Icon.vue'
-import { COST_CATEGORIES, ROLES_MD, costTotals, itemCost, validateCostSheet } from '../domain/salesdocs'
-import { DOC_STATUS, type CostCategory, type CostItem, type CostSheet } from '../data/model'
-import { baht, person, thDate, teamOf, account } from '../data/mock'
+import { COST_GROUPS, REVENUE_TYPES, SECTIONS, costTotals, groupsOf, lineCost, validateCostSheet, type CostSection } from '../domain/salesdocs'
+import { DOC_STATUS, type CostGroup, type CostLine, type CostSheet } from '../data/model'
+import { account, person, thDate } from '../data/mock'
 import { projects, notify } from '../store'
 import { blankCostSheet, canSeeCost, isOwner, nextCostRevision, saveCostSheet } from '../docstore'
 
@@ -23,28 +24,102 @@ const t = computed(() => (cs.value ? costTotals(cs.value) : null))
 const tried = ref(false)
 const v = computed(() => (cs.value ? validateCostSheet(cs.value) : { errors: {}, warn: {} }))
 const err = (k: string) => (tried.value ? (v.value.errors as Record<string, string>)[k] : '')
+const fileName = computed(() => (cs.value ? `${cs.value.docNo}_CostSheet_rev${cs.value.revision}.xlsx` : ''))
+const saved = ref(!!existing.value)
+const money = (x: number) => (x ? x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-')
+const pct = (x: number) => `${Math.round(x * 10000) / 100}%`
 
-let n = 1
-function addRow(cat: CostCategory) {
-  const base: CostItem = { id: `n${Date.now()}${n++}`, category: cat, description: '' }
-  const seed: Partial<Record<CostCategory, Partial<CostItem>>> = { manpower: { role: 'Developer', manday: 0, rate: 6500 }, hardware: { qty: 1, unitCost: 0 }, software: { qty: 1, unitCost: 0, months: 12 }, cloud: { unitCost: 0, months: 12 }, ma: { months: 12, unitCost: 0 } }
-  cs.value!.items.push({ ...base, ...(seed[cat] ?? { amount: 0 }) })
-  addOpen.value = false
+/* ---------- rows, numbered like the sheet ---------- */
+type Row =
+  | { k: 'title' | 'subtitle' | 'blank' | 'remark' | 'sign' | 'addRev' | 'pay' | 'revTotal' | 'revVat' }
+  | { k: 'hdr'; l: string; val: string; l2?: string; v2?: string }
+  | { k: 'section'; l: string } | { k: 'colhdr'; rev?: boolean; pc?: boolean }
+  | { k: 'rev'; i: number }
+  | { k: 'group'; g: CostGroup; first: number; last: number }
+  | { k: 'cost'; i: number; g: CostGroup }
+  | { k: 'add'; g: CostGroup }
+  | { k: 'total'; l: string; val: string; f: string; strong?: boolean; tone?: string }
+const rows = computed<Row[]>(() => {
+  const c = cs.value, s = t.value
+  if (!c || !s || !p.value) return []
+  const out: Row[] = [
+    { k: 'title' }, { k: 'subtitle' }, { k: 'blank' },
+    { k: 'hdr', l: 'Profit/Cost Center :', val: c.profitCenter ?? p.value.team, l2: 'Date:', v2: thDate(c.preparedAt) },
+    { k: 'hdr', l: 'Project Name:', val: p.value.name },
+    { k: 'hdr', l: 'Project Reference Number:', val: c.refNo ?? p.value.code, l2: 'Prepared By:', v2: person(c.createdBy)?.name ?? '' },
+    { k: 'hdr', l: 'Customer:', val: account(p.value.customerAccountId)?.name ?? p.value.customer },
+    { k: 'blank' }, { k: 'section', l: 'REVENUE' }, { k: 'colhdr', rev: true }, { k: 'pay' },
+    ...c.revenue.map((_, i) => ({ k: 'rev' as const, i })),
+    ...(!readonly.value ? [{ k: 'addRev' as const }] : []),
+    { k: 'revTotal' }, { k: 'revVat' }, { k: 'blank' },
+  ]
+  for (const sec of SECTIONS) {
+    out.push({ k: 'section', l: sec.label }, { k: 'colhdr', pc: sec.k === 'transfer' })
+    for (const g of groupsOf(sec.k)) {
+      const idx = c.costs.map((l, i) => ({ l, i })).filter((x) => x.l.group === g)
+      const first = out.length + 2
+      out.push({ k: 'group', g, first, last: first + Math.max(0, idx.length - 1) })
+      idx.forEach((x) => out.push({ k: 'cost', i: x.i, g }))
+      if (!readonly.value) out.push({ k: 'add', g })
+    }
+    if (sec.k === 'cogs') out.push(
+      { k: 'total', l: 'Total Cost of Goods Sold', val: money(s.cogs), f: '=SUM(Hardware, Software, Rental Cost, Outsource, Training Cost, Accessories, Consulting cost)', strong: true },
+      { k: 'total', l: 'Gross Profit', val: money(s.gp), f: '=Total Revenue − Total Cost of Goods Sold', tone: s.gp < 0 ? 'neg' : '' },
+      { k: 'total', l: 'Margin', val: pct(s.gmPct / 100), f: '=IF(Total Revenue=0,0,Gross Profit/Total Revenue)', tone: v.value.warn.gm ? 'warn' : 'good' },
+      { k: 'blank' },
+    )
+    if (sec.k === 'variable') out.push(
+      { k: 'total', l: 'Total Direct & Labour and Variable Cost', val: money(s.directVariable), f: '=SUM(Manday, Logistic, Financial cost, Operational Support Cost, Entertainment, Contingency)', strong: true },
+      { k: 'total', l: 'Total Expense', val: money(s.totalExpense), f: '=Total Cost of Goods Sold + Total Direct & Labour and Variable Cost', strong: true },
+      { k: 'total', l: 'Contribution Margin', val: money(s.cm), f: '=Total Revenue − Total Expense', strong: true, tone: s.cm < 0 ? 'neg' : 'cm' },
+      { k: 'total', l: 'Margin', val: pct(s.cmPct / 100), f: '=IF(Total Revenue=0,0,Contribution Margin/Total Revenue)', strong: true, tone: 'cm' },
+      { k: 'blank' },
+    )
+  }
+  out.push({ k: 'blank' }, { k: 'sign' }, { k: 'remark' })
+  return out
+})
+const rowOfRev = (i: number) => rows.value.findIndex((r) => r.k === 'rev' && r.i === i) + 1
+const payRow = computed(() => rows.value.findIndex((r) => r.k === 'pay') + 1)
+const revTotalRow = computed(() => rows.value.findIndex((r) => r.k === 'revTotal') + 1)
+const firstRev = computed(() => rowOfRev(0))
+const lastRev = computed(() => rowOfRev((cs.value?.revenue.length ?? 1) - 1))
+const L = ['G', 'H', 'I', 'J', 'K']
+
+/* ---------- formula bar ---------- */
+const sel = ref<{ ref: string; f: string }>({ ref: 'C5', f: '' })
+const pick = (ref: string, f: string | number) => (sel.value = { ref, f: String(f) })
+const costFormula = (l: CostLine, row: number) => {
+  switch (l.group) {
+    case 'training': return `=D${row}*E${row}*3`
+    case 'consulting': return `=F${revTotalRow.value}*D${row}/(1+D${row})`
+    case 'contingency': return `=F${revTotalRow.value}*D${row}`
+    case 'financial': return `=D${row}*E${row}*(Hardware+Software)`
+    default: return `=D${row}*E${row}`
+  }
 }
-const addOpen = ref(false)
-function changeCat(i: CostItem, cat: CostCategory) { Object.assign(i, { category: cat, role: undefined, manday: undefined, rate: undefined, qty: undefined, unitCost: undefined, months: undefined, amount: undefined }); if (cat === 'manpower') Object.assign(i, { role: 'Developer', manday: 0, rate: 6500 }) }
-// Drag a row by its handle to reorder.
+
+/* ---------- editing ---------- */
+let n = 1
+const uid = (x: string) => `${x}${Date.now()}${n++}`
+function addRev() { cs.value!.revenue.push({ id: uid('r'), type: 'Software', description: '', qty: 1, unitPrice: 0 }) }
+function addCost(g: CostGroup) {
+  const d = COST_GROUPS[g]
+  cs.value!.costs.push({ id: uid('c'), group: g, description: '', sub: d.subs?.[0], qty: g === 'contingency' ? 0.05 : g === 'consulting' ? 0 : 1, unitPrice: 0 })
+}
+const isNoPrice = (g: CostGroup) => g === 'consulting' || g === 'contingency'
+// Drag a revenue row by its handle to reorder.
 const dragFrom = ref<number | null>(null)
 function dropAt(k: number) {
   if (dragFrom.value === null || dragFrom.value === k) return
-  const list = cs.value!.items
+  const list = cs.value!.revenue
   const [row] = list.splice(dragFrom.value, 1)
   list.splice(k, 0, row)
   dragFrom.value = null
 }
 function save(next: 'stay' | 'quote') {
   tried.value = true
-  if (Object.keys(v.value.errors).length) { notify('ยังมีช่องที่ต้องแก้ — ดูข้อความใต้ช่อง', 'warning'); return }
+  if (Object.keys(v.value.errors).length) { notify('ยังมีช่องที่ต้องแก้ — ดูข้อความสีแดงในชีต', 'warning'); return }
   cs.value!.source = 'form'
   cs.value!.fileName = fileName.value
   saveCostSheet(p.value!, cs.value!)
@@ -54,38 +129,38 @@ function save(next: 'stay' | 'quote') {
   else router.replace(`/projects/${props.id}/cost-sheet/${cs.value!.id}`)
 }
 function newRev() { const r = nextCostRevision(p.value!, existing.value!); saveCostSheet(p.value!, r); router.push(`/projects/${props.id}/cost-sheet/${r.id}`); cs.value = JSON.parse(JSON.stringify(r)) }
-/** Spreadsheet XML (opens in Excel) — production exports .xlsx from the company template. */
+/** Spreadsheet XML copy (opens in Excel). */
 function exportXls() {
   const c = cs.value!, s = t.value!
-  const row = (cells: (string | number)[]) => `<Row>${cells.map((x) => `<Cell><Data ss:Type="${typeof x === 'number' ? 'Number' : 'String'}">${String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</Data></Cell>`).join('')}</Row>`
-  const rows = [row(['Cost Sheet', `${c.docNo} rev.${c.revision}`]), row(['โครงการ', p.value!.name]), row([]), row(['หมวด', 'รายการ', 'Role', 'Manday', 'Rate', 'จำนวน', 'ต้นทุน/หน่วย', 'เดือน', 'มูลค่า', 'ต้นทุน', 'หมายเหตุ']),
-    ...c.items.map((i) => row([COST_CATEGORIES[i.category].label, i.description, i.role ?? '', i.manday ?? '', i.rate ?? '', i.qty ?? '', i.unitCost ?? '', i.months ?? '', i.amount ?? '', itemCost(i), i.note ?? ''])),
-    row([]), ...[['COGS', s.cogs], ['Revenue', s.revenue], ['Gross Profit', s.gp], ['GM%', s.gmPct], ['Entertainment', s.entertainment], ['Contingency', s.contingency], ['Contribution Margin', s.cm], ['CM%', s.cmPct]].map((r) => row(r as (string | number)[]))]
-  const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Cost Sheet"><Table>${rows.join('')}</Table></Worksheet></Workbook>`
+  const cell = (x: string | number) => `<Cell><Data ss:Type="${typeof x === 'number' ? 'Number' : 'String'}">${String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</Data></Cell>`
+  const row = (cells: (string | number)[]) => `<Row>${cells.map(cell).join('')}</Row>`
+  const rowsX = [row(['Stream I.T. Consulting Limited']), row(['Estimated Cost Sheet', `${c.docNo} rev.${c.revision}`]), row(['Project Name:', p.value!.name]), row([]), row(['REVENUE']),
+    row(['Item', 'Type', 'Income Description', 'Qty', 'Unit Price', 'Total Amount', ...c.payments.map((x, i) => `Payment#${i + 1} ${pct(x)}`), 'Part No.', 'Note']),
+    ...c.revenue.map((l, i) => row([i + 1, l.type, l.description, l.qty, l.unitPrice, l.qty * l.unitPrice, ...c.payments.map((x) => l.qty * l.unitPrice * x), l.partNo ?? '', l.note ?? ''])),
+    row(['', 'Total Revenue', '', '', '', s.revenue]), row(['', 'Total Revenue (Include VAT)', '', '', '', s.revenueVat]), row([]),
+    ...c.costs.map((l) => row([COST_GROUPS[l.group].no, COST_GROUPS[l.group].label, l.description, l.qty ?? '', l.unitPrice ?? '', lineCost(l, c), '', '', '', '', '', l.partNo ?? l.profitCenter ?? '', l.note ?? ''])),
+    row([]), ...[['Total Cost of Goods Sold', s.cogs], ['Gross Profit', s.gp], ['Margin %', s.gmPct], ['Total Direct & Labour and Variable Cost', s.directVariable], ['Total Expense', s.totalExpense], ['Contribution Margin', s.cm], ['Margin %', s.cmPct]].map((r) => row(['', ...r] as (string | number)[]))]
+  const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Cost_Sheet_Template"><Table>${rowsX.join('')}</Table></Worksheet></Workbook>`
   const a = document.createElement('a')
   a.href = URL.createObjectURL(new Blob([xml], { type: 'application/vnd.ms-excel' }))
   a.download = `${c.docNo}_rev${c.revision}.xls`
   a.click()
 }
-// Formula bar: what the selected cell holds.
-const sel = ref<{ ref: string; f: string }>({ ref: 'C3', f: '' })
-const pick = (ref: string, f: string | number) => (sel.value = { ref, f: String(f) })
-const FIRST = 14
-const rowNo = (k: number) => FIRST + k
-const lastRow = computed(() => FIRST + Math.max(0, (cs.value?.items.length ?? 1) - 1))
-const sumRow = computed(() => lastRow.value + 2)
-const formulaOf = (i: CostItem, k: number) => {
-  const r = rowNo(k)
-  return i.category === 'manpower' ? `=E${r}*F${r}` : i.category === 'hardware' ? `=E${r}*F${r}` : i.category === 'software' ? `=E${r}*F${r}*G${r}` : i.category === 'cloud' || i.category === 'ma' ? `=F${r}*G${r}` : `=H${r}`
-}
-const fileName = computed(() => (cs.value ? `${cs.value.docNo}_CostSheet_rev${cs.value.revision}.xlsx` : ''))
-const saved = ref(!!existing.value)
-const catTotals = computed(() => (t.value ? (Object.keys(COST_CATEGORIES) as CostCategory[]).filter((k) => t.value!.byCategory[k]).map((k) => ({ k, v: t.value!.byCategory[k] })) : []))
+const signers = computed(() => {
+  const a = p.value?.approval
+  const mine = !!a && a.costSheetId === cs.value?.id
+  const steps = mine ? a!.steps.filter((x) => x.approver) : []
+  return [
+    { role: 'Prepared By (SM)', who: person(cs.value?.createdBy)?.name ?? '', at: thDate(cs.value?.preparedAt) },
+    ...(mine ? steps.map((x) => ({ role: x.role, who: x.status === 'approved' ? x.who : `${x.who} (${x.status === 'pending' ? 'รอพิจารณา' : x.status === 'rejected' ? 'ส่งกลับ' : 'ยังไม่ถึงคิว'})`, at: x.at ?? '' }))
+      : [{ role: 'รองผู้บริหาร DT', who: '', at: '' }, { role: 'ผู้บริหาร DT', who: '', at: '' }]),
+  ]
+})
+const secOf = (g: CostGroup): CostSection => COST_GROUPS[g].section
 </script>
 
 <template>
-  <div v-if="p && cs && canSeeCost(p)" class="xl">
-    <!-- Excel for the web chrome -->
+  <div v-if="p && cs && t && canSeeCost(p)" class="xl">
     <header class="xbar">
       <router-link :to="`/projects/${p.id}?tab=cost`" class="xback" aria-label="ปิดและกลับไปที่โครงการ"><Icon name="chevron" :size="16" style="transform: rotate(180deg)" /></router-link>
       <span class="xlogo" aria-hidden="true">X</span>
@@ -99,11 +174,6 @@ const catTotals = computed(() => (t.value ? (Object.keys(COST_CATEGORIES) as Cos
     </header>
     <div class="xribbon" role="toolbar" aria-label="คำสั่ง">
       <template v-if="!readonly">
-        <div class="add">
-          <button class="rb" :aria-expanded="addOpen" @click="addOpen = !addOpen"><Icon name="plus" :size="16" /> แทรกแถวต้นทุน</button>
-          <div v-if="addOpen" class="menu" role="menu"><button v-for="(c, key) in COST_CATEGORIES" :key="key" role="menuitem" class="mi" @click="addRow(key)">{{ c.label }}</button></div>
-        </div>
-        <span class="sep" />
         <button class="rb" @click="save('stay')"><Icon name="check" :size="16" /> บันทึกแบบร่าง</button>
         <button class="rb strong" @click="save('quote')"><Icon name="file" :size="16" /> บันทึกและสร้าง Quotation</button>
         <span class="sep" />
@@ -111,7 +181,7 @@ const catTotals = computed(() => (t.value ? (Object.keys(COST_CATEGORIES) as Cos
       <button v-else-if="isOwner(p) && existing && cs.status !== 'PENDING'" class="rb strong" @click="newRev"><Icon name="plus" :size="16" /> สร้าง revision ใหม่</button>
       <button class="rb" @click="exportXls"><Icon name="excel" :size="16" /> ดาวน์โหลดสำเนา</button>
       <span class="sp" />
-      <span class="small muted">Template: Cost Sheet มาตรฐาน DT 2569</span>
+      <span class="small muted">Template: Cost_Sheet_Template · Named range OnePlatform_CostSheet_{{ cs.refNo }}</span>
     </div>
     <div v-if="readonly" class="xro" role="status"><Icon name="lock" :size="14" />
       <span v-if="cs.status === 'APPROVED'">ไฟล์นี้อนุมัติแล้ว แก้ไม่ได้ — กด “สร้าง revision ใหม่” เพื่อแก้</span>
@@ -119,86 +189,79 @@ const catTotals = computed(() => (t.value ? (Object.keys(COST_CATEGORIES) as Cos
       <span v-else-if="!isOwner(p)">เปิดดูอย่างเดียว</span>
       <span v-else>เอกสารถูก {{ DOC_STATUS[cs.status].label }} — สร้าง revision ใหม่เพื่อแก้แล้วส่งอีกครั้ง</span>
     </div>
+    <div v-if="tried && Object.keys(v.errors).length" class="xerr" role="alert"><Icon name="alert" :size="14" /> {{ Object.values(v.errors)[0] }}</div>
     <div class="fbar"><span class="nb">{{ sel.ref }}</span><span class="fx">fx</span><span class="fv">{{ sel.f }}</span></div>
 
-    <div class="sheet" role="grid" aria-label="Cost Sheet">
+    <div class="sheet" role="grid" aria-label="Cost_Sheet_Template">
       <table>
-        <colgroup><col class="rn" /><col style="width: 34px" /><col style="width: 170px" /><col style="width: 200px" /><col style="width: 118px" /><col style="width: 88px" /><col style="width: 108px" /><col style="width: 58px" /><col style="width: 100px" /><col style="width: 118px" /><col style="width: 170px" /><col style="width: 34px" /></colgroup>
-        <thead><tr><th /><th v-for="c in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', '']" :key="c">{{ c }}</th></tr></thead>
+        <colgroup><col class="rn" /><col style="width: 50px" /><col style="width: 190px" /><col style="width: 250px" /><col style="width: 74px" /><col style="width: 118px" /><col style="width: 122px" /><col v-for="c in L" :key="c" style="width: 104px" /><col style="width: 90px" /><col style="width: 150px" /><col style="width: 32px" /></colgroup>
+        <thead><tr><th /><th v-for="c in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', '']" :key="c">{{ c }}</th></tr></thead>
         <tbody>
-          <tr><td class="rh">1</td><td colspan="11" class="title">COST SHEET · {{ cs.docNo }} rev.{{ cs.revision }}</td></tr>
-          <tr><td class="rh">2</td><td colspan="11" class="note">เอกสารภายใน — ช่องสีเทาดึงจากโครงการอัตโนมัติ · ช่องสีขาวกรอกเอง · ช่องสีฟ้าเป็นสูตร</td></tr>
-          <tr v-for="(h, k) in [['ชื่อโปรเจกต์', p.name], ['ลูกค้า / End User', `${account(p.customerAccountId)?.name ?? p.customer} / ${account(p.endUserAccountId)?.name ?? p.endUser}`], ['Profit Center (BU)', `${p.team} · ${teamOf(p.team)?.name ?? ''}`], ['Project Type', p.type], ['AE / SM (ผู้จัดทำ)', `${p.sales.join(', ') || '—'} / ${person(p.sm)?.name}`], ['วันที่จัดทำ', thDate(cs.preparedAt)]]" :key="h[0]">
-            <td class="rh">{{ k + 3 }}</td><td /><td class="lbl">{{ h[0] }}</td><td colspan="4" class="ro" @click="pick(`C${k + 3}`, h[1])">{{ h[1] }}</td><td colspan="5" />
-          </tr>
-          <tr :class="{ bad: err('projectMonths') }"><td class="rh">9</td><td /><td class="lbl">ระยะเวลาโครงการ (เดือน)</td><td class="in"><input v-model.number="cs.projectMonths" type="number" min="1" aria-label="ระยะเวลาโครงการ (เดือน)" :disabled="readonly" @focus="pick('C9', cs.projectMonths ?? '')" /></td><td colspan="8" class="msg">{{ err('projectMonths') }}</td></tr>
-          <tr><td class="rh">10</td><td /><td class="lbl">ระยะรับประกัน / MA (เดือน)</td><td class="in"><input v-model.number="cs.maMonths" type="number" min="0" aria-label="ระยะรับประกัน / MA (เดือน)" :disabled="readonly" @focus="pick('C10', cs.maMonths ?? '')" /></td><td colspan="8" /></tr>
-          <tr><td class="rh">11</td><td colspan="11" /></tr>
-          <tr class="hd"><td class="rh">12</td><td>#</td><td>หมวด</td><td>รายการ / ขอบเขต</td><td>Role / Vendor</td><td>Manday / จำนวน</td><td>Rate / ต้นทุนต่อหน่วย</td><td>เดือน</td><td>มูลค่า</td><td>ต้นทุน</td><td>หมายเหตุ / เหตุผล</td><td /></tr>
-          <tr><td class="rh">13</td><td colspan="11" class="note">ลาก ⠿ เพื่อสลับแถว · ต้นทุนคำนวณตามสูตรของหมวด</td></tr>
-          <tr v-for="(i, k) in cs.items" :key="i.id" :class="{ dragging: dragFrom === k, bad: err(`item${k}`) }" @dragover.prevent @drop="dropAt(k)">
-            <td class="rh">{{ rowNo(k) }}</td>
-            <td class="c"><span v-if="!readonly" class="grip" draggable="true" :aria-label="`ลากเพื่อย้ายแถว ${k + 1}`" @dragstart="dragFrom = k">⠿</span><span v-else>{{ k + 1 }}</span></td>
-            <td class="in"><select :value="i.category" :aria-label="`หมวดแถว ${k + 1}`" :disabled="readonly" @change="changeCat(i, ($event.target as HTMLSelectElement).value as CostCategory)" @focus="pick(`B${rowNo(k)}`, COST_CATEGORIES[i.category].label)"><option v-for="(c, key) in COST_CATEGORIES" :key="key" :value="key">{{ c.label }}</option></select></td>
-            <td class="in"><input v-model="i.description" :aria-label="`รายการแถว ${k + 1}`" :placeholder="i.category === 'subcontract' ? 'ผู้รับเหมา / ขอบเขต' : 'รายการ'" :disabled="readonly" @focus="pick(`C${rowNo(k)}`, i.description)" /></td>
-            <td class="in">
-              <select v-if="i.category === 'manpower'" v-model="i.role" aria-label="Role" :disabled="readonly" @focus="pick(`D${rowNo(k)}`, i.role ?? '')"><option v-for="r in ROLES_MD" :key="r">{{ r }}</option></select>
-              <input v-else-if="i.category === 'hardware'" v-model="i.vendor" aria-label="Vendor" placeholder="Vendor" :disabled="readonly" />
-              <span v-else class="na" />
-            </td>
-            <td class="in">
-              <input v-if="i.category === 'manpower'" v-model.number="i.manday" type="number" min="0" :aria-label="`Manday แถว ${k + 1}`" :disabled="readonly" @focus="pick(`E${rowNo(k)}`, i.manday ?? 0)" />
-              <input v-else-if="i.category === 'hardware' || i.category === 'software'" v-model.number="i.qty" type="number" min="0" :aria-label="`จำนวนแถว ${k + 1}`" :disabled="readonly" @focus="pick(`E${rowNo(k)}`, i.qty ?? 0)" />
-              <span v-else class="na" />
-            </td>
-            <td class="in">
-              <input v-if="i.category === 'manpower'" v-model.number="i.rate" type="number" min="0" :aria-label="`Rate แถว ${k + 1}`" :disabled="readonly" @focus="pick(`F${rowNo(k)}`, i.rate ?? 0)" />
-              <input v-else-if="['hardware', 'software', 'cloud', 'ma'].includes(i.category)" v-model.number="i.unitCost" type="number" min="0" :aria-label="`ต้นทุนต่อหน่วยแถว ${k + 1}`" :disabled="readonly" @focus="pick(`F${rowNo(k)}`, i.unitCost ?? 0)" />
-              <span v-else class="na" />
-            </td>
-            <td class="in">
-              <input v-if="['software', 'cloud', 'ma'].includes(i.category)" v-model.number="i.months" type="number" min="0" :aria-label="`เดือนแถว ${k + 1}`" :disabled="readonly" @focus="pick(`G${rowNo(k)}`, i.months ?? 0)" />
-              <span v-else class="na" />
-            </td>
-            <td class="in">
-              <input v-if="['subcontract', 'other'].includes(i.category)" v-model.number="i.amount" type="number" min="0" :aria-label="`มูลค่าแถว ${k + 1}`" :disabled="readonly" @focus="pick(`H${rowNo(k)}`, i.amount ?? 0)" />
-              <span v-else class="na" />
-            </td>
-            <td class="fm num" tabindex="0" @click="pick(`I${rowNo(k)}`, formulaOf(i, k))" @focus="pick(`I${rowNo(k)}`, formulaOf(i, k))">{{ baht(itemCost(i)) }}</td>
-            <td class="in"><input v-model="i.note" aria-label="หมายเหตุ" placeholder="เช่น ใช้ subscription ที่มีอยู่แล้ว" :disabled="readonly" @focus="pick(`J${rowNo(k)}`, i.note ?? '')" /></td>
-            <td class="c"><button v-if="!readonly" class="del" :aria-label="`ลบแถว ${k + 1}`" @click="cs.items.splice(k, 1)"><Icon name="x" :size="13" /></button></td>
-          </tr>
-          <tr v-if="err('items') || cs.items.some((_, k) => err(`item${k}`))"><td class="rh">·</td><td colspan="11" class="msg">{{ err('items') || cs.items.map((_, k) => err(`item${k}`)).find(Boolean) }}</td></tr>
-          <tr><td class="rh">{{ lastRow + 1 }}</td><td colspan="11" /></tr>
-          <tr v-for="c in catTotals" :key="c.k" class="cat"><td class="rh">·</td><td colspan="7" /><td class="lbl r">รวม {{ COST_CATEGORIES[c.k].label.split(' (')[0] }}</td><td class="fm num" @click="pick('', `=SUMIF(B${FIRST}:B${lastRow},&quot;${COST_CATEGORIES[c.k].label.split(' (')[0]}&quot;,I${FIRST}:I${lastRow})`)">{{ baht(c.v) }}</td><td colspan="2" /></tr>
-          <template v-if="t">
-            <tr class="sum"><td class="rh">{{ sumRow }}</td><td colspan="7" /><td class="lbl r">COGS (ต้นทุนรวม)</td><td class="fm num b" @click="pick(`I${sumRow}`, `=SUM(I${FIRST}:I${lastRow})`)">{{ baht(t.cogs) }}</td><td colspan="2" /></tr>
-            <tr class="sum"><td class="rh">{{ sumRow + 1 }}</td><td colspan="7" /><td class="lbl r">Total Manday</td><td class="fm num" @click="pick(`I${sumRow + 1}`, `=SUMIF(B${FIRST}:B${lastRow},&quot;Manpower&quot;,E${FIRST}:E${lastRow})`)">{{ t.manday }}</td><td colspan="2" /></tr>
-            <tr class="sum"><td class="rh">{{ sumRow + 2 }}</td><td colspan="7" /><td class="lbl r">ราคาขาย (Revenue ก่อน VAT)</td><td class="in"><input id="rv" v-model.number="cs.revenue" type="number" min="0" class="num" aria-label="ราคาขาย (Revenue ก่อน VAT)" :disabled="readonly" @focus="pick(`I${sumRow + 2}`, cs.revenue)" /></td><td colspan="2" class="small muted">กรอก หรือดึงจาก Quotation หลังหักส่วนลด</td></tr>
-            <tr class="sum"><td class="rh">{{ sumRow + 3 }}</td><td colspan="7" /><td class="lbl r">Gross Profit</td><td class="fm num" :class="{ neg: t.gp < 0 }" @click="pick(`I${sumRow + 3}`, `=I${sumRow + 2}-I${sumRow}`)">{{ baht(t.gp) }}</td><td colspan="2" /></tr>
-            <tr class="sum"><td class="rh">{{ sumRow + 4 }}</td><td colspan="7" /><td class="lbl r">Gross Margin %</td><td class="fm num" :class="v.warn.gm ? 'warn' : 'good'" @click="pick(`I${sumRow + 4}`, `=I${sumRow + 3}/I${sumRow + 2}*100`)">{{ t.gmPct }}%</td><td colspan="2" class="small" :class="{ warn: v.warn.gm }">{{ v.warn.gm }}</td></tr>
-            <tr class="sum"><td class="rh">{{ sumRow + 5 }}</td><td colspan="6" /><td class="in"><select v-model="cs.entertainment.mode" aria-label="หน่วย Entertainment" :disabled="readonly"><option value="pct">% Rev</option><option value="baht">บาท</option></select></td><td class="lbl r">Entertainment</td><td class="in"><input v-model.number="cs.entertainment.value" type="number" min="0" class="num" aria-label="Entertainment" :disabled="readonly" @focus="pick(`I${sumRow + 5}`, cs.entertainment.mode === 'pct' ? `=I${sumRow + 2}*${cs.entertainment.value}%` : cs.entertainment.value)" /></td><td class="small muted" colspan="2">= {{ baht(t.entertainment) }}</td></tr>
-            <tr class="sum"><td class="rh">{{ sumRow + 6 }}</td><td colspan="6" /><td class="in"><select v-model="cs.contingency.mode" aria-label="หน่วย Contingency" :disabled="readonly"><option value="pct">% COGS</option><option value="baht">บาท</option></select></td><td class="lbl r">Contingency</td><td class="in"><input v-model.number="cs.contingency.value" type="number" min="0" class="num" aria-label="Contingency" :disabled="readonly" @focus="pick(`I${sumRow + 6}`, cs.contingency.mode === 'pct' ? `=I${sumRow}*${cs.contingency.value}%` : cs.contingency.value)" /></td><td class="small muted" colspan="2">= {{ baht(t.contingency) }} · แยกบรรทัด ไม่บวกใน Manday</td></tr>
-            <tr class="sum tot"><td class="rh">{{ sumRow + 7 }}</td><td colspan="7" /><td class="lbl r">Contribution Margin</td><td class="fm num b" @click="pick(`I${sumRow + 7}`, `=I${sumRow + 3}-I${sumRow + 5}-I${sumRow + 6}`)">{{ baht(t.cm) }}</td><td colspan="2" /></tr>
-            <tr class="sum tot"><td class="rh">{{ sumRow + 8 }}</td><td colspan="7" /><td class="lbl r">Contribution Margin %</td><td class="fm num b" @click="pick(`I${sumRow + 8}`, `=I${sumRow + 7}/I${sumRow + 2}*100`)">{{ t.cmPct }}%</td><td colspan="2" /></tr>
-            <tr v-if="t.revenue < t.cogs" :class="{ bad: err('lossReason') }"><td class="rh">{{ sumRow + 9 }}</td><td colspan="2" /><td class="lbl">เหตุผลที่ขาดทุน</td><td colspan="6" class="in"><input v-model="cs.lossReason" aria-label="เหตุผลที่ขาดทุน" :disabled="readonly" /></td><td colspan="2" class="msg">{{ err('lossReason') }}</td></tr>
+          <template v-for="(r, ri) in rows" :key="ri">
+            <tr v-if="r.k === 'title'"><td class="rh">{{ ri + 1 }}</td><td colspan="14" class="title">Stream I.T. Consulting Limited</td></tr>
+            <tr v-else-if="r.k === 'subtitle'"><td class="rh">{{ ri + 1 }}</td><td colspan="9" class="sub">Estimated Cost Sheet · {{ cs.docNo }} rev.{{ cs.revision }}</td><td colspan="5" class="note">ช่องเทาดึงจากโครงการ · ช่องขาวกรอก · ช่องฟ้าเป็นสูตร</td></tr>
+            <tr v-else-if="r.k === 'blank'"><td class="rh">{{ ri + 1 }}</td><td colspan="14" /></tr>
+            <tr v-else-if="r.k === 'hdr'"><td class="rh">{{ ri + 1 }}</td><td colspan="2" class="lbl">{{ r.l }}</td><td colspan="3" class="ro" @click="pick(`C${ri + 1}`, r.val)">{{ r.val }}</td><td colspan="5" /><td class="lbl r">{{ r.l2 }}</td><td colspan="2" class="ro" :class="{ none: !r.l2 }">{{ r.v2 }}</td><td /></tr>
+            <tr v-else-if="r.k === 'section'"><td class="rh">{{ ri + 1 }}</td><td colspan="14" class="sec">{{ r.l }}</td></tr>
+            <tr v-else-if="r.k === 'colhdr'" class="hd"><td class="rh">{{ ri + 1 }}</td><td>Item</td><td>Type</td><td>{{ r.rev ? 'Income Description' : 'Expense Description' }}</td><td>{{ r.rev ? 'Qty' : 'Qty/Fx' }}</td><td>Unit Price</td><td>Total Amount</td><td v-for="(c, i) in L" :key="c">Payment#{{ i + 1 }}</td><td>{{ r.pc ? 'Profit Center Code' : 'Part No.' }}</td><td>Note</td><td /></tr>
+            <tr v-else-if="r.k === 'pay'" :class="{ bad: err('payments') }">
+              <td class="rh">{{ ri + 1 }}</td><td colspan="6" class="note r">สัดส่วนงวดชำระของรายได้ (รวมต้อง 100%) →</td>
+              <td v-for="(c, i) in L" :key="c" class="in"><input v-model.number="cs.payments[i]" type="number" min="0" max="1" step="0.05" :aria-label="`Payment#${i + 1} สัดส่วน`" :disabled="readonly" @focus="pick(`${c}${ri + 1}`, cs.payments[i])" /></td>
+              <td colspan="3" class="small" :class="t.paymentsPct === 100 ? 'good' : 'neg'">รวม {{ t.paymentsPct }}%</td>
+            </tr>
+            <tr v-else-if="r.k === 'rev'" :class="{ bad: err(`rev${r.i}`), dragging: dragFrom === r.i }" @dragover.prevent @drop="dropAt(r.i)">
+              <td class="rh">{{ ri + 1 }}</td>
+              <td class="c"><span v-if="!readonly" class="grip" draggable="true" :aria-label="`ลากเพื่อย้ายรายได้แถว ${r.i + 1}`" @dragstart="dragFrom = r.i">⠿</span> {{ r.i + 1 }}</td>
+              <td class="in"><select v-model="cs.revenue[r.i].type" :aria-label="`Type รายได้แถว ${r.i + 1}`" :disabled="readonly"><option v-for="x in REVENUE_TYPES" :key="x">{{ x }}</option></select></td>
+              <td class="in"><input v-model="cs.revenue[r.i].description" :aria-label="`Income Description แถว ${r.i + 1}`" placeholder="Income Description" :disabled="readonly" @focus="pick(`C${ri + 1}`, cs.revenue[r.i].description)" /></td>
+              <td class="in"><input v-model.number="cs.revenue[r.i].qty" type="number" min="0" :aria-label="`Qty รายได้แถว ${r.i + 1}`" :disabled="readonly" @focus="pick(`D${ri + 1}`, cs.revenue[r.i].qty)" /></td>
+              <td class="in"><input v-model.number="cs.revenue[r.i].unitPrice" type="number" min="0" :aria-label="`Unit Price รายได้แถว ${r.i + 1}`" :disabled="readonly" @focus="pick(`E${ri + 1}`, cs.revenue[r.i].unitPrice)" /></td>
+              <td class="fm" tabindex="0" @click="pick(`F${ri + 1}`, `=D${ri + 1}*E${ri + 1}`)">{{ money(cs.revenue[r.i].qty * cs.revenue[r.i].unitPrice) }}</td>
+              <td v-for="(c, i) in L" :key="c" class="fm" @click="pick(`${c}${ri + 1}`, `=$F${ri + 1}*${c}$${payRow}`)">{{ money(cs.revenue[r.i].qty * cs.revenue[r.i].unitPrice * (cs.payments[i] || 0)) }}</td>
+              <td class="in"><input v-model="cs.revenue[r.i].partNo" aria-label="Part No." :disabled="readonly" /></td>
+              <td class="in"><input v-model="cs.revenue[r.i].note" aria-label="Note" :disabled="readonly" /></td>
+              <td class="c"><button v-if="!readonly" class="del" :aria-label="`ลบรายได้แถว ${r.i + 1}`" @click="cs.revenue.splice(r.i, 1)"><Icon name="x" :size="13" /></button></td>
+            </tr>
+            <tr v-else-if="r.k === 'addRev'"><td class="rh">{{ ri + 1 }}</td><td /><td colspan="13"><button class="addrow" @click="addRev">+ เพิ่มรายการรายได้</button></td></tr>
+            <tr v-else-if="r.k === 'revTotal'" class="tot"><td class="rh">{{ ri + 1 }}</td><td /><td colspan="3" class="lbl">Total Revenue</td><td class="fm" @click="pick(`E${ri + 1}`, `=SUM(E${firstRev}:E${lastRev})`)">{{ money(cs.revenue.reduce((a, l) => a + (Number(l.unitPrice) || 0), 0)) }}</td><td class="fm b" @click="pick(`F${ri + 1}`, `=SUM(F${firstRev}:F${lastRev})`)">{{ money(t.revenue) }}</td><td v-for="(c, i) in L" :key="c" class="fm" @click="pick(`${c}${ri + 1}`, `=SUM(${c}${firstRev}:${c}${lastRev})`)">{{ money(t.byPayment[i] ?? 0) }}</td><td colspan="3" /></tr>
+            <tr v-else-if="r.k === 'revVat'"><td class="rh">{{ ri + 1 }}</td><td /><td colspan="4" class="lbl">Total Revenue (Include VAT)</td><td class="fm" @click="pick(`F${ri + 1}`, `=F${ri}*1.07`)">{{ money(t.revenueVat) }}</td><td colspan="8" /></tr>
+            <tr v-else-if="r.k === 'group'" class="grp"><td class="rh">{{ ri + 1 }}</td><td class="c">{{ COST_GROUPS[r.g].no }}</td><td colspan="2" class="lbl">{{ COST_GROUPS[r.g].label }}</td><td class="fm" :class="{ blank: r.g !== 'manday' }" @click="r.g === 'manday' && pick(`D${ri + 1}`, `=SUM(D${r.first}:D${r.last})`)">{{ r.g === 'manday' ? t.manday : '' }}</td><td /><td class="fm b" @click="pick(`F${ri + 1}`, `=SUM(F${r.first}:F${r.last})`)">{{ money(t.groups[r.g]) }}</td><td colspan="5" class="fm blank" /><td colspan="3" class="note">{{ COST_GROUPS[r.g].formula }}</td></tr>
+            <tr v-else-if="r.k === 'cost'" :class="{ bad: err(`cost${r.i}`), tr: secOf(r.g) === 'transfer' }">
+              <td class="rh">{{ ri + 1 }}</td><td />
+              <td class="in"><select v-if="COST_GROUPS[r.g].subs" v-model="cs.costs[r.i].sub" :aria-label="`ประเภทย่อย ${COST_GROUPS[r.g].label}`" :disabled="readonly"><option v-for="x in COST_GROUPS[r.g].subs" :key="x">{{ x }}</option></select></td>
+              <td class="in"><input v-model="cs.costs[r.i].description" :aria-label="`Expense Description ${COST_GROUPS[r.g].label}`" placeholder="Expense Description" :disabled="readonly" @focus="pick(`C${ri + 1}`, cs.costs[r.i].description)" /></td>
+              <td class="in"><input v-model.number="cs.costs[r.i].qty" type="number" min="0" :step="r.g === 'contingency' || r.g === 'financial' || r.g === 'consulting' ? 0.01 : 1" :aria-label="`${COST_GROUPS[r.g].qtyLabel} ${COST_GROUPS[r.g].label}`" :disabled="readonly" @focus="pick(`D${ri + 1}`, cs.costs[r.i].qty ?? 0)" /></td>
+              <td class="in"><input v-if="!isNoPrice(r.g)" v-model.number="cs.costs[r.i].unitPrice" type="number" min="0" :aria-label="`${COST_GROUPS[r.g].priceLabel} ${COST_GROUPS[r.g].label}`" :disabled="readonly" @focus="pick(`E${ri + 1}`, cs.costs[r.i].unitPrice ?? 0)" /><span v-else class="na" /></td>
+              <td class="fm" tabindex="0" @click="pick(`F${ri + 1}`, costFormula(cs.costs[r.i], ri + 1))" @focus="pick(`F${ri + 1}`, costFormula(cs.costs[r.i], ri + 1))">{{ money(lineCost(cs.costs[r.i], cs)) }}</td>
+              <td colspan="5" />
+              <td class="in"><input v-if="secOf(r.g) === 'transfer'" v-model="cs.costs[r.i].profitCenter" aria-label="Profit Center Code" :disabled="readonly" /><input v-else v-model="cs.costs[r.i].partNo" aria-label="Part No." :disabled="readonly" /></td>
+              <td class="in"><input v-model="cs.costs[r.i].note" aria-label="Note" :disabled="readonly" /></td>
+              <td class="c"><button v-if="!readonly" class="del" :aria-label="`ลบแถว ${COST_GROUPS[r.g].label}`" @click="cs.costs.splice(r.i, 1)"><Icon name="x" :size="13" /></button></td>
+            </tr>
+            <tr v-else-if="r.k === 'add'"><td class="rh">{{ ri + 1 }}</td><td /><td colspan="13"><button class="addrow" @click="addCost(r.g)">+ เพิ่ม {{ COST_GROUPS[r.g].label }}</button></td></tr>
+            <tr v-else-if="r.k === 'total'" class="tot" :class="r.tone"><td class="rh">{{ ri + 1 }}</td><td /><td colspan="4" class="lbl">{{ r.l }}</td><td class="fm" :class="{ b: r.strong }" @click="pick(`F${ri + 1}`, r.f)">{{ r.val }}</td><td colspan="5" /><td colspan="3" class="small" :class="r.tone">{{ r.l === 'Margin' && r.tone === 'warn' ? v.warn.gm : '' }}</td></tr>
+            <template v-else-if="r.k === 'sign'">
+              <tr><td class="rh">{{ ri + 1 }}</td><td colspan="2" class="lbl">Approved By:</td><td v-for="s in signers" :key="s.role" colspan="3" class="sign"><span class="small muted">{{ s.role }}</span><b>{{ s.who || '—' }}</b><span class="small muted">Date: {{ s.at || '—' }}</span></td><td :colspan="Math.max(1, 12 - signers.length * 3)" /></tr>
+              <tr v-if="t.revenue < t.totalExpense" :class="{ bad: err('lossReason') }"><td class="rh">·</td><td colspan="2" class="lbl">เหตุผลที่ขาดทุน</td><td colspan="12" class="in"><input v-model="cs.lossReason" aria-label="เหตุผลที่ขาดทุน" :disabled="readonly" /></td></tr>
+            </template>
+            <tr v-else-if="r.k === 'remark'"><td class="rh">{{ ri + 1 }}</td><td colspan="2" class="lbl">Remark:</td><td colspan="12" class="in"><input v-model="cs.remark" aria-label="Remark" :disabled="readonly" /></td></tr>
           </template>
         </tbody>
       </table>
     </div>
     <footer class="xtabs">
-      <span class="tab on">Cost Sheet</span>
-      <router-link v-if="existing" :to="`/projects/${p.id}/quotation/new?cs=${cs.id}`" class="tab">Quotation</router-link>
-      <span class="tab off" title="ระบบอ่าน Named range จากชีตนี้ตอนบันทึก">Summary (Named ranges)</span>
+      <span class="tab on">Cost_Sheet_Template</span>
+      <router-link v-if="existing" :to="`/projects/${p.id}/quotation/new?cs=${cs.id}`" class="tab">Quotation_Template</router-link>
+      <span v-else class="tab off" title="บันทึก Cost Sheet ก่อน">Quotation_Template</span>
       <span class="sp" />
-      <span class="small">COGS {{ baht(t?.cogs ?? 0) }} · GM {{ t?.gmPct }}% · CM {{ t?.cmPct }}%</span>
+      <span class="small">Revenue {{ money(t.revenue) }} · Margin {{ t.gmPct }}% · CM {{ t.cmPct }}%</span>
     </footer>
   </div>
   <div v-else class="page"><h1>{{ p ? 'ไม่มีสิทธิ์เปิด Cost Sheet' : 'ไม่พบโครงการ' }}</h1><p class="muted">Cost Sheet มีต้นทุนภายใน — เปิดได้เฉพาะ Owner, SM, ผู้อนุมัติ และผู้บริหาร</p><router-link to="/projects">กลับไปทะเบียนโครงการ</router-link></div>
 </template>
 
 <style scoped>
-.xl { display: flex; flex-direction: column; height: calc(100vh - 60px); background: #fff; color: #1f1f1f; font-family: 'Segoe UI', var(--font); }
+.xl { display: flex; flex-direction: column; height: calc(100vh - 60px); background: #fff; color: #1f1f1f; }
 .xbar { display: flex; align-items: center; gap: 12px; background: #107c41; color: #fff; padding: 8px 16px; }
 .xback { color: #fff; display: inline-flex; padding: 6px; border-radius: 4px; }
 .xback:hover { background: rgb(255 255 255 / 0.15); }
@@ -208,57 +271,66 @@ const catTotals = computed(() => (t.value ? (Object.keys(COST_CATEGORIES) as Cos
 .xfile span { font-size: 12px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp { flex: 1; }
 .xuser { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
-.av { width: 26px; height: 26px; border-radius: 50%; background: #0b5a2f; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
+.av { width: 26px; height: 26px; border-radius: 50%; background: #0b5a2f; display: grid; place-items: center; font-size: 12px; font-weight: 600; }
 .xribbon { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-bottom: 1px solid #e1dfdd; background: #f8f8f8; flex-wrap: wrap; }
 .rb { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; background: none; border-radius: 4px; padding: 6px 10px; font: 14px var(--font); color: #1f1f1f; cursor: pointer; min-height: 34px; }
 .rb:hover { background: #e9e9e9; }
 .rb.strong { background: #107c41; color: #fff; }
 .rb.strong:hover { background: #0e6b38; }
 .sep { width: 1px; height: 22px; background: #d2d0ce; margin: 0 4px; }
-.add { position: relative; }
-.menu { position: absolute; z-index: 10; top: 38px; left: 0; display: grid; background: #fff; border: 1px solid #d2d0ce; border-radius: 6px; box-shadow: var(--shadow-pop); padding: 4px; min-width: 260px; }
-.mi { text-align: left; border: 0; background: none; padding: 8px 10px; font: 14px var(--font); border-radius: 4px; cursor: pointer; }
-.mi:hover { background: #f0f6f2; }
 .xro { display: flex; gap: 8px; align-items: center; padding: 6px 16px; background: #fff4ce; color: #6b5300; font-size: 13px; }
+.xerr { display: flex; gap: 8px; align-items: center; padding: 6px 16px; background: #fde7e9; color: #a4262c; font-size: 13px; }
 .fbar { display: flex; align-items: center; border-bottom: 1px solid #e1dfdd; font-size: 13px; min-height: 30px; }
 .nb { width: 80px; padding: 0 10px; border-right: 1px solid #e1dfdd; font-weight: 600; }
 .fx { padding: 0 10px; color: #605e5c; font-style: italic; border-right: 1px solid #e1dfdd; }
-.fv { padding: 0 10px; font-family: Consolas, monospace; color: #1f1f1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sheet { flex: 1; overflow: auto; background: #fff; }
-table { border-collapse: collapse; table-layout: fixed; font-size: 13px; width: 1242px; }
+.fv { padding: 0 10px; font-family: Consolas, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet { flex: 1; overflow: auto; }
+table { border-collapse: collapse; table-layout: fixed; font-size: 13px; width: 1660px; }
 col.rn { width: 44px; }
 thead th { position: sticky; top: 0; z-index: 2; background: #f3f2f1; color: #605e5c; font-weight: 400; border: 1px solid #e1dfdd; height: 22px; text-align: center; }
-td { border: 1px solid #e8e8e8; height: 30px; padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+td { border: 1px solid #ececec; height: 28px; padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 td.rh { position: sticky; left: 0; z-index: 1; background: #f3f2f1; color: #605e5c; text-align: center; padding: 0; border-color: #e1dfdd; }
-.title { font-size: 18px; font-weight: 700; color: #107c41; height: 40px; }
+.title { font-size: 17px; font-weight: 700; color: #c4382f; height: 34px; }
+.sub { font-size: 15px; font-weight: 600; }
 .note { color: #605e5c; font-size: 12px; }
+.sec { background: #3f3f46; color: #fff; font-weight: 700; letter-spacing: 0.02em; }
 .lbl { color: #323130; font-weight: 600; }
 .r { text-align: right; }
 .c { text-align: center; }
-td.ro { background: #f3f2f1; color: #323130; cursor: default; }
-td.in { padding: 0; background: #fff; }
-td.in input, td.in select { width: 100%; height: 29px; border: 0; padding: 0 6px; font: inherit; background: transparent; color: inherit; }
+td.ro { background: #f3f2f1; }
+td.ro.none { background: none; }
+td.in { padding: 0; }
+td.in input, td.in select { width: 100%; height: 27px; border: 0; padding: 0 6px; font: inherit; background: transparent; color: inherit; }
 td.in input:focus, td.in select:focus { outline: 2px solid #107c41; outline-offset: -2px; background: #fff; }
 td.in input:disabled, td.in select:disabled { color: #323130; opacity: 1; }
-td.in input[type='number'], td.in input.num { text-align: right; }
-.na { display: block; height: 29px; background: repeating-linear-gradient(135deg, #fafafa, #fafafa 4px, #f2f2f2 4px, #f2f2f2 8px); }
-td.fm { background: #eef6fc; text-align: right; cursor: cell; }
+td.in input[type='number'] { text-align: right; }
+.na { display: block; height: 27px; background: repeating-linear-gradient(135deg, #fafafa, #fafafa 4px, #f2f2f2 4px, #f2f2f2 8px); }
+td.fm { background: #eef6fc; text-align: right; cursor: cell; font-variant-numeric: tabular-nums; }
+td.fm.blank { background: #f6fafd; }
 td.fm:focus { outline: 2px solid #107c41; outline-offset: -2px; }
-.hd td { background: #107c41; color: #fff; font-weight: 600; font-size: 12px; }
-.hd td.rh { background: #f3f2f1; color: #605e5c; font-weight: 400; }
+.hd td { background: #e9e9e9; font-weight: 600; font-size: 12px; text-align: center; }
+.hd td.rh { font-weight: 400; }
+.grp td { background: #fafafa; }
+.grp td.fm { background: #e3eff9; }
 .b { font-weight: 700; }
-.tot td.lbl, .tot td.fm { background: #dff1e6; }
-.good { color: #107c41; } .warn { color: #9a6700; } .neg { color: #c4382f; }
+.tot td.lbl { background: #f3f2f1; }
+.tot.cm td.fm, .tot.cm td.lbl { background: #dff1e6; }
+.good { color: #107c41; } .warn, .tot.warn td.fm { color: #9a6700; } .neg, .tot.neg td.fm { color: #c4382f; }
 .bad td.in { box-shadow: inset 0 0 0 1px #c4382f; }
-.msg { color: #c4382f; font-size: 12px; }
-.grip { cursor: grab; color: #8a8886; font-size: 16px; user-select: none; }
+.tr td { color: #605e5c; }
+.grip { cursor: grab; color: #8a8886; user-select: none; }
 .dragging { opacity: 0.5; }
-.del { border: 0; background: none; color: #8a8886; cursor: pointer; padding: 4px; border-radius: 4px; }
+.del { border: 0; background: none; color: #8a8886; cursor: pointer; padding: 3px; border-radius: 4px; }
 .del:hover { background: #fde7e9; color: #c4382f; }
+.addrow { border: 0; background: none; color: #107c41; font: 13px var(--font); cursor: pointer; padding: 2px 4px; }
+.addrow:hover { text-decoration: underline; }
+td.sign { height: 56px; vertical-align: top; padding-top: 4px; white-space: normal; }
+td.sign b, td.sign span { display: block; }
 .xtabs { display: flex; align-items: center; gap: 2px; border-top: 1px solid #e1dfdd; background: #f3f2f1; padding: 0 12px; min-height: 34px; font-size: 13px; }
-.tab { padding: 6px 14px; color: #323130; border-radius: 0 0 4px 4px; }
+.tab { padding: 6px 14px; color: #323130; }
 .tab.on { background: #fff; color: #107c41; font-weight: 600; border-bottom: 2px solid #107c41; }
 .tab.off { color: #8a8886; }
 a.tab:hover { background: #e9e9e9; text-decoration: none; }
-@media (max-width: 640px) { .xfile span, .xuser { display: none; } .xbar { padding: 8px; } }
+@media (max-width: 640px) { .xfile span, .xuser, .xribbon .small { display: none; } .xbar { padding: 8px; } .xfile strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+.xl { min-width: 0; max-width: 100%; overflow: hidden; }
 </style>

@@ -1,7 +1,10 @@
-// Printable Quotation (company form: red / white / grey). Rendered into an iframe for the PDF
-// preview; the server renders the same HTML to PDF in production.
+// Printable Quotation laid out like the company sheet "Quotation_Template": QUOTATION title,
+// Customer block, Quotation No. / Date / Version Revise / Project, item table (ITEM · PART NO. ·
+// Product Description · QTY. · Unit Price · Amount), Total / Special Discount / Subtotal / VAT 7% /
+// Grand Total, Conditions and the three signature boxes. Rendered into an iframe for the preview;
+// the server renders the same HTML to PDF in production.
 import type { Project, Quotation } from '../../data/model'
-import { account, person } from '../../data/mock'
+import { account } from '../../data/mock'
 import { bahtText } from '../../domain/quotation'
 import { quoteTotals } from '../../domain/salesdocs'
 
@@ -9,38 +12,41 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const m = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const th = (iso: string) => (iso ? new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '—')
 
-export function quoteHtml(p: Project, q: Quotation, contactName: string): string {
+export function quoteHtml(p: Project, q: Quotation): string {
   const t = quoteTotals(q)
-  const cust = account(p.customerAccountId)
-  const lines = q.items.map((i, k) => {
-    const [head, ...bullets] = i.description.split('\n')
-    return `<tr><td class="c">${k + 1}</td><td><b>${esc(head)}</b>${bullets.filter(Boolean).map((b) => `<div class="b">• ${esc(b.replace(/^[-•]\s*/, ''))}</div>`).join('')}</td><td class="r">${i.qty.toLocaleString('en-US')}</td><td class="c">${esc(i.unit)}</td><td class="r">${m(i.unitPrice)}</td><td class="r">${m(i.qty * i.unitPrice)}</td></tr>`
-  }).join('')
-  const terms = q.terms.map((x) => `<tr><td class="c">${x.no}</td><td class="r">${x.pct}%</td><td>${esc(x.condition)}</td><td class="r">${m((t.subtotal * x.pct) / 100)}</td></tr>`).join('')
+  const cust = account(p.customerAccountId)?.name ?? p.customer
+  const lines = q.items.map((i, k) => `<tr><td class="c">${k + 1}</td><td>${esc(i.partNo ?? '')}</td><td>${esc(i.description)}</td><td class="r">${i.qty.toLocaleString('en-US')}</td><td class="r">${m(i.unitPrice)}</td><td class="r">${m(i.qty * i.unitPrice)}</td></tr>`).join('')
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(q.docNo)} rev.${q.revision}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 @page{size:A4;margin:14mm}body{font-family:Sarabun,sans-serif;color:#222;font-size:13px;margin:0;padding:24px}
-.hd{display:flex;justify-content:space-between;border-bottom:4px solid #E2332B;padding-bottom:10px}.brand{font-size:22px;font-weight:700;color:#E2332B}
-.brand small{display:block;color:#666;font-size:12px;font-weight:400}h1{font-size:22px;margin:0;text-align:right}h1 small{display:block;font-size:12px;color:#666;font-weight:400}
-.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.box{background:#f4f4f5;border-radius:6px;padding:10px 12px}.box b{display:block;color:#E2332B;font-size:12px;margin-bottom:2px}
-table{width:100%;border-collapse:collapse;margin:8px 0}th{background:#3f3f46;color:#fff;font-weight:600;padding:6px;font-size:12px}td{border-bottom:1px solid #e4e4e7;padding:6px;vertical-align:top}
-.r{text-align:right}.c{text-align:center}.b{color:#555;padding-left:8px}.tot{width:46%;margin-left:auto}.tot td{border:0;padding:3px 6px}.gt td{background:#E2332B;color:#fff;font-weight:700;font-size:15px}
-.words{text-align:right;color:#555;margin:4px 0 12px}h3{font-size:14px;color:#E2332B;margin:14px 0 4px}.sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;text-align:center}.sig div{border-top:1px solid #999;padding-top:6px}
-.draft{position:fixed;top:40%;left:20%;font-size:90px;color:rgba(226,51,43,.08);transform:rotate(-25deg);font-weight:700}
+h1{margin:0 0 10px;font-size:26px;letter-spacing:.08em;color:#E2332B;border-bottom:4px solid #E2332B;padding-bottom:6px}
+.top{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}.box{background:#f4f4f5;border-radius:6px;padding:10px 12px;line-height:1.7}.box b.h{display:block;color:#E2332B}
+.intro{margin:14px 0 8px;color:#444}table{width:100%;border-collapse:collapse}th{background:#3f3f46;color:#fff;font-weight:600;padding:6px;font-size:12px}
+td{border-bottom:1px solid #e4e4e7;padding:6px;vertical-align:top}.r{text-align:right}.c{text-align:center}.proj td{font-weight:700;background:#fafafa}
+.tot{width:48%;margin-left:auto;margin-top:6px}.tot td{border:0;padding:3px 6px}.gt td{background:#E2332B;color:#fff;font-weight:700;font-size:15px}
+.words{text-align:right;color:#555;margin:4px 0 2px}.cur{color:#555;margin:2px 0 10px}h3{font-size:14px;color:#E2332B;margin:12px 0 4px}
+.cond td{border:0;padding:2px 6px}.cond td:first-child{width:150px;font-weight:600}.thanks{margin:14px 0 0}
+.sig{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:46px;text-align:center}.sig div{border-top:1px solid #999;padding-top:6px;line-height:1.5}.sig small{color:#666}
+.draft{position:fixed;top:40%;left:18%;font-size:90px;color:rgba(226,51,43,.08);transform:rotate(-25deg);font-weight:700}
 </style></head><body>
 ${q.status !== 'APPROVED' ? `<div class="draft">${q.status === 'PENDING' ? 'รออนุมัติ' : 'DRAFT'}</div>` : ''}
-<div class="hd"><div class="brand">Stream I.T. Consulting<small>บริษัท สตรีม ไอที คอนซัลติ้ง จำกัด · เลขประจำตัวผู้เสียภาษี 0105556000000</small></div>
-<h1>ใบเสนอราคา<small>${esc(q.docNo)} rev.${q.revision}</small></h1></div>
-<div class="meta"><div class="box"><b>ลูกค้า</b>${esc(cust?.name ?? p.customer)}<br>${cust?.taxId ? 'เลขผู้เสียภาษี ' + esc(cust.taxId) + '<br>' : ''}${esc(cust?.province ?? '')}<br>ผู้ติดต่อ: ${esc(contactName || '—')}</div>
-<div class="box"><b>รายละเอียด</b>วันที่: ${th(q.issueDate)}<br>ยืนราคาถึง: ${th(q.validUntil)}<br>โครงการ: ${esc(q.projectName)}<br>พนักงานขาย: ${esc(p.sales.join(', ') || '—')}</div></div>
-<table><thead><tr><th>ลำดับ</th><th>รายการ / ขอบเขตงาน</th><th>จำนวน</th><th>หน่วย</th><th>ราคา/หน่วย</th><th>จำนวนเงิน</th></tr></thead><tbody>${lines}</tbody></table>
-<table class="tot"><tr><td>ราคารวม</td><td class="r">${m(t.gross)}</td></tr><tr><td>ส่วนลดพิเศษ</td><td class="r">${t.discount ? '-' + m(t.discount) : '0.00'}</td></tr>
-<tr><td>Subtotal (ก่อน VAT)</td><td class="r">${m(t.subtotal)}</td></tr><tr><td>VAT 7%</td><td class="r">${m(t.vat)}</td></tr><tr class="gt"><td>Grand Total</td><td class="r">${m(t.grand)}</td></tr></table>
-<p class="words">(${bahtText(t.grand)})</p>
-<h3>ระยะเวลาดำเนินงาน</h3><p>${esc(q.duration)}</p>
-<h3>งวดการชำระเงิน</h3><table><thead><tr><th>งวด</th><th>%</th><th>เงื่อนไขส่งมอบ</th><th>จำนวนเงิน (ก่อน VAT)</th></tr></thead><tbody>${terms}</tbody></table>
-${q.warranty ? `<h3>การรับประกัน / SLA</h3><p>${esc(q.warranty)}</p>` : ''}${q.exclusions ? `<h3>สิ่งที่ไม่รวมในราคา / สิ่งที่ลูกค้าต้องจัดเตรียม</h3><p>${esc(q.exclusions)}</p>` : ''}${q.remark ? `<h3>หมายเหตุ</h3><p>${esc(q.remark)}</p>` : ''}
-<div class="sig"><div>ผู้เสนอราคา<br>${esc(person(p.sm)?.name ?? '')}<br><small>Solution Manager</small></div><div>ผู้อนุมัติ<br>${esc(person('tc')?.name ?? '')}<br><small>ผู้บริหาร DT</small></div></div>
+<h1>QUOTATION</h1>
+<div class="top"><div class="box"><b class="h">Customer</b>Name: ${esc(q.contact ?? '—')}<br>Company Name: ${esc(cust)}<br>Phone/Fax: ${esc(q.phone ?? '—')}<br>Email: ${esc(q.email ?? '—')}</div>
+<div class="box">Quotation No.: ${esc(q.docNo)}<br>Date: ${th(q.issueDate)}<br>[Version Revise] : ${q.revision}<br>Project : ${esc(q.projectName)}</div></div>
+<p class="intro">We are pleased to submit you the following quotation and offer to sell or service the product described herein at price, items, and stated as below</p>
+<table><thead><tr><th>ITEM</th><th>PART NO.</th><th>Product Description</th><th>QTY.</th><th>Unit Price</th><th>Amount</th></tr></thead>
+<tbody><tr class="proj"><td></td><td></td><td colspan="4">${esc(q.projectName)}</td></tr>${lines}</tbody></table>
+<table class="tot"><tr><td>Total</td><td class="r">${m(t.total)}</td></tr><tr><td>Special Discount</td><td class="r">${m(t.discount)}</td></tr>
+<tr><td>Subtotal</td><td class="r">${m(t.subtotal)}</td></tr><tr><td>Vat 7%</td><td class="r">${m(t.vat)}</td></tr><tr class="gt"><td>Grand Total</td><td class="r">${m(t.grand)}</td></tr></table>
+<p class="words">(${bahtText(t.grand)})</p><p class="cur">All price quoted in [Thai Baht]</p>
+<h3>Conditions</h3><table class="cond">
+<tr><td>Price validity</td><td>ยืนราคาถึง ${th(q.validUntil)}</td></tr><tr><td>Term of payment</td><td>${esc(q.termOfPayment)}</td></tr>
+<tr><td>Term of delivery</td><td>${esc(q.termOfDelivery)}</td></tr><tr><td>Vat7%</td><td>${q.vatIncluded ? 'include' : 'exclude'}</td></tr>
+<tr><td>Warranty</td><td>${esc(q.warranty)}</td></tr><tr><td>Sales Person</td><td>${esc(q.salesPerson)}</td></tr>${q.remark ? `<tr><td>Remark</td><td>${esc(q.remark)}</td></tr>` : ''}</table>
+<p class="thanks">Thank you for your business.</p>
+<div class="sig"><div>Sincerely by<br><b>${esc(q.salesPerson.split(',')[0] || '—')}</b><br><small>Account Manager<br>Stream I.T. Consulting Limited</small></div>
+<div>Verify and Approved by<br><b>${esc((q.approvedBy ?? '').split(' (')[0] || '—')}</b><br><small>${esc((q.approvedBy ?? '').match(/\((.+)\)/)?.[1] ?? '')}<br>Stream I.T. Consulting Limited</small></div>
+<div>Accepted by<br><b>(Name Printed)</b><br><small>(Title)<br>${esc(cust)}</small></div></div>
 </body></html>`
 }

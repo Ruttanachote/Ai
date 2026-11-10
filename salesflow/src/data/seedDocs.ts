@@ -1,39 +1,49 @@
 // Demo sales documents: Cost Sheet / Quotation revisions that match each project's approval
 // record, plus the uploaded files already in the folders.
-import type { CostItem, CostSheet, DocStatus, Project, ProjectDocument, Quotation, Stakeholder } from './model'
-import { docNo, linesFromCostSheet, standardName, folderOf } from '../domain/salesdocs.ts'
+import type { CostLine, CostSheet, DocStatus, Project, ProjectDocument, Quotation, RevenueLine, Stakeholder } from './model'
+import { docNo, linesFromCostSheet, standardName, folderOf, DEFAULT_PAYMENTS, paymentText } from '../domain/salesdocs.ts'
 
-const items = (cogs: number, months: number): CostItem[] => {
-  const mp = Math.round(cogs * 0.42), hw = Math.round(cogs * 0.3), sw = Math.round(cogs * 0.12)
-  const md = Math.round(mp / 6500)
-  const mpReal = md * 6500
+// Revenue and cost lines in the template's groups that add up to the approved figures.
+const revenueLines = (p: Project, revenue: number): RevenueLine[] => {
+  const sw = Math.round(revenue * 0.55), hw = Math.round(revenue * 0.3)
   return [
-    { id: 'i1', category: 'manpower', description: 'พัฒนาระบบและติดตั้ง', role: 'Developer', manday: Math.round(md * 0.6), rate: 6500 },
-    { id: 'i2', category: 'manpower', description: 'วิเคราะห์ระบบ', role: 'SA', manday: md - Math.round(md * 0.6), rate: 6500 },
-    { id: 'i3', category: 'hardware', description: 'Server และอุปกรณ์เครือข่าย', qty: 2, unitCost: Math.round(hw / 2), vendor: 'Dell Technologies' },
-    { id: 'i4', category: 'software', description: 'License ฐานข้อมูล', qty: 1, unitCost: Math.round(sw / months), months, note: 'ใช้ subscription รายเดือนตามระยะโครงการ' },
-    { id: 'i5', category: 'other', description: 'เดินทาง อบรม และเอกสาร', amount: cogs - mpReal - Math.round(hw / 2) * 2 - Math.round(sw / months) * months },
+    { id: 'r1', type: 'Software', description: `ระบบ ${p.name} (License และพัฒนาเพิ่มเติม)`, qty: 1, unitPrice: sw, partNo: 'SW-01' },
+    { id: 'r2', type: 'Hardware', description: 'Server และอุปกรณ์เครือข่าย', qty: 1, unitPrice: hw, partNo: 'HW-01' },
+    { id: 'r3', type: 'Imp SVC', description: 'ติดตั้ง ทดสอบ และอบรมการใช้งาน', qty: 1, unitPrice: revenue - sw - hw },
+  ]
+}
+const costLines = (cogs: number): CostLine[] => {
+  const hw = Math.round(cogs * 0.38), sw = Math.round(cogs * 0.27)
+  return [
+    { id: 'c1', group: 'hardware', description: 'Server 2 ชุด (Dell)', qty: 2, unitPrice: Math.round(hw / 2), partNo: 'R760' },
+    { id: 'c2', group: 'software', description: 'License ฐานข้อมูลและ OS', qty: 1, unitPrice: sw },
+    { id: 'c3', group: 'outsource', description: 'งานพัฒนาส่วน Mobile (ผู้รับเหมา)', qty: 1, unitPrice: cogs - Math.round(hw / 2) * 2 - sw },
+    { id: 'c4', group: 'manday', description: 'ทีมพัฒนาและติดตั้ง', qty: 120, unitPrice: 6500 },
+    { id: 'c5', group: 'operational', sub: 'Transportation cost', description: 'เดินทางติดตั้งหน้างาน', qty: 4, unitPrice: 15000 },
+    { id: 'c6', group: 'entertainment', sub: 'Miscellaneous/Entertainment', description: 'รับรองลูกค้า', qty: 1, unitPrice: 30000 },
+    { id: 'c7', group: 'contingency', sub: 'Contingency (5%)', description: 'สำรองความเสี่ยง', qty: 0.05 },
+    { id: 'c8', group: 'inter', sub: 'Prime SM', description: 'Solution Management', qty: 1, unitPrice: 0 },
   ]
 }
 
 let seq = 51
-function sheet(p: Project, rev: number, status: DocStatus, revenue: number, cogs: number, by: string, at: string, months = 6): CostSheet {
+function sheet(p: Project, rev: number, status: DocStatus, revenue: number, cogs: number, by: string, at: string): CostSheet {
   return {
-    id: `cs-${p.id}-${rev}`, docNo: docNo('CS', 2026, seq), revision: rev, status, source: 'form', projectMonths: months, maMonths: 12,
-    preparedAt: at, createdBy: by, items: items(cogs, months), revenue,
-    entertainment: { mode: 'pct', value: 0.5 }, contingency: { mode: 'pct', value: 2 },
+    id: `cs-${p.id}-${rev}`, docNo: docNo('CS', 2026, seq), revision: rev, status, source: 'form',
+    refNo: String(69000000 + seq), profitCenter: p.team, preparedAt: at, createdBy: by,
+    revenue: revenueLines(p, revenue), payments: [...DEFAULT_PAYMENTS], costs: costLines(cogs),
     approvedAt: status === 'APPROVED' ? at : undefined,
   }
 }
 function quote(p: Project, cs: CostSheet, contact?: string): Quotation {
+  const st = p.stakeholders?.find((x) => x.id === contact)
   const until = new Date(cs.preparedAt + 'T00:00:00Z'); until.setUTCDate(until.getUTCDate() + 60)
   return {
     id: `qt-${p.id}-${cs.revision}`, docNo: cs.docNo.replace('CS', 'QT'), revision: cs.revision, status: cs.status, costSheetId: cs.id,
-    issueDate: cs.preparedAt, validUntil: until.toISOString().slice(0, 10), contact, projectName: p.name,
-    items: linesFromCostSheet(cs).map((l, i) => ({ id: `ql${i}`, ...l })), discount: { mode: 'baht', value: 0 },
-    duration: `${cs.projectMonths} เดือนนับจากวันลงนามสัญญา`,
-    terms: [{ no: 1, pct: 30, condition: 'ส่งมอบแผนงานและ Requirement' }, { no: 2, pct: 40, condition: 'ติดตั้งและทดสอบระบบ' }, { no: 3, pct: 30, condition: 'ตรวจรับงานงวดสุดท้าย' }],
-    warranty: 'รับประกัน 12 เดือนนับจากวันตรวจรับ · SLA มาตรฐาน 8x5', exclusions: 'ไม่รวมค่าเช่าพื้นที่ Data Center และอุปกรณ์ปลายทางของผู้ใช้', remark: '',
+    issueDate: cs.preparedAt, validUntil: until.toISOString().slice(0, 10), contact: st?.name ?? 'ฝ่ายจัดซื้อ', phone: st?.phone, email: st?.email, projectName: p.name,
+    items: linesFromCostSheet(cs).map((l, i) => ({ id: `ql${i}`, ...l })), discount: 0,
+    termOfPayment: paymentText(cs.payments), termOfDelivery: 'ภายใน 180 วันนับจากวันลงนามสัญญา / PO', vatIncluded: true,
+    warranty: 'รับประกัน 12 เดือนนับจากวันตรวจรับ · SLA มาตรฐาน 8x5', salesPerson: p.sales.join(', '), approvedBy: 'Thanakorn C. (ผู้บริหาร DT)', remark: '',
     createdBy: cs.createdBy, createdAt: cs.preparedAt, approvedAt: cs.approvedAt,
   }
 }
