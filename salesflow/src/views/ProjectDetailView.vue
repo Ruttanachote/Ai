@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
 import StageRail from '../components/StageRail.vue'
@@ -17,8 +17,10 @@ import PmRounds from '../components/PmRounds.vue'
 import RequirementPanel from '../components/RequirementPanel.vue'
 import ProcurementPanel from '../components/ProcurementPanel.vue'
 import { moveStage, notify, projects, session, scope } from '../store'
-import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account } from '../data/mock'
-import { validateMove, checkContractValue, appealWindowEnd, reopenAsNew, isTender } from '../domain/rules'
+import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account, ACCOUNTS, SALES_TEAMS } from '../data/mock'
+import { stageChecklist, type Fix } from '../domain/nextstep'
+import { log } from '../docstore'
+import { validateMove, checkContractValue, appealWindowEnd, reopenAsNew, isTender, requirementsFor } from '../domain/rules'
 import { SETTINGS, newApprovalSteps } from '../store'
 import { probability, weightedValue, dealValue, teamShare } from '../domain/metrics'
 import { allowedMoves, stageOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
@@ -52,7 +54,8 @@ const forward = computed(() => !!target.value && !['lose', 'cancelled'].includes
 const gate = ref<boolean[]>([])
 const loss = ref({ reason: '', competitor: '', price: null as number | null })
 const contractValue = ref<number | null>(null)
-const contractFile = ref(true)
+// Signed contract / PO comes from the documents folders, not a tick box.
+const contractFile = computed(() => (p.value?.documents ?? []).some((d) => !d.deletedAt && (d.folder === 'contract' || d.folder === 'official-po')))
 watch(target, () => {
   gate.value = p.value ? stageOf(p.value.stage).exit.map(() => false) : []
   loss.value = { reason: '', competitor: '', price: null }
@@ -76,6 +79,56 @@ const check = computed(() =>
     : { ok: false, errors: [] },
 )
 const blocking = computed(() => check.value.errors.filter((e) => !e.startsWith('ยังไม่ได้ยืนยันเงื่อนไข')))
+/* ---------- Step guide: what is still missing for the next status, and a link to fix each ---------- */
+const forwardMoves = computed(() => moves.value.filter((m) => !['lose', 'cancelled'].includes(m)))
+const guideTo = ref<StageKey | null>(null)
+const guideTarget = computed(() => (guideTo.value && forwardMoves.value.includes(guideTo.value) ? guideTo.value : forwardMoves.value[0] ?? null))
+const guide = computed(() => (p.value && guideTarget.value ? stageChecklist(p.value, guideTarget.value, TODAY_ISO) : []))
+const guideDone = computed(() => guide.value.filter((i) => i.ok).length)
+const missingFor = (to: StageKey) => (p.value ? stageChecklist(p.value, to, TODAY_ISO).filter((i) => !i.ok).length : 0)
+// In the move dialog: checklist items get "fix" buttons; anything else stays as text.
+const dialogItems = computed(() => (p.value && target.value ? stageChecklist(p.value, target.value, TODAY_ISO).filter((i) => !i.ok) : []))
+const otherBlocking = computed(() => { const req = p.value && target.value ? requirementsFor(target.value, p.value, TODAY_ISO) : []; return blocking.value.filter((e) => !req.includes(e)) })
+const tabsEl = ref<HTMLElement | null>(null)
+const focusFolder = ref<string | null>(null)
+function doFix(f: Fix) {
+  target.value = null
+  if (f.kind === 'edit') return openEdit(f.field)
+  if (f.kind === 'folder') { tab.value = 'overview'; focusFolder.value = null; nextTick(() => (focusFolder.value = f.folder)); return }
+  tab.value = f.tab
+  nextTick(() => tabsEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+}
+/* ---------- Edit project data (customer, team, Sale, dates) ---------- */
+const canEditInfo = computed(() => !!p.value && (isOwner(p.value) || ['head', 'admin'].includes(session.role)))
+const edit = reactive({ open: false, field: '', customer: '', endUser: '', team: '', sales: '', expectedClose: '', bidDue: '', budget: 0 })
+const customers = ACCOUNTS.filter((a) => a.type === 'customer')
+const endUsers = computed(() => ACCOUNTS.filter((a) => a.type !== 'competitor' && (a.id === edit.customer || a.parentId === edit.customer || a.type === 'end_user')))
+function openEdit(field = '') {
+  if (!p.value) return
+  Object.assign(edit, { open: true, field, customer: p.value.customerAccountId ?? '', endUser: p.value.endUserAccountId ?? '', team: p.value.team, sales: p.value.sales.join(', '), expectedClose: p.value.expectedClose ?? '', bidDue: p.value.bidDue ?? '', budget: p.value.budget })
+  nextTick(() => document.getElementById(`ed-${field || 'customer'}`)?.focus())
+}
+function saveEdit() {
+  const x = p.value
+  if (!x) return
+  const ch = (label: string, from: string | undefined, to: string | undefined) => { if ((from ?? '') !== (to ?? '')) log(x, 'field', `แก้ ${label}`, from || '—', to || '—') }
+  ch('ลูกค้า', account(x.customerAccountId)?.name, account(edit.customer)?.name)
+  ch('End User', account(x.endUserAccountId)?.name, account(edit.endUser)?.name)
+  ch('ทีม DT', x.team, edit.team)
+  const sales = edit.sales.split(',').map((v) => v.trim()).filter(Boolean)
+  ch('Sale', x.sales.join(', '), sales.join(', '))
+  ch('Expected Close', x.expectedClose, edit.expectedClose || undefined)
+  ch('Bid Due Date', x.bidDue, edit.bidDue || undefined)
+  ch('Budget ลูกค้า', String(x.budget), String(edit.budget))
+  x.customerAccountId = edit.customer || undefined
+  if (edit.customer) x.customer = account(edit.customer)?.name ?? x.customer
+  x.endUserAccountId = edit.endUser || undefined
+  if (edit.endUser) x.endUser = account(edit.endUser)?.name ?? x.endUser
+  x.team = edit.team; x.sales = sales
+  x.expectedClose = edit.expectedClose || undefined; x.bidDue = edit.bidDue || undefined; x.budget = Number(edit.budget) || 0
+  edit.open = false
+  notify('บันทึกข้อมูลโครงการแล้ว')
+}
 const appealEnd = computed(() => (p.value ? appealWindowEnd(p.value) : undefined))
 const aging = computed(() => {
   if (!p.value?.stageSince) return null
@@ -166,7 +219,7 @@ const dates = computed(() => p.value ? [
           <template v-if="fromLost"> · เปิดใหม่จาก <router-link :to="`/projects/${fromLost.id}`">{{ fromLost.code }}</router-link></template>
         </p>
         <div v-if="moves.length || canReopen || isOwner(p)" class="moves">
-          <button v-for="m in moves" :key="m" class="btn" :class="m === 'lose' || m === 'cancelled' ? 'quiet' : 'light'" @click="target = m">ย้ายไป {{ stageOf(m).label }}</button>
+          <button v-for="m in moves" :key="m" class="btn" :class="m === 'lose' || m === 'cancelled' ? 'quiet' : 'light'" @click="target = m">ย้ายไป {{ stageOf(m).label }}<span v-if="!['lose', 'cancelled'].includes(m) && missingFor(m)" class="miss">ขาด {{ missingFor(m) }}</span></button>
           <button v-if="canReopen" class="btn light" @click="reopen">เปิดโครงการใหม่จากดีลนี้</button>
           <button v-if="isOwner(p) && ['pipeline', 'forecast', 'rebidding'].includes(p.stage) && p.approval?.status !== 'pending'" class="btn light" @click="tab = 'cost'">Send to Approve</button>
         </div>
@@ -176,10 +229,30 @@ const dates = computed(() => p.value ? [
 
     <section class="panel railbox">
       <StageRail :stage="p.stage" />
-      <p class="next"><strong>Next step</strong> {{ p.nextStep }}</p>
+      <div v-if="guideTarget" class="guide" aria-label="ขั้นตอนก่อนเปลี่ยนสถานะ">
+        <div class="gh">
+          <div>
+            <p class="gt">ขั้นถัดไป · ต้องทำให้ครบก่อนย้ายไป <b>{{ stageOf(guideTarget).label }}</b></p>
+            <p class="small muted">ทำครบแล้ว {{ guideDone }} จาก {{ guide.length }} รายการ{{ guide.length ? '' : ' — ไม่มีเงื่อนไขข้อมูล ยืนยันเกณฑ์ในขั้นตอนย้ายได้เลย' }}</p>
+          </div>
+          <div v-if="forwardMoves.length > 1" class="seg" role="radiogroup" aria-label="สถานะเป้าหมาย">
+            <button v-for="m in forwardMoves" :key="m" role="radio" :aria-checked="guideTarget === m" @click="guideTo = m">{{ stageOf(m).label }}</button>
+          </div>
+          <button class="btn" :class="guideDone === guide.length ? 'primary' : ''" @click="target = guideTarget">{{ guideDone === guide.length ? `ย้ายไป ${stageOf(guideTarget).label}` : 'ดูเงื่อนไขทั้งหมด' }}</button>
+        </div>
+        <div v-if="guide.length" class="gbar" role="progressbar" :aria-valuenow="guideDone" :aria-valuemax="guide.length"><i :style="{ width: (guideDone / guide.length) * 100 + '%' }" /></div>
+        <ol class="gl">
+          <li v-for="(i, k) in guide" :key="i.id" :class="{ ok: i.ok }">
+            <span class="gn" :aria-label="i.ok ? 'ทำแล้ว' : 'ยังไม่ได้ทำ'">{{ i.ok ? '✓' : k + 1 }}</span>
+            <span class="gi"><b>{{ i.label }}</b><span class="small muted">{{ i.hint }}</span></span>
+            <button v-if="!i.ok && (i.fix.kind !== 'edit' || canEditInfo)" class="btn sm" @click="doFix(i.fix)">{{ i.doLabel }} →</button>
+          </li>
+        </ol>
+      </div>
+      <p class="next"><strong>Next step</strong> {{ p.nextStep }}<button v-if="canEditInfo" class="btn ghost sm edit" @click="openEdit()">แก้ข้อมูลโครงการ</button></p>
     </section>
 
-    <div class="tabs" role="tablist">
+    <div ref="tabsEl" class="tabs" role="tablist">
       <button v-for="t in tabs" :key="t.k" role="tab" :aria-selected="tab === t.k" @click="tab = t.k">{{ t.l }}</button>
     </div>
 
@@ -241,7 +314,7 @@ const dates = computed(() => p.value ? [
       </div>
 
       <div class="right">
-        <DocumentsPanel :p="p" @open-cost="tab = 'cost'" />
+        <DocumentsPanel :p="p" :focus="focusFolder" @open-cost="tab = 'cost'" />
         <section v-if="children.length" class="panel">
           <div class="panel-head"><h2>โครงการ MA ต่อเนื่อง</h2></div>
           <router-link v-for="c in children" :key="c.id" :to="`/projects/${c.id}`" class="child">
@@ -269,7 +342,7 @@ const dates = computed(() => p.value ? [
             <input id="cv" v-model.number="contractValue" class="input num" type="number" min="0" step="1000" />
             <span class="hint">อนุมัติไว้ {{ baht(p.approval?.snapshot?.revenue ?? p.revenue) }} · ต่างได้ ±{{ SETTINGS.tolerancePct }}% และ GP ลดได้ไม่เกิน {{ SETTINGS.gpDropPct }} จุด</span>
           </div>
-          <label class="file"><input v-model="contractFile" type="checkbox" /> มีไฟล์ PO / สัญญาที่ลงนามในโฟลเดอร์ Official PO หรือ Contract แล้ว</label>
+          <p class="file" :class="contractFile ? 'okf' : 'nof'">{{ contractFile ? '✓ มีไฟล์สัญญา / PO ในโฟลเดอร์แล้ว' : '✗ ยังไม่มีไฟล์สัญญา / PO — อัปโหลดในโฟลเดอร์ Contract หรือ Official PO' }}</p>
         </div>
         <div v-if="poCheck" class="po" :class="poCheck.ok ? 'ok' : 'bad'">
           <span>GP ที่อนุมัติ <b class="num">{{ poCheck.gpApproved.toFixed(1) }}%</b></span>
@@ -297,9 +370,12 @@ const dates = computed(() => p.value ? [
         <label for="rs">{{ target === 'cancelled' ? 'เหตุผล (บังคับ)' : 'บันทึก (ไม่บังคับ)' }}</label>
         <textarea id="rs" v-model="reason" class="input" rows="2" />
       </div>
-      <div v-if="blocking.length" class="missing" role="status">
-        <strong>ยังย้ายไม่ได้ เพราะ</strong>
-        <ul><li v-for="e in blocking" :key="e">{{ e }}</li></ul>
+      <div v-if="dialogItems.length || otherBlocking.length" class="missing" role="status">
+        <strong>ยังย้ายไม่ได้ — ทำรายการเหล่านี้ให้ครบก่อน</strong>
+        <ul>
+          <li v-for="i in dialogItems" :key="i.id"><span>{{ i.label }} <span class="small">· {{ i.hint }}</span></span><button v-if="i.fix.kind !== 'edit' || canEditInfo" class="btn sm" @click="doFix(i.fix)">{{ i.doLabel }} →</button></li>
+          <li v-for="e in otherBlocking" :key="e"><span>{{ e }}</span></li>
+        </ul>
       </div>
       <template #foot>
         <button class="btn" @click="target = null">ยกเลิก</button>
@@ -308,6 +384,21 @@ const dates = computed(() => p.value ? [
           {{ target === 'cancelled' ? 'ยกเลิกโครงการ' : `ย้ายไป ${target ? stageOf(target).label : ''}` }}
         </button>
       </template>
+    </Dialog>
+    <Dialog :open="edit.open" title="แก้ข้อมูลโครงการ" @close="edit.open = false">
+      <form class="ef" @submit.prevent="saveEdit">
+        <div class="field" :class="{ hl: edit.field === 'customer' }"><label for="ed-customer">ลูกค้า (ทะเบียนลูกค้า)</label><select id="ed-customer" v-model="edit.customer" class="input"><option value="">— ยังไม่เลือก —</option><option v-for="a in customers" :key="a.id" :value="a.id">{{ a.name }}</option></select><span class="hint">ไม่มีในรายการ? เพิ่มที่เมนู Customer Accounts</span></div>
+        <div class="field"><label for="ed-enduser">End User (หน่วยงานผู้ใช้)</label><select id="ed-enduser" v-model="edit.endUser" class="input"><option value="">— เหมือนลูกค้า —</option><option v-for="a in endUsers" :key="a.id" :value="a.id">{{ a.name }}</option></select></div>
+        <div class="field" :class="{ hl: edit.field === 'team' }"><label for="ed-team">ทีม DT (Profit Center)</label><select id="ed-team" v-model="edit.team" class="input"><option v-for="t in SALES_TEAMS.filter((x) => x.active !== false)" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option></select></div>
+        <div class="field" :class="{ hl: edit.field === 'sales' }"><label for="ed-sales">Sale ที่ทำงานคู่กับ SM</label><input id="ed-sales" v-model="edit.sales" class="input" placeholder="เช่น Sirinya B., Pongsak T." /><span class="hint">คั่นหลายคนด้วยจุลภาค · Sale ไม่ได้ใช้ One Platform</span></div>
+        <div class="two">
+          <div class="field" :class="{ hl: edit.field === 'expectedClose' }"><label for="ed-expectedClose">Expected Close</label><input id="ed-expectedClose" v-model="edit.expectedClose" type="date" class="input" /></div>
+          <div class="field"><label for="ed-bidDue">Bid Due Date</label><input id="ed-bidDue" v-model="edit.bidDue" type="date" class="input" /></div>
+        </div>
+        <div class="field"><label for="ed-budget">Budget ลูกค้า (บาท)</label><input id="ed-budget" v-model.number="edit.budget" type="number" min="0" class="input num" /></div>
+        <button type="submit" hidden />
+      </form>
+      <template #foot><button class="btn" @click="edit.open = false">ยกเลิก</button><button class="btn primary" @click="saveEdit">บันทึก</button></template>
     </Dialog>
   </div>
   <div v-else class="page"><h1>{{ denied ? 'ไม่มีสิทธิ์ดูโครงการนี้' : 'ไม่พบโครงการ' }}</h1><p v-if="denied" class="muted">โครงการนี้เป็นของ SM คนอื่น — คุณเห็นเฉพาะโครงการที่คุณดูแลหรือร่วมทำ</p><router-link to="/projects">กลับไปทะเบียนโครงการ</router-link></div>
@@ -388,4 +479,25 @@ const dates = computed(() => p.value ? [
 .pmov { margin-top: 20px; }
 .kv dd em.src { display: block; font-style: normal; font-size: 12px; color: var(--win); }
 .kv dd em.src.est { color: var(--warn); }
+.guide { margin-top: 18px; border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; display: grid; gap: 10px; background: var(--sunken); }
+.gh { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.gh > div:first-child { flex: 1 1 260px; }
+.gh p { margin: 0; }
+.gt { font-size: 15px; }
+.gbar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.gbar i { display: block; height: 100%; background: var(--win); transition: width var(--t-med); }
+.gl { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.gl li { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; }
+.gl li.ok { opacity: 0.75; }
+.gn { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--warn-soft); color: var(--warn); }
+.gl li.ok .gn { background: var(--win-soft); color: var(--win); }
+.gi { display: grid; }
+.gl li.ok .gi b { font-weight: 500; text-decoration: line-through; text-decoration-color: var(--faint); }
+.miss { margin-left: 8px; font-size: 12px; padding: 0 8px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); }
+.next .edit { margin-left: 8px; }
+.missing li { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin: 4px 0; }
+.file.okf { color: var(--win); } .file.nof { color: var(--lose); }
+.ef { display: grid; gap: 12px; }
+.hl .input { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+@media (max-width: 640px) { .gl li { grid-template-columns: 26px 1fr; } .gl li .btn { grid-column: 2; justify-self: start; } }
 </style>

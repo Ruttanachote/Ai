@@ -3,7 +3,7 @@
 // versions (approved versions locked), preview, download, rename / move, soft delete + trash,
 // search, card and list views. Cost Sheet and Quotation folders also show the revisions made
 // in the Cost Sheet & Quotation module.
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NDrawer, NDrawerContent } from 'naive-ui'
 import Icon from '../Icon.vue'
@@ -14,7 +14,7 @@ import { notify } from '../../store'
 import { FOLDERS, folderOf, foldersFor, uploadError, MAX_MB, type FolderDef } from '../../domain/salesdocs'
 import { addFile, canDelete, canOpenFolder, canUpload, deleteDoc, isOwner, logDownload, moveDoc, renameDoc, restoreDoc, restoreVersion, type UploadMeta } from '../../docstore'
 
-const props = defineProps<{ p: Project }>()
+const props = defineProps<{ p: Project; focus?: string | null }>()
 const emit = defineEmits<{ openCost: [] }>()
 const router = useRouter()
 
@@ -61,7 +61,9 @@ const latest = (d: ProjectDocument) => d.versions[d.versions.length - 1]
 const fmtSize = (b: number) => (b > 1024 * 1024 ? (b / 1024 / 1024).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB')
 
 /* ---------- folder drawer ---------- */
-const openFolder = ref<string | null>(null)
+const openFolder = ref<string | null>(props.focus ?? null)
+// The project page's step guide can open a folder directly (e.g. Contract before Close Win).
+watch(() => props.focus, (f) => { if (f) openFolder.value = f })
 const folder = computed(() => (openFolder.value ? folderOf(openFolder.value) : undefined))
 const folderDocs = computed(() => (openFolder.value ? docsIn(openFolder.value) : []))
 const expanded = reactive<Record<string, boolean>>({})
