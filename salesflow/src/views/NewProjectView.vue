@@ -2,10 +2,11 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
-import { ACCOUNTS, CATALOG, PHOTOS, SALES_TEAMS, TODAY_ISO, account, person } from '../data/mock'
+import { CATALOG, PHOTOS, SALES_TEAMS, TODAY_ISO, account, person } from '../data/mock'
 import { validateCreate } from '../domain/rules'
 import type { ProjectType } from '../data/model'
-import { notify, projects, session } from '../store'
+import { accounts, notify, projects, session } from '../store'
+import AccountDialog from '../components/AccountDialog.vue'
 
 const router = useRouter()
 const me = person(session.userId)
@@ -32,8 +33,10 @@ function pickCatalog() {
   f.team = c.team
   if (f.budget === null) f.budget = c.price
 }
-const customers = ACCOUNTS.filter((a) => a.type === 'customer')
-const endUsers = computed(() => ACCOUNTS.filter((a) => a.parentId === f.customerAccountId || a.id === f.customerAccountId))
+const customers = computed(() => accounts.filter((a) => a.type === 'customer'))
+const accOpen = ref<'' | 'customer' | 'end_user'>('')
+function onAccount(id: string) { if (accOpen.value === 'end_user') f.endUserAccountId = id; else { f.customerAccountId = id; f.endUserAccountId = '' } }
+const endUsers = computed(() => accounts.filter((a) => a.parentId === f.customerAccountId || a.id === f.customerAccountId))
 
 function create() {
   touched.name = true
@@ -104,7 +107,7 @@ function create() {
               <option value="">ยังไม่ทราบ — ระบุก่อนเข้า Pipeline</option>
               <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
-            <span class="hint">ไม่พบในรายการ? เพิ่มที่ทะเบียนลูกค้า</span>
+            <button type="button" class="btn ghost sm addacc" @click="accOpen = 'customer'">+ เพิ่มลูกค้าใหม่</button>
           </div>
           <div class="field">
             <label for="eu">End User</label>
@@ -112,6 +115,7 @@ function create() {
               <option value="">เหมือนลูกค้า</option>
               <option v-for="c in endUsers" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
+            <button type="button" class="btn ghost sm addacc" :disabled="!f.customerAccountId" @click="accOpen = 'end_user'">+ เพิ่มหน่วยงานผู้ใช้</button>
           </div>
         </div>
 
@@ -167,10 +171,12 @@ function create() {
         </div>
       </aside>
     </div>
+    <AccountDialog :open="!!accOpen" :type="accOpen || 'customer'" :parent-id="accOpen === 'end_user' ? f.customerAccountId : undefined" @close="accOpen = ''" @created="onAccount" />
   </div>
 </template>
 
 <style scoped>
+.addacc { justify-self: start; }
 .back { display: inline-block; margin-bottom: 12px; color: var(--muted); }
 header h1 .chip { vertical-align: middle; margin-left: 8px; font-size: 13px; }
 .wrap { display: grid; grid-template-columns: minmax(0, 680px) 1fr; gap: 24px; align-items: start; }

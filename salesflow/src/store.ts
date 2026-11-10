@@ -284,3 +284,26 @@ export const profiles = reactive<Record<string, { phone?: string; notify: { emai
 export const profileOf = (id: string) => (profiles[id] ??= { phone: '', notify: { email: true, teams: true, inapp: true } })
 // Seeded approvals: attach the approvers' demo signatures to steps they already approved.
 for (const p of PROJECTS) for (const s of p.approval?.steps ?? []) if (s.status === 'approved' && s.whoId && signatures[s.whoId]) { s.signature = signatures[s.whoId].dataUrl; s.signedAt = s.at }
+
+/* ---------------- Customer accounts ---------------- */
+import { ACCOUNTS } from './data/mock'
+import type { Account } from './data/model'
+/** reactive() proxies the same array the pages read, so a new customer shows everywhere. */
+export const accounts = reactive(ACCOUNTS)
+let accNo = 1
+/** Problems with a new account; empty when it can be saved. */
+export function accountErrors(a: Partial<Account>): Record<string, string> {
+  const e: Record<string, string> = {}
+  const name = (a.name ?? '').trim()
+  if (!name) e.name = 'ระบุชื่อลูกค้า / หน่วยงาน'
+  else if (accounts.some((x) => x.name.trim() === name)) e.name = 'มีชื่อนี้ในทะเบียนแล้ว'
+  if (a.taxId && !/^\d{13}$/.test(a.taxId.replace(/[-\s]/g, ''))) e.taxId = 'เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก'
+  else if (a.taxId && accounts.some((x) => x.taxId === a.taxId!.replace(/[-\s]/g, ''))) e.taxId = 'มีเลขผู้เสียภาษีนี้ในทะเบียนแล้ว'
+  if (a.type === 'end_user' && !a.parentId) e.parentId = 'เลือกลูกค้าที่หน่วยงานนี้สังกัด'
+  return e
+}
+export function addAccount(a: Omit<Account, 'id'>): string {
+  const id = `a-new${accNo++}`
+  accounts.push({ ...a, id, name: a.name.trim(), taxId: a.taxId?.replace(/[-\s]/g, '') || undefined })
+  return id
+}

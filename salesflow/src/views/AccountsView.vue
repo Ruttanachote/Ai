@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ACCOUNTS, account, mb } from '../data/mock'
-import { scope } from '../store'
+import { account, mb } from '../data/mock'
+import { accounts, scope, session } from '../store'
+import AccountDialog from '../components/AccountDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
 import { isOpen, isWon, bookedValue, pipelineValue, sum } from '../domain/metrics'
@@ -9,8 +10,11 @@ import type { Sector } from '../data/model'
 
 const SECTOR: Record<Sector, string> = { government: 'หน่วยงานรัฐ', soe: 'รัฐวิสาหกิจ', enterprise: 'เอกชน', other: 'อื่น ๆ' }
 const q = ref('')
+const addOpen = ref(false)
+const canAdd = ['sm', 'head', 'ma', 'admin'].includes(session.role)
+const justAdded = ref('')
 const rows = computed(() =>
-  ACCOUNTS.filter((a) => a.type === 'customer')
+  accounts.filter((a) => a.type === 'customer')
     .filter((a) => !q.value.trim() || [a.name, a.taxId ?? ''].some((v) => v.includes(q.value.trim())))
     .map((a) => {
       const list = scope.value.list.filter((p) => p.customerAccountId === a.id)
@@ -38,9 +42,10 @@ const kpis = computed(() => [
 <template>
   <div class="page">
     <PageHeader module="Projects & Customers · ข้อมูลกลาง" title="Customer Accounts" :scope="scope.label" subtitle="ลูกค้าและหน่วยงานผู้ใช้ เชื่อมกับทุกโครงการ">
-      <button class="btn primary">เพิ่มลูกค้า</button>
+      <button v-if="canAdd" class="btn primary" @click="addOpen = true">+ เพิ่มลูกค้า</button>
     </PageHeader>
     <KpiStrip :items="kpis" />
+    <AccountDialog :open="addOpen" @close="addOpen = false" @created="(id) => (justAdded = id)" />
 
     <p v-if="unlinked.length" class="chip warn mig">มี {{ unlinked.length }} โครงการที่ยังไม่ได้ผูกกับทะเบียนลูกค้า — ผู้ดูแลระบบยืนยันการจับคู่ชื่อในหน้าตั้งค่า</p>
 

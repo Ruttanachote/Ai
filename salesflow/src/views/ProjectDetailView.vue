@@ -16,8 +16,9 @@ import MaPanel from '../components/MaPanel.vue'
 import PmRounds from '../components/PmRounds.vue'
 import RequirementPanel from '../components/RequirementPanel.vue'
 import ProcurementPanel from '../components/ProcurementPanel.vue'
-import { moveStage, notify, projects, session, scope } from '../store'
-import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account, ACCOUNTS, SALES_TEAMS } from '../data/mock'
+import { moveStage, notify, projects, session, scope, accounts } from '../store'
+import AccountDialog from '../components/AccountDialog.vue'
+import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account, SALES_TEAMS } from '../data/mock'
 import { stageChecklist, type Fix } from '../domain/nextstep'
 import { log } from '../docstore'
 import { validateMove, checkContractValue, appealWindowEnd, reopenAsNew, isTender, requirementsFor } from '../domain/rules'
@@ -100,9 +101,11 @@ function doFix(f: Fix) {
 }
 /* ---------- Edit project data (customer, team, Sale, dates) ---------- */
 const canEditInfo = computed(() => !!p.value && (isOwner(p.value) || ['head', 'admin'].includes(session.role)))
+const accOpen = ref<'' | 'customer' | 'end_user'>('')
+function onAccount(id: string) { if (accOpen.value === 'end_user') edit.endUser = id; else edit.customer = id }
 const edit = reactive({ open: false, field: '', customer: '', endUser: '', team: '', sales: '', expectedClose: '', bidDue: '', budget: 0 })
-const customers = ACCOUNTS.filter((a) => a.type === 'customer')
-const endUsers = computed(() => ACCOUNTS.filter((a) => a.type !== 'competitor' && (a.id === edit.customer || a.parentId === edit.customer || a.type === 'end_user')))
+const customers = computed(() => accounts.filter((a) => a.type === 'customer'))
+const endUsers = computed(() => accounts.filter((a) => a.type !== 'competitor' && (a.id === edit.customer || a.parentId === edit.customer || a.type === 'end_user')))
 function openEdit(field = '') {
   if (!p.value) return
   Object.assign(edit, { open: true, field, customer: p.value.customerAccountId ?? '', endUser: p.value.endUserAccountId ?? '', team: p.value.team, sales: p.value.sales.join(', '), expectedClose: p.value.expectedClose ?? '', bidDue: p.value.bidDue ?? '', budget: p.value.budget })
@@ -387,8 +390,8 @@ const dates = computed(() => p.value ? [
     </Dialog>
     <Dialog :open="edit.open" title="แก้ข้อมูลโครงการ" @close="edit.open = false">
       <form class="ef" @submit.prevent="saveEdit">
-        <div class="field" :class="{ hl: edit.field === 'customer' }"><label for="ed-customer">ลูกค้า (ทะเบียนลูกค้า)</label><select id="ed-customer" v-model="edit.customer" class="input"><option value="">— ยังไม่เลือก —</option><option v-for="a in customers" :key="a.id" :value="a.id">{{ a.name }}</option></select><span class="hint">ไม่มีในรายการ? เพิ่มที่เมนู Customer Accounts</span></div>
-        <div class="field"><label for="ed-enduser">End User (หน่วยงานผู้ใช้)</label><select id="ed-enduser" v-model="edit.endUser" class="input"><option value="">— เหมือนลูกค้า —</option><option v-for="a in endUsers" :key="a.id" :value="a.id">{{ a.name }}</option></select></div>
+        <div class="field" :class="{ hl: edit.field === 'customer' }"><label for="ed-customer">ลูกค้า (ทะเบียนลูกค้า)</label><select id="ed-customer" v-model="edit.customer" class="input"><option value="">— ยังไม่เลือก —</option><option v-for="a in customers" :key="a.id" :value="a.id">{{ a.name }}</option></select><button type="button" class="btn ghost sm addacc" @click="accOpen = 'customer'">+ เพิ่มลูกค้าใหม่</button></div>
+        <div class="field"><label for="ed-enduser">End User (หน่วยงานผู้ใช้)</label><select id="ed-enduser" v-model="edit.endUser" class="input"><option value="">— เหมือนลูกค้า —</option><option v-for="a in endUsers" :key="a.id" :value="a.id">{{ a.name }}</option></select><button type="button" class="btn ghost sm addacc" :disabled="!edit.customer" @click="accOpen = 'end_user'">+ เพิ่มหน่วยงานผู้ใช้</button></div>
         <div class="field" :class="{ hl: edit.field === 'team' }"><label for="ed-team">ทีม DT (Profit Center)</label><select id="ed-team" v-model="edit.team" class="input"><option v-for="t in SALES_TEAMS.filter((x) => x.active !== false)" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option></select></div>
         <div class="field" :class="{ hl: edit.field === 'sales' }"><label for="ed-sales">Sale ที่ทำงานคู่กับ SM</label><input id="ed-sales" v-model="edit.sales" class="input" placeholder="เช่น Sirinya B., Pongsak T." /><span class="hint">คั่นหลายคนด้วยจุลภาค · Sale ไม่ได้ใช้ One Platform</span></div>
         <div class="two">
@@ -400,6 +403,7 @@ const dates = computed(() => p.value ? [
       </form>
       <template #foot><button class="btn" @click="edit.open = false">ยกเลิก</button><button class="btn primary" @click="saveEdit">บันทึก</button></template>
     </Dialog>
+    <AccountDialog :open="!!accOpen" :type="accOpen || 'customer'" :parent-id="accOpen === 'end_user' ? edit.customer : undefined" @close="accOpen = ''" @created="onAccount" />
   </div>
   <div v-else class="page"><h1>{{ denied ? 'ไม่มีสิทธิ์ดูโครงการนี้' : 'ไม่พบโครงการ' }}</h1><p v-if="denied" class="muted">โครงการนี้เป็นของ SM คนอื่น — คุณเห็นเฉพาะโครงการที่คุณดูแลหรือร่วมทำ</p><router-link to="/projects">กลับไปทะเบียนโครงการ</router-link></div>
 </template>
@@ -500,4 +504,5 @@ const dates = computed(() => p.value ? [
 .ef { display: grid; gap: 12px; }
 .hl .input { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 @media (max-width: 640px) { .gl li { grid-template-columns: 26px 1fr; } .gl li .btn { grid-column: 2; justify-self: start; } }
+.addacc { justify-self: start; }
 </style>
