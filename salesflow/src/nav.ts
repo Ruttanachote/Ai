@@ -19,6 +19,8 @@ export const NAV: NavGroup[] = [
       { to: '/', label: 'SM Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'admin'] },
       // One register for the whole sales journey: list, pipeline board and "register a new project" (starts at Opportunity).
       { to: '/projects', label: 'Project Overview', icon: 'list', roles: ['sm', 'head'] },
+      // Monthly OKR meeting: target vs. Close Win, pipeline coverage, new opportunities — export Excel / PDF.
+      { to: '/reports/okr', label: 'OKR Report', icon: 'chart', roles: ['sm', 'head', 'admin'] },
       { to: '/catalog', label: 'Solution Catalog', icon: 'folder', roles: ['sm', 'head', 'admin'] },
     ],
   },
@@ -28,6 +30,7 @@ export const NAV: NavGroup[] = [
       { to: '/exec', label: 'Executive Dashboard', icon: 'dashboard', roles: [...EXEC, 'admin'] },
       { to: '/exec/tracker', label: 'Project Status Tracker', icon: 'gantt', roles: [...EXEC, 'admin'] },
       { to: '/inbox', label: 'Mail Inbox', icon: 'inbox', roles: [...EXEC, 'admin'] },
+      { to: '/reports/okr', label: 'OKR Report', icon: 'chart', roles: EXEC },
     ],
   },
   {

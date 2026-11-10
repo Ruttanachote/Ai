@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { saveFile } from '../../lib/save'
 // Project documents (spec §4): fixed folders by phase, drag-and-drop upload with progress,
 // versions (approved versions locked), preview, download, rename / move, soft delete + trash,
 // search, card and list views. Cost Sheet and Quotation folders also show the revisions made
@@ -140,7 +141,7 @@ const isImg = computed(() => !!pv.value?.mime.startsWith('image/'))
 function download(d: ProjectDocument, no: number) {
   const v = d.versions.find((x) => x.no === no)!
   logDownload(props.p, d, no)
-  if (v.url) { const a = document.createElement('a'); a.href = v.url; a.download = v.stdName; a.click() }
+  if (v.url) fetch(v.url).then((r) => r.blob()).then((b) => saveFile(v.stdName, b)).then((o) => o !== 'saved' && notify(o === 'declined' ? 'ยกเลิกการดาวน์โหลด' : 'ดาวน์โหลดไม่ได้ในหน้านี้', 'warning'))
   else notify(`ดาวน์โหลด ${v.stdName} (ต้นแบบ: ไฟล์ตัวอย่างไม่มีเนื้อหาจริง)`, 'info')
 }
 const renaming = ref<{ d: ProjectDocument; title: string } | null>(null)

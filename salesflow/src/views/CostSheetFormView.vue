@@ -13,6 +13,8 @@ import { DOC_STATUS, type CostGroup, type CostLine, type CostSheet } from '../da
 import { account, person, thDate } from '../data/mock'
 import { projects, notify } from '../store'
 import { blankCostSheet, canSeeCost, isOwner, nextCostRevision, saveCostSheet } from '../docstore'
+import { xlsxBlob, type Cell } from '../lib/xlsx'
+import { saveFile } from '../lib/save'
 
 const props = defineProps<{ id: string; csid: string }>()
 const router = useRouter()
@@ -129,22 +131,19 @@ function save(next: 'stay' | 'quote') {
   else router.replace(`/projects/${props.id}/cost-sheet/${cs.value!.id}`)
 }
 function newRev() { const r = nextCostRevision(p.value!, existing.value!); saveCostSheet(p.value!, r); router.push(`/projects/${props.id}/cost-sheet/${r.id}`); cs.value = JSON.parse(JSON.stringify(r)) }
-/** Spreadsheet XML copy (opens in Excel). */
-function exportXls() {
+/** Excel copy laid out like Cost_Sheet_Template (numbers stay numbers). */
+async function exportXls() {
   const c = cs.value!, s = t.value!
-  const cell = (x: string | number) => `<Cell><Data ss:Type="${typeof x === 'number' ? 'Number' : 'String'}">${String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</Data></Cell>`
-  const row = (cells: (string | number)[]) => `<Row>${cells.map(cell).join('')}</Row>`
-  const rowsX = [row(['Stream I.T. Consulting Limited']), row(['Estimated Cost Sheet', `${c.docNo} rev.${c.revision}`]), row(['Project Name:', p.value!.name]), row([]), row(['REVENUE']),
-    row(['Item', 'Type', 'Income Description', 'Qty', 'Unit Price', 'Total Amount', ...c.payments.map((x, i) => `Payment#${i + 1} ${pct(x)}`), 'Part No.', 'Note']),
-    ...c.revenue.map((l, i) => row([i + 1, l.type, l.description, l.qty, l.unitPrice, l.qty * l.unitPrice, ...c.payments.map((x) => l.qty * l.unitPrice * x), l.partNo ?? '', l.note ?? ''])),
-    row(['', 'Total Revenue', '', '', '', s.revenue]), row(['', 'Total Revenue (Include VAT)', '', '', '', s.revenueVat]), row([]),
-    ...c.costs.map((l) => row([COST_GROUPS[l.group].no, COST_GROUPS[l.group].label, l.description, l.qty ?? '', l.unitPrice ?? '', lineCost(l, c), '', '', '', '', '', l.partNo ?? l.profitCenter ?? '', l.note ?? ''])),
-    row([]), ...[['Total Cost of Goods Sold', s.cogs], ['Gross Profit', s.gp], ['Margin %', s.gmPct], ['Total Direct & Labour and Variable Cost', s.directVariable], ['Total Expense', s.totalExpense], ['Contribution Margin', s.cm], ['Margin %', s.cmPct]].map((r) => row(['', ...r] as (string | number)[]))]
-  const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Cost_Sheet_Template"><Table>${rowsX.join('')}</Table></Worksheet></Workbook>`
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([xml], { type: 'application/vnd.ms-excel' }))
-  a.download = `${c.docNo}_rev${c.revision}.xls`
-  a.click()
+  const H = (v: string): Cell => ({ v, s: 'head' })
+  const rows: Cell[][] = [[{ v: 'Stream I.T. Consulting Limited', s: 'title' }], [{ v: 'Estimated Cost Sheet', s: 'bold' }, `${c.docNo} rev.${c.revision}`], ['Project Name:', p.value!.name], [], [{ v: 'REVENUE', s: 'bold' }],
+    ['Item', 'Type', 'Income Description', 'Qty', 'Unit Price', 'Total Amount', ...c.payments.map((x, i) => `Payment#${i + 1} ${pct(x)}`), 'Part No.', 'Note'].map(H),
+    ...c.revenue.map((l, i): Cell[] => [i + 1, l.type, l.description, l.qty, l.unitPrice, l.qty * l.unitPrice, ...c.payments.map((x) => l.qty * l.unitPrice * x), l.partNo ?? '', l.note ?? '']),
+    ['', { v: 'Total Revenue', s: 'bold' }, '', '', '', { v: s.revenue, s: 'moneyB' }], ['', { v: 'Total Revenue (Include VAT)', s: 'bold' }, '', '', '', { v: s.revenueVat, s: 'moneyB' }], [], [{ v: 'COST', s: 'bold' }],
+    ...c.costs.map((l): Cell[] => [COST_GROUPS[l.group].no, COST_GROUPS[l.group].label, l.description, l.qty ?? '', l.unitPrice ?? '', lineCost(l, c), '', '', '', '', '', l.partNo ?? l.profitCenter ?? '', l.note ?? '']),
+    [], ...([['Total Cost of Goods Sold', s.cogs], ['Gross Profit', s.gp], ['Margin %', s.gmPct], ['Total Direct & Labour and Variable Cost', s.directVariable], ['Total Expense', s.totalExpense], ['Contribution Margin', s.cm], ['Margin %', s.cmPct]] as [string, number][])
+      .map(([k, v]): Cell[] => ['', { v: k, s: 'bold' }, '', '', '', { v: k === 'Margin %' ? v / 100 : v, s: k === 'Margin %' ? 'pctB' : 'moneyB' }])]
+  const out = await saveFile(`${c.docNo}_rev${c.revision}.xlsx`, xlsxBlob([{ name: 'Cost_Sheet_Template', rows, cols: [8, 26, 40, 8, 14, 16, 14, 14, 14, 14, 14, 14, 24] }], { title: `${c.docNo} rev.${c.revision}` }))
+  if (out !== 'saved') notify(out === 'declined' ? 'ยกเลิกการดาวน์โหลด' : 'ดาวน์โหลดไม่ได้ในหน้านี้', 'warning')
 }
 const signers = computed(() => {
   const a = p.value?.approval

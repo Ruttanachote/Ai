@@ -15,6 +15,7 @@ const router = createRouter({
     { path: '/projects/:id', component: () => import('./views/ProjectDetailView.vue'), props: true },
     { path: '/projects/:id/cost-sheet/:csid', component: () => import('./views/CostSheetFormView.vue'), props: true },
     { path: '/projects/:id/quotation/:qid', component: () => import('./views/QuotationFormView.vue'), props: true },
+    { path: '/reports/okr', component: () => import('./views/OkrReportView.vue') },
     { path: '/exec', component: () => import('./views/ExecDashboardView.vue') },
     { path: '/exec/tracker', component: () => import('./views/TrackerView.vue') },
     { path: '/profile', component: () => import('./views/ProfileView.vue') },
