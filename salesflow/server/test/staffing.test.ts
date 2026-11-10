@@ -4,7 +4,7 @@ import type { Person, Project } from '../../src/data/model.ts'
 import { projectNeeds, rankPms } from '../../src/domain/staffing.ts'
 
 const proj = (o: Partial<Project> = {}): Project => ({
-  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'พัฒนาระบบ', stage: 'win', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1,
+  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'NNS', stage: 'win', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1,
   sm: 'rk', sales: ['S'], collaborators: [], nextStep: '', cover: '', history: [], ...o,
 })
 const pm = (id: string, skills: Person['pmProfile']): Person => ({ id, name: id, initials: id, role: 'pm', color: '', pmProfile: skills })
@@ -13,12 +13,12 @@ const HW = pm('hw', { skills: ['hardware', 'network'], onsite: true, maxProjects
 
 test('project type decides the skills needed', () => {
   assert.deepEqual(projectNeeds(proj()).skills, ['software'])
-  assert.equal(projectNeeds(proj({ type: 'ซื้อขาย' })).onsite, true)
+  assert.equal(projectNeeds(proj({ type: 'NNS', scope: 'hardware' })).onsite, true)
   assert.ok(projectNeeds(proj({ team: 'DT4-IoT' })).skills.includes('iot'))
 })
 
 test('hardware project ranks the on-site hardware PM first; software project the software PM', () => {
-  assert.equal(rankPms(proj({ type: 'ซื้อขาย' }), [SW, HW], [])[0].pm.id, 'hw')
+  assert.equal(rankPms(proj({ type: 'NNS', scope: 'hardware' }), [SW, HW], [])[0].pm.id, 'hw')
   assert.equal(rankPms(proj(), [SW, HW], [])[0].pm.id, 'sw')
 })
 

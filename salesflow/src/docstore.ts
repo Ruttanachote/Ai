@@ -75,7 +75,7 @@ export function blankCostSheet(p: Project): CostSheet {
   return {
     id: uid('cs'), docNo: docNo('CS', 2026, seqOf(p)), revision: rev, status: 'DRAFT', source: 'form',
     refNo: String(69000000 + seqOf(p)), profitCenter: p.team, preparedAt: TODAY_ISO, createdBy: session.userId,
-    revenue: [{ id: uid('r'), type: p.type === 'MA' ? 'MA SVC' : p.type === 'เช่าซื้อ' ? 'Rental SVC' : 'Software', description: p.name, qty: 1, unitPrice: p.budget || 0 }],
+    revenue: [{ id: uid('r'), type: p.type === 'MA' ? 'MA SVC' : p.type === 'Rental' ? 'Rental SVC' : p.type === 'MS' ? 'Other' : 'Software', description: p.name, qty: 1, unitPrice: p.budget || 0 }],
     payments: [...DEFAULT_PAYMENTS],
     costs: [
       { id: uid('c'), group: 'manday', description: 'ทีมพัฒนา', qty: 0, unitPrice: 6500 },

@@ -9,9 +9,10 @@ const tone = computed(() =>
 </script>
 
 <template>
-  <span class="chip" :class="tone"><span class="dot" />{{ s.label }}</span>
+  <span class="chip" :class="tone" :title="`${s.code} – ${s.label}: ${s.hint}`"><span class="dot" /><b class="code">{{ s.code }}</b>{{ s.label }}</span>
 </template>
 
 <style scoped>
 .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.code { font-family: var(--display); font-weight: 700; letter-spacing: 0.02em; }
 </style>

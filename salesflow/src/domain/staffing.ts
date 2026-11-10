@@ -2,12 +2,15 @@
 // e.g. hardware installation with frequent site work vs. software development.
 import type { Person, PmSkill, Project } from '../data/model.ts'
 
-/** Skills a project needs, from its type and the selling team. */
+/** Skills a project needs, from its type, work scope and the selling team. */
 export function projectNeeds(p: Project): { skills: PmSkill[]; onsite: boolean } {
   const team = p.team
   if (team.startsWith('DT4-IoT')) return { skills: ['iot', 'hardware'], onsite: true }
-  if (p.type === 'ซื้อขาย') return { skills: ['hardware', 'network'], onsite: true }
-  if (p.type === 'เช่าซื้อ') return { skills: ['cloud', 'hardware'], onsite: true }
+  if (p.type === 'Rental') return { skills: ['cloud', 'hardware'], onsite: true }
+  if (p.type === 'MS') return { skills: ['network', 'cloud'], onsite: true }
+  if (p.type === 'SUB') return { skills: ['software', 'cloud'], onsite: false }
+  if (p.scope === 'hardware' || p.type === 'WT') return { skills: ['hardware', 'network'], onsite: true }
+  if (p.scope === 'mixed') return { skills: ['software', 'hardware'], onsite: true }
   if (team.startsWith('DT4-AI')) return { skills: ['software', 'ai'], onsite: false }
   return { skills: ['software'], onsite: false }
 }

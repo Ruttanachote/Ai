@@ -4,7 +4,7 @@ import type { Project, Team } from '../../src/data/model.ts'
 import { stepIndex, targetStatus, teamStat, trackOf, yearElapsed } from '../../src/domain/executive.ts'
 
 const proj = (o: Partial<Project> = {}): Project => ({
-  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'พัฒนาระบบ', stage: 'pipeline', team: 'DT4-LC', revenue: 10, cost: 5, budget: 10,
+  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'NNS', stage: 'pipeline', team: 'DT4-LC', revenue: 10, cost: 5, budget: 10,
   sm: 'rk', sales: ['Sirinya B.'], collaborators: [], nextStep: '', cover: '', history: [], ...o,
 })
 const T = '2026-11-06'

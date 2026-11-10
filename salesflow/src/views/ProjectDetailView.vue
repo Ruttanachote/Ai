@@ -3,6 +3,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
 import StageRail from '../components/StageRail.vue'
+import StatusGuide from '../components/StatusGuide.vue'
 import StageBadge from '../components/StageBadge.vue'
 import Avatar from '../components/Avatar.vue'
 import Icon from '../components/Icon.vue'
@@ -24,7 +25,7 @@ import { log } from '../docstore'
 import { validateMove, checkContractValue, appealWindowEnd, reopenAsNew, isTender, requirementsFor } from '../domain/rules'
 import { SETTINGS, newApprovalSteps } from '../store'
 import { probability, weightedValue, dealValue, teamShare } from '../domain/metrics'
-import { allowedMoves, stageOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
+import { PROJECT_TYPES, WORK_SCOPES, allowedMoves, stageOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
 
 const props = defineProps<{ id: string }>()
 // An SM opens only their own projects (or ones they collaborate on); other teams' deals stay hidden.
@@ -211,7 +212,7 @@ const dates = computed(() => p.value ? [
       <div class="cover-in">
         <div class="tags">
           <StageBadge :stage="p.stage" />
-          <span class="chip dark">{{ p.type }}</span>
+          <span class="chip dark" :title="PROJECT_TYPES[p.type]?.th">{{ PROJECT_TYPES[p.type]?.label ?? p.type }}</span><span v-if="p.scope" class="chip dark">{{ WORK_SCOPES[p.scope] }}</span>
           <span class="chip dark">{{ p.team }}</span>
           <span v-if="aging" class="chip" :class="aging.stale ? 'lose' : 'dark'" :title="aging.stale ? `เกินเกณฑ์ ${aging.lim} วันของสถานะนี้` : ''">อยู่ในสถานะนี้ {{ aging.d }} วัน{{ aging.stale ? ' · ค้างนาน' : '' }}</span>
         </div>
@@ -231,6 +232,7 @@ const dates = computed(() => p.value ? [
     </section>
 
     <section class="panel railbox">
+      <div class="railhead"><StatusGuide /></div>
       <StageRail :stage="p.stage" />
       <div v-if="guideTarget" class="guide" aria-label="ขั้นตอนก่อนเปลี่ยนสถานะ">
         <div class="gh">
@@ -505,4 +507,5 @@ const dates = computed(() => p.value ? [
 .hl .input { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 @media (max-width: 640px) { .gl li { grid-template-columns: 26px 1fr; } .gl li .btn { grid-column: 2; justify-self: start; } }
 .addacc { justify-self: start; }
+.railhead { display: flex; justify-content: flex-end; margin: -6px 0 6px; }
 </style>

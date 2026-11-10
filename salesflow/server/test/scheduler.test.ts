@@ -4,7 +4,7 @@ import type { Project } from '../../src/data/model.ts'
 import { dailyJobs } from '../../src/domain/scheduler.ts'
 
 const proj = (o: Partial<Project>): Project => ({
-  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'พัฒนาระบบ', stage: 'warranty', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1,
+  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'NNS', stage: 'warranty', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1,
   sm: 'rk', sales: ['S'], collaborators: [], nextStep: '', cover: '', history: [], ...o,
 })
 const opts = { headOf: () => 'sw', maLead: 'wm' }

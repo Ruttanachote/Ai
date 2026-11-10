@@ -8,13 +8,19 @@ import { person, thDate, TODAY_ISO } from '../data/mock'
 import { MEETING_KINDS } from '../data/model'
 import { TH_GOV_2026 } from '../domain/calendar'
 import { addDays } from '../domain/work'
-import { leaves, scope } from '../store'
+import { leaves, scope, session } from '../store'
 
 type Kind = 'holiday' | 'leave' | 'meeting' | 'milestone' | 'pm' | 'bid' | 'quote' | 'warranty'
 const KINDS: Record<Kind, { l: string; tone: string }> = {
   holiday: { l: 'วันหยุด', tone: 'idle' }, leave: { l: 'ลา', tone: 'lose' }, meeting: { l: 'ประชุม', tone: 'presale' }, milestone: { l: 'ส่งงวดงาน', tone: 'win' },
   pm: { l: 'รอบ PM', tone: 'post' }, bid: { l: 'ประกาศผลประมูล', tone: 'warn' }, quote: { l: 'ใบเสนอราคาหมดอายุ', tone: 'warn' }, warranty: { l: 'หมดประกัน', tone: 'lose' },
 }
+// Who sees which kind: SM does not see the team's leave; bid results and quotation expiry
+// are sales follow-ups, so only SM and PM see them.
+const HIDE: Partial<Record<Kind, string[]>> = { leave: ['sm'] }
+const ONLY: Partial<Record<Kind, string[]>> = { bid: ['sm', 'pm'], quote: ['sm', 'pm'] }
+const visible = (k: Kind) => !HIDE[k]?.includes(session.role) && (!ONLY[k] || ONLY[k]!.includes(session.role))
+const kinds = computed(() => (Object.keys(KINDS) as Kind[]).filter(visible))
 const on = reactive<Record<Kind, boolean>>({ holiday: true, leave: true, meeting: true, milestone: true, pm: true, bid: true, quote: true, warranty: true })
 const router = useRouter()
 
@@ -32,7 +38,7 @@ const events = computed(() => {
     if (p.approval?.validUntil && ['pipeline', 'forecast', 'rebidding'].includes(p.stage)) out.push({ day: p.approval.validUntil, kind: 'quote', text: p.name, link })
     if (p.endWarranty && p.stage === 'warranty') out.push({ day: p.endWarranty, kind: 'warranty', text: p.name, link })
   }
-  return out.filter((e) => on[e.kind])
+  return out.filter((e) => visible(e.kind) && on[e.kind])
 })
 const month = ref(TODAY_ISO.slice(0, 7))
 const grid = computed(() => {
@@ -47,9 +53,9 @@ const upcoming = computed(() => events.value.filter((e) => e.day >= TODAY_ISO &&
 
 <template>
   <div class="page">
-    <PageHeader module="My Work · งานของฉัน" title="Calendar" :scope="scope.label" subtitle="ปฏิทินกลาง — วันหยุด การลา ประชุม งวดงาน รอบ PM ประกาศผลประมูล และวันหมดประกัน" />
+    <PageHeader module="My Work · งานของฉัน" title="Calendar" :scope="scope.label" :subtitle="`ปฏิทินกลาง — ${kinds.map((k) => KINDS[k].l).join(' · ')}`" />
     <div class="filters">
-      <label v-for="(k, key) in KINDS" :key="key" class="f" :class="k.tone"><input v-model="on[key]" type="checkbox" /> {{ k.l }}</label>
+      <label v-for="key in kinds" :key="key" class="f" :class="KINDS[key].tone"><input v-model="on[key]" type="checkbox" /> {{ KINDS[key].l }}</label>
     </div>
     <div class="layout">
       <section class="panel cal">

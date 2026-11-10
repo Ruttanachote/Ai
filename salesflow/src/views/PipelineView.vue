@@ -39,7 +39,7 @@ const kpis = computed(() => [
     <div class="board">
       <section v-for="c in cols" :key="c.k" class="col" :class="c.k">
         <header>
-          <h3>{{ c.s.label }}</h3>
+          <h3><b class="scode">{{ c.s.code }}</b> {{ c.s.label }}</h3>
           <span class="muted small">{{ c.s.prob }}</span>
           <p class="sum"><b class="num">{{ mb(c.total) }}</b> · {{ c.items.length }} งาน</p>
         </header>
@@ -85,4 +85,5 @@ const kpis = computed(() => [
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .lose .card { opacity: 0.75; }
 .empty { font-size: 13px; color: var(--faint); text-align: center; padding: 24px 0; }
+.scode { font-family: var(--display); font-size: 12px; color: var(--muted); margin-right: 2px; }
 </style>

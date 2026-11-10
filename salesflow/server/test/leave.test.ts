@@ -5,7 +5,7 @@ import { awayOn, findImpacts, firstDayBack, leaveLength, overlaps, suggestStandI
 
 const t = (o: Partial<Task>): Task => ({ id: 'x', key: 'K-1', title: 'x', assignee: 'dev1', status: 'todo', due: '2026-11-20', hours: 8, spent: 0, milestone: '', ...o })
 const p = (tasks: Task[]): Project => ({
-  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'พัฒนาระบบ', stage: 'delivery', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1,
+  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'NNS', stage: 'delivery', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1,
   sm: 'rk', sales: ['S'], pm: 'ak', collaborators: [], nextStep: '', cover: '', history: [], tasks,
   workspace: { template: 'milestone', key: 'K', nextNo: 9, createdAt: '2026-09-01', members: [{ userId: 'dev1', role: 'dev' }, { userId: 'dev2', role: 'dev' }, { userId: 'dev3', role: 'dev' }, { userId: 'qa1', role: 'qa' }] },
 })

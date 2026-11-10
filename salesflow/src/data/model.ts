@@ -9,6 +9,8 @@ export type Phase = 'presale' | 'result' | 'postsale'
 
 export interface Stage {
   key: StageKey
+  /** Short code shown on badges and in reports (proposed set — OPP, PL, FC, RB, CW, CL, HO, DL, WR, END, CXL). */
+  code: string
   label: string
   th: string
   prob: string
@@ -33,17 +35,17 @@ export const LOSS_REASONS = [
 ]
 
 export const STAGES: Stage[] = [
-  { key: 'opportunity', label: 'Opportunity', th: 'โอกาส', prob: '10–20%', phase: 'presale', owner: 'SM', hint: 'Requirement ลูกค้าตรงกับสินค้าหรือบริการที่เรามี' , weight: 0.15, exit: ['ระบุลูกค้าและ End User', 'ระบุประเภทโครงการและทีม DT', 'มี Budget หรือช่วงงบประมาณของลูกค้า'], staleDays: 45 },
-  { key: 'pipeline', label: 'Pipeline', th: 'กำลังเจรจา', prob: '40–50%', phase: 'presale', owner: 'SM', hint: 'มีโอกาสปิดได้ภายในปีนี้ ลูกค้าเริ่มเจรจาแล้ว' , weight: 0.45, exit: ['ใบเสนอราคาได้รับอนุมัติครบทุกขั้น', 'ทราบวิธีจัดซื้อ (e-bidding / เฉพาะเจาะจง / เอกชน)', 'กำหนด Expected Close'], staleDays: 60 },
-  { key: 'forecast', label: 'Forecast', th: 'คาดการณ์ปิด', prob: '70–80%', phase: 'presale', owner: 'SM', hint: 'ตกลงกับลูกค้าแล้ว คาดว่าปิดในไตรมาสนี้หรือหน้า' , weight: 0.75, exit: ['ลูกค้ายืนยันขอบเขตและราคา', 'มีร่างสัญญาหรือ PO', 'กำหนดผู้ลงนามฝั่งลูกค้า'], staleDays: 45 },
-  { key: 'rebidding', label: 'Rebidding', th: 'ยื่นประมูล', prob: '70–80%', phase: 'presale', owner: 'SM', hint: 'กำลังเตรียมหรือยื่นประมูลแข่งบนเว็บไซต์' , weight: 0.75, exit: ['บันทึกเลขโครงการ e-GP และราคากลาง', 'วางหลักประกันซองแล้ว', 'ยื่นข้อเสนอก่อนกำหนด'], staleDays: 30 },
-  { key: 'win', label: 'Close Win', th: 'ชนะงาน', prob: '100%', phase: 'result', owner: 'SM', hint: 'ได้ PO หรือสัญญาแล้ว' , weight: 1, exit: ['อัปโหลด PO หรือสัญญาที่ลงนาม', 'มูลค่า PO ตรงกับใบเสนอราคาที่อนุมัติ', 'วางหลักประกันสัญญาแล้ว (ถ้ามี)'] },
-  { key: 'lose', label: 'Close Lose', th: 'ไม่ได้งาน', prob: '0%', phase: 'result', owner: 'หัวหน้ากลุ่ม', hint: 'จบโครงการ หัวหน้ากลุ่มเปิดกลับเป็น Pipeline ได้' , weight: 0, exit: [] },
-  { key: 'handover', label: 'Handover', th: 'ส่งต่องาน', prob: '—', phase: 'postsale', owner: 'PMO', hint: 'ประชุมส่งต่องานจาก Pre-sale ให้ PM' , weight: 0, exit: ['Checklist Handover ครบ', 'มอบหมาย PM และทีม DT', 'ยืนยันงวดงานและค่าปรับตามสัญญา'] },
-  { key: 'delivery', label: 'In Delivery', th: 'กำลังส่งมอบ', prob: '—', phase: 'postsale', owner: 'PM', hint: 'PM และทีม Dev กำลังพัฒนาและส่งมอบ' , weight: 0, exit: ['ลูกค้าตรวจรับงวดสุดท้าย', 'อัปโหลดใบตรวจรับใน Document Inspection', 'ส่งมอบคู่มือและอบรมแล้ว'] },
-  { key: 'warranty', label: 'Warranty', th: 'รับประกัน', prob: '—', phase: 'postsale', owner: 'MA', hint: 'Go-Live แล้ว ทีม MA ดูแล' , weight: 0, exit: ['หมดระยะประกัน', 'ลูกค้าตอบเรื่องต่อ MA แล้ว', 'ขอคืนหลักประกันสัญญา'] },
-  { key: 'ended', label: 'Ended', th: 'ปิดโครงการ', prob: '—', phase: 'postsale', owner: 'MA', hint: 'หมดประกัน ถ้าต่อสัญญาเปิดเป็นโครงการ MA ใหม่' , weight: 0, exit: [] },
-  { key: 'cancelled', label: 'Cancelled', th: 'ยกเลิก', prob: '—', phase: 'postsale', owner: 'หัวหน้ากลุ่ม', hint: 'ยกเลิกหลังชนะงาน (Close Win ถึง In Delivery)' , weight: 0, exit: [] },
+  { key: 'opportunity', code: 'OPP', label: 'Opportunity', th: 'โอกาส', prob: '10–20%', phase: 'presale', owner: 'SM', hint: 'โครงการเกิด Requirement ลูกค้าตรงกับสินค้า/บริการที่เรามี' , weight: 0.15, exit: ['ระบุลูกค้าและ End User', 'ระบุประเภทโครงการและทีม DT', 'มี Budget หรือช่วงงบประมาณของลูกค้า'], staleDays: 45 },
+  { key: 'pipeline', code: 'PL', label: 'Pipeline', th: 'กำลังเจรจา', prob: '40–50%', phase: 'presale', owner: 'SM', hint: 'มีโอกาสปิดได้ภายในปีนี้ ลูกค้าเริ่มเจรจา ทำ Cost Sheet และ Quotation ให้รองผู้บริหารกับผู้บริหารอนุมัติ' , weight: 0.45, exit: ['ใบเสนอราคาได้รับอนุมัติครบทุกขั้น', 'ทราบวิธีจัดซื้อ (e-bidding / เฉพาะเจาะจง / เอกชน)', 'กำหนด Expected Close'], staleDays: 60 },
+  { key: 'forecast', code: 'FC', label: 'Forecast', th: 'คาดการณ์ปิด', prob: '70–80%', phase: 'presale', owner: 'SM', hint: 'ตกลงกับลูกค้าแล้ว คาดปิดในไตรมาสนี้หรือไตรมาสหน้า' , weight: 0.75, exit: ['ลูกค้ายืนยันขอบเขตและราคา', 'มีร่างสัญญาหรือ PO', 'กำหนดผู้ลงนามฝั่งลูกค้า'], staleDays: 45 },
+  { key: 'rebidding', code: 'RB', label: 'Rebidding', th: 'ยื่นประมูล', prob: '70–80%', phase: 'presale', owner: 'SM', hint: 'เข้าไปที่เว็บเพื่อประมูลแข่ง' , weight: 0.75, exit: ['บันทึกเลขโครงการ e-GP และราคากลาง', 'วางหลักประกันซองแล้ว', 'ยื่นข้อเสนอก่อนกำหนด'], staleDays: 30 },
+  { key: 'win', code: 'CW', label: 'Close Win', th: 'ได้งาน', prob: '100%', phase: 'result', owner: 'SM', hint: 'ได้งาน' , weight: 1, exit: ['อัปโหลด PO หรือสัญญาที่ลงนาม', 'มูลค่า PO ตรงกับใบเสนอราคาที่อนุมัติ', 'วางหลักประกันสัญญาแล้ว (ถ้ามี)'] },
+  { key: 'lose', code: 'CL', label: 'Close Lose', th: 'ไม่ได้งาน', prob: '0%', phase: 'result', owner: 'หัวหน้ากลุ่ม', hint: 'ไม่ได้งาน — หัวหน้ากลุ่มเปิดกลับเป็น Pipeline ได้' , weight: 0, exit: [] },
+  { key: 'handover', code: 'HO', label: 'Handover', th: 'ส่งต่องาน', prob: '—', phase: 'postsale', owner: 'PMO', hint: 'ส่งต่องานให้ PM' , weight: 0, exit: ['Checklist Handover ครบ', 'มอบหมาย PM และทีม DT', 'ยืนยันงวดงานและค่าปรับตามสัญญา'] },
+  { key: 'delivery', code: 'DL', label: 'In Delivery', th: 'กำลังส่งมอบ', prob: '—', phase: 'postsale', owner: 'PM', hint: 'กำลังพัฒนาและส่งมอบ' , weight: 0, exit: ['ลูกค้าตรวจรับงวดสุดท้าย', 'อัปโหลดใบตรวจรับใน Document Inspection', 'ส่งมอบคู่มือและอบรมแล้ว'] },
+  { key: 'warranty', code: 'WR', label: 'Warranty', th: 'รับประกัน', prob: '—', phase: 'postsale', owner: 'MA', hint: 'อยู่ในระยะรับประกัน' , weight: 0, exit: ['หมดระยะประกัน', 'ลูกค้าตอบเรื่องต่อ MA แล้ว', 'ขอคืนหลักประกันสัญญา'] },
+  { key: 'ended', code: 'END', label: 'Ended', th: 'ปิดโครงการ', prob: '—', phase: 'postsale', owner: 'MA', hint: 'ปิดโครงการ — ถ้าต่อสัญญาเปิดเป็นโครงการ MA ใหม่' , weight: 0, exit: [] },
+  { key: 'cancelled', code: 'CXL', label: 'Cancelled', th: 'ยกเลิก', prob: '—', phase: 'postsale', owner: 'หัวหน้ากลุ่ม', hint: 'ยกเลิกโครงการ (หลังได้งาน ต้องให้หัวหน้ากลุ่มอนุมัติ)' , weight: 0, exit: [] },
 ]
 
 export const stageOf = (k: StageKey) => STAGES.find((s) => s.key === k)!
@@ -125,7 +127,19 @@ export function allowedMoves(stage: StageKey, role: Role, type?: ProjectType): S
   }
 }
 
-export type ProjectType = 'ซื้อขาย' | 'เช่าซื้อ' | 'พัฒนาระบบ' | 'MA'
+/** Project types (proposed codes): NNS new sale, WT product warranty, MA, Rental, Manage Service, Software Subscription. */
+export type ProjectType = 'NNS' | 'WT' | 'MA' | 'Rental' | 'MS' | 'SUB'
+export const PROJECT_TYPES: Record<ProjectType, { label: string; th: string }> = {
+  NNS: { label: 'NNS · Nest New Sale', th: 'ซื้อขายใหม่' },
+  WT: { label: 'WT · Warranty', th: 'การรับประกันสินค้า' },
+  MA: { label: 'MA', th: 'บำรุงรักษา (Maintenance)' },
+  Rental: { label: 'Rental', th: 'เช่า / เช่าซื้อ' },
+  MS: { label: 'Manage Service', th: 'บริการบริหารจัดการ' },
+  SUB: { label: 'Software Subscription', th: 'สมัครใช้ซอฟต์แวร์รายงวด' },
+}
+/** What the work mostly is — PMO uses it to pick a PM with the right skills (hardware on site vs. software). */
+export type WorkScope = 'software' | 'hardware' | 'mixed'
+export const WORK_SCOPES: Record<WorkScope, string> = { software: 'พัฒนาระบบ / Software', hardware: 'อุปกรณ์ Hardware / ติดตั้งหน้างาน', mixed: 'ผสม Hardware + Software' }
 
 /** position: job title inside the dev team (SA, BA, UX/UI, Front-end, Back-end, Full-stack, DevOps, QA). */
 export interface Person { id: string; name: string; initials: string; role: Role; team?: string; color: string; position?: string
@@ -336,6 +350,8 @@ export interface Project {
   customer: string
   endUser: string
   type: ProjectType
+  /** Nature of the work, for PM matching. */
+  scope?: WorkScope
   stage: StageKey
   team: string
   revenue: number

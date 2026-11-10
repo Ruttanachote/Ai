@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
 import { CATALOG, PHOTOS, SALES_TEAMS, TODAY_ISO, account, person } from '../data/mock'
 import { validateCreate } from '../domain/rules'
-import type { ProjectType } from '../data/model'
+import { PROJECT_TYPES, WORK_SCOPES, type ProjectType, type WorkScope } from '../data/model'
 import { accounts, notify, projects, session } from '../store'
 import AccountDialog from '../components/AccountDialog.vue'
 
@@ -12,7 +12,7 @@ const router = useRouter()
 const me = person(session.userId)
 const f = reactive({
   origin: 'customer' as 'customer' | 'product', catalogId: '',
-  name: '', customerAccountId: '', endUserAccountId: '', type: 'พัฒนาระบบ' as ProjectType, team: SALES_TEAMS.some((t) => t.code === me?.team) ? me!.team! : 'DT4-LC',
+  name: '', customerAccountId: '', endUserAccountId: '', type: 'NNS' as ProjectType, scope: 'software' as WorkScope, team: SALES_TEAMS.some((t) => t.code === me?.team) ? me!.team! : 'DT4-LC',
   budget: null as number | null, expectedClose: '', sales: '', nextStep: '', note: '',
 })
 const touched = reactive<Record<string, boolean>>({})
@@ -58,7 +58,7 @@ function create() {
   projects.push({
     id, code: 'OPP-69-' + String(150 + projects.length).padStart(4, '0'), name: f.name.trim(),
     customer: draft.customer, endUser: draft.endUser, customerAccountId: draft.customerAccountId, endUserAccountId: draft.endUserAccountId,
-    salesMotion: cust && cust.sector !== 'enterprise' ? 'tender' : 'direct', stageSince: TODAY_ISO, type: f.type, stage: 'opportunity', team: f.team,
+    salesMotion: cust && cust.sector !== 'enterprise' ? 'tender' : 'direct', stageSince: TODAY_ISO, type: f.type, scope: f.scope, stage: 'opportunity', team: f.team,
     revenue: 0, cost: 0, budget: f.budget ?? 0, sm: session.userId, sales: salesList.value, collaborators: [],
     expectedClose: f.expectedClose || undefined, nextStep: f.nextStep || 'ระบุลูกค้าและนัดเก็บ Requirement', cover: PHOTOS.workshop,
     history: [{ stage: 'opportunity', note: `สร้างโครงการ งบประมาณลูกค้า ฿${(f.budget ?? 0).toLocaleString()}`, at: 'วันนี้', by: me?.name ?? '' }],
@@ -122,10 +122,20 @@ function create() {
         <fieldset class="field">
           <legend>ประเภทโครงการ</legend>
           <div class="types">
-            <label v-for="t in ['ซื้อขาย', 'เช่าซื้อ', 'พัฒนาระบบ', 'MA']" :key="t" :class="{ on: f.type === t }">
-              <input v-model="f.type" type="radio" name="type" :value="t" /> {{ t }}
+            <label v-for="(t, k) in PROJECT_TYPES" :key="k" :class="{ on: f.type === k }">
+              <input v-model="f.type" type="radio" name="type" :value="k" /> <span><b>{{ t.label }}</b> <span class="small muted tth">{{ t.th }}</span></span>
             </label>
           </div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend>ลักษณะงาน</legend>
+          <div class="types">
+            <label v-for="(l, k) in WORK_SCOPES" :key="k" :class="{ on: f.scope === k }">
+              <input v-model="f.scope" type="radio" name="scope" :value="k" /> {{ l }}
+            </label>
+          </div>
+          <span class="hint">PMO ใช้เลือก PM ที่ถนัดงานแบบนี้ — เช่น ติดตั้ง Hardware ลงพื้นที่บ่อย หรือพัฒนาระบบ Software</span>
         </fieldset>
 
         <div class="two">
@@ -188,6 +198,8 @@ legend { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 
 .types { display: flex; gap: 8px; flex-wrap: wrap; }
 .types label { display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; min-height: 40px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); cursor: pointer; font-size: 14px; }
 .types label.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.tth { margin-left: 4px; }
+.types label.on .muted { color: inherit; opacity: 0.75; }
 .types input { position: absolute; opacity: 0; }
 .types label:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
 .err { font-size: 13px; color: var(--lose); }

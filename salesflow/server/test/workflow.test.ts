@@ -9,7 +9,7 @@ const t = (o: Partial<Task>): Task => ({ id: 'x', key: 'K-1', title: 'x', assign
 const proj = (tasks: Task[], o: Partial<Project> = {}): Project => {
   const wf = defaultWorkflow('milestone')
   return {
-    id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'พัฒนาระบบ', stage: 'delivery', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1,
+    id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'NNS', stage: 'delivery', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1,
     sm: 'rk', sales: ['S'], pm: 'ak', collaborators: [], nextStep: '', cover: '', history: [], tasks,
     workspace: {
       template: 'milestone', key: 'K', nextNo: 9, createdAt: '2026-09-01', workflow: wf, automation: defaultAutomation(wf), estimate: 'hours', hourlyRate: 600,

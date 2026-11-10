@@ -5,7 +5,7 @@ import { validateMove, validateCreate, checkContractValue, closeWinRule, handove
 import type { Project } from '../../src/data/model.ts'
 
 const base = (o: Partial<Project> = {}): Project => ({
-  id: 'p', code: 'C', name: 'Test', customer: 'X', endUser: 'X', type: 'พัฒนาระบบ', stage: 'pipeline', team: 'DT2',
+  id: 'p', code: 'C', name: 'Test', customer: 'X', endUser: 'X', type: 'NNS', stage: 'pipeline', team: 'DT2',
   revenue: 10_000_000, cost: 7_000_000, budget: 11_000_000, sm: 'rk', sales: ['Sirinya B.'], collaborators: [], nextStep: '', cover: '',
   history: [], customerAccountId: 'a1', expectedClose: '2026-12-20',
   salesDocs: { tor: 'TOR.docx', proposal: 'Proposal.docx' }, torReview: { status: 'approved', version: 1, at: '2026-10-01' }, ...o,

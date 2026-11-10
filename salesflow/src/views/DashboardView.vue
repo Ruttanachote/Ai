@@ -130,7 +130,7 @@ const deadlines = computed(() =>
         <div class="panel-head"><h2>มูลค่าตามสถานะ</h2><span class="muted small">รวมรายได้ (หรือ Budget ถ้ายังไม่มีใบเสนอราคา)</span></div>
         <div class="funnel">
           <div v-for="r in funnel" :key="r.k" class="frow">
-            <span class="fl">{{ stageOf(r.k).label }}<em>{{ stageOf(r.k).prob }}</em></span>
+            <span class="fl"><b class="scode">{{ stageOf(r.k).code }}</b> {{ stageOf(r.k).label }}<em>{{ stageOf(r.k).prob }}</em></span>
             <div class="ftrack"><i :class="{ win: r.k === 'win' }" :style="{ width: Math.max(r.w, 2) + '%' }" /></div>
             <span class="fv num">{{ mb(r.value) }}<em>{{ r.count }} งาน</em></span>
           </div>
@@ -279,4 +279,5 @@ const deadlines = computed(() =>
   .hero-in { padding: 24px 20px; }
   .frow { grid-template-columns: 92px 1fr 80px; gap: 8px; }
 }
+.scode { font-family: var(--display); font-size: 12px; color: var(--muted); margin-right: 2px; }
 </style>

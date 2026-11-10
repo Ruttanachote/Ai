@@ -95,7 +95,7 @@ import { stageChecklist } from '../../src/domain/nextstep.ts'
 import { requirementsFor } from '../../src/domain/rules.ts'
 import type { Project } from '../../src/data/model.ts'
 test('next-step checklist covers every requirement and points to where to fix it', () => {
-  const p = { id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'พัฒนาระบบ', stage: 'pipeline', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1, sm: 'rk', sales: [], collaborators: [], nextStep: '', cover: '', history: [] } as unknown as Project
+  const p = { id: 'p', code: 'C', name: 'P', customer: '', endUser: '', type: 'NNS', stage: 'pipeline', team: 'DT4-LC', revenue: 1, cost: 1, budget: 1, sm: 'rk', sales: [], collaborators: [], nextStep: '', cover: '', history: [] } as unknown as Project
   const list = stageChecklist(p, 'forecast', '2026-11-10')
   // TOR review is listed as its own step even while TOR itself is still missing.
   assert.equal(list.filter((i) => !i.ok && i.id !== 'torReview').length, requirementsFor('forecast', p, '2026-11-10').length)

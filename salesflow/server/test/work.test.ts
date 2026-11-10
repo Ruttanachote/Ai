@@ -5,7 +5,7 @@ import { tree, matches, emptyFilter, newItem, createWorkspace, suggestKey, group
 import { lateTasks } from '../../src/domain/metrics.ts'
 
 const proj = (o: Partial<Project> = {}): Project => ({
-  id: 'p', code: 'WIN-1', name: 'Smart Permit Platform', customer: '', endUser: '', type: 'พัฒนาระบบ', stage: 'delivery', team: 'DT4-LC',
+  id: 'p', code: 'WIN-1', name: 'Smart Permit Platform', customer: '', endUser: '', type: 'NNS', stage: 'delivery', team: 'DT4-LC',
   revenue: 1, cost: 1, budget: 1, sm: 'rk', sales: ['S'], collaborators: [], nextStep: '', cover: '', history: [], ...o,
 })
 const t = (o: Partial<Task>): Task => ({ id: 'x', title: 'x', assignee: '', status: 'todo', due: '2026-11-10', hours: 0, spent: 0, milestone: '', ...o })

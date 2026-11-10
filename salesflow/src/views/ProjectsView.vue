@@ -7,10 +7,11 @@ import Icon from '../components/Icon.vue'
 import StageBadge from '../components/StageBadge.vue'
 import Avatar from '../components/Avatar.vue'
 import PageHeader from '../components/PageHeader.vue'
+import StatusGuide from '../components/StatusGuide.vue'
 import KpiStrip from '../components/KpiStrip.vue'
 import { scope, session } from '../store'
 import { baht, mb, person, TODAY_ISO } from '../data/mock'
-import { STAGES, stageOf, type Phase, type Project } from '../data/model'
+import { PROJECT_TYPES, STAGES, stageOf, type Phase, type Project } from '../data/model'
 import { dealValue, gpPct, isOpen, isWon, bookedValue, pipelineValue, sum, approvalState, APPROVAL_LABEL } from '../domain/metrics'
 import { customerName } from '../display'
 
@@ -36,14 +37,14 @@ const list = computed(() =>
 // Register table (Naive UI): sortable columns, stage/team filters in the header, pagination,
 // row click opens the project. Same scope + metrics as every other page.
 const router = useRouter()
-const typeOptions = [{ label: 'ทุกประเภท', value: 'all' }, ...['ซื้อขาย', 'เช่าซื้อ', 'พัฒนาระบบ', 'MA'].map((v) => ({ label: v, value: v }))]
+const typeOptions = [{ label: 'ทุกประเภท', value: 'all' }, ...Object.entries(PROJECT_TYPES).map(([v, t]) => ({ label: `${t.label} · ${t.th}`, value: v }))]
 const teams = computed(() => [...new Set(base.value.map((p) => p.team))].sort())
 const columns = computed<DataTableColumns<Project>>(() => [
   {
     title: 'โครงการ', key: 'name', minWidth: 260, sorter: (a, b) => a.name.localeCompare(b.name, 'th'),
     render: (p) => h('div', [
       h(RouterLink, { to: `/projects/${p.id}`, class: 'name', onClick: (e: Event) => e.stopPropagation() }, { default: () => p.name }),
-      h('p', { class: 'muted small' }, `${p.code} · ${customerName(p)} · ${p.type}${p.parentId ? ' · ต่อจากโครงการเดิม' : ''}`),
+      h('p', { class: 'muted small' }, `${p.code} · ${customerName(p)} · ${PROJECT_TYPES[p.type]?.label ?? p.type}${p.parentId ? ' · ต่อจากโครงการเดิม' : ''}`),
     ]),
   },
   {
@@ -83,6 +84,7 @@ const kpis = computed(() => [
         <button role="radio" :aria-checked="view === 'list'" @click="view = 'list'">รายการ</button>
         <button role="radio" :aria-checked="view === 'board'" @click="view = 'board'">Pipeline</button>
       </div>
+      <StatusGuide />
       <router-link v-if="canRegister" to="/projects/new" class="btn primary">+ ลงทะเบียนโครงการใหม่</router-link>
     </PageHeader>
 

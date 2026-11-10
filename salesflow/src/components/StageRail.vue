@@ -27,7 +27,7 @@ const bands = [
         :class="{ done: i < reached || (i === reached && exit), now: i === reached && !exit, ahead: i > reached }"
         :aria-current="i === reached && !exit ? 'step' : undefined">
         <span class="node"><svg v-if="i < reached" viewBox="0 0 12 12" width="10" height="10"><path d="M2.5 6.2l2.2 2.2L9.5 3.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
-        <span class="name">{{ stageOf(k).label }}</span>
+        <span class="name"><b class="code">{{ stageOf(k).code }}</b> {{ stageOf(k).label }}</span>
         <span v-if="!compact" class="prob">{{ stageOf(k).prob }}</span>
       </div>
     </div>
@@ -63,6 +63,8 @@ const bands = [
 .exit { margin-top: 12px; font-size: 13px; padding: 8px 12px; border-radius: var(--r-sm); }
 .exit.lose { background: var(--lose-soft); color: var(--lose); }
 .exit.cancelled { background: var(--idle-soft); color: var(--ink-2); }
+.code { display: block; font-family: var(--display); font-size: 11px; letter-spacing: 0.04em; color: var(--muted); }
+.now .code { color: var(--brand); }
 .compact .name { font-size: 12px; }
 @media (max-width: 760px) {
   .rail { overflow-x: auto; }

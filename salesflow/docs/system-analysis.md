@@ -1,6 +1,6 @@
 # Stream One Platform — วิเคราะห์ระบบบริหารโครงการขาย ส่งมอบ และ MA
 
-เอกสารนี้สรุปการออกแบบระบบจากความต้องการ: ติดตามโครงการซื้อขาย เช่าซื้อ พัฒนาระบบ และ MA
+เอกสารนี้สรุปการออกแบบระบบจากความต้องการ: ติดตามโครงการทุกประเภท (NNS, WT, MA, Rental, Manage Service, Software Subscription)
 ของแต่ละทีม DT ตั้งแต่โอกาสขายแรกจนถึงการต่อสัญญา MA พร้อมส่วนที่**เสนอเพิ่ม**สำหรับ PM และ MA
 
 ---
@@ -139,7 +139,7 @@ Opportunity → Pipeline → Forecast → Rebidding → Close Win → Handover �
 ## 7. โครงสร้างข้อมูลหลัก
 
 ```
-Project(id, code, name, type[ซื้อขาย|เช่าซื้อ|พัฒนาระบบ|MA], stage, team, customer, endUser,
+Project(id, code, name, type[NNS|WT|MA|Rental|MS|SUB], scope[software|hardware|mixed], stage, team, customer, endUser,
         budget, revenue, cost, smId, saleName, pmId, parentId, dates…, nextStep)
 StageHistory(projectId, from, to, reason, by, at)
 DocumentVersion(projectId, folder, spItemId, spVersion, label v1..n)
@@ -263,3 +263,24 @@ PM เปิดพื้นที่งานหลัง Handover (เมนู
 ### 12.1 รื้อโมดูล PM (Workflow engine)
 
 พื้นที่งานย้ายจากสถานะตายตัว 4 ช่อง ไปเป็น Workflow ที่ PM ตั้งค่าได้ต่อโครงการ (สถานะ, กลุ่ม, WIP, การย้ายที่อนุญาตพร้อมจำกัดบทบาท, Definition of Done, Automation) โดยทุกหน้าจอ (บอร์ด รายการ รายละเอียด งานของฉัน) เรียก `src/domain/workflow.ts` ชุดเดียวกัน และเซิร์ฟเวอร์ใช้ไฟล์เดียวกันตรวจสิทธิ์ได้ · เพิ่มบทบาท `dev` (App Role `OnePlatform.Dev`) สำหรับ Dev / QA / BA, หน้า “งานของฉัน”, การแจ้งเตือน, Worklog → คำขอ OT, Burndown / Velocity และ CR → งาน รายละเอียดดู `docs/pm-module-analysis.md` ข้อ 11
+
+## สถานะและประเภทโครงการ (ตัวย่อชุดที่เสนอ)
+
+| กลุ่ม | ตัวย่อ | สถานะ | ความหมาย | โอกาส |
+|---|---|---|---|---|
+| ช่วงขาย (Pre-sale) | OPP | Opportunity | โครงการเกิด Requirement ลูกค้าตรงกับสินค้า/บริการที่เรามี | 10–20% |
+| | PL | Pipeline | มีโอกาสปิดได้ภายในปีนี้ ลูกค้าเริ่มเจรจา ทำ Cost Sheet และ Quotation ให้รองผู้บริหารกับผู้บริหารอนุมัติ | 40–50% |
+| | FC | Forecast | ตกลงกับลูกค้าแล้ว คาดปิดในไตรมาสนี้หรือไตรมาสหน้า | 70–80% |
+| | RB | Rebidding | เข้าไปที่เว็บเพื่อประมูลแข่ง | 70–80% |
+| ผลการขาย | CW | Close Win | ได้งาน | 100% |
+| | CL | Close Lose | ไม่ได้งาน | 0% |
+| ช่วงหลังขาย (PMO / PM / MA) | HO | Handover | ส่งต่องานให้ PM | |
+| | DL | In Delivery | กำลังพัฒนาและส่งมอบ | |
+| | WR | Warranty | อยู่ในระยะรับประกัน | |
+| | END | Ended | ปิดโครงการ | |
+| | CXL | Cancelled | ยกเลิกโครงการ (หลังได้งาน ต้องให้หัวหน้ากลุ่มอนุมัติ) | |
+
+ประเภทโครงการ: NNS = Nest New Sale (ซื้อขายใหม่) · WT = Warranty (การรับประกันสินค้า) · MA · Rental · Manage Service (MS) · Software Subscription (SUB)
+ลักษณะงาน (scope) ใช้จับคู่ PM: software / hardware / mixed
+
+ปฏิทิน: SM ไม่เห็นการลาของทีม · ประกาศผลประมูลและใบเสนอราคาหมดอายุ แสดงเฉพาะ SM และ PM

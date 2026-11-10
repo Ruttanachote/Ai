@@ -7,7 +7,7 @@ import {
 } from '../../src/domain/metrics.ts'
 
 const p = (o: Partial<Project>): Project => ({
-  id: 'x', code: 'X', name: 'X', customer: '', endUser: '', type: 'พัฒนาระบบ', stage: 'pipeline', team: 'DT4-2',
+  id: 'x', code: 'X', name: 'X', customer: '', endUser: '', type: 'NNS', stage: 'pipeline', team: 'DT4-2',
   revenue: 0, cost: 0, budget: 0, sm: 'rk', sales: [], collaborators: [], nextStep: '', cover: '', history: [], ...o,
 })
 
