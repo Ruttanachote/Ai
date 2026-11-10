@@ -109,6 +109,14 @@ function addHoliday() {
       <div class="addh"><input v-model="newHoliday" class="input" type="date" aria-label="วันหยุดใหม่" /><button class="btn" :disabled="!newHoliday" @click="addHoliday">เพิ่มวันหยุด</button></div>
       <ul class="hol"><li v-for="h in holidays" :key="h">{{ thDate(h) }}</li></ul>
       <p class="hint">วันทำการ: จันทร์–ศุกร์ · ปรับทุกปีตามประกาศคณะรัฐมนตรี</p>
+      <div class="panel-head hrs"><h2>เวลาทำงานและ OT</h2><span class="muted small">ใช้แยกชั่วโมงปกติกับ OT ตอนบันทึกเวลา และคำนวณ Timesheet</span></div>
+      <div class="hgrid">
+        <label class="field">เข้างาน<input v-model="SETTINGS.hours.start" type="time" class="input" /></label>
+        <label class="field">เลิกงาน<input v-model="SETTINGS.hours.end" type="time" class="input" /></label>
+        <label class="field">พักกลางวัน<span class="pair"><input v-model="SETTINGS.hours.lunchStart" type="time" class="input" /><input v-model="SETTINGS.hours.lunchEnd" type="time" class="input" /></span></label>
+        <label class="field">เริ่มนับ OT หลัง<input v-model="SETTINGS.hours.otFrom" type="time" class="input" /></label>
+      </div>
+      <p class="hint">วันหยุด: เสาร์ อาทิตย์ และวันหยุดราชการด้านบน — ทำงานวันหยุดนับเป็น OT ทั้งหมด · ก่อนเข้างานนับเป็น OT</p>
     </section>
 
     <section v-if="tab === 'channels'" class="channels">
@@ -171,4 +179,8 @@ function addHoliday() {
 .hook { display: grid; grid-template-columns: 70px 1fr; gap: 10px; align-items: center; margin-bottom: 8px; font-weight: 500; }
 .con { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 18px 22px; }
 @media (max-width: 560px) { .con { grid-template-columns: 1fr; } }
+.hrs { margin-top: 24px; }
+.hgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.pair { display: flex; gap: 6px; }
+@media (max-width: 760px) { .hgrid { grid-template-columns: 1fr 1fr; } }
 </style>

@@ -2,6 +2,7 @@
 // worklog → OT, epic ↔ contract milestone sync and burndown. Pure — callers pass "who" and "today".
 import type { AutomationRule, MemberRole, Project, Sprint, Task, Workflow, WorkflowStatus, WorkspaceMember, WorkspaceTemplate, WorkStatus } from '../data/model.ts'
 import { addDays, keyOf, record, typeOf } from './work.ts'
+import { splitHours, DEFAULT_HOURS, type WorkHours } from './timesheet.ts'
 
 const S = (id: string, name: string, category: WorkStatus, wipLimit?: number): WorkflowStatus => ({ id, name, category, wipLimit })
 
@@ -126,6 +127,28 @@ export function syncMilestones(p: Project) {
     if (kids.length) m.progress = Math.round((kids.filter((k) => k.status === 'done').length / kids.length) * 100)
     if (epics.every((e) => e.status === 'done') && (!m.state || m.state === 'planned')) { m.state = 'delivered'; m.progress = 100 }
   }
+}
+
+/**
+ * Log a time range: the part inside working hours is normal time, the rest (or a whole day off)
+ * is OT and raises one OT request for the PM — with the note and evidence attached.
+ */
+export function logTimeRange(p: Project, t: Task, who: string, day: string, from: string, to: string, note: string, evidence: string[], today: string, hours: WorkHours = DEFAULT_HOURS) {
+  const s = splitHours(day, from, to, hours)
+  if (!(s.total > 0)) return s
+  const base = { who, day, note, from, to }
+  const entries = [
+    ...(s.normal > 0 ? [{ ...base, hours: s.normal }] : []),
+    ...(s.ot > 0 ? [{ ...base, hours: s.ot, overtime: true, evidence }] : []),
+  ]
+  t.worklogs = [...entries, ...(t.worklogs ?? [])]
+  t.spent = (t.spent ?? 0) + s.total
+  logChange(t, who, 'บันทึกเวลา', undefined, `${from}–${to} · ${s.total} ชม.${s.ot ? ` (OT ${s.ot})` : ''}`, today)
+  if (s.ot > 0) {
+    const rate = p.workspace?.hourlyRate ?? 600
+    p.ot = [...(p.ot ?? []), { id: 'ot' + Date.now().toString(36), who, week: day, hours: s.ot, amount: s.ot * rate, reason: `${keyOf(t)} ${note || t.title} · ${s.dayOff ? 'วันหยุด' : 'นอกเวลา'} ${from}–${to}${evidence.length ? ' · หลักฐาน ' + evidence.join(', ') : ''}`, status: 'pending' }]
+  }
+  return s
 }
 
 /** Worklog adds to spent hours; overtime entries raise an OT request for the PM to approve. */

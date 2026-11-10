@@ -5,6 +5,7 @@ import KpiStrip from '../components/KpiStrip.vue'
 import LeaveDialog from '../components/LeaveDialog.vue'
 import LeaveLog from '../components/LeaveLog.vue'
 import PmRoundActions from '../components/PmRoundActions.vue'
+import Timesheet from '../components/Timesheet.vue'
 import { dueRounds, STATE_LABEL } from '../domain/pm'
 import WorkTypeIcon from '../components/work/WorkTypeIcon.vue'
 import PriorityIcon from '../components/work/PriorityIcon.vue'
@@ -58,6 +59,8 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
       <button class="btn" @click="leaveOpen = true">แจ้งลา</button>
     </PageHeader>
     <KpiStrip :items="kpis" />
+
+    <Timesheet :who="session.userId" class="tsw" />
 
     <div class="cols">
       <div class="lists">
@@ -149,4 +152,5 @@ ul { list-style: none; margin: 0; padding: 0; }
 @media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .flush li { grid-template-columns: auto minmax(0, 1fr) auto; } .flush li > :nth-child(3), .flush li > :nth-child(5), .flush li > :nth-child(6) { display: none; } }
 .flush li.pmr { grid-template-columns: auto minmax(0, 1fr) auto; }
+.tsw { margin-bottom: 16px; }
 </style>

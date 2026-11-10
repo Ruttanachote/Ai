@@ -302,7 +302,14 @@ import { defaultAutomation, defaultWorkflow } from '../domain/workflow.ts'
   T('t2').history = [{ at: '6 พ.ย. 10:24', day: '2026-11-06', who: 'dev2', field: 'สถานะ', from: 'In Progress', to: 'Code Review' }]
   T('t2').attachments = [{ name: 'mockup-ตรวจเอกสาร-v2.fig', size: '3.2 MB', by: 'dev2', at: '2026-10-14', folder: 'Smart Permit/Work/SPP-4' }]
   T('t3').acceptance = [{ text: 'สร้าง QR ตามยอดค่าธรรมเนียม', done: true }, { text: 'รับ callback และอัปเดตสถานะชำระ', done: false }]
-  T('t3').worklogs = [{ who: 'dev3', day: '2026-11-05', hours: 6, note: 'ปรับ endpoint v3' }, { who: 'dev3', day: '2026-10-27', hours: 12, overtime: true, note: 'แก้ปัญหาเชื่อมต่อ Thai QR ก่อน UAT รอบ 1' }]
+  T('t3').worklogs = [
+    { who: 'dev3', day: '2026-11-05', hours: 6, note: 'ปรับ endpoint v3', from: '08:30', to: '15:30' },
+    { who: 'dev3', day: '2026-11-04', hours: 8, note: 'ทดสอบ QR กับ Sandbox ธนาคาร', from: '08:30', to: '17:30' },
+    { who: 'dev3', day: '2026-11-04', hours: 2, overtime: true, note: 'แก้ Timeout ก่อนส่ง UAT', from: '17:30', to: '19:30', evidence: ['commit-4f2a1c.png'] },
+    { who: 'dev3', day: '2026-11-03', hours: 8, note: 'เชื่อม API สร้าง QR', from: '08:30', to: '17:30' },
+    { who: 'dev3', day: '2026-11-02', hours: 7, note: 'ออกแบบ callback', from: '09:30', to: '17:30' },
+    { who: 'dev3', day: '2026-10-27', hours: 12, overtime: true, note: 'แก้ปัญหาเชื่อมต่อ Thai QR ก่อน UAT รอบ 1' },
+  ]
   T('t4').coAssignees = ['dev1']
   T('b1').acceptance = [{ text: 'อัปโหลดไฟล์ 50MB ได้โดยไม่ค้าง', done: false }, { text: 'แสดงแถบความคืบหน้าการอัปโหลด', done: false }]
   T('b1').statusId = 'readyqa'; T('b1').status = 'review'; T('b1').assignee = 'qa1'

@@ -216,7 +216,7 @@ export interface Task {
   acceptance?: { text: string; done: boolean }[]
   attachments?: { name: string; size: string; by: string; at: string; folder: string }[]
   history?: { at: string; day: string; who: string; field: string; from?: string; to?: string }[]
-  worklogs?: { who: string; day: string; hours: number; overtime?: boolean; note?: string }[]
+  worklogs?: { who: string; day: string; hours: number; overtime?: boolean; note?: string; from?: string; to?: string; evidence?: string[] }[]
   crId?: string
 }
 

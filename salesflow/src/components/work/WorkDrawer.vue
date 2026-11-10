@@ -5,8 +5,9 @@ import WorkTypeIcon from './WorkTypeIcon.vue'
 import { person, thDate, TODAY_ISO } from '../../data/mock'
 import { PRIORITIES, WORK_STATUS, WORK_TYPES, type Project, type Task, type WorkType } from '../../data/model'
 import { keyOf, newItem, record, typeOf } from '../../domain/work'
-import { addWorklog, allowedTargets, statusOf, workflowOf } from '../../domain/workflow'
-import { notify, session } from '../../store'
+import { allowedTargets, logTimeRange, statusOf, workflowOf } from '../../domain/workflow'
+import { splitHours } from '../../domain/timesheet'
+import { notify, session, SETTINGS } from '../../store'
 import { canEdit, edited, isAdmin, move } from './actions'
 
 // Slide-over detail: edits apply immediately (no save button), Esc closes, focus returns.
@@ -76,12 +77,19 @@ function addCo(e: Event) {
   el.value = ''
 }
 function dropCo(id: string) { if (!props.item) return; props.item.coAssignees = (props.item.coAssignees ?? []).filter((x) => x !== id); edited(props.item, 'ผู้ร่วมทำ', NAME(id), undefined) }
-const wl = ref({ day: TODAY_ISO, hours: 1, ot: false, note: '' })
+// Log a time range; the system splits normal hours (Mon–Fri 08:30–17:30, lunch excluded) from OT.
+const wl = ref({ day: TODAY_ISO, from: '08:30', to: '12:00', note: '', evidence: [] as string[] })
+const split = computed(() => splitHours(wl.value.day, wl.value.from, wl.value.to, SETTINGS.hours))
+const needEvidence = computed(() => split.value.ot > 0 && (!wl.value.note.trim() || !wl.value.evidence.length))
+function addEvidence(e: Event) {
+  wl.value.evidence = [...new Set([...wl.value.evidence, ...[...((e.target as HTMLInputElement).files ?? [])].map((f) => f.name)])]
+  ;(e.target as HTMLInputElement).value = ''
+}
 function logTime() {
-  if (!props.item) return
-  addWorklog(props.p, props.item, session.userId, wl.value.day, wl.value.hours, wl.value.ot, wl.value.note, TODAY_ISO)
-  notify(wl.value.ot ? `บันทึก ${wl.value.hours} ชม. และส่งคำขอ OT ให้ PM อนุมัติแล้ว` : `บันทึก ${wl.value.hours} ชม. แล้ว`)
-  wl.value = { day: TODAY_ISO, hours: 1, ot: false, note: '' }
+  if (!props.item || !(split.value.total > 0) || needEvidence.value) return
+  const s = logTimeRange(props.p, props.item, session.userId, wl.value.day, wl.value.from, wl.value.to, wl.value.note.trim(), wl.value.evidence, TODAY_ISO, SETTINGS.hours)
+  notify(s.ot ? `บันทึก ${s.total} ชม. (OT ${s.ot} ชม.) และส่งคำขอ OT ให้ PM อนุมัติแล้ว` : `บันทึก ${s.total} ชม. แล้ว`)
+  wl.value = { day: wl.value.day, from: wl.value.to, to: wl.value.to, note: '', evidence: [] }
 }
 const comment = ref('')
 const child = ref('')
@@ -224,14 +232,23 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
               <div><b :class="{ bad: item.hours && item.spent > item.hours }">{{ item.hours ? Math.max(0, item.hours - item.spent) : '—' }}</b><span>คงเหลือ</span></div></div>
             <form v-if="editable" class="wl" @submit.prevent="logTime">
               <label>วันที่<input v-model="wl.day" type="date" class="input mini" /></label>
-              <label>ชั่วโมง<input v-model.number="wl.hours" type="number" min="0.5" step="0.5" class="input mini num" /></label>
+              <label>ตั้งแต่<input v-model="wl.from" type="time" class="input mini" /></label>
+              <label>ถึง<input v-model="wl.to" type="time" class="input mini" /></label>
               <label class="grow">ทำอะไร<input v-model="wl.note" class="input mini" placeholder="เช่น แก้ callback ตาม v3" /></label>
-              <label class="ck"><input v-model="wl.ot" type="checkbox" /> ทำนอกเวลา (ขอ OT)</label>
-              <button class="btn sm primary" :disabled="!(wl.hours > 0)">บันทึกเวลา</button>
+              <button class="btn sm primary" :disabled="!(split.total > 0) || needEvidence">บันทึกเวลา</button>
             </form>
-            <p v-if="wl.ot" class="small muted">ระบบจะสร้างคำขอ OT ให้ PM อนุมัติในเงินกัน OT ของ Cost Sheet (อัตรา ฿{{ (p.workspace?.hourlyRate ?? 600).toLocaleString() }}/ชม.)</p>
+            <p class="split small" :class="{ ot: split.ot > 0 }">
+              <template v-if="split.total > 0">รวม <b>{{ split.total }}</b> ชม. · เวลาปกติ {{ split.normal }} ชม.<template v-if="split.ot > 0"> · <b>OT {{ split.ot }} ชม.</b> {{ split.dayOff ? '(วันหยุด)' : '(นอกเวลา ' + SETTINGS.hours.start + '–' + SETTINGS.hours.end + ')' }}</template></template>
+              <template v-else>ระบุเวลาสิ้นสุดหลังเวลาเริ่ม</template>
+            </p>
+            <div v-if="split.ot > 0" class="ev">
+              <span class="small">OT ต้องระบุว่าทำอะไรและแนบหลักฐาน (เช่น ภาพหน้าจอ, ลิงก์ commit, Log)</span>
+              <span v-for="x in wl.evidence" :key="x" class="chip">📎 {{ x }}</span>
+              <label class="btn sm">แนบหลักฐาน<input type="file" multiple hidden @change="addEvidence" /></label>
+              <span class="small muted">ระบบสร้างคำขอ OT ให้ PM อนุมัติในเงินกันของ Cost Sheet (฿{{ (p.workspace?.hourlyRate ?? 600).toLocaleString() }}/ชม.)</span>
+            </div>
             <ul class="logs">
-              <li v-for="(w, i) in item.worklogs ?? []" :key="i"><Avatar :id="w.who" :size="22" /><span>{{ NAME(w.who) }}</span><span class="small muted">{{ thDate(w.day) }}</span><b class="num">{{ w.hours }} ชม.</b><span v-if="w.overtime" class="chip warn">OT</span><span class="small muted nt">{{ w.note }}</span></li>
+              <li v-for="(w, i) in item.worklogs ?? []" :key="i"><Avatar :id="w.who" :size="22" /><span>{{ NAME(w.who) }}</span><span class="small muted">{{ thDate(w.day) }}{{ w.from ? ' ' + w.from + '–' + w.to : '' }}</span><b class="num">{{ w.hours }} ชม.</b><span v-if="w.overtime" class="chip warn">OT</span><span class="small muted nt">{{ w.note }}</span></li>
               <li v-if="!(item.worklogs ?? []).length" class="muted small">ยังไม่มีการบันทึกเวลา</li>
             </ul>
           </section>
@@ -308,6 +325,9 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 .wl .num { width: 80px; }
 .wl .ck { display: flex; gap: 6px; align-items: center; color: var(--ink); font-size: 13px; padding-bottom: 6px; }
 .logs { margin-top: 12px !important; }
+.split { margin: 6px 0 0; color: var(--ink-2); }
+.split.ot { color: var(--warn); }
+.ev { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; padding: 10px; border: 1px dashed var(--warn); border-radius: 8px; background: var(--warn-soft); }
 .logs li { grid-template-columns: auto auto auto auto auto minmax(0, 1fr) !important; }
 .nt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }

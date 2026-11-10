@@ -57,7 +57,8 @@ export const scope = computed(() => {
 })
 
 /** Admin-tunable approval thresholds (Settings → ลำดับการอนุมัติ). */
-export const SETTINGS = reactive({ tolerancePct: 2, gpDropPct: 3, approvalValidDays: 60 })
+import { DEFAULT_HOURS } from './domain/timesheet'
+export const SETTINGS = reactive({ tolerancePct: 2, gpDropPct: 3, approvalValidDays: 60, hours: { ...DEFAULT_HOURS } })
 
 export function moveStage(id: string, to: StageKey, note: string, by: string) {
   const p = projects.find((x) => x.id === id)
