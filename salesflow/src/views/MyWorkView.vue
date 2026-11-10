@@ -16,6 +16,7 @@ import { WORK_STATUS, type Project, type Task } from '../data/model'
 import { addDays, byPriority, keyOf, typeOf } from '../domain/work'
 import { allowedTargets, statusOf } from '../domain/workflow'
 import { isAdmin, move } from '../components/work/actions'
+import { canSee } from '../nav'
 
 // One list of everything assigned to me across projects — what a developer opens every morning.
 const mine = computed(() => projects.flatMap((p) => (p.tasks ?? [])
@@ -40,6 +41,8 @@ const kpis = computed(() => [
   { label: 'OT รออนุมัติ', value: String(otPending.value.length), note: otPending.value.length ? `${otPending.value.reduce((s, o) => s + o.hours, 0)} ชม. รอ PM` : 'ไม่มี', tone: otPending.value.length ? ('warn' as const) : ('' as const) },
 ])
 const leaveOpen = ref(false)
+// Timesheet is for people who log time on work items (team, PM) — others only see it once they log.
+const logsTime = computed(() => ['dev', 'pm'].includes(session.role) || projects.some((p) => (p.tasks ?? []).some((t) => (t.worklogs ?? []).some((w) => w.who === session.userId))))
 // PM reports this person prepares (named preparer, or member of the project's workspace).
 const pmToPrepare = computed(() => dueRounds(projects, TODAY_ISO).filter((x) => x.r.status !== 'ready' &&
   (x.p.pmPlan?.preparer === session.userId || (!x.p.pmPlan?.preparer && x.p.workspace?.members?.some((m) => m.userId === session.userId)))))
@@ -60,7 +63,7 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
     </PageHeader>
     <KpiStrip :items="kpis" />
 
-    <Timesheet :who="session.userId" class="tsw" />
+    <Timesheet v-if="logsTime" :who="session.userId" class="tsw" />
 
     <div class="cols">
       <div class="lists">
@@ -90,7 +93,7 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
         <section v-if="!open.length" class="panel empty">
           <h3>ไม่มีงานค้าง</h3>
           <p class="muted">งานที่ PM มอบหมายจะขึ้นที่นี่ทันที พร้อมแจ้งเตือนทาง Teams</p>
-          <router-link to="/work" class="btn sm">Open Project Workspace</router-link>
+          <router-link v-if="canSee('/work', session.role)" to="/work" class="btn sm">Open Project Workspace</router-link>
         </section>
         <section v-if="doneRecent.length" class="panel flush">
           <h3>เสร็จใน 14 วัน <span class="muted">{{ doneRecent.length }}</span></h3>

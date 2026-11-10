@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import Avatar from '../Avatar.vue'
 import Dialog from '../Dialog.vue'
 import { PEOPLE, person } from '../../data/mock'
-import { MEMBER_ROLES, WORK_STATUS, type MemberRole, type Project, type WorkStatus } from '../../data/model'
+import { MEMBER_ROLE_DESC, MEMBER_ROLES, WORK_STATUS, type MemberRole, type Project, type WorkStatus } from '../../data/model'
 import { defaultAutomation, defaultWorkflow, statusOf, workflowOf } from '../../domain/workflow'
 import { notify } from '../../store'
 import { canManage } from './actions'
@@ -88,14 +88,15 @@ const CATS = Object.keys(WORK_STATUS) as WorkStatus[]
 
     <section v-if="sec === 'members'" class="panel">
       <h3>สมาชิกพื้นที่งาน</h3>
-      <p class="small muted">สมาชิกเห็นเฉพาะงานของโครงการนี้ ไม่เห็นราคาขายและต้นทุน · Dev / QA / BA เข้าใช้งานด้วยบัญชี Microsoft 365 (App Role OnePlatform.Dev)</p>
+      <p class="small muted">สมาชิกเห็นเฉพาะงานของโครงการนี้ ไม่เห็นราคาขายและต้นทุน · ทีมพัฒนา (SA · BA · UX/UI · Front-end · Back-end · DevOps · QA) เข้าใช้งานด้วยบัญชี Microsoft 365 (App Role OnePlatform.Dev) และกำหนดบทบาทในโครงการที่นี่</p>
       <table class="table">
         <thead><tr><th>ชื่อ</th><th>ทีม</th><th>บทบาทในโครงการ</th><th class="r">งานค้าง</th><th /></tr></thead>
         <tbody>
           <tr v-for="m in ws.members" :key="m.userId">
             <td><span class="who"><Avatar :id="m.userId" :size="26" />{{ person(m.userId)?.name }}</span></td>
             <td class="small muted">{{ person(m.userId)?.team }}</td>
-            <td><select v-model="m.role" class="input mini" :disabled="!manager || m.userId === p.pm" :aria-label="`บทบาทของ ${person(m.userId)?.name}`"><option v-for="(l, k) in MEMBER_ROLES" :key="k" :value="k">{{ l }}</option></select></td>
+            <td><select v-model="m.role" class="input mini" :disabled="!manager || m.userId === p.pm" :aria-label="`บทบาทของ ${person(m.userId)?.name}`"><option v-for="(l, k) in MEMBER_ROLES" :key="k" :value="k">{{ l }}</option></select>
+              <p class="small muted rd">{{ MEMBER_ROLE_DESC[m.role] }}</p></td>
             <td class="r num">{{ openCount(m.userId) }}</td>
             <td class="r"><button v-if="manager && m.userId !== p.pm" class="btn sm ghost" @click="removing = m.userId">เอาออก</button></td>
           </tr>
@@ -103,7 +104,7 @@ const CATS = Object.keys(WORK_STATUS) as WorkStatus[]
       </table>
       <form v-if="manager" class="addm" @submit.prevent="addMember">
         <select v-model="add.userId" class="input mini" aria-label="เลือกคน"><option value="">เลือกคนในองค์กร…</option><option v-for="u in candidates" :key="u.id" :value="u.id">{{ u.name }} · {{ u.team }}</option></select>
-        <select v-model="add.role" class="input mini" aria-label="บทบาท"><option v-for="(l, k) in MEMBER_ROLES" :key="k" :value="k">{{ l }}</option></select>
+        <select v-model="add.role" class="input mini" aria-label="บทบาท" :title="MEMBER_ROLE_DESC[add.role]"><option v-for="(l, k) in MEMBER_ROLES" :key="k" :value="k">{{ l }}</option></select>
         <button class="btn sm primary" :disabled="!add.userId">เพิ่มสมาชิก</button>
       </form>
     </section>
@@ -193,6 +194,7 @@ const CATS = Object.keys(WORK_STATUS) as WorkStatus[]
 .who { display: inline-flex; gap: 8px; align-items: center; }
 .input.mini { min-height: 32px; padding: 2px 8px; font-size: 13.5px; width: auto; }
 .num.input { width: 100px; }
+.rd { margin-top: 2px; max-width: 320px; }
 .addm { display: flex; gap: 8px; flex-wrap: wrap; }
 .mv button { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 10px; padding: 2px 4px; }
 .mv button:disabled { opacity: 0.3; cursor: default; }

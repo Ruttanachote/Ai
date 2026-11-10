@@ -11,7 +11,7 @@ export const NAV: NavGroup[] = [
   {
     title: 'General',
     items: [
-      { to: '/my-work', label: 'My Tasks', icon: 'check', roles: ['pm', 'dev', 'head', 'admin'] },
+      { to: '/my-work', label: 'My Tasks', icon: 'check', roles: [...ALL, 'dev'] },
       { to: '/approvals', label: 'Approval Requests', icon: 'inbox', roles: ['deputy', 'exec', 'admin'] },
       { to: '/projects', label: 'Project Register', icon: 'list', roles: ALL },
       { to: '/accounts', label: 'Customer Accounts', icon: 'people', roles: ['sm', 'head', 'deputy', 'exec', 'pmo', 'ma', 'admin'] },

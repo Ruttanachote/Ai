@@ -19,6 +19,7 @@ const MATRIX: { cap: string; v: Level[] }[] = [
   { cap: 'จัดประชุม Handover · มอบหมาย PM', v: ['view', 'view', 'view', 'view', 'full', 'view', 'view', '', 'view', '', 'full'] },
   { cap: 'แผนงาน Task ความเสี่ยง CR', v: ['view', 'own', 'view', 'view', 'full', '', 'own', 'own', 'view', '', 'full'] },
   { cap: 'บอร์ดงาน · บันทึกเวลา · ขอ OT (Dev / QA / BA)', v: ['', 'view', '', '', 'view', '', 'full', 'own', '', '', 'full'] },
+  { cap: 'My Tasks · Timesheet · แจ้งลา', v: ['own', 'own', 'own', 'own', 'own', 'own', 'own', 'own', 'own', 'own', 'full'] },
   { cap: 'ตั้งค่า Workflow / สมาชิก / Automation ของพื้นที่งาน', v: ['', '', '', '', 'view', '', 'own', '', '', '', 'full'] },
   { cap: 'อนุมัติ OT ในเงินกันของ Cost Sheet', v: ['', '', '', '', '', '', 'own', '', '', '', 'full'] },
   { cap: 'ขอซื้อ (PR) ตามงบ Cost Sheet', v: ['', '', '', '', '', 'view', 'own', '', '', '', 'full'] },

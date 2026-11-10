@@ -65,7 +65,7 @@ export const ROLES: Record<Role, { label: string; th: string }> = {
   pmo: { label: 'PMO (DT3-3)', th: 'จัดประชุม Handover มอบหมาย PM และทีม Dev' },
   opn: { label: 'OPN (DT3-2)', th: 'จัดซื้อและการเงินโครงการ อนุมัติการเบิกจ่ายจัดซื้อ' },
   pm: { label: 'Project Manager', th: 'รับงานหลัง Handover คุมขอบเขต แผน ความเสี่ยง อนุมัติ OT ในวงเงินที่กันไว้' },
-  dev: { label: 'ทีมพัฒนา (Dev / QA / BA)', th: 'ทำงานบนบอร์ดของโครงการที่เป็นสมาชิก บันทึกเวลา ไม่เห็นราคาและต้นทุน' },
+  dev: { label: 'ทีมพัฒนา (SA · BA · UX/UI · Dev · DevOps · QA)', th: 'ทำงานบนบอร์ดของโครงการที่เป็นสมาชิก บันทึกเวลา ไม่เห็นราคาและต้นทุน' },
   ma: { label: 'ทีม MA', th: 'ดูแลช่วงรับประกัน ติดต่อลูกค้าเรื่องต่อ MA ออกใบเสนอราคาต่อสัญญาเอง' },
   callcenter: { label: 'Call center (ทีม MA)', th: 'รับเคสลูกค้าผ่าน Helpdesk ช่วงรับประกัน' },
   admin: { label: 'ผู้ดูแลระบบ', th: 'ผู้ใช้ สิทธิ์ ทีม และการเชื่อมต่อ M365' },
@@ -233,8 +233,24 @@ export interface WorkflowStatus { id: string; name: string; category: WorkStatus
 /** No transitions listed = any move allowed. `roles` limits who may make the move. */
 export interface Transition { from: string; to: string; roles?: MemberRole[] }
 export interface Workflow { statuses: WorkflowStatus[]; transitions: Transition[]; requireAcceptanceForDone: boolean }
-export type MemberRole = 'pm' | 'lead' | 'dev' | 'qa' | 'ba' | 'viewer'
-export const MEMBER_ROLES: Record<MemberRole, string> = { pm: 'PM', lead: 'หัวหน้าทีม Dev', dev: 'Developer', qa: 'QA', ba: 'BA', viewer: 'ดูอย่างเดียว' }
+export type MemberRole = 'pm' | 'lead' | 'sa' | 'ba' | 'uxui' | 'fe' | 'be' | 'dev' | 'devops' | 'qa' | 'viewer'
+export const MEMBER_ROLES: Record<MemberRole, string> = {
+  pm: 'PM', lead: 'หัวหน้าทีม Dev', sa: 'SA', ba: 'BA', uxui: 'UX/UI', fe: 'Front-end', be: 'Back-end', dev: 'Developer (Full-stack)', devops: 'DevOps', qa: 'QA', viewer: 'ดูอย่างเดียว',
+}
+/** What each workspace role is responsible for (shown in Settings → สมาชิก). */
+export const MEMBER_ROLE_DESC: Record<MemberRole, string> = {
+  pm: 'วางแผน ขอบเขต งวดงาน ประสานลูกค้า อนุมัติ OT',
+  lead: 'จัดสรรคน ตรวจงาน อนุมัติย้ายงานเข้า Done',
+  sa: 'ออกแบบโครงสร้างระบบทั้งหมด รวม Security ของ Server',
+  ba: 'เก็บ Requirement วิเคราะห์ร่วม SA และ Assign งานให้ทีม',
+  uxui: 'ออกแบบ Flow และประสบการณ์ใช้งานให้ใช้ได้จริง',
+  fe: 'พัฒนาหน้าจอตามที่ UX/UI ออกแบบ',
+  be: 'พัฒนาข้อมูล การเก็บ/ส่งข้อมูล และ API',
+  dev: 'พัฒนาทั้ง Front-end และ Back-end',
+  devops: 'ทดสอบ นำระบบขึ้น Server และประเมิน Performance',
+  qa: 'ทดสอบตาม Process Flow ให้ถูกต้อง ไม่มี Bug · ย้ายงานเข้า Done',
+  viewer: 'ดูความคืบหน้า ไม่แก้ไขงาน',
+}
 export interface WorkspaceMember { userId: string; role: MemberRole }
 export interface AutomationRule { id: string; on: boolean; label: string; when: { toStatus: string }; then: { assignRole?: MemberRole; notify?: 'assignee' | 'pm' | 'reporter' } }
 export interface WorkActivity { who: string; at: string; day: string; key: string; title: string; text: string; status?: WorkStatus }

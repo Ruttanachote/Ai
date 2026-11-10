@@ -38,6 +38,9 @@ export const PEOPLE: Person[] = [
   { id: 'dev5', name: 'Krit V.', initials: 'KV', role: 'dev', team: 'DT4-AI', color: '#53689A' },
   { id: 'qa1', name: 'Nattaya S.', initials: 'NS', role: 'dev', team: 'DT4-LC', color: '#5E7D4F' },
   { id: 'ba1', name: 'Kanokwan P.', initials: 'KP', role: 'dev', team: 'DT4-AI', color: '#8A6A2E' },
+  { id: 'sa1', name: 'Pornthep W.', initials: 'PW', role: 'dev', team: 'DT4-LC', color: '#2F6F6A' },
+  { id: 'ux1', name: 'Wipada C.', initials: 'WC', role: 'dev', team: 'DT4-LC', color: '#B0567A' },
+  { id: 'ops1', name: 'Tanawat S.', initials: 'TS', role: 'dev', team: 'DT4-LC', color: '#4E5A7A' },
 ]
 export const person = (id?: string) => PEOPLE.find((p) => p.id === id)
 
@@ -291,8 +294,9 @@ import { defaultAutomation, defaultWorkflow } from '../domain/workflow.ts'
   ws.estimate = 'hours'
   ws.hourlyRate = 600
   ws.members = [
-    { userId: 'ak', role: 'pm' }, { userId: 'dl', role: 'lead' }, { userId: 'dev1', role: 'dev' }, { userId: 'dev2', role: 'dev' },
-    { userId: 'dev3', role: 'dev' }, { userId: 'qa1', role: 'qa' }, { userId: 'pj', role: 'viewer' },
+    { userId: 'ak', role: 'pm' }, { userId: 'dl', role: 'lead' }, { userId: 'sa1', role: 'sa' }, { userId: 'ux1', role: 'uxui' },
+    { userId: 'dev1', role: 'be' }, { userId: 'dev2', role: 'fe' }, { userId: 'dev3', role: 'be' }, { userId: 'ops1', role: 'devops' },
+    { userId: 'qa1', role: 'qa' }, { userId: 'pj', role: 'viewer' },
   ]
   const T = (id: string) => p6.tasks!.find((t) => t.id === id)!
   T('t1').history = [{ at: '21 ต.ค. 09:30', day: '2026-10-21', who: 'qa1', field: 'สถานะ', from: 'UAT ลูกค้า', to: 'Done' }]
@@ -359,7 +363,7 @@ import { defaultAutomation, defaultWorkflow } from '../domain/workflow.ts'
     ],
     workspace: {
       template: 'scrum', key: 'CSA', nextNo: no, createdAt: '2026-09-28', estimate: 'points', hourlyRate: 650, workflow: wf, automation: defaultAutomation(wf),
-      members: [{ userId: 'ks', role: 'pm' }, { userId: 'dev4', role: 'dev' }, { userId: 'dev5', role: 'dev' }, { userId: 'ba1', role: 'ba' }, { userId: 'qa1', role: 'qa' }, { userId: 'dev3', role: 'dev' }],
+      members: [{ userId: 'ks', role: 'pm' }, { userId: 'ba1', role: 'ba' }, { userId: 'dev4', role: 'fe' }, { userId: 'dev5', role: 'dev' }, { userId: 'dev3', role: 'devops' }, { userId: 'qa1', role: 'qa' }],
       sprints: [
         { id: 's1', name: 'CSA Sprint 1', start: '2026-10-05', end: '2026-10-16', state: 'closed', committed: 21, completed: 18, goal: 'ลงทะเบียนด้วย OTP' },
         { id: 's2', name: 'CSA Sprint 2', start: '2026-10-19', end: '2026-10-30', state: 'closed', committed: 24, completed: 22, goal: 'ยืนยันตัวตน ThaID' },
