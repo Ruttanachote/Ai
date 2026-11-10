@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import Photo from '../components/Photo.vue'
 import Avatar from '../components/Avatar.vue'
 import StageBadge from '../components/StageBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -41,11 +40,10 @@ const kpis = computed(() => [
 
     <div class="cards">
       <router-link v-for="p in active" :key="p.id" :to="`/projects/${p.id}`" class="card">
-        <Photo :id="p.cover" :w="900" />
         <div class="body">
           <div class="top"><span class="small muted">{{ p.code }} · {{ p.team }}</span><Avatar :id="p.pm" :size="26" /></div>
           <h3>{{ p.name }}</h3>
-          <p class="small muted">{{ customerName(p) }} · ส่งมอบ {{ thDate(p.endProject) }} ({{ daysUntil(p.endProject) }} วัน)</p>
+          <p class="small muted">{{ customerName(p) }}<template v-if="p.endProject"> · ส่งมอบ {{ thDate(p.endProject) }} ({{ daysUntil(p.endProject) }} วัน)</template><template v-else-if="p.milestones?.length"> · งวดสุดท้าย {{ thDate(p.milestones[p.milestones.length - 1].end) }}</template></p>
           <div class="prog">
             <div class="pb"><i :style="{ width: progressPct(p) + '%' }" /></div>
             <span class="num small">{{ progressPct(p) }}%</span>
@@ -70,13 +68,13 @@ const kpis = computed(() => [
 
 <style scoped>
 .q { margin-bottom: 20px; }
-.qrow { display: grid; grid-template-columns: 1fr auto 140px; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); }
+.qrow { display: grid; grid-template-columns: minmax(0, 1fr) auto 140px; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); }
 .qrow:last-child { border-bottom: 0; }
 .qrow strong { font-weight: 600; }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; margin-bottom: 20px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; color: var(--ink); }
 .card:hover { text-decoration: none; border-color: var(--line-strong); }
-.card .photo { height: 140px; }
+.card { border-top: 3px solid var(--post); }
 .body { padding: 18px 20px 20px; display: grid; gap: 6px; }
 .top { display: flex; justify-content: space-between; align-items: center; }
 .prog { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
@@ -84,10 +82,11 @@ const kpis = computed(() => [
 .pb i { display: block; height: 100%; background: var(--post); }
 .health { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .health li { font-size: 12px; padding: 8px 10px; border-radius: var(--r-sm); display: grid; line-height: 1.35; }
-.health b { font-weight: 600; font-size: 12.5px; }
+.health b { font-weight: 600; font-size: 13px; }
 .ok { background: var(--win-soft); color: var(--win); }
 .warn { background: var(--warn-soft); color: var(--warn); }
 .bad { background: var(--lose-soft); color: var(--lose); }
 .empty { display: grid; gap: 6px; }
 @media (max-width: 560px) { .qrow { grid-template-columns: 1fr; gap: 6px; } .cards { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .qrow { grid-template-columns: 1fr; gap: 6px; } .health { grid-template-columns: 1fr; } }
 </style>

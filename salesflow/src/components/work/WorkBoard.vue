@@ -113,15 +113,15 @@ header h3 { font-size: 13px; color: var(--ink-2); display: flex; gap: 6px; align
 .card.late { border-left: 3px solid var(--lose); }
 .card.drag { opacity: 0.4; }
 .card strong { font-weight: 500; font-size: 14px; line-height: 1.4; }
-.epic { justify-self: start; font-size: 11px; font-weight: 600; color: var(--epic); background: var(--epic-soft); padding: 1px 6px; border-radius: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epic { justify-self: start; font-size: 12px; font-weight: 600; color: var(--epic); background: var(--epic-soft); padding: 1px 6px; border-radius: 4px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tags { display: flex; gap: 4px; flex-wrap: wrap; }
-.lab, .acc, .cr { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--idle-soft); color: var(--ink-2); }
+.lab, .acc, .cr { font-size: 12px; padding: 1px 6px; border-radius: 4px; background: var(--idle-soft); color: var(--ink-2); }
 .cr { background: var(--warn-soft); color: var(--warn); font-weight: 600; }
 .acc.ok { background: var(--win-soft); color: var(--win); }
 .meta { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; }
 .key, .due { white-space: nowrap; }
 .key { font-size: 12px; color: var(--muted); }
-.pts { font-size: 11px; font-weight: 600; min-width: 20px; text-align: center; padding: 1px 5px; border-radius: 99px; background: var(--idle-soft); }
+.pts { font-size: 12px; font-weight: 600; min-width: 20px; text-align: center; padding: 1px 5px; border-radius: 99px; background: var(--idle-soft); }
 .due { margin-left: auto; color: var(--muted); }
 .avs { display: flex; }
 .avs > :not(:first-child) { margin-left: -5px; box-shadow: 0 0 0 2px var(--surface); border-radius: 50%; }
@@ -129,5 +129,5 @@ header h3 { font-size: 13px; color: var(--ink-2); display: flex; gap: 6px; align
 .add { border: 0; background: none; text-align: left; padding: 6px 8px; border-radius: var(--r-sm); font: 13px var(--font); color: var(--muted); cursor: pointer; }
 .add:hover { background: var(--surface); color: var(--ink); }
 .quick .input { min-height: 36px; font-size: 14px; }
-.empty { font-size: 12.5px; color: var(--faint); text-align: center; padding: 24px 0; border: 1.5px dashed var(--line-strong); border-radius: var(--r-sm); }
+.empty { font-size: 13px; color: var(--faint); text-align: center; padding: 24px 0; border: 1.5px dashed var(--line-strong); border-radius: var(--r-sm); }
 </style>

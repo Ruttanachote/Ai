@@ -53,9 +53,9 @@ header h1 { font-size: clamp(24px, 3vw, 32px); }
 .card { display: grid; gap: 8px; align-content: start; text-align: left; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; font: inherit; color: var(--ink); transition: border-color var(--t-fast), box-shadow var(--t-fast); }
 .card:hover { border-color: var(--line-strong); }
 .card[aria-checked='true'] { border-color: var(--action); box-shadow: 0 0 0 2px var(--action); }
-.card h2 { font-size: 19px; margin-top: 6px; }
+.card h2 { font-size: 20px; margin-top: 6px; }
 .card p { font-size: 14px; color: var(--ink-2); line-height: 1.55; }
-.views { font-size: 12.5px; color: var(--muted); }
+.views { font-size: 13px; color: var(--muted); }
 .art { height: 150px; border-radius: var(--r-sm); background: var(--paper); padding: 16px; display: flex; gap: 8px; }
 .art.kanban .col { flex: 1; background: var(--surface); border-radius: 6px; padding: 6px; display: grid; gap: 6px; align-content: start; border: 1px solid var(--line); }
 .art.kanban .col i { height: 16px; border-radius: 4px; background: var(--presale-soft); border-left: 3px solid var(--presale); }
@@ -66,7 +66,7 @@ header h1 { font-size: clamp(24px, 3vw, 32px); }
 .art.milestone i { height: 12px; border-radius: 4px; background: var(--post); display: block; }
 .art.scrum { flex-direction: column; }
 .art.scrum .sp { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; display: flex; gap: 5px; align-items: center; }
-.art.scrum .sp span { font-size: 10.5px; color: var(--muted); width: 54px; }
+.art.scrum .sp span { font-size: 12px; color: var(--muted); width: 54px; }
 .art.scrum .sp i { flex: 1; height: 10px; border-radius: 3px; background: var(--presale-soft); }
 .art.scrum .bl i { background: var(--idle-soft); }
 .keyf { width: 100%; max-width: 360px; text-align: left; }

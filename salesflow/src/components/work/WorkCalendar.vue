@@ -107,7 +107,7 @@ header h3 { min-width: 160px; text-align: center; }
 .day.over { background: var(--presale-soft); }
 .panelU { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px; display: grid; gap: 10px; align-content: start; background: var(--sunken); }
 .ph { display: flex; justify-content: space-between; align-items: center; margin: 0; }
-.input.mini { min-height: 32px; font-size: 13.5px; }
+.input.mini { min-height: 32px; font-size: 14px; }
 .ulist { display: grid; gap: 8px; }
 .uc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 8px 10px; display: grid; gap: 4px; cursor: grab; }
 .uc .row { display: flex; gap: 6px; align-items: center; color: var(--muted); }
@@ -123,7 +123,7 @@ header h3 { min-width: 160px; text-align: center; }
 .it span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .it.done { background: var(--win-soft); text-decoration: line-through; color: var(--muted); }
 .it.late { background: var(--lose-soft); }
-.ms { font-size: 11px; font-weight: 600; color: var(--post); background: var(--post-soft); padding: 2px 5px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.more { font-size: 11px; color: var(--muted); }
-.lv { display: block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--lose-soft); color: var(--lose); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms { font-size: 12px; font-weight: 600; color: var(--post); background: var(--post-soft); padding: 2px 5px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.more { font-size: 12px; color: var(--muted); }
+.lv { display: block; font-size: 12px; padding: 1px 6px; border-radius: 4px; background: var(--lose-soft); color: var(--lose); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

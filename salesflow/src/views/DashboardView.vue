@@ -211,7 +211,7 @@ const deadlines = computed(() =>
 .dl { list-style: none; margin: 0; padding: 0; display: grid; }
 .dl li { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .dl li:last-child { border-bottom: 0; }
-.day { display: grid; justify-items: center; font-size: 11px; color: var(--muted); background: var(--sunken); border-radius: var(--r-sm); padding: 4px 0; line-height: 1.2; }
+.day { display: grid; justify-items: center; font-size: 12px; color: var(--muted); background: var(--sunken); border-radius: var(--r-sm); padding: 4px 0; line-height: 1.2; }
 .day b { font-size: 18px; color: var(--ink); }
 .day.hot { background: var(--lose-soft); color: var(--lose); }
 .day.hot b { color: var(--lose); }

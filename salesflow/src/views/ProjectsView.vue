@@ -33,7 +33,7 @@ const typeOptions = [{ label: 'ทุกประเภท', value: 'all' }, ...
 const teams = computed(() => [...new Set(base.value.map((p) => p.team))].sort())
 const columns = computed<DataTableColumns<Project>>(() => [
   {
-    title: 'โครงการ', key: 'name', minWidth: 300, sorter: (a, b) => a.name.localeCompare(b.name, 'th'),
+    title: 'โครงการ', key: 'name', minWidth: 260, sorter: (a, b) => a.name.localeCompare(b.name, 'th'),
     render: (p) => h('div', [
       h(RouterLink, { to: `/projects/${p.id}`, class: 'name', onClick: (e: Event) => e.stopPropagation() }, { default: () => p.name }),
       h('p', { class: 'muted small' }, `${p.code} · ${customerName(p)} · ${p.type}${p.parentId ? ' · ต่อจากโครงการเดิม' : ''}`),
@@ -44,15 +44,15 @@ const columns = computed<DataTableColumns<Project>>(() => [
     filterOptions: STAGES.filter((st) => base.value.some((p) => p.stage === st.key)).map((st) => ({ label: st.label, value: st.key })), filter: (v, p) => p.stage === v,
     render: (p) => h(StageBadge, { stage: p.stage }),
   },
-  { title: 'ใบเสนอราคา', key: 'approval', width: 150, render: (p) => { const a = APPROVAL_LABEL[approvalState(p, TODAY_ISO)]; return h('span', { class: ['chip', a.tone] }, a.label) } },
-  { title: 'ทีม', key: 'team', width: 100, filterOptions: teams.value.map((t) => ({ label: t, value: t })), filter: (v, p) => p.team === v },
+  { title: 'ใบเสนอราคา', key: 'approval', width: 130, render: (p) => { const a = APPROVAL_LABEL[approvalState(p, TODAY_ISO)]; return h('span', { class: ['chip', a.tone] }, a.label) } },
+  { title: 'ทีม', key: 'team', width: 90, filterOptions: teams.value.map((t) => ({ label: t, value: t })), filter: (v, p) => p.team === v },
   {
-    title: 'มูลค่า', key: 'value', width: 150, align: 'right', sorter: (a, b) => dealValue(a) - dealValue(b),
+    title: 'มูลค่า', key: 'value', width: 140, align: 'right', sorter: (a, b) => dealValue(a) - dealValue(b),
     render: (p) => h('div', { class: 'num' }, [dealValue(p) ? baht(dealValue(p)) : '—', h('p', { class: 'small muted' }, isWon(p) ? 'ตามสัญญา' : p.revenue ? 'ราคาเสนอ' : 'Budget')]),
   },
   { title: 'GP', key: 'gp', width: 80, align: 'right', sorter: (a, b) => (gpPct(a) ?? -1) - (gpPct(b) ?? -1), render: (p) => h('span', { class: 'num' }, gpPct(p) === null ? '—' : gpPct(p)!.toFixed(1) + '%') },
   {
-    title: 'ผู้รับผิดชอบ', key: 'owner', width: 200,
+    title: 'ผู้รับผิดชอบ', key: 'owner', width: 180,
     render: (p) => h('span', { class: 'ppl' }, [h(Avatar, { id: p.sm, size: 26 }), p.pm ? h(Avatar, { id: p.pm, size: 26 }) : null, h('span', { class: 'small muted' }, person(p.pm ?? p.sm)?.name)]),
   },
 ])
@@ -83,7 +83,7 @@ const kpis = computed(() => [
       <NSelect v-model:value="type" :options="typeOptions" class="ty" aria-label="ประเภทโครงการ" />
     </div>
 
-    <NDataTable :columns="columns" :data="list" :row-key="(p: Project) => p.id" :row-props="rowProps" :bordered="false" :scroll-x="1150"
+    <NDataTable :columns="columns" :data="list" :row-key="(p: Project) => p.id" :row-props="rowProps" :bordered="false" :scroll-x="1040"
       :pagination="{ page, pageSize: 10, onUpdatePage: (n: number) => (page = n), showSizePicker: false }" class="reg">
       <template #empty>
         <NEmpty description="ไม่พบโครงการที่ตรงกับตัวกรอง"><template #extra><NButton size="small" @click="clear">ล้างตัวกรอง</NButton></template></NEmpty>

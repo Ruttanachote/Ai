@@ -102,10 +102,10 @@ const TONE: Record<string, string> = { ok: 'ตามแผน', warn: 'ต้�
 .st:hover { border-color: var(--line-strong); }
 .st[aria-pressed='true'] { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; background: var(--primary-soft); }
 .st:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.no { width: 20px; height: 20px; border-radius: 50%; background: var(--sunken); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 11.5px; color: var(--muted); }
-.lb { font-size: 12.5px; color: var(--ink-2); line-height: 1.3; min-height: 2.6em; }
-.st b { font-size: 22px; font-weight: 600; line-height: 1.3; }
-.ow { font-family: var(--desc); font-size: 11.5px; color: var(--faint); }
+.no { width: 20px; height: 20px; border-radius: 50%; background: var(--sunken); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+.lb { font-size: 13px; color: var(--ink-2); line-height: 1.3; min-height: 2.6em; }
+.st b { font-size: 24px; font-weight: 600; line-height: 1.3; }
+.ow { font-family: var(--desc); font-size: 12px; color: var(--faint); }
 .st.closed .lb { color: var(--lose); }
 .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .search { display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--muted); flex: 1; min-width: 220px; max-width: 380px; }
@@ -115,7 +115,7 @@ const TONE: Record<string, string> = { ok: 'ตามแผน', warn: 'ต้�
 .chk { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .tbl { padding: 0; overflow: hidden; }
 .head, .row { display: grid; grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(220px, 1.4fr) minmax(150px, 0.8fr) 110px; gap: 16px; align-items: center; padding: 14px 20px; }
-.head { font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--sunken); padding-top: 10px; padding-bottom: 10px; }
+.head { font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--sunken); padding-top: 10px; padding-bottom: 10px; }
 .r { text-align: right; justify-content: flex-end; }
 .row { border-bottom: 1px solid var(--line); color: var(--ink); border-left: 3px solid transparent; }
 .row:last-child { border-bottom: 0; }

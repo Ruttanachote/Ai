@@ -9,7 +9,7 @@ export type Mode = 'light' | 'dark' | 'system'
 const T = {
   light: {
     paper: '#f3f5f9', surface: '#ffffff', sunken: '#f7f8fb', raised: '#ffffff',
-    ink: '#141a26', ink2: '#3a4356', muted: '#667085', faint: '#98a1b2', line: '#e4e7ee', lineStrong: '#cdd3de', onInk: '#ffffff',
+    ink: '#141a26', ink2: '#3a4356', muted: '#5f6779', faint: '#717a8c', line: '#e4e7ee', lineStrong: '#cdd3de', onInk: '#ffffff',
     primary: '#3457d5', primaryHover: '#2a49bd', primaryPressed: '#213c9e', primarySoft: '#ebeffc',
     presale: '#4b5bd6', presaleSoft: '#eceefc', win: '#17845a', winSoft: '#e3f3ec', lose: '#c4382f', loseSoft: '#fbeaea',
     post: '#0f7f86', postSoft: '#e1f2f3', warn: '#a86a08', warnSoft: '#fbf1dc', idleSoft: '#eef0f4',
@@ -17,7 +17,7 @@ const T = {
   },
   dark: {
     paper: '#0d1118', surface: '#151b25', sunken: '#111720', raised: '#1b2230',
-    ink: '#e7ebf3', ink2: '#c3cad8', muted: '#8b95a8', faint: '#5f6a7e', line: '#252e3c', lineStrong: '#334055', onInk: '#0d1118',
+    ink: '#e7ebf3', ink2: '#c3cad8', muted: '#9aa3b5', faint: '#808a9e', line: '#252e3c', lineStrong: '#334055', onInk: '#0d1118',
     primary: '#7b93ff', primaryHover: '#94a8ff', primaryPressed: '#6680f0', primarySoft: '#1d2645',
     presale: '#8e9bff', presaleSoft: '#1f2547', win: '#4cc38a', winSoft: '#12302a', lose: '#ff7a70', loseSoft: '#3a1b1d',
     post: '#45c4c9', postSoft: '#10302f', warn: '#e9b04d', warnSoft: '#35290f', idleSoft: '#1e2633',

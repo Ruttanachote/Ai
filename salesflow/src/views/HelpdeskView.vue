@@ -106,10 +106,10 @@ const kpis = computed(() => [
 .grid { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 20px; align-items: start; }
 .form { display: grid; gap: 14px; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.cov { font-size: 12.5px; padding: 6px 10px; border-radius: var(--r-sm); }
+.cov { font-size: 13px; padding: 6px 10px; border-radius: var(--r-sm); }
 .cov.ok { background: var(--win-soft); color: var(--win); }
 .cov.no { background: var(--warn-soft); color: var(--warn); }
-.cr { display: flex; gap: 8px; align-items: center; font-size: 13.5px; }
+.cr { display: flex; gap: 8px; align-items: center; font-size: 14px; }
 .cr input { accent-color: var(--ink); width: 16px; height: 16px; }
 .pri { display: flex; gap: 10px; align-items: center; font-size: 14px; }
 .flush { padding: 4px 8px; }

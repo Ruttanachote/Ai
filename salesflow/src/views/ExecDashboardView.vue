@@ -181,7 +181,7 @@ const pct = (n: number) => Math.round(n * 100)
 .legend { display: flex; gap: 6px; flex-wrap: wrap; }
 .scroll-x { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 860px; }
-thead th { font-size: 12.5px; font-weight: 500; color: var(--muted); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 tbody tr { cursor: pointer; }
 tbody tr:hover { background: var(--sunken); }
 tbody tr:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
@@ -208,7 +208,7 @@ b.over { color: var(--lose); } b.full { color: var(--warn); }
 .flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .fl { display: grid; grid-template-columns: 24px minmax(120px, 160px) 1fr 90px; gap: 12px; align-items: center; padding: 8px; border-radius: var(--r-sm); color: var(--ink); }
 .fl:hover { background: var(--sunken); text-decoration: none; }
-.fn { width: 22px; height: 22px; border-radius: 50%; background: var(--sunken); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 11.5px; color: var(--muted); }
+.fn { width: 22px; height: 22px; border-radius: 50%; background: var(--sunken); border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 12px; color: var(--muted); }
 .fname { display: grid; font-size: 14px; }
 .fname em, .fv em { font-style: normal; font-family: var(--desc); font-size: 12px; color: var(--faint); }
 .fbar { height: 10px; background: var(--sunken); border-radius: 5px; overflow: hidden; }

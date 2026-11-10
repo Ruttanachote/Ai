@@ -99,12 +99,12 @@ const ACTIONS = Object.entries(IMPACT_ACTIONS).filter(([k]) => k !== 'pending') 
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .sum { font-size: 14px; }
 .err, .bad { color: var(--lose); }
-.err { font-size: 13.5px; background: var(--lose-soft); padding: 8px 10px; border-radius: 8px; }
+.err { font-size: 14px; background: var(--lose-soft); padding: 8px 10px; border-radius: 8px; }
 .imp h3 { font-size: 15px; margin-bottom: 8px; display: flex; gap: 8px; }
 .imp ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 300px; overflow-y: auto; }
 .imp li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
 .imp li.warn { border-color: var(--warn); background: var(--warn-soft); }
 .a { display: grid; gap: 6px; justify-items: end; max-width: 260px; }
-.input.mini { min-height: 32px; padding: 2px 8px; font-size: 13.5px; width: auto; }
+.input.mini { min-height: 32px; padding: 2px 8px; font-size: 14px; width: auto; }
 @media (max-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } .imp li { grid-template-columns: 1fr; } .a { justify-items: start; } }
 </style>

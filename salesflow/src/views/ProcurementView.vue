@@ -131,7 +131,7 @@ function submit() {
 .bar .c { background: var(--ink); }
 .bar .w { background: repeating-linear-gradient(45deg, var(--warn) 0 4px, var(--warn-soft) 4px 8px); }
 .flush { padding: 4px 8px; margin-top: 20px; }
-.who { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; font-size: 13.5px; }
+.who { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; font-size: 14px; }
 .acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .bad { color: var(--lose); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

@@ -107,6 +107,6 @@ function sendInvite() {
 .three { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 12px; }
 .inv { border: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; max-height: 220px; overflow-y: auto; }
 .inv legend { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
-.inv label, .ck { display: flex; gap: 6px; align-items: center; font-size: 13.5px; }
+.inv label, .ck { display: flex; gap: 6px; align-items: center; font-size: 14px; }
 @media (max-width: 760px) { .sides, .two, .three, .inv { grid-template-columns: 1fr; } }
 </style>

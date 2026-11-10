@@ -86,13 +86,13 @@ function create() {
 .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .srch { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--muted); }
 .srch input { border: 0; outline: 0; font: 14px var(--font); width: 200px; background: none; }
-.input.mini { min-height: 34px; padding: 2px 8px; font-size: 13.5px; width: auto; }
+.input.mini { min-height: 34px; padding: 2px 8px; font-size: 14px; width: auto; }
 .sp { flex: 1; }
 .box { background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px; display: grid; gap: 10px; }
 .box header { display: flex; gap: 8px; align-items: center; padding: 4px 6px; }
 .box .table { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); }
 .nm { display: inline-flex; gap: 8px; align-items: center; color: var(--ink); }
-.who { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; font-size: 13.5px; }
+.who { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; font-size: 14px; }
 .adds, .new { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 4px 6px; }
 .new .input { flex: 1; min-width: 220px; }
 </style>

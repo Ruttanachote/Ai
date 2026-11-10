@@ -218,19 +218,19 @@ const CATS = Object.keys(WORK_STATUS) as WorkStatus[]
 .hd { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .mt { margin-top: 12px; }
 .who { display: inline-flex; gap: 8px; align-items: center; }
-.input.mini { min-height: 32px; padding: 2px 8px; font-size: 13.5px; width: auto; }
+.input.mini { min-height: 32px; padding: 2px 8px; font-size: 14px; width: auto; }
 .num.input { width: 100px; }
 .rd { margin-top: 2px; max-width: 320px; }
 .rqs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .addm { display: flex; gap: 8px; flex-wrap: wrap; }
-.mv button { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 10px; padding: 2px 4px; }
+.mv button { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 12px; padding: 2px 4px; }
 .mv button:disabled { opacity: 0.3; cursor: default; }
-.mx th, .mx td { text-align: center; font-size: 12.5px; white-space: nowrap; }
+.mx th, .mx td { text-align: center; font-size: 13px; white-space: nowrap; }
 .mx tbody th { text-align: left; }
 .mx td.self { background: var(--sunken); }
 .mx input { accent-color: var(--ink); width: 16px; height: 16px; }
-.rl { display: block; font-size: 10.5px; color: var(--warn); }
+.rl { display: block; font-size: 12px; color: var(--warn); }
 .dod { display: flex; gap: 8px; align-items: center; font-size: 14px; }
 .rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .rules li { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; }

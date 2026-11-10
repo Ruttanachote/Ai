@@ -118,7 +118,7 @@ function cancel() {
 header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; gap: 10px; align-items: center; padding: 10px 12px; }
 .who { display: grid; min-width: 0; }
 .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rng { font-size: 13.5px; font-weight: 500; white-space: nowrap; }
+.rng { font-size: 14px; font-weight: 500; white-space: nowrap; }
 .body { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 10px; }
 .imp { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .imp li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; font-size: 14px; }

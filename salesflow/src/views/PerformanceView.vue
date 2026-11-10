@@ -70,7 +70,7 @@ const maxH = computed(() => Math.max(10, ...daily.value.map((x) => x.normal + x.
 .col { flex: 1; min-width: 16px; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; height: 100%; }
 .col .n { background: var(--win); border-radius: 3px 3px 0 0; }
 .col .ot { background: var(--warn); }
-.col em { font-style: normal; font-size: 10px; color: var(--muted); text-align: center; height: 18px; line-height: 18px; }
+.col em { font-style: normal; font-size: 12px; color: var(--muted); text-align: center; height: 18px; line-height: 18px; }
 .col.off { opacity: 0.4; }
 .col.short em { color: var(--lose); font-weight: 600; }
 .line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--faint); }

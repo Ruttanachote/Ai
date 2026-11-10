@@ -123,7 +123,7 @@ function handover() {
 header, footer { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
 .bar { height: 6px; border-radius: 99px; background: var(--idle-soft); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--win); }
-h4 { font-size: 13.5px; color: var(--ink-2); }
+h4 { font-size: 14px; color: var(--ink-2); }
 .dl { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .dl li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; font-size: 14px; }
 .input.mini { min-height: 30px; padding: 2px 8px; font-size: 13px; width: auto; }

@@ -171,7 +171,7 @@ function switchTemplate(t: WorkspaceTemplate) {
 .tt p { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .people { display: flex; }
 .people > :not(:first-child) { margin-left: -6px; box-shadow: 0 0 0 2px var(--paper); }
-.input.mini { min-height: 34px; padding: 2px 8px; font-size: 13.5px; width: auto; }
+.input.mini { min-height: 34px; padding: 2px 8px; font-size: 14px; width: auto; }
 .vt { margin-bottom: 14px; }
 .vt button { display: inline-flex; gap: 6px; align-items: center; }
 .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
@@ -183,11 +183,11 @@ function switchTemplate(t: WorkspaceTemplate) {
 .av:first-child { margin-left: 0; }
 .av.on { box-shadow: 0 0 0 2px var(--action); z-index: 1; }
 .fwrap { position: relative; }
-.cnt { background: var(--action); color: #fff; border-radius: 99px; font-size: 11px; padding: 0 6px; }
+.cnt { background: var(--action); color: #fff; border-radius: 99px; font-size: 12px; padding: 0 6px; }
 .fpop { position: absolute; top: 40px; left: 0; z-index: 20; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-pop); padding: 14px; display: grid; grid-template-columns: repeat(3, auto); gap: 18px; min-width: 460px; }
 .fpop fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
-.fpop legend { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
-.fpop label { display: flex; gap: 6px; align-items: center; font-size: 13.5px; white-space: nowrap; }
+.fpop legend { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.fpop label { display: flex; gap: 6px; align-items: center; font-size: 14px; white-space: nowrap; }
 .fpop input { accent-color: var(--ink); }
 .fa { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 6px; }
 .grp { display: flex; gap: 6px; align-items: center; }

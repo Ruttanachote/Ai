@@ -140,7 +140,7 @@ li.cl { grid-template-columns: 1fr auto auto; }
 .cs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .cs div { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px; display: grid; }
 .cs b { font: 600 24px var(--display); }
-.cs span { font-size: 12.5px; color: var(--muted); }
+.cs span { font-size: 13px; color: var(--muted); }
 .input.mini { min-height: 30px; padding: 2px 6px; font-size: 13px; width: auto; }
 @media (max-width: 760px) { li { grid-template-columns: auto minmax(0, 1fr) auto; } li > :nth-child(4), li > :nth-child(5) { display: none; } }
 </style>

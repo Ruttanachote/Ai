@@ -241,7 +241,7 @@ function setOnsite(id: string, v: boolean) {
 .seg button { border: 0; background: none; padding: 0 14px; border-radius: 4px; font: 500 14px var(--font); color: var(--muted); cursor: pointer; min-height: 32px; }
 .seg button[aria-checked='true'] { background: var(--ink); color: var(--on-ink); }
 .heat { width: 100%; border-collapse: separate; border-spacing: 4px; min-width: 820px; }
-.heat th { font-weight: 500; font-size: 12.5px; color: var(--muted); text-align: center; padding: 4px; }
+.heat th { font-weight: 500; font-size: 13px; color: var(--muted); text-align: center; padding: 4px; }
 .heat th:first-child { text-align: left; }
 .heat td { text-align: center; font-size: 13px; }
 .person { cursor: pointer; }
@@ -255,10 +255,10 @@ function setOnsite(id: string, v: boolean) {
 .full { background: var(--post); color: #fff; }
 .over { background: var(--lose); color: #fff; }
 .cell.risk, i.risk { box-shadow: inset 0 0 0 2px var(--warn); }
-.cell sup { font-size: 10px; font-weight: 500; margin-left: 2px; opacity: 0.85; }
+.cell sup { font-size: 12px; font-weight: 500; margin-left: 2px; opacity: 0.85; }
 .demand { margin-top: 20px; }
 .avg { font-weight: 600; }
-.sub td { font-size: 12.5px; color: var(--muted); padding: 2px; }
+.sub td { font-size: 13px; color: var(--muted); padding: 2px; }
 .sub td:first-child { text-align: left; padding-left: 42px; }
 .legend { display: flex; gap: 16px; margin-top: 16px; color: var(--muted); flex-wrap: wrap; }
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; }

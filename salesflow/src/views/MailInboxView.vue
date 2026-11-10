@@ -216,10 +216,10 @@ const CHANNEL: Record<string, string> = { web: 'ในระบบ', email_link:
 .folders h1 { font-size: 18px; display: flex; align-items: center; gap: 8px; margin: 0 8px 12px; }
 .acct { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sync { margin: 2px 8px 16px; font-family: var(--desc); }
-.fh { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); font-weight: 600; margin: 8px 8px 6px; }
+.fh { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); font-weight: 600; margin: 8px 8px 6px; }
 .folder { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border: 0; background: none; border-radius: var(--r-sm); font: 400 14px var(--font); color: var(--ink-2); cursor: pointer; text-align: left; }
 .folder span { flex: 1; }
-.folder b { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.folder b { font-size: 13px; font-weight: 600; color: var(--ink); }
 .folder:hover { background: var(--sunken); }
 .folder[aria-current='true'] { background: var(--primary-soft); color: var(--primary); font-weight: 500; }
 .folder:focus-visible, .item:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
@@ -244,7 +244,7 @@ const CHANNEL: Record<string, string> = { web: 'ในระบบ', email_link:
 .r2 { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
 .unread .r1 strong, .unread .r2 { font-weight: 600; color: var(--ink); }
 .r3 { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-.r3 .chip { height: 20px; font-size: 11.5px; padding: 0 8px; }
+.r3 .chip { height: 20px; font-size: 12px; padding: 0 8px; }
 .empty { display: grid; justify-items: center; gap: 4px; padding: 40px 20px; text-align: center; color: var(--muted); }
 .empty p { margin: 0; }
 
@@ -266,7 +266,7 @@ const CHANNEL: Record<string, string> = { web: 'ในระบบ', email_link:
 .msg { font-family: var(--desc); font-size: 15px; margin: 0; white-space: pre-line; }
 .figs { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
 .figs div { background: var(--surface); padding: 12px 16px; display: grid; flex: 1 1 140px; }
-.figs span { font-size: 12.5px; color: var(--muted); }
+.figs span { font-size: 13px; color: var(--muted); }
 .figs b { font-size: 18px; }
 .figs em { font-style: normal; font-size: 12px; color: var(--lose); }
 .good { color: var(--win); } .bad { color: var(--lose); }

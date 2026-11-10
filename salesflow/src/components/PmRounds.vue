@@ -91,7 +91,7 @@ function save() {
 .pm { display: grid; gap: 10px; margin-bottom: 16px; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; color: var(--ink-2); }
 .meta span { display: inline-flex; gap: 6px; align-items: center; }
-.det td { background: var(--sunken); font-size: 13.5px; }
+.det td { background: var(--sunken); font-size: 14px; }
 .det p { margin: 2px 0; }
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }

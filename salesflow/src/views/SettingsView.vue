@@ -217,7 +217,7 @@ function addHoliday() {
 </template>
 
 <style scoped>
-.mx th { white-space: normal; font-size: 12.5px; text-align: center; min-width: 92px; }
+.mx th { white-space: normal; font-size: 13px; text-align: center; min-width: 92px; }
 .mx th:first-child { text-align: left; min-width: 260px; }
 .mx td { text-align: center; }
 .mx td:first-child { text-align: left; }

@@ -366,7 +366,7 @@ const drop = ref(false)
 .people { display: grid; gap: 16px; }
 .pp { display: flex; gap: 12px; align-items: center; }
 .pp > div { display: grid; line-height: 1.35; }
-.pp > div > span { font-size: 12.5px; color: var(--muted); }
+.pp > div > span { font-size: 13px; color: var(--muted); }
 .pp strong { font-weight: 500; }
 .pp em { font-style: normal; font-size: 12px; color: var(--faint); }
 .collab { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -377,7 +377,7 @@ const drop = ref(false)
 .drop:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
 .sr { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .child { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; color: var(--ink); border-bottom: 1px solid var(--line); }
-.input.mini { min-height: 32px; padding: 2px 8px; font-size: 13.5px; width: auto; }
+.input.mini { min-height: 32px; padding: 2px 8px; font-size: 14px; width: auto; }
 .lossnote { color: var(--muted) !important; }
 .split { display: flex; height: 10px; border-radius: 99px; overflow: hidden; gap: 2px; margin-bottom: 12px; }
 .split i, .splitl b { background: var(--presale); }
@@ -392,10 +392,10 @@ const drop = ref(false)
 .sub a { color: #fff; text-decoration: underline; margin-right: 6px; }
 .file { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; padding-top: 26px; cursor: pointer; }
 .file input { width: 17px; height: 17px; accent-color: var(--ink); margin-top: 3px; }
-.po { display: flex; gap: 20px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--r-md); font-size: 13.5px; }
+.po { display: flex; gap: 20px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--r-md); font-size: 14px; }
 .po.ok { background: var(--win-soft); color: var(--win); }
 .po.bad { background: var(--lose-soft); color: var(--lose); }
-.missing { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-md); padding: 10px 14px; font-size: 13.5px; }
+.missing { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-md); padding: 10px 14px; font-size: 14px; }
 .missing ul { margin: 4px 0 0; padding-left: 18px; }
 .gate { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; margin: 0; display: grid; gap: 6px; }
 .gate legend { font-size: 13px; font-weight: 600; padding: 0 4px; }

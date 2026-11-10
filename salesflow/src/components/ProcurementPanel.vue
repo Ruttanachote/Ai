@@ -140,8 +140,8 @@ const canEdit = computed(() => ['sm', 'head', 'pm', 'admin'].includes(session.ro
 .proc { display: grid; gap: 20px; }
 .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
 .facts div { background: var(--sunken); border-radius: var(--r-md); padding: 12px 14px; display: grid; }
-.facts span { font-size: 12.5px; color: var(--muted); }
-.facts b { font-size: 17px; }
+.facts span { font-size: 13px; color: var(--muted); }
+.facts b { font-size: 18px; }
 .egp { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; }
 .egp li { position: relative; padding: 0 12px 0 0; display: grid; gap: 8px; }
 .egp li::before { content: ''; position: absolute; top: 8px; left: 18px; right: 0; height: 2px; background: var(--line); }
@@ -160,5 +160,5 @@ const canEdit = computed(() => ['sm', 'head', 'pm', 'admin'].includes(session.ro
 .bad { color: var(--lose); }
 .hint { margin-top: 8px; }
 @media (max-width: 1100px) { .two { grid-template-columns: 1fr; } .egp { grid-template-columns: 1fr; gap: 14px; } .egp li::before { display: none; } .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.rd { width: auto; min-height: 32px; padding: 2px 8px; font-size: 13.5px; margin-top: 4px; }
+.rd { width: auto; min-height: 32px; padding: 2px 8px; font-size: 14px; margin-top: 4px; }
 </style>

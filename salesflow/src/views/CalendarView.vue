@@ -85,8 +85,8 @@ const upcoming = computed(() => events.value.filter((e) => e.day >= TODAY_ISO &&
 .ev { border: 0; text-align: left; font: 11px var(--font); padding: 1px 5px; border-radius: 4px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--idle-soft); color: var(--ink-2); }
 .ev.lose { background: var(--lose-soft); color: var(--lose); } .ev.presale { background: var(--presale-soft); color: var(--presale); }
 .ev.win { background: var(--win-soft); color: var(--win); } .ev.post { background: var(--post-soft); color: var(--post); } .ev.warn { background: var(--warn-soft); color: var(--warn); }
-.more { font-size: 11px; color: var(--muted); }
+.more { font-size: 12px; color: var(--muted); }
 .up { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
 .up li { display: grid; gap: 2px; }
-@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .day { min-height: 72px; } .ev { font-size: 10px; } }
+@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .day { min-height: 72px; } .ev { font-size: 12px; } }
 </style>

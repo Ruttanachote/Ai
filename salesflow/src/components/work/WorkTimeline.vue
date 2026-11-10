@@ -135,15 +135,15 @@ function keyBar(e: KeyboardEvent, t: Task) {
 .head { height: 36px; border-bottom: 1px solid var(--line); background: var(--sunken); font-size: 12px; color: var(--muted); }
 .row { min-height: 36px; border-bottom: 1px solid var(--line); }
 .row.epic { background: var(--epic-soft); }
-.lc { display: flex; align-items: center; gap: 6px; padding: 0 8px; min-width: 0; font-size: 13.5px; }
-.tg { width: 14px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; font-size: 11px; flex: none; }
+.lc { display: flex; align-items: center; gap: 6px; padding: 0 8px; min-width: 0; font-size: 14px; }
+.tg { width: 14px; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0; font-size: 12px; flex: none; }
 .nm { border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; }
 .epic .nm { font-weight: 600; }
 .key { color: var(--muted); font-size: 12px; }
 .track { position: relative; height: 100%; min-height: 36px; }
 .wk span { position: absolute; top: 10px; padding-left: 8px; white-space: nowrap; font-weight: 500; }
 .wk span.cur { color: var(--ink); }
-.create .input.mini { min-height: 30px; font-size: 13.5px; width: 100%; }
+.create .input.mini { min-height: 30px; font-size: 14px; width: 100%; }
 .lvb { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; background: repeating-linear-gradient(135deg, var(--lose-soft) 0 5px, transparent 5px 9px); border: 1px dashed var(--lose); opacity: 0.9; pointer-events: auto; }
 .bar.risk { outline: 2px dashed var(--lose); outline-offset: 2px; }
 .gl { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--line); }
@@ -152,12 +152,12 @@ function keyBar(e: KeyboardEvent, t: Task) {
 .bar.dragging { cursor: grabbing; opacity: 0.85; }
 .rz { position: absolute; right: -3px; top: -2px; bottom: -2px; width: 8px; cursor: ew-resize; border-radius: 3px; }
 .bar:hover .rz { background: rgb(0 0 0 / 0.18); }
-.tip { position: absolute; top: -2px; transform: translateY(-100%); font-size: 11px; background: var(--ink); color: var(--on-ink); padding: 2px 6px; border-radius: 4px; white-space: nowrap; z-index: 3; pointer-events: none; }
+.tip { position: absolute; top: -2px; transform: translateY(-100%); font-size: 12px; background: var(--ink); color: var(--on-ink); padding: 2px 6px; border-radius: 4px; white-space: nowrap; z-index: 3; pointer-events: none; }
 .bar.todo { background: var(--line-strong); }
 .bar.review { background: var(--warn); }
 .bar.done { background: var(--win); }
 .bar.late { box-shadow: 0 0 0 2px var(--lose); }
 .epic .bar { background: var(--epic); height: 12px; top: 12px; border-radius: 3px; }
 .today { position: absolute; top: 36px; bottom: 22px; border-left: 2px solid var(--brand); pointer-events: none; }
-.today em { position: absolute; bottom: -20px; left: -16px; font-style: normal; font-size: 11px; font-weight: 600; color: var(--brand); background: var(--surface); padding: 0 3px; white-space: nowrap; }
+.today em { position: absolute; bottom: -20px; left: -16px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--brand); background: var(--surface); padding: 0 3px; white-space: nowrap; }
 </style>

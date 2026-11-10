@@ -287,14 +287,14 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 .fields { display: grid; grid-template-columns: 140px 1fr; gap: 10px 14px; margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); font-size: 14px; align-items: center; }
 .fields dt { color: var(--muted); font-size: 13px; }
 .fields dd { margin: 0; min-width: 0; }
-.input.mini { min-height: 32px; padding: 3px 8px; font-size: 13.5px; width: auto; max-width: 100%; }
+.input.mini { min-height: 32px; padding: 3px 8px; font-size: 14px; width: auto; max-width: 100%; }
 .as { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dates { display: flex; gap: 6px; flex-wrap: wrap; }
 .dates .input { width: 140px; }
 .lab { font-size: 12px; padding: 2px 7px; border-radius: 4px; background: var(--idle-soft); margin-right: 4px; }
 .sub h4 { font-size: 14px; margin-bottom: 8px; display: flex; gap: 8px; }
 .sub ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
-.sub li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 13.5px; }
+.sub li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 14px; }
 .cm li { grid-template-columns: auto 1fr; align-items: start; }
 .add { display: flex; gap: 6px; }
 .add .input { flex: 1; }
@@ -306,10 +306,10 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 .dtabs button { border: 0; background: none; padding: 5px 10px; border-radius: 4px; font: 13px var(--font); cursor: pointer; color: var(--ink-2); }
 .dtabs button[aria-selected='true'] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
 .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 4px 2px 7px; border-radius: 99px; background: var(--idle-soft); }
-.pill button { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 10px; padding: 0 3px; }
+.pill button { border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 12px; padding: 0 3px; }
 .lf .input { width: 110px; }
 .ac li { display: block; }
-.ac label { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; cursor: pointer; }
+.ac label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; cursor: pointer; }
 .ac input { margin-top: 3px; accent-color: var(--win); }
 .dn { text-decoration: line-through; color: var(--muted); }
 .sub li.fl { grid-template-columns: auto minmax(0, 1fr) auto auto; }
@@ -332,7 +332,7 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 .nt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .hist li { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
-.chg { font-size: 13.5px; }
+.chg { font-size: 14px; }
 .chg s { color: var(--muted); }
 .bad { color: var(--lose); }
 .foot { border-top: 1px solid var(--line); padding-top: 12px; }

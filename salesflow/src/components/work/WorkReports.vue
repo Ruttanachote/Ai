@@ -126,8 +126,8 @@ const otTotal = computed(() => (props.p.ot ?? []).reduce((s, o) => s + o.amount,
 .wide { grid-column: 1 / -1; }
 .panel { overflow-x: auto; }
 .hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-.input.mini { min-height: 32px; padding: 2px 8px; font-size: 13.5px; width: auto; }
-.verdict { font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+.input.mini { min-height: 32px; padding: 2px 8px; font-size: 14px; width: auto; }
+.verdict { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .verdict.ok { color: var(--win); }
 .verdict.bad { color: var(--lose); }
 .chart { width: 100%; height: auto; }

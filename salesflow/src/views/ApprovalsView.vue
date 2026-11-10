@@ -84,7 +84,7 @@ const kpis = computed(() => [
 .note { margin-top: 6px; background: var(--sunken); padding: 6px 10px; border-radius: var(--r-sm); color: var(--ink-2); }
 .fig { display: grid; text-align: right; }
 .fig span { font-size: 12px; color: var(--muted); }
-.fig b { font-size: 17px; }
+.fig b { font-size: 18px; }
 .good { color: var(--win); } .bad { color: var(--lose); }
 .empty { text-align: center; display: grid; gap: 6px; padding: 48px; }
 .block { margin-top: 20px; }

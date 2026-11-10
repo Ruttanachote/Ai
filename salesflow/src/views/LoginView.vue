@@ -84,7 +84,7 @@ function signIn() {
 .caption h1 { font-size: clamp(30px, 3.4vw, 46px); line-height: 1.18; font-weight: 600; max-width: 16ch; }
 .flow { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; counter-reset: s; max-width: 640px; }
 .flow li { counter-increment: s; font-size: 14px; color: #d5d9e1; padding-left: 30px; position: relative; line-height: 1.5; }
-.flow li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 20px; height: 20px; border: 1px solid #ffffff66; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-family: var(--display); }
+.flow li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 20px; height: 20px; border: 1px solid #ffffff66; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-family: var(--display); }
 .flow b { display: block; color: #fff; font-weight: 600; }
 .form { display: grid; place-items: center; padding: 40px 24px; }
 .box { width: 100%; max-width: 380px; display: grid; gap: 20px; }

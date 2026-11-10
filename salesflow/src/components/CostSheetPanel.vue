@@ -288,7 +288,7 @@ function decide() {
 .qrow { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .qrow span { color: var(--muted); }
 .qrow.big { border-bottom: 0; font-size: 18px; }
-.qrow.big b { font-size: 22px; }
+.qrow.big b { font-size: 24px; }
 .side { display: grid; gap: 16px; }
 .side h3 { margin-bottom: 12px; }
 dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 0 0 12px; font-size: 14px; }
@@ -305,7 +305,7 @@ dd.good { color: var(--win); } dd.bad { color: var(--lose); }
 .waiting { color: var(--faint); }
 .note { color: var(--ink-2); background: var(--sunken); padding: 6px 10px; border-radius: var(--r-sm); margin-top: 4px; }
 .wait { color: var(--warn); }
-.rec { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0 0 14px; font-size: 13.5px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.rec { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0 0 14px; font-size: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .rec dt { color: var(--muted); }
 .rec dd { margin: 0; text-align: right; }
 .stale { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-md); padding: 12px 14px; font-size: 14px; margin-bottom: 14px; }

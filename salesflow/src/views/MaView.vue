@@ -151,7 +151,7 @@ const kpis = computed(() => [
 .w:hover { text-decoration: none; background: var(--idle-soft); }
 .w strong { font-weight: 600; font-size: 14px; }
 .d { font-size: 24px; font-weight: 700; display: grid; line-height: 1.1; text-align: center; }
-.d span { font-size: 11px; font-weight: 500; color: var(--muted); font-family: var(--font); }
+.d span { font-size: 12px; font-weight: 500; color: var(--muted); font-family: var(--font); }
 .hot .d { color: var(--lose); }
 .warm .d { color: var(--warn); }
 .none { padding: 12px 0; }

@@ -50,6 +50,6 @@ const dow = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('th-TH'
 .bar i { display: block; height: 100%; background: var(--win); }
 .h { font-size: 18px; font-weight: 600; }
 .h small { font-size: 12px; color: var(--muted); font-weight: 400; }
-.otb { justify-self: start; font-size: 11px; font-weight: 600; color: var(--warn); background: var(--warn-soft); padding: 1px 6px; border-radius: 99px; }
+.otb { justify-self: start; font-size: 12px; font-weight: 600; color: var(--warn); background: var(--warn-soft); padding: 1px 6px; border-radius: 99px; }
 .bad { color: var(--lose); }
 </style>

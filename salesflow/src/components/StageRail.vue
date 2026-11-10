@@ -50,20 +50,20 @@ const bands = [
 .node { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--line-strong); position: relative; z-index: 1; color: #fff; }
 .done .node { background: var(--ink); border-color: var(--ink); }
 .now .node { border-color: var(--brand); background: var(--brand); box-shadow: 0 0 0 5px rgb(226 51 43 / 0.16); }
-.name { font-size: 12.5px; font-weight: 500; color: var(--ink-2); line-height: 1.3; }
+.name { font-size: 13px; font-weight: 500; color: var(--ink-2); line-height: 1.3; }
 .now .name { color: var(--ink); font-weight: 600; }
 .ahead .name { color: var(--faint); }
-.prob { font-size: 11.5px; color: var(--faint); font-family: var(--display); }
+.prob { font-size: 12px; color: var(--faint); font-family: var(--display); }
 .now .prob { color: var(--brand); }
 .bands { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 4px; margin-top: 12px; }
-.bands span { font-size: 11.5px; padding: 4px 8px; border-radius: 4px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bands span { font-size: 12px; padding: 4px 8px; border-radius: 4px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bands .presale { background: var(--presale-soft); color: var(--presale); }
 .bands .win { background: var(--win-soft); color: var(--win); }
 .bands .post { background: var(--post-soft); color: var(--post); }
 .exit { margin-top: 12px; font-size: 13px; padding: 8px 12px; border-radius: var(--r-sm); }
 .exit.lose { background: var(--lose-soft); color: var(--lose); }
 .exit.cancelled { background: var(--idle-soft); color: var(--ink-2); }
-.compact .name { font-size: 11px; }
+.compact .name { font-size: 12px; }
 @media (max-width: 760px) {
   .rail { overflow-x: auto; }
   .track, .bands { min-width: 640px; }

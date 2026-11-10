@@ -174,7 +174,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .bad { color: var(--lose); }
 .empty { display: grid; gap: 8px; justify-items: start; }
 .nt { display: grid; gap: 10px; margin-top: 8px; }
-.nt li { display: grid; gap: 2px; font-size: 13.5px; padding-left: 12px; position: relative; }
+.nt li { display: grid; gap: 2px; font-size: 14px; padding-left: 12px; position: relative; }
 .nt li.new::before { content: ''; position: absolute; left: 0; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
 .nt small { color: var(--muted); font-size: 12px; }
 .nt b.pending { color: var(--warn); }

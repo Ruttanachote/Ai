@@ -181,7 +181,7 @@ legend { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 
 .types label.on { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
 .types input { position: absolute; opacity: 0; }
 .types label:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
-.err { font-size: 12.5px; color: var(--lose); }
+.err { font-size: 13px; color: var(--lose); }
 .input[aria-invalid='true'] { border-color: var(--lose); }
 footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .after { position: sticky; top: 84px; border-radius: var(--r-lg); overflow: hidden; min-height: 420px; display: flex; align-items: flex-end; }

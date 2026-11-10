@@ -165,7 +165,7 @@ const bare = computed(() => route.path === '/login' || route.path.startsWith('/p
 .side { background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow: hidden; }
 .brand { display: flex; align-items: center; gap: 10px; height: 60px; padding: 0 23px; flex: none; }
 .chev { color: var(--brand); flex: none; }
-.sub { font-family: var(--display); font-weight: 600; font-size: 17px; color: var(--ink); white-space: nowrap; }
+.sub { font-family: var(--display); font-weight: 600; font-size: 18px; color: var(--ink); white-space: nowrap; }
 .menu { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 8px 8px; }
 .rail .menu { padding: 0; }
 .rail .menu :deep(.n-menu-item-group-title) { height: 1px; margin: 8px 14px; padding: 0 !important; overflow: hidden; color: transparent; background: var(--line); }
@@ -187,7 +187,7 @@ kbd { font: 11px var(--font); border: 1px solid var(--line-strong); border-botto
 .me { display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 4px 6px 4px 4px; border-radius: 10px; cursor: pointer; color: var(--muted); margin-left: 6px; }
 .me:hover { background: var(--idle-soft); }
 .who { display: grid; line-height: 1.25; text-align: left; }
-.who strong { color: var(--ink); font-size: 13.5px; font-weight: 500; }
+.who strong { color: var(--ink); font-size: 14px; font-weight: 500; }
 .who span { font-size: 12px; color: var(--muted); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mbrand { display: inline-flex; gap: 10px; align-items: center; font-family: var(--display); }
 
@@ -199,7 +199,7 @@ kbd { font: 11px var(--font); border: 1px solid var(--line-strong); border-botto
 .note.new { color: var(--ink); }
 .note.new::before { content: ''; position: absolute; left: 6px; top: 15px; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
 .note small { color: var(--muted); font-size: 12px; }
-.empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13.5px; }
+.empty { padding: 16px; text-align: center; color: var(--muted); font-size: 14px; }
 :global(.pf) { display: grid; padding: 6px 14px 8px; line-height: 1.35; }
 :global(.pf strong) { font-size: 14px; }
 :global(.pf span) { font-size: 12px; opacity: 0.7; }

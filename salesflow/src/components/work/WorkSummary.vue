@@ -161,9 +161,10 @@ const epics = computed(() => props.list.filter((t) => typeOf(t) === 'epic').map(
 .stack .doing, .legend .doing { background: var(--presale); }
 .stack .review, .legend .review { background: var(--warn); }
 .stack .done, .legend .done { background: var(--win); }
-.legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13.5px; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 14px; min-width: 130px; }
+.legend li { display: flex; align-items: center; gap: 0; }
 .legend b { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
-.legend .num { float: right; font-weight: 600; }
+.legend .num { margin-left: auto; padding-left: 12px; font-weight: 600; }
 .ep, .pp { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr auto; gap: 10px; align-items: center; }
 .pp { grid-template-columns: auto minmax(0, 1fr) 1fr auto; }
 .pb { height: 8px; background: var(--idle-soft); border-radius: 99px; overflow: hidden; }
@@ -173,7 +174,7 @@ const epics = computed(() => props.list.filter((t) => typeOf(t) === 'epic').map(
 .lst { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .lst li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
 .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.types { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; }
+.types { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
 .types li { display: flex; gap: 8px; align-items: center; }
 .types .num { margin-left: auto; font-weight: 600; }
 .bad { color: var(--lose); }

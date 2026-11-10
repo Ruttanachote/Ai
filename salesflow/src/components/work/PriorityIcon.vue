@@ -16,5 +16,5 @@ const ROT: Record<Priority, number> = { highest: 0, high: 0, medium: 90, low: 18
 </template>
 
 <style scoped>
-.pi { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; white-space: nowrap; }
+.pi { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
 </style>

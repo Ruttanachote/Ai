@@ -193,7 +193,7 @@ function bulkStatus(to: string) {
 .key { border: 0; background: none; padding: 0; color: var(--action); font: 500 13px var(--font); cursor: pointer; white-space: nowrap; }
 .title { border: 0; background: none; padding: 0; color: var(--ink); font: 14px var(--font); cursor: pointer; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .key:hover, .title:hover { text-decoration: underline; }
-.lab { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--idle-soft); color: var(--ink-2); white-space: nowrap; }
+.lab { font-size: 12px; padding: 1px 6px; border-radius: 4px; background: var(--idle-soft); color: var(--ink-2); white-space: nowrap; }
 .as { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .bare { border: 0; background: transparent; font: 13.5px var(--font); color: var(--ink); padding: 2px; cursor: pointer; max-width: 150px; }
 .bare:focus { outline: 2px solid var(--focus); border-radius: 4px; }
@@ -201,7 +201,7 @@ function bulkStatus(to: string) {
 .st.presale { background: var(--presale-soft); color: var(--presale); }
 .st.warn { background: var(--warn-soft); color: var(--warn); }
 .st.win { background: var(--win-soft); color: var(--win); }
-.gh td { background: var(--paper); font-size: 13.5px; }
+.gh td { background: var(--paper); font-size: 14px; }
 tr.sel td { background: var(--presale-soft); }
 .bad { color: var(--lose); }
 .create { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
@@ -215,6 +215,6 @@ tr.sel td { background: var(--presale-soft); }
 .pop button:hover { background: var(--sunken); }
 .pop .del { color: var(--lose); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 14px; background: var(--ink); color: var(--on-ink); font-size: 13.5px; }
+.bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 14px; background: var(--ink); color: var(--on-ink); font-size: 14px; }
 .bulk .btn { background: transparent; color: #fff; border-color: rgb(255 255 255 / 0.35); }
 </style>
