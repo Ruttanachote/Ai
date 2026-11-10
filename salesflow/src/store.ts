@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
 import { APPROVAL_CHAIN, type Approval, type Leave, type Role, type StageKey } from './data/model'
-import { PROJECTS, TICKETS, person, groupOf, GROUP_NAME } from './data/mock'
+import { PEOPLE, PROJECTS, TICKETS, person, groupOf, GROUP_NAME } from './data/mock'
 
 // Demo session — in production this comes from Microsoft Entra ID (app roles claim).
 export const session = reactive({
@@ -13,10 +13,12 @@ export const ROLE_USER: Record<Role, string> = {
   sm: 'rk', head: 'sw', deputy: 'kr', exec: 'tc', pmo: 'pj', opn: 'op', pm: 'ak', dev: 'dev3', ma: 'wm', callcenter: 'cc', admin: 'tc',
 }
 
-export function setRole(r: Role) {
+export function setRole(r: Role, userId?: string) {
   session.role = r
-  session.userId = ROLE_USER[r]
+  session.userId = userId ?? ROLE_USER[r]
 }
+/** Dev-team accounts (one per person — SA, BA, UX/UI, Front-end, Back-end, DevOps, QA). */
+export const devAccounts = () => PEOPLE.filter((p) => p.role === 'dev').sort((a, b) => (a.team ?? '').localeCompare(b.team ?? '') || (a.position ?? '').localeCompare(b.position ?? ''))
 
 export const projects = reactive(PROJECTS)
 /** Helpdesk tickets — Call center adds them, MA works them; one list for every page. */

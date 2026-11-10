@@ -9,7 +9,7 @@ import Icon from './components/Icon.vue'
 import Avatar from './components/Avatar.vue'
 import Feedback from './components/Feedback.vue'
 import CommandPalette from './components/CommandPalette.vue'
-import { notifications, session, setRole } from './store'
+import { devAccounts, notifications, session, setRole } from './store'
 import { NAV, HOME } from './nav'
 import { ROLES, type Role } from './data/model'
 import { person } from './data/mock'
@@ -51,14 +51,19 @@ function onKey(e: KeyboardEvent) {
 onMounted(() => document.addEventListener('keydown', onKey))
 onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
 
-const roleOptions = computed(() => (Object.keys(ROLES) as Role[]).map((k) => ({ key: k, label: ROLES[k].label, icon: k === session.role ? icon('check') : undefined })))
-function switchRole(r: Role) {
-  setRole(r)
+const roleOptions = computed(() => [
+  ...(Object.keys(ROLES) as Role[]).filter((k) => k !== 'dev').map((k) => ({ key: k, label: ROLES[k].label, icon: k === session.role ? icon('check') : undefined })),
+  { type: 'divider', key: 'dv' },
+  { type: 'group', key: 'devs', label: 'ทีมพัฒนา — แยกบัญชีรายคน',
+    children: devAccounts().map((u) => ({ key: 'acct:' + u.id, label: `${u.name} · ${u.position} · ${u.team}`, icon: u.id === session.userId ? icon('check') : undefined })) },
+])
+function switchRole(r: Role, userId?: string) {
+  setRole(r, userId)
   router.push(HOME[session.role])
 }
 const MODES: { k: Mode; label: string; icon: string }[] = [{ k: 'light', label: 'สว่าง', icon: 'sun' }, { k: 'dark', label: 'มืด', icon: 'moon' }, { k: 'system', label: 'ตามระบบ', icon: 'monitor' }]
 const profileOptions = computed(() => [
-  { type: 'render', key: 'who', render: () => h('div', { class: 'pf' }, [h('strong', me.value?.name), h('span', ROLES[session.role].label)]) },
+  { type: 'render', key: 'who', render: () => h('div', { class: 'pf' }, [h('strong', me.value?.name), h('span', me.value?.position ? `${me.value.position} · ${me.value.team}` : ROLES[session.role].label)]) },
   { type: 'divider', key: 'd1' },
   { key: 'role', label: 'ดูในบทบาท (เดโม)', icon: icon('people'), children: roleOptions.value },
   { key: 'mode', label: 'ธีม', icon: icon(isDark.value ? 'moon' : 'sun'), children: MODES.map((m) => ({ key: 'mode:' + m.k, label: m.label, icon: theme.mode === m.k ? icon('check') : icon(m.icon) })) },
@@ -68,6 +73,7 @@ const profileOptions = computed(() => [
 function onProfile(key: string) {
   if (key === 'logout') { session.signedIn = false; router.push('/login') }
   else if (key.startsWith('mode:')) setMode(key.slice(5) as Mode)
+  else if (key.startsWith('acct:')) switchRole('dev', key.slice(5))
   else if (key in ROLES) switchRole(key as Role)
 }
 
@@ -129,7 +135,7 @@ const bare = computed(() => route.path === '/login' || route.path.startsWith('/p
               <NDropdown trigger="click" placement="bottom-end" :options="profileOptions" @select="onProfile">
                 <button class="me" :aria-label="`บัญชี ${me?.name} · ${ROLES[session.role].label}`">
                   <Avatar :id="session.userId" :size="30" />
-                  <span class="who"><strong>{{ me?.name }}</strong><span>{{ ROLES[session.role].label }}</span></span>
+                  <span class="who"><strong>{{ me?.name }}</strong><span>{{ me?.position ? `${me.position} · ${me.team}` : ROLES[session.role].label }}</span></span>
                   <Icon name="down" :size="14" />
                 </button>
               </NDropdown>

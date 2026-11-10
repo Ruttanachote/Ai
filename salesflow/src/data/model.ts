@@ -108,7 +108,8 @@ export function allowedMoves(stage: StageKey, role: Role, type?: ProjectType): S
 
 export type ProjectType = 'ซื้อขาย' | 'เช่าซื้อ' | 'พัฒนาระบบ' | 'MA'
 
-export interface Person { id: string; name: string; initials: string; role: Role; team?: string; color: string }
+/** position: job title inside the dev team (SA, BA, UX/UI, Front-end, Back-end, Full-stack, DevOps, QA). */
+export interface Person { id: string; name: string; initials: string; role: Role; team?: string; color: string; position?: string }
 
 export interface ApprovalSnapshot { revenue: number; cost: number; gp: number; contractValue?: number }
 

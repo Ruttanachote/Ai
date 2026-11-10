@@ -4,18 +4,20 @@ import { useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
 import { PHOTOS } from '../data/mock'
 import { ROLES, type Role } from '../data/model'
-import { session, setRole } from '../store'
+import { devAccounts, ROLE_USER, session, setRole } from '../store'
 import { HOME } from '../nav'
 
 const router = useRouter()
 const role = ref<Role>('sm')
+const account = ref(ROLE_USER.dev)
+const devs = devAccounts()
 const busy = ref(false)
 
 function signIn() {
   busy.value = true
   // Production: MSAL redirect to Entra ID → app role claim decides the module set.
   setTimeout(() => {
-    setRole(role.value)
+    setRole(role.value, role.value === 'dev' ? account.value : undefined)
     session.signedIn = true
     router.push(HOME[role.value])
   }, 450)
@@ -52,6 +54,13 @@ function signIn() {
             <option v-for="(r, k) in ROLES" :key="k" :value="k">{{ r.label }}</option>
           </select>
           <span class="hint">{{ ROLES[role].th }}</span>
+        </div>
+        <div v-if="role === 'dev'" class="field">
+          <label for="acct">บัญชีทีมพัฒนา</label>
+          <select id="acct" v-model="account" class="input">
+            <option v-for="u in devs" :key="u.id" :value="u.id">{{ u.name }} · {{ u.position }} · {{ u.team }}</option>
+          </select>
+          <span class="hint">แต่ละคนมีบัญชีของตัวเอง เห็นงาน Timesheet และการลาของตัวเอง</span>
         </div>
 
         <button class="btn primary ms" :disabled="busy" @click="signIn">
