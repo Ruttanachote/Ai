@@ -233,7 +233,7 @@ const dates = computed(() => p.value ? [
 
     <section class="panel railbox">
       <div class="railhead"><StatusGuide /></div>
-      <StageRail :stage="p.stage" />
+      <StageRail :stage="p.stage" :sales="session.role === 'sm'" :pm="p.pm ? person(p.pm)?.name : undefined" />
       <div v-if="guideTarget" class="guide" aria-label="ขั้นตอนก่อนเปลี่ยนสถานะ">
         <div class="gh">
           <div>

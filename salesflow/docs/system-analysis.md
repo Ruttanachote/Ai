@@ -283,4 +283,6 @@ PM เปิดพื้นที่งานหลัง Handover (เมนู
 ประเภทโครงการ: NNS = Nest New Sale (ซื้อขายใหม่) · WT = Warranty (การรับประกันสินค้า) · MA · Rental · Manage Service (MS) · Software Subscription (SUB)
 ลักษณะงาน (scope) ใช้จับคู่ PM: software / hardware / mixed
 
+แถบสถานะของ SM จบที่ CW Close Win แล้วต่อด้วยขั้น "ส่งต่อทีม & PM" — สถานะหลังขาย (HO, DL, WR, END) เป็นงานของ PMO / PM / MA; SM เห็นเป็นข้อความสรุปว่าตอนนี้อยู่สถานะใด
+
 ปฏิทิน: SM ไม่เห็นการลาของทีม · ประกาศผลประมูลและใบเสนอราคาหมดอายุ แสดงเฉพาะ SM และ PM
