@@ -24,7 +24,7 @@ export const NAV: NavGroup[] = [
   {
     title: 'My Work · งานของฉัน',
     items: [
-      { to: '/my-work', label: 'My Tasks', icon: 'check', roles: [...WORKERS, 'dev'] },
+      { to: '/my-work', label: 'My Tasks', icon: 'check', roles: [...WORKERS.filter((r) => r !== 'sm'), 'dev'] },
       { to: '/approvals', label: 'Approval Requests', icon: 'inbox', roles: ['head', 'admin'] },
       { to: '/calendar', label: 'Calendar', icon: 'clock', roles: [...ALL, 'dev'] },
       { to: '/performance', label: 'My Performance', icon: 'chart', roles: ['dev', 'pm', 'head', 'pmo', 'admin'] },

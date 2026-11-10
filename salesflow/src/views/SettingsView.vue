@@ -43,7 +43,7 @@ const MATRIX: { cap: string; v: Level[] }[] = [
   { cap: 'รับมอบเข้าประกัน · รอบ Preventive Maintenance', v: ['', '', '', '', '', '', 'own', 'own', 'full', '', 'full'] },
   { cap: 'แจ้งลูกค้าต่อประกัน · ใบเสนอราคาต่อสัญญา MA', v: ['', '', '', '', '', '', '', '', 'full', '', 'full'] },
   { cap: 'รับเคส Service Desk / Ticket', v: ['', '', '', '', '', '', '', '', 'full', 'full', 'full'] },
-  { cap: 'My Tasks · Timesheet · แจ้งลา', v: ['own', 'own', '', '', 'own', 'own', 'own', 'own', 'own', 'own', 'full'] },
+  { cap: 'My Tasks · Timesheet · แจ้งลา', v: ['', 'own', '', '', 'own', 'own', 'own', 'own', 'own', 'own', 'full'] },
   { cap: 'My Performance (หัวหน้า / PMO ดูของทีมได้)', v: ['', 'own', '', '', 'full', '', 'own', 'own', '', '', 'full'] },
   { cap: 'ปฏิทินกลาง', v: ['own', 'own', 'full', 'full', 'full', 'own', 'own', 'own', 'own', 'own', 'full'] },
   { cap: 'ตั้งค่าระบบ · ผู้ใช้ สิทธิ์ ทีม · Audit log · งานอัตโนมัติ', v: ['', '', '', '', '', '', '', '', '', '', 'full'] },
