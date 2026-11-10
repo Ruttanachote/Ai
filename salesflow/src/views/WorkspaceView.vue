@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Avatar from '../components/Avatar.vue'
 import Icon from '../components/Icon.vue'
 import TemplatePicker from '../components/work/TemplatePicker.vue'
@@ -46,6 +46,9 @@ const views = computed<View[]>(() => {
 })
 const view = ref<View>('summary')
 watch(() => p.value?.workspace?.template, (t) => { if (t) view.value = WORKSPACE_TEMPLATES[t].views[0] as View }, { immediate: true })
+// Deep links from other pages (e.g. project page → ?view=milestones) open that tab directly.
+const route = useRoute()
+if (typeof route.query.view === 'string' && route.query.view in VIEW_LABEL) view.value = route.query.view as View
 
 // Assignable people = workspace members (except viewers); older workspaces fall back to who is on the items.
 const team = computed(() => {

@@ -37,7 +37,7 @@ const kpis = computed(() => [
 
 <template>
   <div class="page">
-    <PageHeader module="General" title="Customer Accounts" :scope="scope.label" subtitle="ลูกค้าและหน่วยงานผู้ใช้ เชื่อมกับทุกโครงการ">
+    <PageHeader module="Projects & Customers · ข้อมูลกลาง" title="Customer Accounts" :scope="scope.label" subtitle="ลูกค้าและหน่วยงานผู้ใช้ เชื่อมกับทุกโครงการ">
       <button class="btn primary">เพิ่มลูกค้า</button>
     </PageHeader>
     <KpiStrip :items="kpis" />

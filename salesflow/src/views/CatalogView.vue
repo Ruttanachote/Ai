@@ -24,7 +24,7 @@ const canStart = computed(() => ['sm', 'head', 'admin'].includes(session.role))
 
 <template>
   <div class="page">
-    <PageHeader module="Sales Management" title="Solution Catalog" scope="ทุกทีม DT" subtitle="โซลูชันสำเร็จรูปที่ขายซ้ำได้ — เริ่มโครงการแบบ Product-led ได้เอกสารตั้งต้นทันที">
+    <PageHeader module="Sales · ก่อนขาย" title="Solution Catalog" scope="ทุกทีม DT" subtitle="โซลูชันสำเร็จรูปที่ขายซ้ำได้ — เริ่มโครงการแบบ Product-led ได้เอกสารตั้งต้นทันที">
       <router-link v-if="canStart" to="/projects/new" class="btn primary">ลงทะเบียน Product-led</router-link>
     </PageHeader>
     <KpiStrip :items="kpis" />

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import Avatar from './Avatar.vue'
-import Icon from './Icon.vue'
-import { HANDOVER_PARTIES, riskLevel, type ContractTerms, type OtRequest, type Project, type Task } from '../data/model'
+import { HANDOVER_PARTIES, riskLevel, type ContractTerms, type OtRequest, type Project } from '../data/model'
 import { handoverGate, isTender } from '../domain/rules'
 import { effort, health, lateTasks, paidAmount, progressPct, otBudget } from '../domain/metrics'
 import KpiStrip from './KpiStrip.vue'
@@ -12,7 +11,7 @@ import { outbox } from '../store'
 import { newItem, record } from '../domain/work'
 
 const props = defineProps<{ p: Project }>()
-const view = ref<'plan' | 'tasks' | 'ot' | 'risks'>('plan')
+const view = ref<'plan' | 'ot' | 'risks'>('plan')
 
 /* ---------- Handover (Close Win → Handover) ---------- */
 const done = !!props.p.handoverDone
@@ -113,16 +112,6 @@ const months = computed(() => {
 })
 const todayX = computed(() => x(TODAY))
 
-/* ---------- Tasks ---------- */
-const COLS: { k: Task['status']; l: string }[] = [
-  { k: 'todo', l: 'ยังไม่เริ่ม' }, { k: 'doing', l: 'กำลังทำ' }, { k: 'review', l: 'รอตรวจ' }, { k: 'done', l: 'เสร็จ' },
-]
-const late = (t: Task) => t.status !== 'done' && new Date(t.due) < TODAY
-const over = (t: Task) => t.spent > t.hours
-const move = (t: Task, dir: 1 | -1) => {
-  const i = COLS.findIndex((c) => c.k === t.status)
-  t.status = COLS[Math.min(3, Math.max(0, i + dir))].k
-}
 // Same figures and RAG as the Project Overview card for this project.
 const kpis = computed(() => {
   const e = effort(props.p)
@@ -214,11 +203,16 @@ function crToWork(c: (typeof crs)[number]) {
 
   <template v-if="p.milestones">
     <KpiStrip :items="kpis" />
-    <div class="wslink"><span class="small muted">จัดการงานแบบรายการ บอร์ด ปฏิทิน Timeline เอกสาร และแบบฟอร์ม</span><router-link :to="`/work/${p.id}`" class="btn sm primary">เปิดพื้นที่งาน {{ p.workspace?.key ?? '' }}</router-link></div>
+    <div class="wslink"><span class="small muted">หน้านี้เป็นภาพรวมสำหรับผู้บริหารและ PMO — งานประจำวันของ PM และทีมทำใน Project Workspace</span>
+      <span class="wsgo">
+        <router-link :to="`/work/${p.id}?view=board`" class="btn sm">บอร์ดงาน</router-link>
+        <router-link :to="`/work/${p.id}?view=milestones`" class="btn sm">งวดงานและส่งมอบ</router-link>
+        <router-link :to="`/work/${p.id}?view=risks`" class="btn sm">ความเสี่ยง</router-link>
+        <router-link :to="`/work/${p.id}`" class="btn sm primary">เปิด Project Workspace {{ p.workspace?.key ?? '' }}</router-link>
+      </span></div>
 
     <div class="tabs" role="tablist">
       <button role="tab" :aria-selected="view === 'plan'" @click="view = 'plan'">Timeline และงวดงาน</button>
-      <button role="tab" :aria-selected="view === 'tasks'" @click="view = 'tasks'">Task board</button>
       <button role="tab" :aria-selected="view === 'ot'" @click="view = 'ot'">OT</button>
       <button role="tab" :aria-selected="view === 'risks'" @click="view = 'risks'">ความเสี่ยงและ Change request</button>
     </div>
@@ -244,24 +238,6 @@ function crToWork(c: (typeof crs)[number]) {
       </div>
     </section>
 
-    <section v-if="view === 'tasks'" class="kan">
-      <div v-for="c in COLS" :key="c.k" class="kcol">
-        <h3>{{ c.l }} <span class="muted">{{ p.tasks?.filter((t) => t.status === c.k).length }}</span></h3>
-        <article v-for="t in p.tasks?.filter((t) => t.status === c.k)" :key="t.id" class="task" :class="{ late: late(t) }">
-          <strong>{{ t.title }}</strong>
-          <p class="small muted">{{ t.milestone }}</p>
-          <div class="hrs"><div class="hb"><i :class="{ over: over(t) }" :style="{ width: Math.min(100, (t.spent / t.hours) * 100) + '%' }" /></div><span class="small num">{{ t.spent }}/{{ t.hours }} ชม.</span></div>
-          <div class="tf">
-            <Avatar :id="t.assignee" :size="24" />
-            <span class="small" :class="late(t) ? 'bad' : 'muted'"><Icon name="clock" :size="13" /> {{ thDate(t.due) }}{{ late(t) ? ' · เลยกำหนด' : '' }}</span>
-            <span class="mv">
-              <button class="btn ghost sm" :disabled="c.k === 'todo'" aria-label="ย้อนสถานะ" @click="move(t, -1)">‹</button>
-              <button class="btn ghost sm" :disabled="c.k === 'done'" aria-label="เลื่อนสถานะ" @click="move(t, 1)">›</button>
-            </span>
-          </div>
-        </article>
-      </div>
-    </section>
 
     <section v-if="view === 'ot'" class="panel">
       <div class="panel-head"><h2>OT ทีมพัฒนา</h2><span class="muted small">PM อนุมัติได้ไม่เกินเงินกัน OT ใน Cost Sheet ที่อนุมัติ</span></div>
@@ -396,4 +372,5 @@ function crToWork(c: (typeof crs)[number]) {
 .rl strong { font-weight: 500; }
 .empty { display: grid; gap: 10px; justify-items: start; }
 @media (max-width: 1100px) { .hgrid, .rgrid { grid-template-columns: 1fr; } }
+.wsgo { display: flex; gap: 6px; flex-wrap: wrap; }
 </style>

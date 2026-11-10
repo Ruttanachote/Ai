@@ -52,7 +52,7 @@ const kpis = computed(() => [
 
 <template>
   <div class="page">
-    <PageHeader module="After-Sales Service" title="Warranty & Maintenance" :scope="scope.label" subtitle="วันหมดประกัน การแจ้งต่อสัญญา และ Ticket ตาม SLA" />
+    <PageHeader module="After-Sales · ประกันและ MA" title="Warranty & Maintenance" :scope="scope.label" subtitle="วันหมดประกัน การแจ้งต่อสัญญา และ Ticket ตาม SLA" />
     <KpiStrip :items="kpis" />
 
     <div class="radar">

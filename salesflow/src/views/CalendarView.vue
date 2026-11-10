@@ -47,7 +47,7 @@ const upcoming = computed(() => events.value.filter((e) => e.day >= TODAY_ISO &&
 
 <template>
   <div class="page">
-    <PageHeader module="General" title="Calendar" :scope="scope.label" subtitle="ปฏิทินกลาง — วันหยุด การลา ประชุม งวดงาน รอบ PM ประกาศผลประมูล และวันหมดประกัน" />
+    <PageHeader module="My Work · งานของฉัน" title="Calendar" :scope="scope.label" subtitle="ปฏิทินกลาง — วันหยุด การลา ประชุม งวดงาน รอบ PM ประกาศผลประมูล และวันหมดประกัน" />
     <div class="filters">
       <label v-for="(k, key) in KINDS" :key="key" class="f" :class="k.tone"><input v-model="on[key]" type="checkbox" /> {{ k.l }}</label>
     </div>

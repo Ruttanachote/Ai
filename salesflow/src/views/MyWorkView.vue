@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
+import Dialog from '../components/Dialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
 import LeaveDialog from '../components/LeaveDialog.vue'
@@ -10,12 +11,12 @@ import { dueRounds, STATE_LABEL } from '../domain/pm'
 import WorkTypeIcon from '../components/work/WorkTypeIcon.vue'
 import PriorityIcon from '../components/work/PriorityIcon.vue'
 import WorkDrawer from '../components/work/WorkDrawer.vue'
-import { notifications, projects, session } from '../store'
+import { notifications, notify, projects, session } from '../store'
 import { thDate, TODAY_ISO } from '../data/mock'
-import { WORK_STATUS, type Project, type Task } from '../data/model'
-import { addDays, byPriority, keyOf, typeOf } from '../domain/work'
+import { PRIORITIES, WORK_STATUS, WORK_TYPES, type Priority, type Project, type Task, type WorkType } from '../data/model'
+import { addDays, byPriority, keyOf, newItem, record, typeOf } from '../domain/work'
 import { allowedTargets, statusOf } from '../domain/workflow'
-import { isAdmin, move } from '../components/work/actions'
+import { canEdit, edited, isAdmin, move } from '../components/work/actions'
 import { canSee } from '../nav'
 
 // One list of everything assigned to me across projects — what a developer opens every morning.
@@ -41,6 +42,21 @@ const kpis = computed(() => [
   { label: 'OT รออนุมัติ', value: String(otPending.value.length), note: otPending.value.length ? `${otPending.value.reduce((s, o) => s + o.hours, 0)} ชม. รอ PM` : 'ไม่มี', tone: otPending.value.length ? ('warn' as const) : ('' as const) },
 ])
 const leaveOpen = ref(false)
+// Create a task for yourself in one step: project, title, due date → assigned to me.
+const myWorkspaces = computed(() => projects.filter((p) => p.workspace && canEdit(p)))
+const nt = reactive({ open: false, projectId: '', title: '', type: 'task' as WorkType, priority: 'medium' as Priority, due: addDays(TODAY_ISO, 3), milestone: '' })
+const ntProject = computed(() => projects.find((p) => p.id === nt.projectId))
+function openNew() { Object.assign(nt, { open: true, projectId: myWorkspaces.value[0]?.id ?? '', title: '', type: 'task', priority: 'medium', due: addDays(TODAY_ISO, 3), milestone: '' }) }
+function createTask() {
+  const p = ntProject.value
+  if (!p || !nt.title.trim()) return
+  const t = newItem(p, { title: nt.title.trim(), type: nt.type, priority: nt.priority, assignee: session.userId, start: TODAY_ISO, due: nt.due, milestone: nt.milestone }, session.userId, TODAY_ISO)
+  p.tasks = [...(p.tasks ?? []), t]
+  record(p, session.userId, t, 'สร้างงาน', TODAY_ISO)
+  edited(t, 'สร้างงาน', undefined, 'มอบหมายให้ตัวเอง')
+  nt.open = false
+  notify(`สร้าง ${t.key} ใน ${p.name} และมอบหมายให้คุณแล้ว`)
+}
 // Timesheet is for people who log time on work items (team, PM) — others only see it once they log.
 const logsTime = computed(() => ['dev', 'pm'].includes(session.role) || projects.some((p) => (p.tasks ?? []).some((t) => (t.worklogs ?? []).some((w) => w.who === session.userId))))
 // PM reports this person prepares (named preparer, or member of the project's workspace).
@@ -58,7 +74,8 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
 
 <template>
   <div class="page">
-    <PageHeader module="General" title="My Tasks" scope="ทุกโครงการที่คุณได้รับมอบหมาย" subtitle="เรียงตามกำหนดเสร็จและความสำคัญ — เปลี่ยนสถานะได้ที่นี่ หรือเปิดงานเพื่อบันทึกเวลา">
+    <PageHeader module="My Work · งานของฉัน" title="My Tasks" scope="ทุกโครงการที่คุณได้รับมอบหมาย" subtitle="เรียงตามกำหนดเสร็จและความสำคัญ — เปลี่ยนสถานะได้ที่นี่ หรือเปิดงานเพื่อบันทึกเวลา">
+      <button v-if="myWorkspaces.length" class="btn primary" @click="openNew">+ สร้างงาน</button>
       <button class="btn" @click="leaveOpen = true">แจ้งลา</button>
     </PageHeader>
     <KpiStrip :items="kpis" />
@@ -119,6 +136,18 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
     </div>
 
     <LeaveDialog :open="leaveOpen" @close="leaveOpen = false" />
+    <Dialog :open="nt.open" title="สร้างงานของฉัน" @close="nt.open = false">
+      <div class="field"><label for="np">โครงการ</label><select id="np" v-model="nt.projectId" class="input"><option v-for="p in myWorkspaces" :key="p.id" :value="p.id">{{ p.workspace?.key }} · {{ p.name }}</option></select></div>
+      <div class="field"><label for="nn">ชื่องาน</label><input id="nn" v-model="nt.title" class="input" placeholder="เช่น ปรับหน้าจอค้นหาตามความเห็น UAT" @keydown.enter="createTask" /></div>
+      <div class="g3">
+        <div class="field"><label for="ny">ประเภท</label><select id="ny" v-model="nt.type" class="input"><option v-for="(x, k) in WORK_TYPES" v-show="k !== 'epic'" :key="k" :value="k">{{ x.label }}</option></select></div>
+        <div class="field"><label for="npr">ความสำคัญ</label><select id="npr" v-model="nt.priority" class="input"><option v-for="(x, k) in PRIORITIES" :key="k" :value="k">{{ x.label }}</option></select></div>
+        <div class="field"><label for="nd">ครบกำหนด</label><input id="nd" v-model="nt.due" type="date" class="input" :min="TODAY_ISO" /></div>
+      </div>
+      <div v-if="ntProject?.milestones?.length" class="field"><label for="nm">งวดงาน</label><select id="nm" v-model="nt.milestone" class="input"><option value="">ไม่ระบุ</option><option v-for="m in ntProject.milestones" :key="m.name" :value="m.name">{{ m.name }}</option></select></div>
+      <p class="small muted">งานจะอยู่สถานะแรกของ Workflow และมอบหมายให้คุณ — แก้รายละเอียดเพิ่มได้เมื่อเปิดงาน</p>
+      <template #foot><button class="btn" @click="nt.open = false">ยกเลิก</button><button class="btn primary" :disabled="!nt.title.trim() || !nt.projectId" @click="createTask">สร้างงาน</button></template>
+    </Dialog>
     <WorkDrawer v-if="openItem" :p="openItem.p" :item="openItem.t" :team="team(openItem.p)" @close="openItem = null" @open="openItem = openItem && { p: openItem.p, t: $event }" />
   </div>
 </template>
@@ -156,4 +185,6 @@ ul { list-style: none; margin: 0; padding: 0; }
 @media (max-width: 640px) { .flush li { grid-template-columns: auto minmax(0, 1fr) auto; } .flush li > :nth-child(3), .flush li > :nth-child(5), .flush li > :nth-child(6) { display: none; } }
 .flush li.pmr { grid-template-columns: auto minmax(0, 1fr) auto; }
 .tsw { margin-bottom: 16px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 640px) { .g3 { grid-template-columns: 1fr; } }
 </style>

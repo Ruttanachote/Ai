@@ -29,7 +29,7 @@ const kpis = computed(() => [
 
 <template>
   <div class="page">
-    <PageHeader module="General" title="Approval Requests" :scope="scope.label" subtitle="อนุมัติได้จากหน้านี้หรือจากลิงก์ในอีเมล" />
+    <PageHeader module="My Work · งานของฉัน" title="Approval Requests" :scope="scope.label" subtitle="อนุมัติได้จากหน้านี้หรือจากลิงก์ในอีเมล" />
     <KpiStrip :items="kpis" />
 
     <section v-if="torQueue.length" class="panel block">

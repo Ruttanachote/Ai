@@ -40,7 +40,7 @@ const maxH = computed(() => Math.max(10, ...daily.value.map((x) => x.normal + x.
 
 <template>
   <div class="page">
-    <PageHeader module="General" title="My Performance" :scope="person(who)?.name + (person(who)?.position ? ' · ' + person(who)?.position : '')" subtitle="เห็นเฉพาะตัวเองและหัวหน้าทีม — ชั่วโมงทำงาน OT และงานที่เสร็จ">
+    <PageHeader module="My Work · งานของฉัน" title="My Performance" :scope="person(who)?.name + (person(who)?.position ? ' · ' + person(who)?.position : '')" subtitle="เห็นเฉพาะตัวเองและหัวหน้าทีม — ชั่วโมงทำงาน OT และงานที่เสร็จ">
       <select v-if="canPick" v-model="who" class="input pick" aria-label="เลือกคน"><option v-for="u in people" :key="u.id" :value="u.id">{{ u.name }} · {{ u.position ?? 'PM' }}</option></select>
       <input v-model="month" type="month" class="input pick" aria-label="เดือน" />
     </PageHeader>

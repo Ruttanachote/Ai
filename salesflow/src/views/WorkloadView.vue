@@ -109,7 +109,7 @@ const kpis = computed(() => {
 
 <template>
   <div class="page">
-    <PageHeader module="Project Management" title="Resource Workload" :scope="'ทีม ' + team" subtitle="ชั่วโมงที่วางแผนต่อสัปดาห์ เทียบความสามารถ 40 ชม.">
+    <PageHeader module="Delivery · ส่งมอบโครงการ" title="Resource Workload" :scope="'ทีม ' + team" subtitle="ชั่วโมงที่วางแผนต่อสัปดาห์ เทียบความสามารถ 40 ชม.">
       <div class="seg" role="radiogroup" aria-label="เลือกทีม">
         <button v-for="t in teamsWithPeople" :key="t" role="radio" :aria-checked="team === t" @click="team = t">{{ t }}</button>
       </div>
