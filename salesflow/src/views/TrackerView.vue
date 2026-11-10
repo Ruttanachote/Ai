@@ -42,7 +42,7 @@ const TONE: Record<string, string> = { ok: 'ตามแผน', warn: 'ต้�
 
 <template>
   <div class="page">
-    <PageHeader module="Executive · ผู้บริหาร" title="Project Status Tracker" :scope="scope.label" subtitle="สถานะละเอียดของทุกโครงการ ระบบคำนวณจากข้อมูลที่ทีมบันทึกอยู่แล้ว ไม่ต้องกรอกเพิ่ม" />
+    <PageHeader module="Executive · ผู้บริหาร DT" title="Project Status Tracker" :scope="scope.label" subtitle="สถานะละเอียดของทุกโครงการ ระบบคำนวณจากข้อมูลที่ทีมบันทึกอยู่แล้ว ไม่ต้องกรอกเพิ่ม" />
 
     <section class="steps" aria-label="จำนวนโครงการแต่ละขั้น">
       <button v-for="(s, i) in TRACK_STEPS" :key="s.k" class="st" :aria-pressed="step === s.k" @click="pick(s.k)">

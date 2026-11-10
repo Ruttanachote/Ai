@@ -55,7 +55,7 @@ const pct = (n: number) => Math.round(n * 100)
 
 <template>
   <div class="page">
-    <PageHeader module="Executive · ผู้บริหาร" title="Executive Dashboard" scope="ทุกทีม DT" :subtitle="`ปีงบ 2569 · ข้อมูล ณ ${thDate(TODAY_ISO)}`">
+    <PageHeader module="Executive · ผู้บริหาร DT" title="Executive Dashboard" scope="ทุกทีม DT" :subtitle="`ปีงบ 2569 · ข้อมูล ณ ${thDate(TODAY_ISO)}`">
       <div class="seg" role="radiogroup" aria-label="กลุ่ม">
         <button role="radio" :aria-checked="!group" @click="group = ''">ทั้งหมด</button>
         <button v-for="g in groups" :key="g" role="radio" :aria-checked="group === g" :title="GROUP_NAME[g]" @click="group = g">{{ g }}</button>

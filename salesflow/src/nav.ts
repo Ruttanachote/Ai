@@ -14,10 +14,10 @@ const EXEC: Role[] = ['exec', 'deputy']
 // mailbox, the project register and the calendar — nothing that needs hands-on input.
 export const NAV: NavGroup[] = [
   {
-    title: 'Executive · ผู้บริหาร',
+    title: 'Executive · ผู้บริหาร DT',
     items: [
       { to: '/exec', label: 'Executive Dashboard', icon: 'dashboard', roles: [...EXEC, 'admin'] },
-      { to: '/exec/tracker', label: 'Project Status Tracker', icon: 'gantt', roles: [...EXEC, 'head', 'pmo', 'admin'] },
+      { to: '/exec/tracker', label: 'Project Status Tracker', icon: 'gantt', roles: [...EXEC, 'admin'] },
       { to: '/inbox', label: 'Mail Inbox', icon: 'inbox', roles: [...EXEC, 'admin'] },
     ],
   },
