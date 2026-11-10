@@ -166,6 +166,9 @@ export interface Approval {
   preMeeting?: PreMeeting
   /** Message the SM wrote in the approval mail. */
   message?: string
+  /** The Cost Sheet and Quotation revisions sent together in this request. */
+  costSheetId?: string
+  quotationId?: string
 }
 export interface PreMeeting { date: string; attendees: string[]; summary: string; place?: string }
 
@@ -375,6 +378,14 @@ export interface Project {
   procurement?: ProcurementRequest[]
   parentId?: string
   approval?: Approval
+  /** Cost Sheet revisions (in-system form or uploaded .xlsx). */
+  costSheets?: CostSheet[]
+  /** Quotation revisions, each built from one Cost Sheet revision. */
+  quotations?: Quotation[]
+  /** Uploaded sales / delivery documents (folder system). */
+  documents?: ProjectDocument[]
+  /** Activity log: who did what, when, old → new. */
+  activities?: Activity[]
   milestones?: Milestone[]
   tasks?: Task[]
   /** PM workspace — created by the PM after Handover by choosing a template. */
@@ -439,3 +450,48 @@ export interface StaffRequest { id: string; role: MemberRole; count: number; fro
 export interface CatalogItem { id: string; name: string; team: string; summary: string; price: number; manday: number; modules: string[]; proposal: string; owner: string }
 export interface OutboxMail { id: string; at: string; from: string; to: string; subject: string; kind: 'email' | 'teams'; ref?: string }
 export interface WeeklyReport { id: string; week: string; projectId: string; pm: string; done: number; open: number; late: number; hours: number; ot: number; at: string }
+
+/* ---------------- Sales documents: Cost Sheet, Quotation, folders and files ---------------- */
+export type DocStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export const DOC_STATUS: Record<DocStatus, { label: string; tone: '' | 'warn' | 'win' | 'lose' }> = {
+  DRAFT: { label: 'Draft', tone: '' }, PENDING: { label: 'รออนุมัติ', tone: 'warn' }, APPROVED: { label: 'Approved', tone: 'win' },
+  REJECTED: { label: 'Rejected', tone: 'lose' }, CANCELLED: { label: 'Cancelled', tone: '' },
+}
+export type CostCategory = 'manpower' | 'hardware' | 'software' | 'cloud' | 'subcontract' | 'ma' | 'other'
+export interface CostItem {
+  id: string; category: CostCategory; description: string
+  role?: string; manday?: number; rate?: number
+  qty?: number; unitCost?: number; months?: number; vendor?: string; amount?: number
+  note?: string
+}
+export interface CostSheet {
+  id: string; docNo: string; revision: number; status: DocStatus
+  source: 'form' | 'upload'; fileName?: string
+  projectMonths?: number; maMonths?: number; preparedAt: string; createdBy: string
+  items: CostItem[]
+  revenue: number
+  entertainment: { mode: 'baht' | 'pct'; value: number }
+  contingency: { mode: 'baht' | 'pct'; value: number }
+  lossReason?: string
+  approvedAt?: string
+}
+export interface QuotationLine { id: string; description: string; qty: number; unit: string; unitPrice: number }
+export interface PayTerm { no: number; pct: number; condition: string }
+export interface Quotation {
+  id: string; docNo: string; revision: number; status: DocStatus; costSheetId: string
+  issueDate: string; validUntil: string; contact?: string; projectName: string
+  items: QuotationLine[]
+  discount: { mode: 'baht' | 'pct'; value: number }
+  duration: string; terms: PayTerm[]; warranty: string; exclusions: string; remark: string
+  createdBy: string; createdAt: string; approvedAt?: string
+  source?: 'form' | 'upload'; fileName?: string
+}
+export interface DocVersion { no: number; fileName: string; stdName: string; size: number; mime: string; at: string; by: string; note?: string; locked?: boolean; url?: string }
+export interface ProjectDocument {
+  id: string; folder: string; title: string
+  docNo?: string; docDate?: string; amount?: number; note?: string
+  versions: DocVersion[]; approvedVersion?: number
+  createdBy: string; deletedAt?: string; deletedBy?: string
+}
+export type ActivityType = 'field' | 'file' | 'approval' | 'stage' | 'team' | 'document'
+export interface Activity { id: string; at: string; who: string; type: ActivityType; text: string; from?: string; to?: string }

@@ -26,7 +26,7 @@ const kpis = computed(() => [
 
 <template>
   <div class="page">
-    <PageHeader module="Delivery · ส่งมอบโครงการ" title="Project Overview" :scope="scope.label" subtitle="โครงการหลังชนะงาน ตั้งแต่ Handover ถึงส่งมอบ" />
+    <PageHeader module="Delivery · ส่งมอบโครงการ" title="Delivery Overview" :scope="scope.label" subtitle="โครงการหลังชนะงาน ตั้งแต่ Handover ถึงส่งมอบ" />
     <KpiStrip :items="kpis" />
 
     <section v-if="queue.length" class="panel q">

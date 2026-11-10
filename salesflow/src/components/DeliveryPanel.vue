@@ -118,7 +118,7 @@ const months = computed(() => {
 })
 const todayX = computed(() => x(TODAY))
 
-// Same figures and RAG as the Project Overview card for this project.
+// Same figures and RAG as the Delivery Overview card for this project.
 const kpis = computed(() => {
   const e = effort(props.p)
   const lateN = lateTasks(props.p, TODAY_ISO).length

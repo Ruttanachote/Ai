@@ -148,7 +148,7 @@ const drop = ref(false)
 
 <template>
   <div v-if="p" class="page">
-    <router-link to="/projects" class="back small"><Icon name="chevron" :size="14" style="transform: rotate(180deg)" /> Project Register</router-link>
+    <router-link to="/projects" class="back small"><Icon name="chevron" :size="14" style="transform: rotate(180deg)" /> Project Overview</router-link>
 
     <section class="cover">
       <Photo :id="p.cover" :w="1800" alt="" />

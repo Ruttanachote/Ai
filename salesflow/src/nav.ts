@@ -18,7 +18,7 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/', label: 'SM Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'admin'] },
       // One register for the whole sales journey: list, pipeline board and "register a new project" (starts at Opportunity).
-      { to: '/projects', label: 'Project Register', icon: 'list', roles: ['sm', 'head'] },
+      { to: '/projects', label: 'Project Overview', icon: 'list', roles: ['sm', 'head'] },
       { to: '/catalog', label: 'Solution Catalog', icon: 'folder', roles: ['sm', 'head', 'admin'] },
     ],
   },
@@ -42,14 +42,14 @@ export const NAV: NavGroup[] = [
   {
     title: 'Projects & Customers · ข้อมูลกลาง',
     items: [
-      { to: '/projects', label: 'Project Register', icon: 'list', roles: ALL.filter((r) => !['callcenter', 'sm', 'head'].includes(r)) },
+      { to: '/projects', label: 'Project Overview', icon: 'list', roles: ALL.filter((r) => !['callcenter', 'sm', 'head'].includes(r)) },
       { to: '/accounts', label: 'Customer Accounts', icon: 'people', roles: ['sm', 'head', 'ma', 'admin'] },
     ],
   },
   {
     title: 'Delivery · ส่งมอบโครงการ',
     items: [
-      { to: '/delivery', label: 'Project Overview', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'admin'] },
+      { to: '/delivery', label: 'Delivery Overview', icon: 'gantt', roles: ['pmo', 'pm', 'head', 'admin'] },
       { to: '/work', label: 'Project Workspace', icon: 'board', roles: ['pm', 'dev', 'pmo', 'head', 'admin'] },
       { to: '/workload', label: 'Resource Workload', icon: 'people', roles: ['pmo', 'pm', 'head', 'admin'] },
     ],

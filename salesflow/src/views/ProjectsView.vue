@@ -78,7 +78,7 @@ const kpis = computed(() => [
 
 <template>
   <div class="page">
-    <PageHeader :module="salesRole ? 'Sales · ก่อนขาย' : 'Projects & Customers · ข้อมูลกลาง'" title="Project Register" :scope="scope.label" :subtitle="salesRole ? 'ทะเบียนโครงการ · Pipeline · ลงทะเบียนโครงการใหม่ (เริ่มที่สถานะ Opportunity)' : `${list.length} รายการ`">
+    <PageHeader :module="salesRole ? 'Sales · ก่อนขาย' : 'Projects & Customers · ข้อมูลกลาง'" title="Project Overview" :scope="scope.label" :subtitle="salesRole ? 'ทะเบียนโครงการ · Pipeline · ลงทะเบียนโครงการใหม่ (เริ่มที่สถานะ Opportunity)' : `${list.length} รายการ`">
       <div v-if="salesRole" class="seg" role="radiogroup" aria-label="มุมมอง">
         <button role="radio" :aria-checked="view === 'list'" @click="view = 'list'">รายการ</button>
         <button role="radio" :aria-checked="view === 'board'" @click="view = 'board'">Pipeline</button>

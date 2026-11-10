@@ -21,7 +21,7 @@
 | S-10 | หลัง Win: แจ้งทีมพัฒนา + ขอ PM | SM | แจ้ง PMO + หัวหน้า Dev ผ่าน Teams/อีเมล | ✓ ทำแล้ว |
 | S-11 | Solution Catalog | SM / หัวหน้า | ทะเบียน Product ใช้ซ้ำ ดูยอดขายต่อ Product | ✓ ทำแล้ว |
 
-**หน้าจอ:** Project Register · Opportunity Registration · หน้าโครงการ (แท็บ Requirement ★, เอกสาร, Cost Sheet, ประมูล) · Sales Pipeline · Sales Dashboard
+**หน้าจอ:** Project Overview · Opportunity Registration · หน้าโครงการ (แท็บ Requirement ★, เอกสาร, Cost Sheet, ประมูล) · Sales Pipeline · Sales Dashboard
 
 ---
 
@@ -118,7 +118,7 @@
 | E-02 | Project Status Tracker: 9 ขั้น (เตรียมข้อเสนอ → รอ Sale ยื่น → รอประกาศผล → ประกาศผล → แจ้งทีม·หา PM → พัฒนา → ทดสอบ → ส่งมอบ → MA) | รองผู้บริหาร · ผู้บริหาร DT | คำนวณจากข้อมูลที่มีอยู่ · แสดง “รอใคร” (ชื่อ Sale / ผู้อนุมัติ / PM / PMO) · กรองตามขั้น กลุ่ม ต้องติดตาม | ✓ ทำแล้ว |
 | E-03 | Mail Inbox: อีเมลขออนุมัติจาก M365 ในระบบ — Approve / Reject ในอีเมล | รองผู้บริหาร · ผู้บริหาร | โฟลเดอร์ Inbox / รอขั้นก่อนหน้า / Approved / Rejected / Starred · ตอบกลับ SM และส่งต่อขั้นถัดไปอัตโนมัติ | ✓ ทำแล้ว |
 | E-04 | SM ประชุมชี้แจงก่อนส่งขออนุมัติ | SM | บังคับบันทึกวันที่ ผู้เข้าประชุม สรุปผล — แสดงในอีเมลขออนุมัติ | ✓ ทำแล้ว |
-| E-05 | เมนูผู้บริหารเหลือ 5 เมนู (Dashboard · Tracker · Mail Inbox · Calendar · Project Register) | ผู้บริหาร | ตัดเมนูที่ต้องลงมือทำงาน (Pipeline, จัดซื้อ, Workspace ฯลฯ) ออก | ✓ ทำแล้ว |
+| E-05 | เมนูผู้บริหารเหลือ 5 เมนู (Dashboard · Tracker · Mail Inbox · Calendar · Project Overview) | ผู้บริหาร | ตัดเมนูที่ต้องลงมือทำงาน (Pipeline, จัดซื้อ, Workspace ฯลฯ) ออก | ✓ ทำแล้ว |
 
 ---
 

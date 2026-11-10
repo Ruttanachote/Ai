@@ -64,12 +64,12 @@ ch('menu', 'โครงสร้างเมนู', f'''
   ['', 'Approval Requests', 'คิวของหัวหน้ากลุ่ม: TOR Final รอตรวจ และคำขอที่ติดตาม'],
   ['', 'Calendar', 'ปฏิทินกลาง: วันหยุด การลา ประชุม งวดงาน รอบ PM วันหมดประกัน'],
   ['', 'My Performance', 'ชั่วโมงทำงาน OT และงานที่เสร็จของตัวเอง'],
-  ['<b>Projects &amp; Customers · ข้อมูลกลาง</b>', 'Project Register', 'ทะเบียนโครงการทุกสถานะ — จุดเริ่มต้นเปิดดูโครงการใดก็ได้'],
+  ['<b>Projects &amp; Customers · ข้อมูลกลาง</b>', 'Project Overview', 'ทะเบียนโครงการทุกสถานะ — จุดเริ่มต้นเปิดดูโครงการใดก็ได้'],
   ['', 'Customer Accounts', 'ทะเบียนลูกค้าและหน่วยงานผู้ใช้'],
   ['<b>Sales · ก่อนขาย</b> (หมวดแรก)', 'SM Dashboard', 'ยอดปิดเทียบเป้าที่ SM ตั้งเอง Pipeline และกำหนดการใกล้ถึง — SM เห็นเฉพาะของตัวเอง'],
-  ['', 'Project Register', 'ทะเบียนโครงการ มุมมองรายการและ Pipeline + ปุ่มลงทะเบียนโครงการใหม่ (เริ่มที่ Opportunity)'],
+  ['', 'Project Overview', 'ทะเบียนโครงการ มุมมองรายการและ Pipeline + ปุ่มลงทะเบียนโครงการใหม่ (เริ่มที่ Opportunity)'],
   ['', 'Solution Catalog', 'โซลูชันสำเร็จรูปที่ขายซ้ำได้'],
-  ['<b>Delivery · ส่งมอบโครงการ</b>', 'Project Overview', 'ภาพรวมทุกโครงการที่กำลังส่งมอบ (PMO / หัวหน้า)'],
+  ['<b>Delivery · ส่งมอบโครงการ</b>', 'Delivery Overview', 'ภาพรวมทุกโครงการที่กำลังส่งมอบ (PMO / หัวหน้า)'],
   ['', 'Project Workspace', 'พื้นที่ทำงานของ PM และทีม: งาน บอร์ด งวดงาน ความเสี่ยง ผู้ติดต่อ'],
   ['', 'Resource Workload', 'ภาระงานของทีม การลา และคำขอคน'],
   ['<b>After-Sales · ประกันและ MA</b>', 'Warranty &amp; Maintenance', 'รับมอบเข้าประกัน รอบรายงาน PM ต่อสัญญา MA'],
@@ -78,7 +78,7 @@ ch('menu', 'โครงสร้างเมนู', f'''
   ['', 'Bank Guarantees', 'หลักประกันซองและหลักประกันสัญญา'],
   ['<b>Admin · ผู้ดูแลระบบ</b>', 'System Settings', 'สิทธิ์ ลำดับอนุมัติ ปฏิทิน เวลาทำงาน การแจ้งเตือน Audit log'],
 ])}
-{tip('หน้าโครงการ (เปิดจาก Project Register) คือ “แฟ้มโครงการ” สำหรับทุกฝ่าย ส่วน Project Workspace คือ “โต๊ะทำงาน” ของ PM และทีมพัฒนา — หน้าโครงการมีปุ่มลัดไป Workspace (บอร์ดงาน งวดงาน ความเสี่ยง) เสมอ')}
+{tip('หน้าโครงการ (เปิดจาก Project Overview) คือ “แฟ้มโครงการ” สำหรับทุกฝ่าย ส่วน Project Workspace คือ “โต๊ะทำงาน” ของ PM และทีมพัฒนา — หน้าโครงการมีปุ่มลัดไป Workspace (บอร์ดงาน งวดงาน ความเสี่ยง) เสมอ')}
 ''')
 
 ch('start', 'เริ่มต้นใช้งาน', f'''
@@ -123,12 +123,12 @@ ch('mywork', 'งานของฉัน (ทุกบทบาท)', f'''
 
 ch('sales', 'ฝ่ายขาย (Solution Manager)', f'''
 <h3>1. ลงทะเบียนโอกาสขาย</h3>
-{steps('เมนู <b>Project Register › ลงทะเบียนโครงการใหม่</b>',
+{steps('เมนู <b>Project Overview › ลงทะเบียนโครงการใหม่</b>',
        'เลือกแหล่งที่มา: <b>ลูกค้ามีโอกาสจ้าง</b> หรือ <b>ทีมคิด Product เอง</b> (เลือกจาก Solution Catalog ระบบเติมชื่อ ทีม ราคา และ Proposal ตั้งต้นให้)',
        'กรอกลูกค้า ประเภทโครงการ ทีมเจ้าของ งบประมาณ และ Sale ที่ทำงานคู่กัน แล้วบันทึก — ระบบออกรหัสและสร้างโฟลเดอร์ SharePoint')}
 {img('05-register', 'ลงทะเบียนแบบ Product-led จาก Solution Catalog')}
 <h3>2. หน้าโครงการ</h3>
-<p>เปิดจาก <b>Project Register</b> แถบบนแสดงสถานะและปุ่มย้ายสถานะ แถบความคืบหน้าแสดงตำแหน่งในวงจร แท็บด้านล่างแบ่งงานตามช่วง</p>
+<p>เปิดจาก <b>Project Overview</b> แถบบนแสดงสถานะและปุ่มย้ายสถานะ แถบความคืบหน้าแสดงตำแหน่งในวงจร แท็บด้านล่างแบ่งงานตามช่วง</p>
 {img('06-project', 'หน้าโครงการ: สถานะ ปุ่มย้ายสถานะ และแท็บ')}
 <h3>3. Requirement และ TOR</h3>
 {steps('แท็บ <b>Requirement และ TOR</b> — กรอก Requirement Overview และ Process การใช้งาน บันทึกประชุมกับลูกค้า',
@@ -144,11 +144,11 @@ ch('sales', 'ฝ่ายขาย (Solution Manager)', f'''
 {img('08-costsheet', 'Cost Sheet และสถานะการอนุมัติ')}
 {tip('ถ้าแก้ไฟล์ Excel หลังส่งขออนุมัติ คำขอจะถูกยกเลิก (Stale) ต้องส่งใหม่ — ผู้บริหารอนุมัติตามตัวเลขที่ถูกล็อกเท่านั้น', 'rule')}
 <h3>5. ย้ายสถานะ ประมูล และบันทึกผล</h3>
-{steps('กดปุ่มย้ายสถานะบนหน้าโครงการ หรือลากการ์ดใน <b>Project Register › Pipeline</b> — ระบบแสดงสิ่งที่ยังขาดถ้าไม่ผ่านเงื่อนไข',
+{steps('กดปุ่มย้ายสถานะบนหน้าโครงการ หรือลากการ์ดใน <b>Project Overview › Pipeline</b> — ระบบแสดงสิ่งที่ยังขาดถ้าไม่ผ่านเงื่อนไข',
        'งานประมูลภาครัฐ: บันทึกเลข e-GP ราคากลาง ราคาที่ยื่น และ <b>วันคาดว่าประกาศผล</b> ในแท็บประมูล (ระบบเตือนล่วงหน้า 1 วัน)',
        'Sale แจ้งผล → SM กด Close Win (แนบประกาศผู้ชนะ + PO/สัญญา) หรือ Close Lose (ระบุเหตุผล คู่แข่ง ราคา)',
        'หลังชนะ กด <b>แจ้งทีมพัฒนา + ขอ PM</b> ในแท็บ Handover')}
-{img('04-pipeline', 'Project Register › Pipeline')}
+{img('04-pipeline', 'Project Overview › Pipeline')}
 {img('02-sales-dashboard', 'SM Dashboard')}
 {tip('กด <b>ตั้งเป้ายอดขายปีนี้</b> (มุมขวาบน) เพื่อกำหนดยอดที่ตั้งใจปิดให้ได้ในปี — ระบบเก็บประวัติการแก้เป้า และ SM คนอื่นไม่เห็นเป้าหรือยอดของคุณ')}
 {tip('ดีลภาครัฐปิด Close Win ได้หลังพ้นระยะอุทธรณ์ 7 วันทำการ และถ้ามูลค่าสัญญาต่างจากราคาที่อนุมัติเกิน ±2% หรือกำไรลดเกิน 3 จุด ต้องขออนุมัติหลังได้งาน', 'rule')}
@@ -156,8 +156,8 @@ ch('sales', 'ฝ่ายขาย (Solution Manager)', f'''
 ''')
 
 ch('exec', 'ผู้บริหาร (Executive)', f'''
-<p>รองผู้บริหารและผู้บริหาร DT เห็นเมนูสั้น ๆ 5 เมนู: <b>Executive Dashboard · Project Status Tracker · Mail Inbox · Calendar · Project Register</b>
-เมนูที่ต้องลงมือทำงาน เช่น Pipeline จัดซื้อ หรือ Workspace ไม่แสดง แต่เปิดดูโครงการใดก็ได้จาก Dashboard, Tracker หรือ Project Register</p>
+<p>รองผู้บริหารและผู้บริหาร DT เห็นเมนูสั้น ๆ 5 เมนู: <b>Executive Dashboard · Project Status Tracker · Mail Inbox · Calendar · Project Overview</b>
+เมนูที่ต้องลงมือทำงาน เช่น Pipeline จัดซื้อ หรือ Workspace ไม่แสดง แต่เปิดดูโครงการใดก็ได้จาก Dashboard, Tracker หรือ Project Overview</p>
 <h3>Executive Dashboard — ทีมทำได้ตามเป้าไหม</h3>
 {steps('ดูแถบ KPI: ยอดชนะเทียบเป้า, Pipeline ถ่วงน้ำหนัก, คำขอรอคุณอนุมัติ, โครงการต้องติดตาม',
        'ตาราง <b>ทีมเทียบเป้า</b>: จำนวนคน · Workload · โครงการก่อนขาย / ส่งมอบ / MA · ยอดชนะเทียบเป้า · สถานะ',
@@ -239,7 +239,7 @@ ch('pm', 'PMO และ Project Manager', f'''
        'ขอซื้อ: เมนู <b>Purchase Requisitions</b> เลือกรายการจาก Cost Sheet — OPN อนุมัติเบิกจ่าย',
        'เมื่อมีคนลา: เมนู Resource Workload → บันทึกการลา กด <b>อนุมัติเลื่อน</b> หรือ <b>ส่งต่องาน</b>')}
 {img('20-ws-risks', 'Risk Register')}
-{img('13-overview', 'Project Overview สำหรับผู้บริหารและ PMO')}
+{img('13-overview', 'Delivery Overview สำหรับผู้บริหารและ PMO')}
 ''')
 
 ch('dev', 'ทีมพัฒนา (SA · BA · UX/UI · Dev · DevOps · QA)', f'''
@@ -304,14 +304,14 @@ ch('admin', 'ผู้ดูแลระบบ', f'''
 
 ch('appendix', 'ภาคผนวก', f'''
 <h3>เมนูที่แต่ละบทบาทเห็น</h3>
-{table(['บทบาท', 'เมนู'], [['SM (Pre-sale)', 'SM Dashboard · Project Register (รายการ · Pipeline · ลงทะเบียนโครงการใหม่) · Solution Catalog · Calendar · Customer Accounts'], ['หัวหน้ากลุ่ม / หัวหน้าทีม Dev', 'SM Dashboard · Project Register (รายการ · Pipeline) · Solution Catalog · My Tasks · Approval Requests · Calendar · My Performance · Customer Accounts · Project Overview · Project Workspace · Resource Workload'], ['รองผู้บริหาร / ผู้บริหาร DT', 'Executive Dashboard · Project Status Tracker · Mail Inbox · Calendar · Project Register'], ['PMO (DT3-3)', 'My Tasks · Calendar · My Performance · Project Register · Project Overview · Project Workspace · Resource Workload'], ['OPN (DT3-2)', 'My Tasks · Calendar · Project Register · Purchase Requisitions · Bank Guarantees'], ['Project Manager', 'My Tasks · Calendar · My Performance · Project Register · Project Overview · Project Workspace · Resource Workload · Purchase Requisitions'], ['ทีมพัฒนา', 'My Tasks · Calendar · My Performance · Project Workspace'], ['ทีม MA', 'My Tasks · Calendar · Project Register · Customer Accounts · Warranty &amp; Maintenance · Service Desk'], ['Call center', 'My Tasks · Calendar · Service Desk'], ['ผู้ดูแลระบบ', 'ทุกเมนู']])}
+{table(['บทบาท', 'เมนู'], [['SM (Pre-sale)', 'SM Dashboard · Project Overview (รายการ · Pipeline · ลงทะเบียนโครงการใหม่) · Solution Catalog · Calendar · Customer Accounts'], ['หัวหน้ากลุ่ม / หัวหน้าทีม Dev', 'SM Dashboard · Project Overview (รายการ · Pipeline) · Solution Catalog · My Tasks · Approval Requests · Calendar · My Performance · Customer Accounts · Delivery Overview · Project Workspace · Resource Workload'], ['รองผู้บริหาร / ผู้บริหาร DT', 'Executive Dashboard · Project Status Tracker · Mail Inbox · Calendar · Project Overview'], ['PMO (DT3-3)', 'My Tasks · Calendar · My Performance · Project Overview · Delivery Overview · Project Workspace · Resource Workload'], ['OPN (DT3-2)', 'My Tasks · Calendar · Project Overview · Purchase Requisitions · Bank Guarantees'], ['Project Manager', 'My Tasks · Calendar · My Performance · Project Overview · Delivery Overview · Project Workspace · Resource Workload · Purchase Requisitions'], ['ทีมพัฒนา', 'My Tasks · Calendar · My Performance · Project Workspace'], ['ทีม MA', 'My Tasks · Calendar · Project Overview · Customer Accounts · Warranty &amp; Maintenance · Service Desk'], ['Call center', 'My Tasks · Calendar · Service Desk'], ['ผู้ดูแลระบบ', 'ทุกเมนู']])}
 <h3>บทบาทและหน้าแรก</h3>
 {table(['บทบาท', 'หน้าแรก', 'งานหลัก'], [
   ['Solution Manager', 'SM Dashboard', 'ลงทะเบียน Requirement ราคา ขออนุมัติ บันทึกผล'],
   ['หัวหน้ากลุ่ม / หัวหน้าทีม Dev', 'SM Dashboard', 'ตรวจ TOR จัดคน ดูยอดทีม ยกเลิก/เปิดโครงการใหม่'],
   ['รองผู้บริหาร', 'Mail Inbox', 'อนุมัติราคาขั้นแรก ติดตามทีมและโครงการ'],
   ['ผู้บริหาร DT', 'Executive Dashboard', 'ดูทีมเทียบเป้า ติดตามสถานะโครงการ อนุมัติราคาขั้นสุดท้าย'],
-  ['PMO (DT3-3)', 'Project Overview', 'มอบหมาย PM Handover ติดตามทุกโครงการ'],
+  ['PMO (DT3-3)', 'Delivery Overview', 'มอบหมาย PM Handover ติดตามทุกโครงการ'],
   ['OPN (DT3-2)', 'Purchase Requisitions', 'อนุมัติเบิกจ่าย หลักประกัน วางบิล'],
   ['Project Manager', 'Project Workspace', 'วางแผน งวดงาน ทีม ความเสี่ยง OT'],
   ['ทีมพัฒนา', 'My Tasks', 'ทำงาน บันทึกเวลา แจ้งลา รายงาน PM'],
@@ -325,7 +325,7 @@ ch('appendix', 'ภาคผนวก', f'''
   <dt>ลากงานบนบอร์ดแล้วไม่ย้าย</dt><dd>Workflow ไม่อนุญาตข้ามขั้น หรือคอลัมน์ปลายทางเต็ม (WIP) หรือ Acceptance criteria ยังไม่ครบ — ข้อความเตือนจะบอกเหตุผล</dd>
   <dt>ไม่เห็นปุ่มสร้างงาน</dt><dd>ยังไม่ได้เป็นสมาชิกพื้นที่งาน หรือมีสิทธิ์ดูอย่างเดียว ติดต่อ PM ของโครงการ</dd>
   <dt>ไม่เห็นราคาและต้นทุน</dt><dd>ทีมพัฒนาไม่เห็นข้อมูลราคาตามนโยบาย</dd>
-  <dt>หาโครงการไม่เจอ</dt><dd>กด Ctrl + K แล้วพิมพ์ชื่อหรือรหัส หรือเปิด Project Register แล้วค้นหา</dd>
+  <dt>หาโครงการไม่เจอ</dt><dd>กด Ctrl + K แล้วพิมพ์ชื่อหรือรหัส หรือเปิด Project Overview แล้วค้นหา</dd>
 </dl>
 ''')
 

@@ -67,7 +67,7 @@ function create() {
 
 <template>
   <div class="page">
-    <router-link to="/projects" class="back small">‹ Project Register</router-link>
+    <router-link to="/projects" class="back small">‹ Project Overview</router-link>
     <div class="wrap">
       <form class="panel form" novalidate @submit.prevent="create">
         <header>

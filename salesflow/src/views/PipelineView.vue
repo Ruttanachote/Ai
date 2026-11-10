@@ -9,7 +9,7 @@ import { stageOf, catOf, type StageKey } from '../data/model'
 import { isOpen, pipelineValue, weightedValue, sum, approvalState, APPROVAL_LABEL } from '../domain/metrics'
 import { customerName } from '../display'
 
-// Shown as the "Pipeline" view inside Project Register (embedded) — the old /pipeline link redirects there.
+// Shown as the "Pipeline" view inside Project Overview (embedded) — the old /pipeline link redirects there.
 defineProps<{ embedded?: boolean }>()
 const COLS: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win', 'lose']
 const list = computed(() => scope.value.list)
