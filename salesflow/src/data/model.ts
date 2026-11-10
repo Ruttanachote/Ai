@@ -318,3 +318,17 @@ export interface Project {
   workspace?: Workspace
   history: { stage: StageKey; note: string; at: string; by: string }[]
 }
+
+/* ---------------- Leave declaration (not synced with HR — a log of who is away and what it touches) ---------------- */
+export type LeaveType = 'vacation' | 'personal' | 'sick' | 'other'
+export const LEAVE_TYPES: Record<LeaveType, string> = { vacation: 'ลาพักร้อน', personal: 'ลากิจ', sick: 'ลาป่วย', other: 'อื่น ๆ' }
+export type LeavePart = 'full' | 'am' | 'pm'
+/** What the person (or PM) decided for one affected task. */
+export type ImpactAction = 'pending' | 'before' | 'move' | 'reassign' | 'none'
+export const IMPACT_ACTIONS: Record<ImpactAction, string> = { pending: 'ยังไม่เลือก', before: 'ทำเสร็จก่อนลา', move: 'ขอเลื่อนวันส่ง', reassign: 'ขอให้ PM ส่งต่อ', none: 'ไม่กระทบ (ทำได้ทัน)' }
+export interface LeaveImpact { projectId: string; taskId: string; key: string; title: string; start?: string; due: string; action: ImpactAction; newDue?: string; reassignTo?: string; resolved?: boolean }
+export interface Leave {
+  id: string; who: string; from: string; to: string; part: LeavePart; type: LeaveType; note?: string
+  createdAt: string; status: 'active' | 'cancelled'; impacts: LeaveImpact[]
+  log: { at: string; who: string; text: string }[]
+}

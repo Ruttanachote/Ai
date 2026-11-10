@@ -7,6 +7,9 @@ import { WORK_STATUS, type Project, type Task } from '../../data/model'
 import { keyOf, newItem, record, tree, typeOf, addDays } from '../../domain/work'
 import { session } from '../../store'
 import { canEdit, edited } from './actions'
+import { leaves } from '../../store'
+import { person } from '../../data/mock'
+import { overlaps } from '../../domain/leave'
 import { thDate } from '../../data/mock'
 
 // Epics with their children as bars from start to due. Weeks across the top; the red line is today.
@@ -47,6 +50,9 @@ function create() {
   draft.value = ''
 }
 const toggle = (id: string) => { const s = new Set(collapsed.value); s.has(id) ? s.delete(id) : s.add(id); collapsed.value = s }
+// Leave bands: days the item's owner declared leave, drawn under its bar.
+const leavesOf = (t: Task) => typeOf(t) === 'epic' ? [] : leaves.filter((l) => l.status === 'active' && overlaps(t, l.who, l.from, l.to))
+const dueInLeave = (t: Task) => leavesOf(t).some((l) => t.due >= l.from && t.due <= l.to)
 const hasKids = (t: Task) => props.list.some((c) => c.parentId === t.id)
 
 // Drag a bar to shift its dates, drag its right edge to change the due date (whole days).
@@ -105,7 +111,9 @@ function keyBar(e: KeyboardEvent, t: Task) {
         </div>
         <div class="track">
           <span v-for="w in weeks" :key="w.left" class="gl" :style="{ left: w.left + '%' }" />
-          <button class="bar" :class="[t.status, { late: t.status !== 'done' && t.due < TODAY_ISO, grab: editable, dragging: drag?.t.id === t.id }]" :style="{ left: x(t.start || t.due) + '%', width: Math.max(1.2, x(t.due) - x(t.start || t.due) + 100 / ((range.e - range.s) / 86_400_000)) + '%' }"
+          <span v-for="l in leavesOf(t)" :key="l.id" class="lvb" :style="{ left: x(l.from) + '%', width: Math.max(0.6, x(l.to) - x(l.from) + 100 / ((range.e - range.s) / 86_400_000)) + '%' }"
+            :title="`${person(l.who)?.name} ลา ${l.from} – ${l.to}`" />
+          <button class="bar" :class="[t.status, { late: t.status !== 'done' && t.due < TODAY_ISO, grab: editable, dragging: drag?.t.id === t.id, risk: dueInLeave(t) }]" :style="{ left: x(t.start || t.due) + '%', width: Math.max(1.2, x(t.due) - x(t.start || t.due) + 100 / ((range.e - range.s) / 86_400_000)) + '%' }"
             :title="`${keyOf(t)} · ${WORK_STATUS[t.status].label} · ${thDate(t.start || t.due)} → ${thDate(t.due)}${editable ? ' — ลากเพื่อเลื่อน ลากขอบขวาเพื่อเปลี่ยนกำหนดเสร็จ' : ''}`"
             :aria-label="`${keyOf(t)} ${thDate(t.start || t.due)} ถึง ${thDate(t.due)}${editable ? ' — ลูกศรซ้ายขวาเลื่อนวัน Shift+ลูกศรเปลี่ยนกำหนดเสร็จ' : ''}`"
             @pointerdown="down($event, t, 'move')" @click="click(t)" @keydown="keyBar($event, t)">
@@ -136,6 +144,8 @@ function keyBar(e: KeyboardEvent, t: Task) {
 .wk span { position: absolute; top: 10px; padding-left: 8px; white-space: nowrap; font-weight: 500; }
 .wk span.cur { color: var(--ink); }
 .create .input.mini { min-height: 30px; font-size: 13.5px; width: 100%; }
+.lvb { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; background: repeating-linear-gradient(135deg, var(--lose-soft) 0 5px, transparent 5px 9px); border: 1px dashed var(--lose); opacity: 0.9; pointer-events: auto; }
+.bar.risk { outline: 2px dashed var(--lose); outline-offset: 2px; }
 .gl { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--line); }
 .bar { position: absolute; top: 9px; height: 18px; border: 0; border-radius: 5px; background: var(--presale); cursor: pointer; display: flex; align-items: center; justify-content: flex-end; padding: 0 2px; }
 .bar.grab { cursor: grab; touch-action: none; }

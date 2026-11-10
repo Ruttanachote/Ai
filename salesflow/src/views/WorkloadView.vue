@@ -7,6 +7,13 @@ import { PEOPLE, person } from '../data/mock'
 import { projects, session } from '../store'
 import { stageOf } from '../data/model'
 import { isOpen, probability } from '../domain/metrics'
+import LeaveLog from '../components/LeaveLog.vue'
+import LeaveDialog from '../components/LeaveDialog.vue'
+import { awayOn } from '../domain/leave'
+import { isWorkday } from '../domain/calendar'
+import { addDays } from '../domain/work'
+import { leaves } from '../store'
+import { thDate, TODAY_ISO } from '../data/mock'
 
 // Planned hours per person per week (capacity 40h), keyed by project id so names, stages and
 // soft/hard booking always follow the project record. Production source: plans + timesheets.
@@ -41,6 +48,16 @@ const members = computed(() =>
 )
 const tone = (h: number) => (h > 40 ? 'over' : h >= 32 ? 'full' : h >= 16 ? 'mid' : h > 0 ? 'low' : 'free')
 const open = ref<string | null>(null)
+
+// Team leave calendar: the next 20 working days for everyone in the selected team.
+const teamPeople = computed(() => PEOPLE.filter((p) => p.team === team.value).map((p) => p.id))
+const calDays = computed(() => {
+  const out: string[] = []
+  for (let d = TODAY_ISO; out.length < 20; d = addDays(d, 1)) if (isWorkday(d)) out.push(d)
+  return out
+})
+const away = (id: string, d: string) => awayOn(leaves, id, d)
+const leaveOpen = ref(false)
 
 // Demand from the pipeline: man-days from the Cost Sheet (manpower ≈ 48% of COGS at ฿6,000/day)
 // weighted by the same probability the sales dashboard uses. Capacity planning needs every
@@ -107,6 +124,26 @@ const kpis = computed(() => {
       </div>
     </section>
 
+    <section class="panel scroll-x leaves">
+      <div class="panel-head"><h2>การลาของทีม</h2><button class="btn sm" @click="leaveOpen = true">แจ้งลา</button></div>
+      <p class="muted small">แจ้งในระบบเพื่อดูผลกระทบกับงาน — การลาจริงยื่นในระบบ HR ตามปกติ · 20 วันทำการถัดไป</p>
+      <table class="lc">
+        <thead><tr><th />
+          <th v-for="d in calDays" :key="d" :class="{ mon: new Date(d + 'T00:00:00Z').getUTCDay() === 1 }">{{ thDate(d).split(' ').slice(0, 2).join(' ') }}</th></tr></thead>
+        <tbody>
+          <tr v-for="id in teamPeople" :key="id">
+            <th><span class="who"><Avatar :id="id" :size="22" />{{ person(id)?.name }}</span></th>
+            <td v-for="d in calDays" :key="d" :class="{ mon: new Date(d + 'T00:00:00Z').getUTCDay() === 1 }">
+              <span v-if="away(id, d)" class="cell" :class="away(id, d)!.part" :title="`ลา ${thDate(d)}`">{{ away(id, d)!.part === 'full' ? 'ลา' : away(id, d)!.part === 'am' ? 'เช้า' : 'บ่าย' }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <h3 class="lh">บันทึกการลา (Log)</h3>
+      <LeaveLog :people="teamPeople" show-past />
+    </section>
+    <LeaveDialog :open="leaveOpen" @close="leaveOpen = false" />
+
     <section class="panel demand">
       <div class="panel-head"><h2>ความต้องการคนจาก Pipeline</h2><span class="muted small">Man-day จาก Cost Sheet × โอกาสปิด (ค่าเดียวกับ Dashboard)</span></div>
       <table class="table">
@@ -155,4 +192,14 @@ const kpis = computed(() => {
 .legend { display: flex; gap: 16px; margin-top: 16px; color: var(--muted); flex-wrap: wrap; }
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; }
 .note { margin-top: 20px; display: grid; gap: 6px; }
+.leaves { margin-top: 16px; display: grid; gap: 10px; }
+.lc { border-collapse: collapse; font-size: 12px; min-width: 900px; }
+.lc th, .lc td { padding: 4px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.lc thead th { color: var(--muted); font-weight: 500; }
+.lc tbody th { text-align: left; font-weight: 500; font-size: 13px; }
+.lc .mon { border-left: 1px solid var(--line-strong); }
+.lc .who { display: inline-flex; gap: 6px; align-items: center; }
+.cell { display: inline-block; min-width: 34px; padding: 2px 4px; border-radius: 6px; background: var(--lose-soft); color: var(--lose); font-weight: 600; }
+.cell.am, .cell.pm { background: var(--warn-soft); color: var(--warn); }
+.lh { font-size: 15px; margin-top: 6px; }
 </style>

@@ -1,5 +1,5 @@
 import { computed, reactive } from 'vue'
-import { APPROVAL_CHAIN, type Approval, type Role, type StageKey } from './data/model'
+import { APPROVAL_CHAIN, type Approval, type Leave, type Role, type StageKey } from './data/model'
 import { PROJECTS, TICKETS, person, groupOf, GROUP_NAME } from './data/mock'
 
 // Demo session — in production this comes from Microsoft Entra ID (app roles claim).
@@ -104,3 +104,16 @@ let nid = 10
 export function pushNotices(list: { to: string; text: string; projectId: string }[]) {
   list.forEach((n) => notifications.unshift({ id: nid++, to: n.to, text: n.text, link: `/work/${n.projectId}`, at: 'เมื่อสักครู่', read: false }))
 }
+
+/** Leave declarations (log) — not synced with HR. Seed: dev2 12–13 Nov (overlaps SPP-8), dev4 half day 11 Nov. */
+export const leaves = reactive<Leave[]>([
+  {
+    id: 'lv1', who: 'dev2', from: '2026-11-12', to: '2026-11-13', part: 'full', type: 'personal', note: 'ธุระที่ต่างจังหวัด', createdAt: '2026-11-03', status: 'active',
+    impacts: [{ projectId: 'p6', taskId: 't4', key: 'SPP-8', title: 'Dashboard สถิติคำขอรายเดือน', start: '2026-11-02', due: '2026-11-14', action: 'before', resolved: true }],
+    log: [{ at: '3 พ.ย. 09:12', who: 'dev2', text: 'แจ้งลา 12–13 พ.ย. (ลากิจ) · กระทบ 1 งาน' }, { at: '3 พ.ย. 09:12', who: 'dev2', text: 'SPP-8: ทำเสร็จก่อนลา' }],
+  },
+  {
+    id: 'lv2', who: 'dev4', from: '2026-11-11', to: '2026-11-11', part: 'pm', type: 'sick', createdAt: '2026-11-06', status: 'active', impacts: [],
+    log: [{ at: '6 พ.ย. 08:40', who: 'dev4', text: 'แจ้งลาครึ่งวันบ่าย 11 พ.ย. (ลาป่วย) · ไม่กระทบงาน' }],
+  },
+])

@@ -2,6 +2,8 @@
 import { computed, ref } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
+import LeaveDialog from '../components/LeaveDialog.vue'
+import LeaveLog from '../components/LeaveLog.vue'
 import WorkTypeIcon from '../components/work/WorkTypeIcon.vue'
 import PriorityIcon from '../components/work/PriorityIcon.vue'
 import WorkDrawer from '../components/work/WorkDrawer.vue'
@@ -34,6 +36,7 @@ const kpis = computed(() => [
   { label: 'บันทึกเวลา 7 วัน', value: `${weekLogged.value} ชม.`, note: 'จากแท็บเวลาในแต่ละงาน' },
   { label: 'OT รออนุมัติ', value: String(otPending.value.length), note: otPending.value.length ? `${otPending.value.reduce((s, o) => s + o.hours, 0)} ชม. รอ PM` : 'ไม่มี', tone: otPending.value.length ? ('warn' as const) : ('' as const) },
 ])
+const leaveOpen = ref(false)
 const notes = computed(() => notifications.filter((n) => n.to === session.userId).slice(0, 6))
 
 const openItem = ref<{ p: Project; t: Task } | null>(null)
@@ -46,7 +49,9 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
 
 <template>
   <div class="page">
-    <PageHeader module="General" title="My Tasks" scope="ทุกโครงการที่คุณได้รับมอบหมาย" subtitle="เรียงตามกำหนดเสร็จและความสำคัญ — เปลี่ยนสถานะได้ที่นี่ หรือเปิดงานเพื่อบันทึกเวลา" />
+    <PageHeader module="General" title="My Tasks" scope="ทุกโครงการที่คุณได้รับมอบหมาย" subtitle="เรียงตามกำหนดเสร็จและความสำคัญ — เปลี่ยนสถานะได้ที่นี่ หรือเปิดงานเพื่อบันทึกเวลา">
+      <button class="btn" @click="leaveOpen = true">แจ้งลา</button>
+    </PageHeader>
     <KpiStrip :items="kpis" />
 
     <div class="cols">
@@ -78,7 +83,9 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
       </div>
 
       <aside class="panel">
-        <h3>แจ้งเตือนล่าสุด</h3>
+        <h3>การลาของฉัน</h3>
+        <LeaveLog :who="session.userId" class="mt-s" />
+        <h3 class="mt">แจ้งเตือนล่าสุด</h3>
         <ul class="nt">
           <li v-for="n in notes" :key="n.id" :class="{ new: !n.read }"><router-link :to="n.link" @click="n.read = true">{{ n.text }}</router-link><small>{{ n.at }}</small></li>
           <li v-if="!notes.length" class="muted small">ไม่มีการแจ้งเตือน</li>
@@ -92,6 +99,7 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
       </aside>
     </div>
 
+    <LeaveDialog :open="leaveOpen" @close="leaveOpen = false" />
     <WorkDrawer v-if="openItem" :p="openItem.p" :item="openItem.t" :team="team(openItem.p)" @close="openItem = null" @open="openItem = openItem && { p: openItem.p, t: $event }" />
   </div>
 </template>
@@ -124,6 +132,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .nt b.pending { color: var(--warn); }
 .nt b.approved { color: var(--win); }
 .mt { margin-top: 18px; }
+.mt-s { margin-top: 8px; }
 @media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .flush li { grid-template-columns: auto minmax(0, 1fr) auto; } .flush li > :nth-child(3), .flush li > :nth-child(5), .flush li > :nth-child(6) { display: none; } }
 </style>

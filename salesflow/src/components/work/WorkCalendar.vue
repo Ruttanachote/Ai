@@ -4,7 +4,9 @@ import WorkTypeIcon from './WorkTypeIcon.vue'
 import { TODAY_ISO } from '../../data/mock'
 import type { Project, Task } from '../../data/model'
 import { keyOf, record, typeOf } from '../../domain/work'
-import { session } from '../../store'
+import { leaves, session } from '../../store'
+import { person } from '../../data/mock'
+import { awayOn } from '../../domain/leave'
 
 // Month grid of due dates, plus contract milestone ends so the PM sees deliveries next to tasks.
 const props = defineProps<{ p: Project; list: Task[] }>()
@@ -41,6 +43,7 @@ const days = computed(() => {
       k, n: d.getUTCDate(), inMonth: k.startsWith(month.value),
       items: props.list.filter((t) => t.due === k && typeOf(t) !== 'epic'),
       ms: (props.p.milestones ?? []).filter((m) => m.end === k),
+      away: (props.p.workspace?.members ?? []).map((m) => awayOn(leaves, m.userId, k)).filter((l): l is NonNullable<typeof l> => !!l),
     }
   })
 })
@@ -70,6 +73,7 @@ function shift(n: number) {
           @dragover.prevent="overDay = d.k" @dragleave="overDay === d.k && (overDay = null)" @drop.prevent="drop(d.k)">
           <span class="n">{{ d.n }}</span>
           <span v-for="m in d.ms" :key="m.name" class="ms" :title="m.name">งวด: {{ m.name }}</span>
+          <span v-for="l in d.away" :key="l.id" class="lv" :title="`${person(l.who)?.name} ลา`">ลา: {{ person(l.who)?.name }}{{ l.part === 'full' ? '' : l.part === 'am' ? ' (เช้า)' : ' (บ่าย)' }}</span>
           <button v-for="t in d.items.slice(0, 3)" :key="t.id" class="it" draggable="true" @dragstart="dragId = t.id" :class="{ done: t.status === 'done', late: t.status !== 'done' && t.due < TODAY_ISO }" @click="emit('open', t)">
             <WorkTypeIcon :type="typeOf(t)" :size="12" /><span>{{ keyOf(t) }} {{ t.title }}</span>
           </button>
@@ -121,4 +125,5 @@ header h3 { min-width: 160px; text-align: center; }
 .it.late { background: var(--lose-soft); }
 .ms { font-size: 11px; font-weight: 600; color: var(--post); background: var(--post-soft); padding: 2px 5px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .more { font-size: 11px; color: var(--muted); }
+.lv { display: block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--lose-soft); color: var(--lose); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
