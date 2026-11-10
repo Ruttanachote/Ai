@@ -108,7 +108,7 @@ const STEP: Record<string, string> = { approved: 'อนุมัติ', reject
           <h2><Icon name="excel" :size="18" /> Cost Sheet</h2>
           <div v-if="owner" class="acts">
             <button class="btn sm" @click="upl.open = true"><Icon name="upload" :size="14" /> Upload .xlsx</button>
-            <router-link :to="`/projects/${p.id}/cost-sheet/new`" class="btn primary sm">+ Create</router-link>
+            <router-link :to="`/projects/${p.id}/cost-sheet/new`" class="btn primary sm">+ Create (Excel Online)</router-link>
           </div>
         </div>
         <div class="cards">
@@ -122,7 +122,7 @@ const STEP: Record<string, string> = { approved: 'อนุมัติ', reject
               <button v-if="owner && !editable(cs) && cs.status !== 'PENDING'" class="btn ghost sm" @click="newRevision(cs)">สร้าง revision ใหม่</button>
             </footer>
           </article>
-          <div v-if="!sheets.length" class="empty"><p><strong>ยังไม่มี Cost Sheet</strong></p><p class="small muted">สร้างจาก Template ในระบบ (แนะนำ) หรืออัปโหลดไฟล์ .xlsx · ต้องอนุมัติก่อนเปลี่ยนเป็น Forecast</p><router-link v-if="owner" :to="`/projects/${p.id}/cost-sheet/new`" class="btn primary sm">+ Create Cost Sheet</router-link></div>
+          <div v-if="!sheets.length" class="empty"><p><strong>ยังไม่มี Cost Sheet</strong></p><p class="small muted">สร้างไฟล์ Excel Online จาก Template (Microsoft 365) หรืออัปโหลดไฟล์ .xlsx · ต้องอนุมัติก่อนเปลี่ยนเป็น Forecast</p><router-link v-if="owner" :to="`/projects/${p.id}/cost-sheet/new`" class="btn primary sm">+ Create Cost Sheet</router-link></div>
         </div>
       </section>
 

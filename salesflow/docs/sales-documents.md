@@ -15,7 +15,7 @@
 | 3.2 การเงิน | GP / GP% คำนวณเอง · แสดงที่มา "จาก Cost Sheet rev.N · อนุมัติ …" หรือ "ประมาณการ" · Contribution Margin |
 | 3.5 Activity | ทุกการเปลี่ยนแปลง: สถานะ ไฟล์ เอกสาร อนุมัติ (ค่าเดิม → ค่าใหม่) · กรองตามประเภทและผู้ใช้ |
 | Template §2 สถานะเอกสาร | Draft → Pending (3 steps) → Approved (ล็อก + อัปเดตโครงการ) / Rejected (สร้าง revision ใหม่) / Cancelled |
-| Template §3 Cost Sheet | Header จากโครงการ · 7 หมวดพร้อมสูตรต่อแถว · หมายเหตุต่อแถว · ลากสลับแถว · สรุป COGS / Manday / Revenue / GP / GM% / Entertainment / Contingency / CM / CM% คำนวณอัตโนมัติ (sticky) · ส่งออก Excel |
+| Template §3 Cost Sheet | **สร้างเป็นไฟล์ Excel Online (Microsoft 365) จาก Template** ในโฟลเดอร์ SharePoint ของโครงการ · Header จากโครงการ · 7 หมวดพร้อมสูตรต่อแถว · หมายเหตุต่อแถว · ลากสลับแถว · สรุป COGS / Manday / Revenue / GP / GM% / Entertainment / Contingency / CM / CM% คำนวณอัตโนมัติ (sticky) · ส่งออก Excel |
 | Template §4 Quotation | สร้างจาก Cost Sheet · เติมรายการให้ Subtotal = Revenue · หน่วย · ส่วนลด บาท/% · VAT 7% · Grand Total · ตัวอักษรบาทถ้วน · งวดชำระรวม 100% · ประกัน / ไม่รวมในราคา / หมายเหตุ · พรีวิว PDF ตามแบบฟอร์ม (แดง-ขาว-เทา) |
 | Template §5.4 Validation | ตัวเลขไม่ติดลบ · อย่างน้อย 1 แถว · ขาดทุนต้องใส่เหตุผล · GM ต่ำกว่าเกณฑ์เตือนเหลือง · งวด = 100% · ส่วนลด ≤ ราคารวม · ยืนราคา ≥ วันที่ออก · ไฟล์ที่อนุมัติแล้วแก้ไม่ได้ · Upload .xlsx ≤ 10 MB — แสดงใต้ช่อง |
 | 5.1 Send to Approve | Slide-over เลือก Cost Sheet + Quotation · เห็นลำดับผู้อนุมัติ · หมายเหตุ · บันทึกประชุมก่อนส่ง (บังคับ) · ผู้อนุมัติ Approve / Reject ได้ทั้งในหน้าโครงการและ Mail Inbox |

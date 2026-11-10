@@ -148,6 +148,12 @@ const isLocked = (d: ProjectDocument) => d.approvedVersion !== undefined || d.ve
 const trashOpen = ref(false)
 const daysLeft = (d: ProjectDocument) => 30 - Math.round((new Date(TODAY_ISO).getTime() - new Date(d.deletedAt!).getTime()) / 86_400_000)
 const owner = computed(() => isOwner(props.p))
+/** Create opens the new workbook in Excel Online (Cost Sheet) or the Quotation tab. */
+function create(kind: 'cost' | 'quote') {
+  openFolder.value = null
+  if (kind === 'cost') router.push(`/projects/${props.p.id}/cost-sheet/new`)
+  else emit('openCost')
+}
 </script>
 
 <template>
@@ -210,7 +216,7 @@ const owner = computed(() => isOwner(props.p))
         <div class="fdh">
           <p v-if="folder.requiredFor" class="small muted">ต้องใช้ก่อนเปลี่ยนเป็น {{ STAGE_TH[folder.requiredFor] ?? folder.requiredFor }}</p>
           <span class="sp" />
-          <button v-if="folder.module" class="btn sm" @click="openFolder = null; folder.module === 'cost' ? router.push(`/projects/${p.id}/cost-sheet/new`) : emit('openCost')">{{ folder.module === 'cost' ? '+ Create Cost Sheet' : '+ Create Quotation' }}</button>
+          <button v-if="folder.module" class="btn sm" @click="create(folder.module)">{{ folder.module === 'cost' ? '+ Create Cost Sheet (Excel Online)' : '+ Create Quotation' }}</button>
           <button v-if="canUpload(p, folder.code)" class="btn primary sm" @click="startUpload(folder.code)"><Icon name="upload" :size="14" /> อัปโหลดไฟล์</button>
         </div>
 

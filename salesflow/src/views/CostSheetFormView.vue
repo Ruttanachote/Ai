@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// Cost Sheet form (Template spec §3, §5.2): header from the project (read-only), cost rows by
-// category with inline edit and drag to reorder, a sticky summary that recalculates as you type,
-// and Draft / Save & create Quotation / Export. Approved or pending revisions are read-only.
+// Cost Sheet as an Excel Online workbook (Microsoft 365). "Create" makes a new workbook from the
+// company template in the project's SharePoint folder (Graph: copy template → open in Excel for
+// the web); the SM fills the template cells, formulas calculate, and the system reads the named
+// ranges on save. In the prototype the grid below stands in for the embedded Excel Online editor.
+// Approved or pending revisions open read-only — any change is a new revision.
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Icon from '../components/Icon.vue'
@@ -43,8 +45,11 @@ function dropAt(k: number) {
 function save(next: 'stay' | 'quote') {
   tried.value = true
   if (Object.keys(v.value.errors).length) { notify('ยังมีช่องที่ต้องแก้ — ดูข้อความใต้ช่อง', 'warning'); return }
+  cs.value!.source = 'form'
+  cs.value!.fileName = fileName.value
   saveCostSheet(p.value!, cs.value!)
-  notify(`บันทึก ${cs.value!.docNo} rev.${cs.value!.revision} แบบร่างแล้ว`)
+  saved.value = true
+  notify(`บันทึก ${fileName.value} ใน SharePoint แล้ว (Draft)`)
   if (next === 'quote') router.push(`/projects/${props.id}/quotation/new?cs=${cs.value!.id}`)
   else router.replace(`/projects/${props.id}/cost-sheet/${cs.value!.id}`)
 }
@@ -62,180 +67,198 @@ function exportXls() {
   a.download = `${c.docNo}_rev${c.revision}.xls`
   a.click()
 }
+// Formula bar: what the selected cell holds.
+const sel = ref<{ ref: string; f: string }>({ ref: 'C3', f: '' })
+const pick = (ref: string, f: string | number) => (sel.value = { ref, f: String(f) })
+const FIRST = 14
+const rowNo = (k: number) => FIRST + k
+const lastRow = computed(() => FIRST + Math.max(0, (cs.value?.items.length ?? 1) - 1))
+const sumRow = computed(() => lastRow.value + 2)
+const formulaOf = (i: CostItem, k: number) => {
+  const r = rowNo(k)
+  return i.category === 'manpower' ? `=E${r}*F${r}` : i.category === 'hardware' ? `=E${r}*F${r}` : i.category === 'software' ? `=E${r}*F${r}*G${r}` : i.category === 'cloud' || i.category === 'ma' ? `=F${r}*G${r}` : `=H${r}`
+}
+const fileName = computed(() => (cs.value ? `${cs.value.docNo}_CostSheet_rev${cs.value.revision}.xlsx` : ''))
+const saved = ref(!!existing.value)
 const catTotals = computed(() => (t.value ? (Object.keys(COST_CATEGORIES) as CostCategory[]).filter((k) => t.value!.byCategory[k]).map((k) => ({ k, v: t.value!.byCategory[k] })) : []))
 </script>
 
 <template>
-  <div v-if="p && cs && canSeeCost(p)" class="page csf">
-    <router-link :to="`/projects/${p.id}?tab=cost`" class="back small">‹ {{ p.name }} · Cost Sheet และใบเสนอราคา</router-link>
-    <header class="top">
-      <div>
-        <h1>Cost Sheet <span class="num">{{ cs.docNo }}</span> <span class="rev">rev.{{ cs.revision }}</span></h1>
-        <p class="muted">เอกสารภายใน — สรุปต้นทุนและกำไรของโครงการ · ผู้อนุมัติอ่าน</p>
+  <div v-if="p && cs && canSeeCost(p)" class="xl">
+    <!-- Excel for the web chrome -->
+    <header class="xbar">
+      <router-link :to="`/projects/${p.id}?tab=cost`" class="xback" aria-label="ปิดและกลับไปที่โครงการ"><Icon name="chevron" :size="16" style="transform: rotate(180deg)" /></router-link>
+      <span class="xlogo" aria-hidden="true">X</span>
+      <div class="xfile">
+        <strong>{{ fileName }}</strong>
+        <span>SharePoint › Stream Projects › {{ p.code }} › Cost Sheet · {{ readonly ? 'อ่านอย่างเดียว' : saved ? 'บันทึกแล้ว' : 'ยังไม่บันทึก' }}</span>
       </div>
       <span class="chip" :class="DOC_STATUS[cs.status].tone">{{ DOC_STATUS[cs.status].label }}</span>
+      <span class="sp" />
+      <span class="xuser"><span class="av">{{ person(p.sm)?.initials }}</span> Microsoft 365</span>
     </header>
-    <div v-if="readonly && p" class="ro" role="status">
-      <Icon name="lock" :size="16" />
-      <span v-if="cs.status === 'APPROVED'">ไฟล์นี้อนุมัติแล้ว แก้ไม่ได้ — กดแก้จะสร้าง revision ใหม่</span>
+    <div class="xribbon" role="toolbar" aria-label="คำสั่ง">
+      <template v-if="!readonly">
+        <div class="add">
+          <button class="rb" :aria-expanded="addOpen" @click="addOpen = !addOpen"><Icon name="plus" :size="16" /> แทรกแถวต้นทุน</button>
+          <div v-if="addOpen" class="menu" role="menu"><button v-for="(c, key) in COST_CATEGORIES" :key="key" role="menuitem" class="mi" @click="addRow(key)">{{ c.label }}</button></div>
+        </div>
+        <span class="sep" />
+        <button class="rb" @click="save('stay')"><Icon name="check" :size="16" /> บันทึกแบบร่าง</button>
+        <button class="rb strong" @click="save('quote')"><Icon name="file" :size="16" /> บันทึกและสร้าง Quotation</button>
+        <span class="sep" />
+      </template>
+      <button v-else-if="isOwner(p) && existing && cs.status !== 'PENDING'" class="rb strong" @click="newRev"><Icon name="plus" :size="16" /> สร้าง revision ใหม่</button>
+      <button class="rb" @click="exportXls"><Icon name="excel" :size="16" /> ดาวน์โหลดสำเนา</button>
+      <span class="sp" />
+      <span class="small muted">Template: Cost Sheet มาตรฐาน DT 2569</span>
+    </div>
+    <div v-if="readonly" class="xro" role="status"><Icon name="lock" :size="14" />
+      <span v-if="cs.status === 'APPROVED'">ไฟล์นี้อนุมัติแล้ว แก้ไม่ได้ — กด “สร้าง revision ใหม่” เพื่อแก้</span>
       <span v-else-if="cs.status === 'PENDING'">อยู่ระหว่างอนุมัติ — แก้ไม่ได้จนกว่าจะได้ผล</span>
       <span v-else-if="!isOwner(p)">เปิดดูอย่างเดียว</span>
       <span v-else>เอกสารถูก {{ DOC_STATUS[cs.status].label }} — สร้าง revision ใหม่เพื่อแก้แล้วส่งอีกครั้ง</span>
-      <button v-if="isOwner(p) && existing && cs.status !== 'PENDING'" class="btn sm" @click="newRev">สร้าง revision ใหม่</button>
     </div>
+    <div class="fbar"><span class="nb">{{ sel.ref }}</span><span class="fx">fx</span><span class="fv">{{ sel.f }}</span></div>
 
-    <div class="layout">
-      <div class="body">
-        <section class="panel">
-          <h2>ข้อมูลโครงการ</h2>
-          <dl class="hdr">
-            <dt>ชื่อโปรเจกต์</dt><dd>{{ p.name }}</dd>
-            <dt>ลูกค้า / End User</dt><dd>{{ account(p.customerAccountId)?.name ?? p.customer }} / {{ account(p.endUserAccountId)?.name ?? p.endUser }}</dd>
-            <dt>Profit Center (BU)</dt><dd>{{ p.team }} · {{ teamOf(p.team)?.name }}</dd>
-            <dt>Project Type</dt><dd>{{ p.type }}</dd>
-            <dt>AE / SM</dt><dd>{{ p.sales.join(', ') || '—' }} / {{ person(p.sm)?.name }}</dd>
-            <dt>วันที่จัดทำ</dt><dd>{{ thDate(cs.preparedAt) }}</dd>
-          </dl>
-          <div class="row2">
-            <div class="field" :class="{ bad: err('projectMonths') }"><label for="pm">ระยะเวลาโครงการ (เดือน)</label><input id="pm" v-model.number="cs.projectMonths" type="number" min="1" class="input num" :disabled="readonly" /><span v-if="err('projectMonths')" class="msg">{{ err('projectMonths') }}</span></div>
-            <div class="field"><label for="mm">ระยะรับประกัน / MA (เดือน)</label><input id="mm" v-model.number="cs.maMonths" type="number" min="0" class="input num" :disabled="readonly" /></div>
-          </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-head"><h2>รายการต้นทุน</h2><span class="muted small">เลือกหมวดก่อน ระบบเปิดช่องตามหมวด · ลาก ⠿ เพื่อสลับแถว</span></div>
-          <div class="scroll-x">
-            <table class="table items">
-              <thead><tr><th /><th>หมวด</th><th>รายการ / รายละเอียด</th><th class="r">ต้นทุน</th><th>หมายเหตุ / เหตุผล</th><th /></tr></thead>
-              <tbody>
-                <tr v-for="(i, k) in cs.items" :key="i.id" :class="{ dragging: dragFrom === k }" @dragover.prevent @drop="dropAt(k)">
-                  <td class="h"><span v-if="!readonly" class="grip" draggable="true" :aria-label="`ลากเพื่อย้ายแถว ${k + 1}`" @dragstart="dragFrom = k">⠿</span></td>
-                  <td><select :value="i.category" class="input mini" :aria-label="`หมวดแถว ${k + 1}`" :disabled="readonly" @change="changeCat(i, ($event.target as HTMLSelectElement).value as CostCategory)"><option v-for="(c, key) in COST_CATEGORIES" :key="key" :value="key">{{ c.label }}</option></select></td>
-                  <td>
-                    <div class="flds">
-                      <input v-model="i.description" class="input mini wide" :placeholder="i.category === 'subcontract' ? 'ผู้รับเหมา / ขอบเขต' : 'รายการ'" :aria-label="`รายการแถว ${k + 1}`" :disabled="readonly" />
-                      <template v-if="i.category === 'manpower'">
-                        <select v-model="i.role" class="input mini" aria-label="Role" :disabled="readonly"><option v-for="r in ROLES_MD" :key="r">{{ r }}</option></select>
-                        <label class="f">Manday<input v-model.number="i.manday" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                        <label class="f">Rate/MD<input v-model.number="i.rate" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                      </template>
-                      <template v-else-if="i.category === 'hardware'">
-                        <label class="f">จำนวน<input v-model.number="i.qty" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                        <label class="f">ต้นทุน/หน่วย<input v-model.number="i.unitCost" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                        <label class="f">Vendor<input v-model="i.vendor" class="input mini" :disabled="readonly" /></label>
-                      </template>
-                      <template v-else-if="i.category === 'software'">
-                        <label class="f">จำนวน<input v-model.number="i.qty" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                        <label class="f">ต้นทุน/หน่วย/เดือน<input v-model.number="i.unitCost" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                        <label class="f">เดือน<input v-model.number="i.months" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                      </template>
-                      <template v-else-if="i.category === 'cloud' || i.category === 'ma'">
-                        <label class="f">{{ i.category === 'ma' ? 'ต้นทุน/เดือน' : 'ค่าใช้จ่าย/เดือน' }}<input v-model.number="i.unitCost" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                        <label class="f">เดือน<input v-model.number="i.months" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                      </template>
-                      <template v-else>
-                        <label class="f">มูลค่า<input v-model.number="i.amount" type="number" min="0" class="input mini num" :disabled="readonly" /></label>
-                      </template>
-                    </div>
-                    <span v-if="err(`item${k}`)" class="msg">{{ err(`item${k}`) }}</span>
-                    <span class="formula small muted">{{ COST_CATEGORIES[i.category].formula }}</span>
-                  </td>
-                  <td class="r num">{{ baht(itemCost(i)) }}</td>
-                  <td><input v-model="i.note" class="input mini" placeholder="เช่น ใช้ subscription ที่มีอยู่แล้ว" aria-label="หมายเหตุ" :disabled="readonly" /></td>
-                  <td><button v-if="!readonly" class="btn ghost sm" :aria-label="`ลบแถว ${k + 1}`" @click="cs.items.splice(k, 1)"><Icon name="x" :size="14" /></button></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <span v-if="err('items')" class="msg">{{ err('items') }}</span>
-          <div v-if="!readonly" class="add">
-            <button class="btn sm" :aria-expanded="addOpen" @click="addOpen = !addOpen">+ เพิ่มรายการ</button>
-            <div v-if="addOpen" class="menu" role="menu"><button v-for="(c, key) in COST_CATEGORIES" :key="key" role="menuitem" class="btn ghost sm" @click="addRow(key)">{{ c.label }}</button></div>
-          </div>
-        </section>
-      </div>
-
-      <aside class="sum panel" aria-live="polite">
-        <h2>สรุปต้นทุนและกำไร</h2>
-        <p class="small muted">คำนวณอัตโนมัติ — ไม่ต้องพิมพ์เอง</p>
-        <ul class="cats"><li v-for="c in catTotals" :key="c.k"><span>{{ COST_CATEGORIES[c.k].label.split(' (')[0] }}</span><b class="num">{{ baht(c.v) }}</b></li></ul>
-        <dl v-if="t">
-          <dt>COGS (ต้นทุนรวม)</dt><dd class="num">{{ baht(t.cogs) }}</dd>
-          <dt>Total Manday</dt><dd class="num">{{ t.manday }}</dd>
-          <dt><label for="rv">ราคาขาย (Revenue ก่อน VAT)</label></dt>
-          <dd><input id="rv" v-model.number="cs.revenue" type="number" min="0" class="input mini num" :disabled="readonly" /></dd>
-          <dt>Gross Profit</dt><dd class="num" :class="t.gp < 0 ? 'bad' : ''">{{ baht(t.gp) }}</dd>
-          <dt>Gross Margin %</dt><dd class="num" :class="v.warn.gm ? 'warn' : 'good'">{{ t.gmPct }}%</dd>
-          <dt>Entertainment <span class="small">(% ของ Revenue)</span></dt>
-          <dd class="mx"><input v-model.number="cs.entertainment.value" type="number" min="0" class="input mini num" aria-label="Entertainment" :disabled="readonly" /><select v-model="cs.entertainment.mode" class="input mini" aria-label="หน่วย Entertainment" :disabled="readonly"><option value="pct">%</option><option value="baht">บาท</option></select></dd>
-          <dt>Contingency <span class="small">(% ของ COGS)</span></dt>
-          <dd class="mx"><input v-model.number="cs.contingency.value" type="number" min="0" class="input mini num" aria-label="Contingency" :disabled="readonly" /><select v-model="cs.contingency.mode" class="input mini" aria-label="หน่วย Contingency" :disabled="readonly"><option value="pct">%</option><option value="baht">บาท</option></select></dd>
-          <dt>Contribution Margin</dt><dd class="num strong">{{ baht(t.cm) }}</dd>
-          <dt>Contribution Margin %</dt><dd class="num strong">{{ t.cmPct }}%</dd>
-        </dl>
-        <p v-if="v.warn.gm" class="warnbox small">{{ v.warn.gm }}</p>
-        <div v-if="t && t.revenue < t.cogs" class="field" :class="{ bad: err('lossReason') }"><label for="lr">เหตุผลที่ขาดทุน</label><textarea id="lr" v-model="cs.lossReason" class="input" rows="2" :disabled="readonly" /><span v-if="err('lossReason')" class="msg">{{ err('lossReason') }}</span></div>
-        <p class="small muted">Entertainment / Contingency แยกบรรทัด ไม่บวกใน Manday · หลังอนุมัติ ระบบเขียน Revenue · COGS · GP · CM กลับไปที่โครงการ</p>
-        <div class="foot">
-          <router-link :to="`/projects/${p.id}?tab=cost`" class="btn">ยกเลิก</router-link>
-          <button class="btn" @click="exportXls">ส่งออก Excel</button>
-          <template v-if="!readonly">
-            <button class="btn" @click="save('stay')">บันทึกแบบร่าง</button>
-            <button class="btn primary" @click="save('quote')">บันทึกและสร้าง Quotation</button>
+    <div class="sheet" role="grid" aria-label="Cost Sheet">
+      <table>
+        <colgroup><col class="rn" /><col style="width: 34px" /><col style="width: 170px" /><col style="width: 200px" /><col style="width: 118px" /><col style="width: 88px" /><col style="width: 108px" /><col style="width: 58px" /><col style="width: 100px" /><col style="width: 118px" /><col style="width: 170px" /><col style="width: 34px" /></colgroup>
+        <thead><tr><th /><th v-for="c in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', '']" :key="c">{{ c }}</th></tr></thead>
+        <tbody>
+          <tr><td class="rh">1</td><td colspan="11" class="title">COST SHEET · {{ cs.docNo }} rev.{{ cs.revision }}</td></tr>
+          <tr><td class="rh">2</td><td colspan="11" class="note">เอกสารภายใน — ช่องสีเทาดึงจากโครงการอัตโนมัติ · ช่องสีขาวกรอกเอง · ช่องสีฟ้าเป็นสูตร</td></tr>
+          <tr v-for="(h, k) in [['ชื่อโปรเจกต์', p.name], ['ลูกค้า / End User', `${account(p.customerAccountId)?.name ?? p.customer} / ${account(p.endUserAccountId)?.name ?? p.endUser}`], ['Profit Center (BU)', `${p.team} · ${teamOf(p.team)?.name ?? ''}`], ['Project Type', p.type], ['AE / SM (ผู้จัดทำ)', `${p.sales.join(', ') || '—'} / ${person(p.sm)?.name}`], ['วันที่จัดทำ', thDate(cs.preparedAt)]]" :key="h[0]">
+            <td class="rh">{{ k + 3 }}</td><td /><td class="lbl">{{ h[0] }}</td><td colspan="4" class="ro" @click="pick(`C${k + 3}`, h[1])">{{ h[1] }}</td><td colspan="5" />
+          </tr>
+          <tr :class="{ bad: err('projectMonths') }"><td class="rh">9</td><td /><td class="lbl">ระยะเวลาโครงการ (เดือน)</td><td class="in"><input v-model.number="cs.projectMonths" type="number" min="1" aria-label="ระยะเวลาโครงการ (เดือน)" :disabled="readonly" @focus="pick('C9', cs.projectMonths ?? '')" /></td><td colspan="8" class="msg">{{ err('projectMonths') }}</td></tr>
+          <tr><td class="rh">10</td><td /><td class="lbl">ระยะรับประกัน / MA (เดือน)</td><td class="in"><input v-model.number="cs.maMonths" type="number" min="0" aria-label="ระยะรับประกัน / MA (เดือน)" :disabled="readonly" @focus="pick('C10', cs.maMonths ?? '')" /></td><td colspan="8" /></tr>
+          <tr><td class="rh">11</td><td colspan="11" /></tr>
+          <tr class="hd"><td class="rh">12</td><td>#</td><td>หมวด</td><td>รายการ / ขอบเขต</td><td>Role / Vendor</td><td>Manday / จำนวน</td><td>Rate / ต้นทุนต่อหน่วย</td><td>เดือน</td><td>มูลค่า</td><td>ต้นทุน</td><td>หมายเหตุ / เหตุผล</td><td /></tr>
+          <tr><td class="rh">13</td><td colspan="11" class="note">ลาก ⠿ เพื่อสลับแถว · ต้นทุนคำนวณตามสูตรของหมวด</td></tr>
+          <tr v-for="(i, k) in cs.items" :key="i.id" :class="{ dragging: dragFrom === k, bad: err(`item${k}`) }" @dragover.prevent @drop="dropAt(k)">
+            <td class="rh">{{ rowNo(k) }}</td>
+            <td class="c"><span v-if="!readonly" class="grip" draggable="true" :aria-label="`ลากเพื่อย้ายแถว ${k + 1}`" @dragstart="dragFrom = k">⠿</span><span v-else>{{ k + 1 }}</span></td>
+            <td class="in"><select :value="i.category" :aria-label="`หมวดแถว ${k + 1}`" :disabled="readonly" @change="changeCat(i, ($event.target as HTMLSelectElement).value as CostCategory)" @focus="pick(`B${rowNo(k)}`, COST_CATEGORIES[i.category].label)"><option v-for="(c, key) in COST_CATEGORIES" :key="key" :value="key">{{ c.label }}</option></select></td>
+            <td class="in"><input v-model="i.description" :aria-label="`รายการแถว ${k + 1}`" :placeholder="i.category === 'subcontract' ? 'ผู้รับเหมา / ขอบเขต' : 'รายการ'" :disabled="readonly" @focus="pick(`C${rowNo(k)}`, i.description)" /></td>
+            <td class="in">
+              <select v-if="i.category === 'manpower'" v-model="i.role" aria-label="Role" :disabled="readonly" @focus="pick(`D${rowNo(k)}`, i.role ?? '')"><option v-for="r in ROLES_MD" :key="r">{{ r }}</option></select>
+              <input v-else-if="i.category === 'hardware'" v-model="i.vendor" aria-label="Vendor" placeholder="Vendor" :disabled="readonly" />
+              <span v-else class="na" />
+            </td>
+            <td class="in">
+              <input v-if="i.category === 'manpower'" v-model.number="i.manday" type="number" min="0" :aria-label="`Manday แถว ${k + 1}`" :disabled="readonly" @focus="pick(`E${rowNo(k)}`, i.manday ?? 0)" />
+              <input v-else-if="i.category === 'hardware' || i.category === 'software'" v-model.number="i.qty" type="number" min="0" :aria-label="`จำนวนแถว ${k + 1}`" :disabled="readonly" @focus="pick(`E${rowNo(k)}`, i.qty ?? 0)" />
+              <span v-else class="na" />
+            </td>
+            <td class="in">
+              <input v-if="i.category === 'manpower'" v-model.number="i.rate" type="number" min="0" :aria-label="`Rate แถว ${k + 1}`" :disabled="readonly" @focus="pick(`F${rowNo(k)}`, i.rate ?? 0)" />
+              <input v-else-if="['hardware', 'software', 'cloud', 'ma'].includes(i.category)" v-model.number="i.unitCost" type="number" min="0" :aria-label="`ต้นทุนต่อหน่วยแถว ${k + 1}`" :disabled="readonly" @focus="pick(`F${rowNo(k)}`, i.unitCost ?? 0)" />
+              <span v-else class="na" />
+            </td>
+            <td class="in">
+              <input v-if="['software', 'cloud', 'ma'].includes(i.category)" v-model.number="i.months" type="number" min="0" :aria-label="`เดือนแถว ${k + 1}`" :disabled="readonly" @focus="pick(`G${rowNo(k)}`, i.months ?? 0)" />
+              <span v-else class="na" />
+            </td>
+            <td class="in">
+              <input v-if="['subcontract', 'other'].includes(i.category)" v-model.number="i.amount" type="number" min="0" :aria-label="`มูลค่าแถว ${k + 1}`" :disabled="readonly" @focus="pick(`H${rowNo(k)}`, i.amount ?? 0)" />
+              <span v-else class="na" />
+            </td>
+            <td class="fm num" tabindex="0" @click="pick(`I${rowNo(k)}`, formulaOf(i, k))" @focus="pick(`I${rowNo(k)}`, formulaOf(i, k))">{{ baht(itemCost(i)) }}</td>
+            <td class="in"><input v-model="i.note" aria-label="หมายเหตุ" placeholder="เช่น ใช้ subscription ที่มีอยู่แล้ว" :disabled="readonly" @focus="pick(`J${rowNo(k)}`, i.note ?? '')" /></td>
+            <td class="c"><button v-if="!readonly" class="del" :aria-label="`ลบแถว ${k + 1}`" @click="cs.items.splice(k, 1)"><Icon name="x" :size="13" /></button></td>
+          </tr>
+          <tr v-if="err('items') || cs.items.some((_, k) => err(`item${k}`))"><td class="rh">·</td><td colspan="11" class="msg">{{ err('items') || cs.items.map((_, k) => err(`item${k}`)).find(Boolean) }}</td></tr>
+          <tr><td class="rh">{{ lastRow + 1 }}</td><td colspan="11" /></tr>
+          <tr v-for="c in catTotals" :key="c.k" class="cat"><td class="rh">·</td><td colspan="7" /><td class="lbl r">รวม {{ COST_CATEGORIES[c.k].label.split(' (')[0] }}</td><td class="fm num" @click="pick('', `=SUMIF(B${FIRST}:B${lastRow},&quot;${COST_CATEGORIES[c.k].label.split(' (')[0]}&quot;,I${FIRST}:I${lastRow})`)">{{ baht(c.v) }}</td><td colspan="2" /></tr>
+          <template v-if="t">
+            <tr class="sum"><td class="rh">{{ sumRow }}</td><td colspan="7" /><td class="lbl r">COGS (ต้นทุนรวม)</td><td class="fm num b" @click="pick(`I${sumRow}`, `=SUM(I${FIRST}:I${lastRow})`)">{{ baht(t.cogs) }}</td><td colspan="2" /></tr>
+            <tr class="sum"><td class="rh">{{ sumRow + 1 }}</td><td colspan="7" /><td class="lbl r">Total Manday</td><td class="fm num" @click="pick(`I${sumRow + 1}`, `=SUMIF(B${FIRST}:B${lastRow},&quot;Manpower&quot;,E${FIRST}:E${lastRow})`)">{{ t.manday }}</td><td colspan="2" /></tr>
+            <tr class="sum"><td class="rh">{{ sumRow + 2 }}</td><td colspan="7" /><td class="lbl r">ราคาขาย (Revenue ก่อน VAT)</td><td class="in"><input id="rv" v-model.number="cs.revenue" type="number" min="0" class="num" aria-label="ราคาขาย (Revenue ก่อน VAT)" :disabled="readonly" @focus="pick(`I${sumRow + 2}`, cs.revenue)" /></td><td colspan="2" class="small muted">กรอก หรือดึงจาก Quotation หลังหักส่วนลด</td></tr>
+            <tr class="sum"><td class="rh">{{ sumRow + 3 }}</td><td colspan="7" /><td class="lbl r">Gross Profit</td><td class="fm num" :class="{ neg: t.gp < 0 }" @click="pick(`I${sumRow + 3}`, `=I${sumRow + 2}-I${sumRow}`)">{{ baht(t.gp) }}</td><td colspan="2" /></tr>
+            <tr class="sum"><td class="rh">{{ sumRow + 4 }}</td><td colspan="7" /><td class="lbl r">Gross Margin %</td><td class="fm num" :class="v.warn.gm ? 'warn' : 'good'" @click="pick(`I${sumRow + 4}`, `=I${sumRow + 3}/I${sumRow + 2}*100`)">{{ t.gmPct }}%</td><td colspan="2" class="small" :class="{ warn: v.warn.gm }">{{ v.warn.gm }}</td></tr>
+            <tr class="sum"><td class="rh">{{ sumRow + 5 }}</td><td colspan="6" /><td class="in"><select v-model="cs.entertainment.mode" aria-label="หน่วย Entertainment" :disabled="readonly"><option value="pct">% Rev</option><option value="baht">บาท</option></select></td><td class="lbl r">Entertainment</td><td class="in"><input v-model.number="cs.entertainment.value" type="number" min="0" class="num" aria-label="Entertainment" :disabled="readonly" @focus="pick(`I${sumRow + 5}`, cs.entertainment.mode === 'pct' ? `=I${sumRow + 2}*${cs.entertainment.value}%` : cs.entertainment.value)" /></td><td class="small muted" colspan="2">= {{ baht(t.entertainment) }}</td></tr>
+            <tr class="sum"><td class="rh">{{ sumRow + 6 }}</td><td colspan="6" /><td class="in"><select v-model="cs.contingency.mode" aria-label="หน่วย Contingency" :disabled="readonly"><option value="pct">% COGS</option><option value="baht">บาท</option></select></td><td class="lbl r">Contingency</td><td class="in"><input v-model.number="cs.contingency.value" type="number" min="0" class="num" aria-label="Contingency" :disabled="readonly" @focus="pick(`I${sumRow + 6}`, cs.contingency.mode === 'pct' ? `=I${sumRow}*${cs.contingency.value}%` : cs.contingency.value)" /></td><td class="small muted" colspan="2">= {{ baht(t.contingency) }} · แยกบรรทัด ไม่บวกใน Manday</td></tr>
+            <tr class="sum tot"><td class="rh">{{ sumRow + 7 }}</td><td colspan="7" /><td class="lbl r">Contribution Margin</td><td class="fm num b" @click="pick(`I${sumRow + 7}`, `=I${sumRow + 3}-I${sumRow + 5}-I${sumRow + 6}`)">{{ baht(t.cm) }}</td><td colspan="2" /></tr>
+            <tr class="sum tot"><td class="rh">{{ sumRow + 8 }}</td><td colspan="7" /><td class="lbl r">Contribution Margin %</td><td class="fm num b" @click="pick(`I${sumRow + 8}`, `=I${sumRow + 7}/I${sumRow + 2}*100`)">{{ t.cmPct }}%</td><td colspan="2" /></tr>
+            <tr v-if="t.revenue < t.cogs" :class="{ bad: err('lossReason') }"><td class="rh">{{ sumRow + 9 }}</td><td colspan="2" /><td class="lbl">เหตุผลที่ขาดทุน</td><td colspan="6" class="in"><input v-model="cs.lossReason" aria-label="เหตุผลที่ขาดทุน" :disabled="readonly" /></td><td colspan="2" class="msg">{{ err('lossReason') }}</td></tr>
           </template>
-        </div>
-      </aside>
+        </tbody>
+      </table>
     </div>
+    <footer class="xtabs">
+      <span class="tab on">Cost Sheet</span>
+      <router-link v-if="existing" :to="`/projects/${p.id}/quotation/new?cs=${cs.id}`" class="tab">Quotation</router-link>
+      <span class="tab off" title="ระบบอ่าน Named range จากชีตนี้ตอนบันทึก">Summary (Named ranges)</span>
+      <span class="sp" />
+      <span class="small">COGS {{ baht(t?.cogs ?? 0) }} · GM {{ t?.gmPct }}% · CM {{ t?.cmPct }}%</span>
+    </footer>
   </div>
   <div v-else class="page"><h1>{{ p ? 'ไม่มีสิทธิ์เปิด Cost Sheet' : 'ไม่พบโครงการ' }}</h1><p class="muted">Cost Sheet มีต้นทุนภายใน — เปิดได้เฉพาะ Owner, SM, ผู้อนุมัติ และผู้บริหาร</p><router-link to="/projects">กลับไปทะเบียนโครงการ</router-link></div>
 </template>
 
 <style scoped>
-.back { display: inline-block; margin-bottom: 12px; color: var(--muted); }
-.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
-.top h1 { margin: 0; font-size: 26px; }
-.rev { color: var(--muted); font-weight: 400; }
-.top p { margin: 4px 0 0; }
-.ro { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--warn); margin-bottom: 16px; flex-wrap: wrap; }
-.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
-.body { display: grid; gap: 20px; min-width: 0; }
-.panel h2 { font-size: 18px; margin: 0 0 12px; }
-.hdr { display: grid; grid-template-columns: 160px 1fr; gap: 6px 16px; margin: 0 0 14px; }
-.hdr dt { color: var(--muted); }
-.hdr dd { margin: 0; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.items td { vertical-align: top; }
-.items .mini { min-height: 34px; font-size: 14px; }
-.items td:nth-child(2) select { min-width: 190px; }
-.flds { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
-.flds .wide { flex: 1 1 200px; }
-.f { display: grid; gap: 2px; font-size: 12px; color: var(--muted); }
-.f .input { width: 120px; }
-.formula { display: block; margin-top: 4px; }
-.h { width: 24px; }
-.grip { cursor: grab; color: var(--muted); font-size: 18px; user-select: none; }
+.xl { display: flex; flex-direction: column; height: calc(100vh - 60px); background: #fff; color: #1f1f1f; font-family: 'Segoe UI', var(--font); }
+.xbar { display: flex; align-items: center; gap: 12px; background: #107c41; color: #fff; padding: 8px 16px; }
+.xback { color: #fff; display: inline-flex; padding: 6px; border-radius: 4px; }
+.xback:hover { background: rgb(255 255 255 / 0.15); }
+.xlogo { width: 26px; height: 26px; border-radius: 4px; background: #fff; color: #107c41; font-weight: 700; display: grid; place-items: center; font-size: 15px; }
+.xfile { display: grid; line-height: 1.3; min-width: 0; }
+.xfile strong { font-weight: 600; font-size: 14px; }
+.xfile span { font-size: 12px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp { flex: 1; }
+.xuser { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.av { width: 26px; height: 26px; border-radius: 50%; background: #0b5a2f; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
+.xribbon { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-bottom: 1px solid #e1dfdd; background: #f8f8f8; flex-wrap: wrap; }
+.rb { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; background: none; border-radius: 4px; padding: 6px 10px; font: 14px var(--font); color: #1f1f1f; cursor: pointer; min-height: 34px; }
+.rb:hover { background: #e9e9e9; }
+.rb.strong { background: #107c41; color: #fff; }
+.rb.strong:hover { background: #0e6b38; }
+.sep { width: 1px; height: 22px; background: #d2d0ce; margin: 0 4px; }
+.add { position: relative; }
+.menu { position: absolute; z-index: 10; top: 38px; left: 0; display: grid; background: #fff; border: 1px solid #d2d0ce; border-radius: 6px; box-shadow: var(--shadow-pop); padding: 4px; min-width: 260px; }
+.mi { text-align: left; border: 0; background: none; padding: 8px 10px; font: 14px var(--font); border-radius: 4px; cursor: pointer; }
+.mi:hover { background: #f0f6f2; }
+.xro { display: flex; gap: 8px; align-items: center; padding: 6px 16px; background: #fff4ce; color: #6b5300; font-size: 13px; }
+.fbar { display: flex; align-items: center; border-bottom: 1px solid #e1dfdd; font-size: 13px; min-height: 30px; }
+.nb { width: 80px; padding: 0 10px; border-right: 1px solid #e1dfdd; font-weight: 600; }
+.fx { padding: 0 10px; color: #605e5c; font-style: italic; border-right: 1px solid #e1dfdd; }
+.fv { padding: 0 10px; font-family: Consolas, monospace; color: #1f1f1f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet { flex: 1; overflow: auto; background: #fff; }
+table { border-collapse: collapse; table-layout: fixed; font-size: 13px; width: 1242px; }
+col.rn { width: 44px; }
+thead th { position: sticky; top: 0; z-index: 2; background: #f3f2f1; color: #605e5c; font-weight: 400; border: 1px solid #e1dfdd; height: 22px; text-align: center; }
+td { border: 1px solid #e8e8e8; height: 30px; padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+td.rh { position: sticky; left: 0; z-index: 1; background: #f3f2f1; color: #605e5c; text-align: center; padding: 0; border-color: #e1dfdd; }
+.title { font-size: 18px; font-weight: 700; color: #107c41; height: 40px; }
+.note { color: #605e5c; font-size: 12px; }
+.lbl { color: #323130; font-weight: 600; }
+.r { text-align: right; }
+.c { text-align: center; }
+td.ro { background: #f3f2f1; color: #323130; cursor: default; }
+td.in { padding: 0; background: #fff; }
+td.in input, td.in select { width: 100%; height: 29px; border: 0; padding: 0 6px; font: inherit; background: transparent; color: inherit; }
+td.in input:focus, td.in select:focus { outline: 2px solid #107c41; outline-offset: -2px; background: #fff; }
+td.in input:disabled, td.in select:disabled { color: #323130; opacity: 1; }
+td.in input[type='number'], td.in input.num { text-align: right; }
+.na { display: block; height: 29px; background: repeating-linear-gradient(135deg, #fafafa, #fafafa 4px, #f2f2f2 4px, #f2f2f2 8px); }
+td.fm { background: #eef6fc; text-align: right; cursor: cell; }
+td.fm:focus { outline: 2px solid #107c41; outline-offset: -2px; }
+.hd td { background: #107c41; color: #fff; font-weight: 600; font-size: 12px; }
+.hd td.rh { background: #f3f2f1; color: #605e5c; font-weight: 400; }
+.b { font-weight: 700; }
+.tot td.lbl, .tot td.fm { background: #dff1e6; }
+.good { color: #107c41; } .warn { color: #9a6700; } .neg { color: #c4382f; }
+.bad td.in { box-shadow: inset 0 0 0 1px #c4382f; }
+.msg { color: #c4382f; font-size: 12px; }
+.grip { cursor: grab; color: #8a8886; font-size: 16px; user-select: none; }
 .dragging { opacity: 0.5; }
-.r { text-align: right; white-space: nowrap; }
-.add { position: relative; margin-top: 10px; }
-.menu { position: absolute; z-index: 5; top: 40px; left: 0; display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-pop); padding: 6px; min-width: 260px; }
-.menu .btn { justify-content: flex-start; }
-.sum { position: sticky; top: 80px; display: grid; gap: 10px; }
-.sum h2 { margin: 0; }
-.sum p { margin: 0; }
-.cats { list-style: none; margin: 0; padding: 0 0 8px; border-bottom: 1px solid var(--line); display: grid; gap: 2px; font-size: 13px; }
-.cats li { display: flex; justify-content: space-between; gap: 8px; color: var(--ink-2); }
-.sum dl { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin: 0; align-items: center; }
-.sum dt { color: var(--muted); font-size: 14px; }
-.sum dd { margin: 0; text-align: right; }
-.sum dd .input { width: 140px; }
-.mx { display: flex; gap: 4px; justify-content: flex-end; }
-.mx .input { width: 86px !important; }
-.strong { font-weight: 600; font-size: 16px; }
-.good { color: var(--win); } .warn { color: var(--warn); } .bad { color: var(--lose); }
-.warnbox { background: var(--warn-soft); color: var(--warn); padding: 8px 10px; border-radius: var(--r-sm); }
-.msg { font-size: 12px; color: var(--lose); display: block; }
-.bad .input { border-color: var(--lose); }
-.foot { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
-@media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } .sum { position: static; } }
-@media (max-width: 560px) { .hdr { grid-template-columns: 1fr; } .row2 { grid-template-columns: 1fr; } }
+.del { border: 0; background: none; color: #8a8886; cursor: pointer; padding: 4px; border-radius: 4px; }
+.del:hover { background: #fde7e9; color: #c4382f; }
+.xtabs { display: flex; align-items: center; gap: 2px; border-top: 1px solid #e1dfdd; background: #f3f2f1; padding: 0 12px; min-height: 34px; font-size: 13px; }
+.tab { padding: 6px 14px; color: #323130; border-radius: 0 0 4px 4px; }
+.tab.on { background: #fff; color: #107c41; font-weight: 600; border-bottom: 2px solid #107c41; }
+.tab.off { color: #8a8886; }
+a.tab:hover { background: #e9e9e9; text-decoration: none; }
+@media (max-width: 640px) { .xfile span, .xuser { display: none; } .xbar { padding: 8px; } }
 </style>

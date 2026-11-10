@@ -192,11 +192,11 @@ ch('salesdocs', 'เอกสารการขาย Cost Sheet และ Quota
        'คลิกโฟลเดอร์เพื่อดูไฟล์: ดู (PDF/รูป) · ดาวน์โหลด · เวอร์ชันใหม่ · ประวัติเวอร์ชัน · เปลี่ยนชื่อ · ย้าย · ลบ (กู้คืนจากถังขยะได้ 30 วัน)')}
 {img('44-documents', 'โฟลเดอร์เอกสารของโครงการ')}
 <h3>Cost Sheet และ Quotation</h3>
-{steps('แท็บ <b>Cost Sheet และใบเสนอราคา</b> กด <b>+ Create</b> (หรือ Upload .xlsx) — กรอกระยะเวลาโครงการ แล้วเพิ่มรายการต้นทุนตามหมวด ระบบคำนวณ COGS GP GM% CM ให้',
+{steps('แท็บ <b>Cost Sheet และใบเสนอราคา</b> (หรือโฟลเดอร์ Cost Sheet) กด <b>+ Create (Excel Online)</b> — ระบบสร้างไฟล์ .xlsx จาก Template ในโฟลเดอร์ SharePoint ของโครงการและเปิดใน Excel Online (บัญชี Microsoft 365) กรอกช่องสีขาวตาม Template ช่องสีเทาดึงจากโครงการ ช่องสีฟ้าเป็นสูตร',
        'กด <b>บันทึกและสร้าง Quotation</b> — ระบบเติมรายการราคาให้ Subtotal เท่ากับ Revenue กรอกผู้ติดต่อ งวดชำระ (รวม 100%) แล้วพรีวิว PDF',
        'กด <b>Send to Approve</b> เลือก Cost Sheet + Quotation บันทึกการประชุมก่อนส่ง แล้วส่ง — ผู้อนุมัติได้อีเมลและเห็นใน Mail Inbox',
        'อนุมัติครบ 3 ขั้น เอกสารล็อก และ Revenue / COGS / GP / CM ของโครงการอัปเดตอัตโนมัติ · ถูก Reject ให้กด <b>สร้าง revision ใหม่</b>')}
-{img('45-costsheet', 'ฟอร์ม Cost Sheet')}
+{img('45-costsheet', 'Cost Sheet ใน Excel Online')}
 {img('46-quotation', 'พรีวิวใบเสนอราคา PDF')}
 {tip('เปลี่ยนเป็น Forecast ได้เมื่อ Cost Sheet และ Quotation อนุมัติครบแล้วเท่านั้น', 'rule')}
 ''')
