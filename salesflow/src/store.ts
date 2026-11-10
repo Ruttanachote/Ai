@@ -224,3 +224,14 @@ export function setTeamActive(code: string, active: boolean, by: string, reason:
   teamLog.unshift({ id: 'tl' + tlNo++, team: code, at: nowStamp(), by, action: active ? 'activate' : 'deactivate', changes: diffTeam(t, { ...t, active }, nameOf), reason })
   t.active = active
 }
+
+/* ---------------- SM personal sales target (set by the SM on the SM Dashboard) ---------------- */
+export const smTargets = reactive<Record<string, number>>({ rk: 40_000_000, np: 35_000_000 })
+export const smTargetLog = reactive<{ who: string; at: string; from?: number; to: number; note?: string }[]>([
+  { who: 'rk', at: '2026-01-08', to: 40_000_000, note: 'ตั้งเป้าปี 2569' },
+  { who: 'np', at: '2026-01-09', to: 35_000_000, note: 'ตั้งเป้าปี 2569' },
+])
+export function setSmTarget(who: string, amount: number, note?: string) {
+  smTargetLog.unshift({ who, at: TODAY_ISO, from: smTargets[who], to: amount, note })
+  smTargets[who] = amount
+}

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Avatar from '../components/Avatar.vue'
-import Photo from '../components/Photo.vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
 import { scope, session } from '../store'
@@ -10,6 +9,8 @@ import { stageOf, catOf, type StageKey } from '../data/model'
 import { isOpen, pipelineValue, weightedValue, sum, approvalState, APPROVAL_LABEL } from '../domain/metrics'
 import { customerName } from '../display'
 
+// Shown as the "Pipeline" view inside Project Register (embedded) — the old /pipeline link redirects there.
+defineProps<{ embedded?: boolean }>()
 const COLS: StageKey[] = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win', 'lose']
 const list = computed(() => scope.value.list)
 const cols = computed(() =>
@@ -29,9 +30,9 @@ const kpis = computed(() => [
 </script>
 
 <template>
-  <div class="page wide">
-    <PageHeader module="Sales · ก่อนขาย" title="Sales Pipeline" :scope="scope.label" subtitle="เปลี่ยนสถานะได้จากหน้ารายละเอียดโครงการ">
-      <router-link v-if="['sm', 'admin'].includes(session.role)" to="/projects/new" class="btn primary">ลงทะเบียนโครงการ</router-link>
+  <div :class="embedded ? 'embedded' : 'page wide'">
+    <PageHeader v-if="!embedded" module="Sales · ก่อนขาย" title="Sales Pipeline" :scope="scope.label" subtitle="เปลี่ยนสถานะได้จากหน้ารายละเอียดโครงการ">
+      <router-link v-if="['sm', 'admin'].includes(session.role)" to="/projects/new" class="btn primary">ลงทะเบียนโครงการใหม่</router-link>
     </PageHeader>
     <KpiStrip :items="kpis" />
 
@@ -43,7 +44,6 @@ const kpis = computed(() => [
           <p class="sum"><b class="num">{{ mb(c.total) }}</b> · {{ c.items.length }} งาน</p>
         </header>
         <router-link v-for="p in c.items" :key="p.id" :to="`/projects/${p.id}`" class="card">
-          <Photo :id="p.cover" :w="500" />
           <div class="body">
             <span class="code">{{ p.code }} · {{ p.team }}</span>
             <strong>{{ p.name }}</strong>
@@ -76,7 +76,7 @@ const kpis = computed(() => [
 .sum b { color: var(--ink); }
 .card { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; color: var(--ink); transition: border-color var(--t-fast); }
 .card:hover { text-decoration: none; border-color: var(--line-strong); }
-.card .photo { height: 76px; }
+.card { border-top: 3px solid var(--presale); }
 .body { padding: 12px 14px 14px; display: grid; gap: 4px; }
 .code { font-size: 12px; color: var(--faint); }
 .body strong { font-weight: 600; line-height: 1.4; }

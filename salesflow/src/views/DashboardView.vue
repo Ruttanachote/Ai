@@ -5,7 +5,9 @@ import StageBadge from '../components/StageBadge.vue'
 import Avatar from '../components/Avatar.vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
-import { projects, scope, session } from '../store'
+import { ref } from 'vue'
+import Dialog from '../components/Dialog.vue'
+import { projects, scope, session, smTargets, smTargetLog, setSmTarget, notify } from '../store'
 import { PHOTOS, SALES_TEAMS, GROUP_NAME, mb, baht, daysUntil, daysSince, thDate, person } from '../data/mock'
 import { stageOf, catOf, FORECAST_CAT, type StageKey } from '../data/model'
 import { winRate } from '../domain/rules'
@@ -20,8 +22,22 @@ const visibleTeams = computed(() => {
   const s = scope.value
   return 'teams' in s && s.teams ? SALES_TEAMS.filter((t) => s.teams!(t.code)) : SALES_TEAMS
 })
-const PERSONAL_TARGET = 40_000_000
-const target = computed(() => (session.role === 'sm' ? PERSONAL_TARGET : visibleTeams.value.reduce((s, t) => s + (t.target ?? 0), 0)))
+// SM sees only their own projects and their own target — never other teams' targets or sales.
+const isSm = computed(() => session.role === 'sm')
+const myTarget = computed(() => smTargets[session.userId] ?? 0)
+const target = computed(() => (isSm.value ? myTarget.value : visibleTeams.value.reduce((s, t) => s + (t.target ?? 0), 0)))
+const editTarget = ref(false)
+const draft = ref<number | null>(null)
+const draftNote = ref('')
+const draftErr = computed(() => (draft.value === null || !(draft.value > 0) ? 'ใส่ยอดเป้าหมายมากกว่า 0 บาท' : ''))
+const myLog = computed(() => smTargetLog.filter((l) => l.who === session.userId))
+function openTarget() { draft.value = myTarget.value || null; draftNote.value = ''; editTarget.value = true }
+function saveTarget() {
+  if (draftErr.value) return
+  setSmTarget(session.userId, Math.round(draft.value!), draftNote.value.trim() || undefined)
+  editTarget.value = false
+  notify(`ตั้งเป้ายอดขายปี 2569 เป็น ${mb(Math.round(draft.value!))} แล้ว`)
+}
 const won = computed(() => sum(wonList.value, bookedValue))
 const weighted = computed(() => sum(open.value, weightedValue))
 const commit = computed(() => sum(open.value.filter((p) => catOf(p) === 'commit'), pipelineValue))
@@ -29,10 +45,10 @@ const gp = computed(() => {
   const r = sum(wonList.value, (p) => p.revenue)
   return r ? ((r - sum(wonList.value, (p) => p.cost)) / r) * 100 : 0
 })
-const pct = computed(() => Math.min(100, (won.value / target.value) * 100))
+const pct = computed(() => (target.value ? Math.min(100, (won.value / target.value) * 100) : 0))
 
 const kpis = computed(() => [
-  { label: 'Pipeline ถ่วงน้ำหนัก', value: mb(weighted.value), note: `${open.value.length} โครงการที่ยังเปิดอยู่`, to: '/pipeline' },
+  { label: 'Pipeline ถ่วงน้ำหนัก', value: mb(weighted.value), note: `${open.value.length} โครงการที่ยังเปิดอยู่`, to: '/projects?view=board' },
   { label: 'Commit ไตรมาสนี้', value: mb(commit.value), note: 'หมวด Commit (ค่าเริ่มต้น: Forecast และ Rebidding)' },
   { label: 'Gross margin งานที่ชนะ', value: gp.value.toFixed(1) + '%', note: 'เป้าบริษัทไม่ต่ำกว่า 25%', tone: gp.value < 25 ? ('bad' as const) : ('' as const) },
   { label: 'Win rate', value: Math.round(winRate(mine.value) * 100) + '%', note: 'นับจากผลชนะ/แพ้ที่ปิดแล้ว' },
@@ -89,14 +105,16 @@ const deadlines = computed(() =>
 
 <template>
   <div class="page">
-    <PageHeader module="Sales · ก่อนขาย" title="Sales Dashboard" :scope="scope.label" subtitle="ปีงบ 2569 · ข้อมูล ณ 6 พ.ย. 2569" />
+    <PageHeader module="Sales · ก่อนขาย" title="SM Dashboard" :scope="scope.label" subtitle="ปีงบ 2569 · ข้อมูล ณ 6 พ.ย. 2569">
+      <button v-if="isSm" class="btn" @click="openTarget">{{ myTarget ? 'แก้เป้ายอดขายปีนี้' : 'ตั้งเป้ายอดขายปีนี้' }}</button>
+    </PageHeader>
 
     <section class="hero">
       <Photo :id="PHOTOS.meeting" :w="1800" alt="" />
       <div class="hero-in">
         <div>
           <p class="greet">สวัสดี {{ person(session.userId)?.name }} · ยอดปิดได้ปี 2569</p>
-          <p class="big num">{{ mb(won) }} <span>จากเป้า {{ mb(target) }}</span></p>
+          <p class="big num">{{ mb(won) }} <span v-if="target">จากเป้า {{ mb(target) }}</span><button v-else-if="isSm" class="btn sm settgt" @click="openTarget">ตั้งเป้ายอดขายปีนี้</button></p>
         </div>
         <div class="goal" role="img" :aria-label="`ทำได้ ${pct.toFixed(0)}% ของเป้า`">
           <div class="bar"><i :style="{ width: pct + '%' }" /><i class="w" :style="{ left: pct + '%', width: Math.min(100 - pct, (weighted / target) * 100) + '%' }" /></div>
@@ -159,7 +177,7 @@ const deadlines = computed(() =>
       </section>
     </div>
 
-    <section class="panel">
+    <section v-if="!isSm" class="panel">
       <div class="panel-head"><h2>ยอดขายเทียบเป้าราย DT และทีมย่อย</h2><span class="muted small">แถบเข้ม = ปิดแล้ว · แถบอ่อน = รวม Pipeline ถ่วงน้ำหนัก · นับตามสัดส่วนแบ่งยอดของแต่ละโครงการ</span></div>
       <div class="scroll-x">
         <table class="table">
@@ -177,11 +195,35 @@ const deadlines = computed(() =>
       </div>
     </section>
 
+    <Dialog :open="editTarget" title="เป้ายอดขายปี 2569 ของคุณ" @close="editTarget = false">
+      <form class="tg" @submit.prevent="saveTarget">
+        <div class="field">
+          <label for="tgt">ยอดขายที่ตั้งใจปิดให้ได้ปีนี้ (บาท)</label>
+          <input id="tgt" v-model.number="draft" class="input num" type="number" min="0" step="1000000" inputmode="numeric" />
+          <span v-if="draft && !draftErr" class="hint">{{ mb(draft) }} · ปิดได้แล้ว {{ mb(won) }} ({{ Math.round((won / draft) * 100) }}%)</span>
+          <span v-else-if="draft !== null" class="msg" role="alert">{{ draftErr }}</span>
+        </div>
+        <div class="field"><label for="tgn">หมายเหตุ (ไม่บังคับ)</label><input id="tgn" v-model="draftNote" class="input" placeholder="เช่น ปรับตามดีลใหม่ไตรมาส 4" /></div>
+        <p class="hint">เป้านี้เห็นเฉพาะคุณ หัวหน้ากลุ่ม และผู้บริหาร — ไม่แสดงให้ SM คนอื่น</p>
+        <div v-if="myLog.length" class="tlog">
+          <p class="small"><b>ประวัติการตั้งเป้า</b></p>
+          <p v-for="(l, i) in myLog" :key="i" class="small muted">{{ thDate(l.at) }} · <template v-if="l.from">{{ mb(l.from) }} → </template>{{ mb(l.to) }}<template v-if="l.note"> · {{ l.note }}</template></p>
+        </div>
+        <button type="submit" hidden />
+      </form>
+      <template #foot><button class="btn" @click="editTarget = false">ยกเลิก</button><button class="btn primary" :disabled="!!draftErr" @click="saveTarget">บันทึกเป้า</button></template>
+    </Dialog>
+
     <p class="foot muted small"><Avatar :id="session.userId" :size="20" /> ยอดชนะนับตั้งแต่ Close Win ขึ้นไป ใช้มูลค่าตามสัญญา (หรือราคาที่อนุมัติถ้ายังไม่มีสัญญา)</p>
   </div>
 </template>
 
 <style scoped>
+.tg { display: grid; gap: 14px; }
+.msg { font-size: 12px; color: var(--lose); }
+.tlog { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 2px; }
+.tlog p { margin: 0; }
+.settgt { margin-left: 12px; vertical-align: middle; }
 .hero { position: relative; border-radius: var(--r-lg); overflow: hidden; min-height: 240px; margin-bottom: 20px; }
 .hero .photo { position: absolute; inset: 0; }
 .hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(22 27 38 / 0.92) 0%, rgb(22 27 38 / 0.7) 55%, rgb(22 27 38 / 0.35) 100%); }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { computed, h, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import PipelineView from './PipelineView.vue'
 import { NButton, NDataTable, NEmpty, NInput, NRadioButton, NRadioGroup, NSelect, type DataTableColumns } from 'naive-ui'
 import Icon from '../components/Icon.vue'
 import StageBadge from '../components/StageBadge.vue'
@@ -13,6 +14,12 @@ import { STAGES, stageOf, type Phase, type Project } from '../data/model'
 import { dealValue, gpPct, isOpen, isWon, bookedValue, pipelineValue, sum, approvalState, APPROVAL_LABEL } from '../domain/metrics'
 import { customerName } from '../display'
 
+// One register for sales: list view, pipeline board, and "register a new project" (starts at Opportunity).
+const route = useRoute()
+const salesRole = computed(() => ['sm', 'head', 'admin'].includes(session.role))
+const canRegister = computed(() => ['sm', 'admin'].includes(session.role))
+const view = ref<'list' | 'board'>(route.query.view === 'board' && ['sm', 'head', 'admin'].includes(session.role) ? 'board' : 'list')
+watch(view, (v) => useRouterReplace(v))
 const q = ref('')
 const phase = ref<Phase | 'all'>('all')
 const type = ref('all')
@@ -56,6 +63,7 @@ const columns = computed<DataTableColumns<Project>>(() => [
     render: (p) => h('span', { class: 'ppl' }, [h(Avatar, { id: p.sm, size: 26 }), p.pm ? h(Avatar, { id: p.pm, size: 26 }) : null, h('span', { class: 'small muted' }, person(p.pm ?? p.sm)?.name)]),
   },
 ])
+function useRouterReplace(v: 'list' | 'board') { router.replace({ query: v === 'board' ? { view: 'board' } : {} }) }
 const rowProps = (p: Project) => ({ style: 'cursor: pointer', onClick: () => router.push(`/projects/${p.id}`) })
 const page = ref(1)
 const clear = () => { q.value = ''; phase.value = 'all'; type.value = 'all' }
@@ -70,9 +78,16 @@ const kpis = computed(() => [
 
 <template>
   <div class="page">
-    <PageHeader module="Projects & Customers · ข้อมูลกลาง" title="Project Register" :scope="scope.label" :subtitle="`${list.length} รายการ`">
-      <router-link v-if="['sm', 'admin'].includes(session.role)" to="/projects/new" class="btn primary">ลงทะเบียนโครงการ</router-link>
+    <PageHeader :module="salesRole ? 'Sales · ก่อนขาย' : 'Projects & Customers · ข้อมูลกลาง'" title="Project Register" :scope="scope.label" :subtitle="salesRole ? 'ทะเบียนโครงการ · Pipeline · ลงทะเบียนโครงการใหม่ (เริ่มที่สถานะ Opportunity)' : `${list.length} รายการ`">
+      <div v-if="salesRole" class="seg" role="radiogroup" aria-label="มุมมอง">
+        <button role="radio" :aria-checked="view === 'list'" @click="view = 'list'">รายการ</button>
+        <button role="radio" :aria-checked="view === 'board'" @click="view = 'board'">Pipeline</button>
+      </div>
+      <router-link v-if="canRegister" to="/projects/new" class="btn primary">+ ลงทะเบียนโครงการใหม่</router-link>
     </PageHeader>
+
+    <PipelineView v-if="view === 'board'" embedded />
+    <template v-else>
     <KpiStrip :items="kpis" />
 
     <div class="filters">
@@ -89,6 +104,7 @@ const kpis = computed(() => [
         <NEmpty description="ไม่พบโครงการที่ตรงกับตัวกรอง"><template #extra><NButton size="small" @click="clear">ล้างตัวกรอง</NButton></template></NEmpty>
       </template>
     </NDataTable>
+    </template>
   </div>
 </template>
 

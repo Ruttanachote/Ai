@@ -14,7 +14,7 @@ import MaPanel from '../components/MaPanel.vue'
 import PmRounds from '../components/PmRounds.vue'
 import RequirementPanel from '../components/RequirementPanel.vue'
 import ProcurementPanel from '../components/ProcurementPanel.vue'
-import { moveStage, notify, projects, session } from '../store'
+import { moveStage, notify, projects, session, scope } from '../store'
 import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account } from '../data/mock'
 import { validateMove, checkContractValue, appealWindowEnd, reopenAsNew, isTender } from '../domain/rules'
 import { SETTINGS, newApprovalSteps } from '../store'
@@ -22,7 +22,10 @@ import { probability, weightedValue, dealValue, teamShare } from '../domain/metr
 import { allowedMoves, stageOf, catOf, FORECAST_CAT, LOSS_REASONS, type StageKey, type ForecastCat } from '../data/model'
 
 const props = defineProps<{ id: string }>()
-const p = computed(() => projects.find((x) => x.id === props.id))
+// An SM opens only their own projects (or ones they collaborate on); other teams' deals stay hidden.
+const found = computed(() => projects.find((x) => x.id === props.id))
+const denied = computed(() => !!found.value && session.role === 'sm' && !scope.value.list.includes(found.value))
+const p = computed(() => (denied.value ? undefined : found.value))
 const parent = computed(() => projects.find((x) => x.id === p.value?.parentId))
 const children = computed(() => projects.filter((x) => x.parentId === props.id))
 
@@ -333,7 +336,7 @@ const drop = ref(false)
       </template>
     </Dialog>
   </div>
-  <div v-else class="page"><h1>ไม่พบโครงการ</h1><router-link to="/projects">กลับไปทะเบียนโครงการ</router-link></div>
+  <div v-else class="page"><h1>{{ denied ? 'ไม่มีสิทธิ์ดูโครงการนี้' : 'ไม่พบโครงการ' }}</h1><p v-if="denied" class="muted">โครงการนี้เป็นของ SM คนอื่น — คุณเห็นเฉพาะโครงการที่คุณดูแลหรือร่วมทำ</p><router-link to="/projects">กลับไปทะเบียนโครงการ</router-link></div>
 </template>
 
 <style scoped>

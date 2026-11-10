@@ -33,13 +33,12 @@ const menu = computed<MenuOption[]>(() => groups.value.map((g) => ({
 const activeKey = computed(() => {
   const p = route.path
   if (p.startsWith('/work/')) return '/work'
-  if (p === '/projects/new') return p
   if (p.startsWith('/projects/')) return '/projects'
   if (p.startsWith('/accounts/')) return '/accounts'
   return p
 })
 const crumb = computed(() => {
-  for (const g of NAV) for (const i of g.items) if (i.to === activeKey.value) return { group: g.title, page: i.label }
+  for (const g of NAV) for (const i of g.items) if (i.to === activeKey.value && i.roles.includes(session.role)) return { group: g.title, page: route.path === '/projects/new' ? 'ลงทะเบียนโครงการใหม่' : i.label }
   return null
 })
 

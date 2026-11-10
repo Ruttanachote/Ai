@@ -66,9 +66,8 @@ ch('menu', 'โครงสร้างเมนู', f'''
   ['', 'My Performance', 'ชั่วโมงทำงาน OT และงานที่เสร็จของตัวเอง'],
   ['<b>Projects &amp; Customers · ข้อมูลกลาง</b>', 'Project Register', 'ทะเบียนโครงการทุกสถานะ — จุดเริ่มต้นเปิดดูโครงการใดก็ได้'],
   ['', 'Customer Accounts', 'ทะเบียนลูกค้าและหน่วยงานผู้ใช้'],
-  ['<b>Sales · ก่อนขาย</b>', 'Sales Dashboard', 'ยอดขาย เป้า Pipeline และกำหนดการใกล้ถึง'],
-  ['', 'Sales Pipeline', 'บอร์ดดีลตามสถานะ ลากเพื่อย้ายสถานะ'],
-  ['', 'Opportunity Registration', 'ลงทะเบียนโอกาสขายใหม่'],
+  ['<b>Sales · ก่อนขาย</b> (หมวดแรก)', 'SM Dashboard', 'ยอดปิดเทียบเป้าที่ SM ตั้งเอง Pipeline และกำหนดการใกล้ถึง — SM เห็นเฉพาะของตัวเอง'],
+  ['', 'Project Register', 'ทะเบียนโครงการ มุมมองรายการและ Pipeline + ปุ่มลงทะเบียนโครงการใหม่ (เริ่มที่ Opportunity)'],
   ['', 'Solution Catalog', 'โซลูชันสำเร็จรูปที่ขายซ้ำได้'],
   ['<b>Delivery · ส่งมอบโครงการ</b>', 'Project Overview', 'ภาพรวมทุกโครงการที่กำลังส่งมอบ (PMO / หัวหน้า)'],
   ['', 'Project Workspace', 'พื้นที่ทำงานของ PM และทีม: งาน บอร์ด งวดงาน ความเสี่ยง ผู้ติดต่อ'],
@@ -124,7 +123,7 @@ ch('mywork', 'งานของฉัน (ทุกบทบาท)', f'''
 
 ch('sales', 'ฝ่ายขาย (Solution Manager)', f'''
 <h3>1. ลงทะเบียนโอกาสขาย</h3>
-{steps('เมนู <b>Opportunity Registration</b>',
+{steps('เมนู <b>Project Register › ลงทะเบียนโครงการใหม่</b>',
        'เลือกแหล่งที่มา: <b>ลูกค้ามีโอกาสจ้าง</b> หรือ <b>ทีมคิด Product เอง</b> (เลือกจาก Solution Catalog ระบบเติมชื่อ ทีม ราคา และ Proposal ตั้งต้นให้)',
        'กรอกลูกค้า ประเภทโครงการ ทีมเจ้าของ งบประมาณ และ Sale ที่ทำงานคู่กัน แล้วบันทึก — ระบบออกรหัสและสร้างโฟลเดอร์ SharePoint')}
 {img('05-register', 'ลงทะเบียนแบบ Product-led จาก Solution Catalog')}
@@ -145,12 +144,13 @@ ch('sales', 'ฝ่ายขาย (Solution Manager)', f'''
 {img('08-costsheet', 'Cost Sheet และสถานะการอนุมัติ')}
 {tip('ถ้าแก้ไฟล์ Excel หลังส่งขออนุมัติ คำขอจะถูกยกเลิก (Stale) ต้องส่งใหม่ — ผู้บริหารอนุมัติตามตัวเลขที่ถูกล็อกเท่านั้น', 'rule')}
 <h3>5. ย้ายสถานะ ประมูล และบันทึกผล</h3>
-{steps('กดปุ่มย้ายสถานะบนหน้าโครงการ หรือลากการ์ดใน <b>Sales Pipeline</b> — ระบบแสดงสิ่งที่ยังขาดถ้าไม่ผ่านเงื่อนไข',
+{steps('กดปุ่มย้ายสถานะบนหน้าโครงการ หรือลากการ์ดใน <b>Project Register › Pipeline</b> — ระบบแสดงสิ่งที่ยังขาดถ้าไม่ผ่านเงื่อนไข',
        'งานประมูลภาครัฐ: บันทึกเลข e-GP ราคากลาง ราคาที่ยื่น และ <b>วันคาดว่าประกาศผล</b> ในแท็บประมูล (ระบบเตือนล่วงหน้า 1 วัน)',
        'Sale แจ้งผล → SM กด Close Win (แนบประกาศผู้ชนะ + PO/สัญญา) หรือ Close Lose (ระบุเหตุผล คู่แข่ง ราคา)',
        'หลังชนะ กด <b>แจ้งทีมพัฒนา + ขอ PM</b> ในแท็บ Handover')}
-{img('04-pipeline', 'Sales Pipeline')}
-{img('02-sales-dashboard', 'Sales Dashboard')}
+{img('04-pipeline', 'Project Register › Pipeline')}
+{img('02-sales-dashboard', 'SM Dashboard')}
+{tip('กด <b>ตั้งเป้ายอดขายปีนี้</b> (มุมขวาบน) เพื่อกำหนดยอดที่ตั้งใจปิดให้ได้ในปี — ระบบเก็บประวัติการแก้เป้า และ SM คนอื่นไม่เห็นเป้าหรือยอดของคุณ')}
 {tip('ดีลภาครัฐปิด Close Win ได้หลังพ้นระยะอุทธรณ์ 7 วันทำการ และถ้ามูลค่าสัญญาต่างจากราคาที่อนุมัติเกิน ±2% หรือกำไรลดเกิน 3 จุด ต้องขออนุมัติหลังได้งาน', 'rule')}
 {img('09-catalog', 'Solution Catalog')}
 ''')
@@ -304,11 +304,11 @@ ch('admin', 'ผู้ดูแลระบบ', f'''
 
 ch('appendix', 'ภาคผนวก', f'''
 <h3>เมนูที่แต่ละบทบาทเห็น</h3>
-{table(['บทบาท', 'เมนู'], [['SM (Pre-sale)', 'Calendar · Project Register · Customer Accounts · Sales Dashboard · Sales Pipeline · Opportunity Registration · Solution Catalog'], ['หัวหน้ากลุ่ม / หัวหน้าทีม Dev', 'My Tasks · Approval Requests · Calendar · My Performance · Project Register · Customer Accounts · Sales Dashboard · Sales Pipeline · Solution Catalog · Project Overview · Project Workspace · Resource Workload'], ['รองผู้บริหาร / ผู้บริหาร DT', 'Executive Dashboard · Project Status Tracker · Mail Inbox · Calendar · Project Register'], ['PMO (DT3-3)', 'My Tasks · Calendar · My Performance · Project Register · Project Overview · Project Workspace · Resource Workload'], ['OPN (DT3-2)', 'My Tasks · Calendar · Project Register · Purchase Requisitions · Bank Guarantees'], ['Project Manager', 'My Tasks · Calendar · My Performance · Project Register · Project Overview · Project Workspace · Resource Workload · Purchase Requisitions'], ['ทีมพัฒนา', 'My Tasks · Calendar · My Performance · Project Workspace'], ['ทีม MA', 'My Tasks · Calendar · Project Register · Customer Accounts · Warranty &amp; Maintenance · Service Desk'], ['Call center', 'My Tasks · Calendar · Service Desk'], ['ผู้ดูแลระบบ', 'ทุกเมนู']])}
+{table(['บทบาท', 'เมนู'], [['SM (Pre-sale)', 'SM Dashboard · Project Register (รายการ · Pipeline · ลงทะเบียนโครงการใหม่) · Solution Catalog · Calendar · Customer Accounts'], ['หัวหน้ากลุ่ม / หัวหน้าทีม Dev', 'SM Dashboard · Project Register (รายการ · Pipeline) · Solution Catalog · My Tasks · Approval Requests · Calendar · My Performance · Customer Accounts · Project Overview · Project Workspace · Resource Workload'], ['รองผู้บริหาร / ผู้บริหาร DT', 'Executive Dashboard · Project Status Tracker · Mail Inbox · Calendar · Project Register'], ['PMO (DT3-3)', 'My Tasks · Calendar · My Performance · Project Register · Project Overview · Project Workspace · Resource Workload'], ['OPN (DT3-2)', 'My Tasks · Calendar · Project Register · Purchase Requisitions · Bank Guarantees'], ['Project Manager', 'My Tasks · Calendar · My Performance · Project Register · Project Overview · Project Workspace · Resource Workload · Purchase Requisitions'], ['ทีมพัฒนา', 'My Tasks · Calendar · My Performance · Project Workspace'], ['ทีม MA', 'My Tasks · Calendar · Project Register · Customer Accounts · Warranty &amp; Maintenance · Service Desk'], ['Call center', 'My Tasks · Calendar · Service Desk'], ['ผู้ดูแลระบบ', 'ทุกเมนู']])}
 <h3>บทบาทและหน้าแรก</h3>
 {table(['บทบาท', 'หน้าแรก', 'งานหลัก'], [
-  ['Solution Manager', 'Sales Dashboard', 'ลงทะเบียน Requirement ราคา ขออนุมัติ บันทึกผล'],
-  ['หัวหน้ากลุ่ม / หัวหน้าทีม Dev', 'Sales Dashboard', 'ตรวจ TOR จัดคน ดูยอดทีม ยกเลิก/เปิดโครงการใหม่'],
+  ['Solution Manager', 'SM Dashboard', 'ลงทะเบียน Requirement ราคา ขออนุมัติ บันทึกผล'],
+  ['หัวหน้ากลุ่ม / หัวหน้าทีม Dev', 'SM Dashboard', 'ตรวจ TOR จัดคน ดูยอดทีม ยกเลิก/เปิดโครงการใหม่'],
   ['รองผู้บริหาร', 'Mail Inbox', 'อนุมัติราคาขั้นแรก ติดตามทีมและโครงการ'],
   ['ผู้บริหาร DT', 'Executive Dashboard', 'ดูทีมเทียบเป้า ติดตามสถานะโครงการ อนุมัติราคาขั้นสุดท้าย'],
   ['PMO (DT3-3)', 'Project Overview', 'มอบหมาย PM Handover ติดตามทุกโครงการ'],

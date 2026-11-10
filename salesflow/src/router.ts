@@ -9,7 +9,7 @@ const router = createRouter({
   routes: [
     { path: '/login', component: () => import('./views/LoginView.vue') },
     { path: '/', component: () => import('./views/DashboardView.vue') },
-    { path: '/pipeline', component: () => import('./views/PipelineView.vue') },
+    { path: '/pipeline', redirect: { path: '/projects', query: { view: 'board' } } },
     { path: '/projects', component: () => import('./views/ProjectsView.vue') },
     { path: '/projects/new', component: () => import('./views/NewProjectView.vue') },
     { path: '/projects/:id', component: () => import('./views/ProjectDetailView.vue'), props: true },

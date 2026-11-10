@@ -67,10 +67,11 @@ function create() {
 
 <template>
   <div class="page">
+    <router-link to="/projects" class="back small">‹ Project Register</router-link>
     <div class="wrap">
       <form class="panel form" novalidate @submit.prevent="create">
         <header>
-          <h1>Opportunity Registration</h1>
+          <h1>ลงทะเบียนโครงการใหม่ <span class="chip presale">สถานะเริ่มต้น: Opportunity</span></h1>
           <p class="muted">กรอกเท่าที่รู้ตอนนี้ ข้อมูลอื่นเพิ่มได้ภายหลัง โครงการจะเริ่มที่สถานะ Opportunity</p>
         </header>
 
@@ -170,6 +171,8 @@ function create() {
 </template>
 
 <style scoped>
+.back { display: inline-block; margin-bottom: 12px; color: var(--muted); }
+header h1 .chip { vertical-align: middle; margin-left: 8px; font-size: 13px; }
 .wrap { display: grid; grid-template-columns: minmax(0, 680px) 1fr; gap: 24px; align-items: start; }
 .form { display: grid; gap: 20px; padding: 32px; }
 .form header p { margin-top: 6px; }

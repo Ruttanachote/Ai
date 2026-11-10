@@ -14,6 +14,15 @@ const EXEC: Role[] = ['exec', 'deputy']
 // mailbox, the project register and the calendar — nothing that needs hands-on input.
 export const NAV: NavGroup[] = [
   {
+    title: 'Sales · ก่อนขาย',
+    items: [
+      { to: '/', label: 'SM Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'admin'] },
+      // One register for the whole sales journey: list, pipeline board and "register a new project" (starts at Opportunity).
+      { to: '/projects', label: 'Project Register', icon: 'list', roles: ['sm', 'head'] },
+      { to: '/catalog', label: 'Solution Catalog', icon: 'folder', roles: ['sm', 'head', 'admin'] },
+    ],
+  },
+  {
     title: 'Executive · ผู้บริหาร DT',
     items: [
       { to: '/exec', label: 'Executive Dashboard', icon: 'dashboard', roles: [...EXEC, 'admin'] },
@@ -33,17 +42,8 @@ export const NAV: NavGroup[] = [
   {
     title: 'Projects & Customers · ข้อมูลกลาง',
     items: [
-      { to: '/projects', label: 'Project Register', icon: 'list', roles: ALL.filter((r) => r !== 'callcenter') },
+      { to: '/projects', label: 'Project Register', icon: 'list', roles: ALL.filter((r) => !['callcenter', 'sm', 'head'].includes(r)) },
       { to: '/accounts', label: 'Customer Accounts', icon: 'people', roles: ['sm', 'head', 'ma', 'admin'] },
-    ],
-  },
-  {
-    title: 'Sales · ก่อนขาย',
-    items: [
-      { to: '/', label: 'Sales Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'admin'] },
-      { to: '/pipeline', label: 'Sales Pipeline', icon: 'board', roles: ['sm', 'head', 'admin'] },
-      { to: '/projects/new', label: 'Opportunity Registration', icon: 'plus', roles: ['sm', 'admin'] },
-      { to: '/catalog', label: 'Solution Catalog', icon: 'folder', roles: ['sm', 'head', 'admin'] },
     ],
   },
   {
@@ -78,5 +78,7 @@ export const HOME: Record<Role, string> = {
   sm: '/', head: '/', deputy: '/inbox', exec: '/exec', pmo: '/delivery', opn: '/procurement', pm: '/work', dev: '/my-work', ma: '/ma', callcenter: '/helpdesk', admin: '/settings',
 }
 
+/** Pages reached from inside a menu rather than from the menu itself. */
+const EXTRA: Record<string, Role[]> = { '/projects/new': ['sm', 'admin'] }
 export const canSee = (path: string, role: Role) =>
-  NAV.flatMap((g) => g.items).some((i) => i.to === path && i.roles.includes(role))
+  (EXTRA[path]?.includes(role) ?? false) || NAV.flatMap((g) => g.items).some((i) => i.to === path && i.roles.includes(role))

@@ -5,8 +5,8 @@
 
 | บทบาท | หน้าแรก | เมนูที่เห็น | ทำอะไรได้ (สรุป) |
 |---|---|---|---|
-| **SM (Pre-sale)** | Sales Dashboard | Calendar · Project Register · Customer Accounts · Sales Dashboard · Sales Pipeline · Opportunity Registration · Solution Catalog | ลงทะเบียนโอกาสขาย · Requirement / TOR · Cost Sheet และขออนุมัติ (บันทึกประชุมก่อนส่ง) · ย้ายสถานะถึง Close Win · แจ้งทีมพัฒนาและขอ PM · ตั้งรอบ PM ตอนขาย |
-| **หัวหน้ากลุ่ม / หัวหน้าทีม Dev** | Sales Dashboard | My Tasks · Approval Requests · Calendar · My Performance · Project Register · Customer Accounts · Sales Dashboard · Sales Pipeline · Solution Catalog · Project Overview · Project Workspace · Resource Workload | ตรวจ TOR Final · ดูยอดกลุ่ม · จัดคนตามคำขอ PM · เปิดโครงการใหม่จากงานที่แพ้ · ยกเลิกหลังชนะ · ดูผลงานทีม |
+| **SM (Pre-sale)** | SM Dashboard | SM Dashboard · Project Register (รายการ · Pipeline · ลงทะเบียนโครงการใหม่) · Solution Catalog · Calendar · Customer Accounts | ตั้งเป้ายอดขายปีของตัวเอง · เห็นเฉพาะโครงการของตัวเอง (ไม่เห็นเป้าและยอดของทีมอื่น) · ลงทะเบียนโครงการใหม่ (เริ่ม Opportunity) · Requirement / TOR · Cost Sheet และขออนุมัติ (บันทึกประชุมก่อนส่ง) · ย้ายสถานะถึง Close Win · แจ้งทีมพัฒนาและขอ PM · ตั้งรอบ PM ตอนขาย |
+| **หัวหน้ากลุ่ม / หัวหน้าทีม Dev** | SM Dashboard | SM Dashboard · Project Register (รายการ · Pipeline) · Solution Catalog · My Tasks · Approval Requests · Calendar · My Performance · Customer Accounts · Project Overview · Project Workspace · Resource Workload | ตรวจ TOR Final · ดูยอดกลุ่ม · จัดคนตามคำขอ PM · เปิดโครงการใหม่จากงานที่แพ้ · ยกเลิกหลังชนะ · ดูผลงานทีม |
 | **รองผู้บริหาร DT** | Mail Inbox | Executive Dashboard · Project Status Tracker · Mail Inbox · Calendar · Project Register | อนุมัติราคาขั้นแรก · ดูทุกทีมและสถานะโครงการ (ไม่ย้ายสถานะเอง) |
 | **ผู้บริหาร DT** | Executive Dashboard | เหมือนรองผู้บริหาร | อนุมัติราคาขั้นสุดท้าย · ดูทุกทีมเทียบเป้า |
 | **PMO (DT3-3)** | Project Overview | My Tasks · Calendar · My Performance · Project Register · Project Overview · Project Workspace · Resource Workload | เลือก PM ตามความถนัด · ประชุม Handover · ดูแลความถนัดของ PM · ติดตามทุกโครงการที่ส่งมอบ |

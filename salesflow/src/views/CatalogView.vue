@@ -1,21 +1,22 @@
 <script setup lang="ts">
 // Solution Catalog: ready-made solutions the teams sell again. Shows how often each has been
-// sold and its booked value, and starts a Product-led opportunity from it.
+// sold and its booked value, and starts a Product-led opportunity from it. Sales figures follow
+// the viewer's scope — an SM sees only their own deals, never other teams' sales.
 import { computed } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
 import Avatar from '../components/Avatar.vue'
 import { CATALOG, baht, mb } from '../data/mock'
-import { projects, session } from '../store'
+import { scope, session } from '../store'
 import { bookedValue, isOpen, isWon, pipelineValue, sum } from '../domain/metrics'
 
 const rows = computed(() => CATALOG.map((c) => {
-  const deals = projects.filter((p) => p.catalogId === c.id)
+  const deals = scope.value.list.filter((p) => p.catalogId === c.id)
   return { c, deals, won: deals.filter(isWon), open: deals.filter(isOpen) }
 }))
 const kpis = computed(() => [
   { label: 'โซลูชันในแคตตาล็อก', value: String(CATALOG.length), note: `${new Set(CATALOG.map((c) => c.team)).size} ทีม` },
-  { label: 'โครงการจากแคตตาล็อก', value: String(rows.value.reduce((s, r) => s + r.deals.length, 0)), note: `จาก ${projects.length} โครงการทั้งหมด` },
+  { label: 'โครงการจากแคตตาล็อก', value: String(rows.value.reduce((s, r) => s + r.deals.length, 0)), note: `จาก ${scope.value.list.length} โครงการ${session.role === 'sm' ? 'ของคุณ' : ''}` },
   { label: 'มูลค่าที่ชนะแล้ว', value: mb(rows.value.reduce((s, r) => s + sum(r.won, bookedValue), 0)), note: 'ตามสัญญา' },
   { label: 'Pipeline เปิดอยู่', value: mb(rows.value.reduce((s, r) => s + sum(r.open, pipelineValue), 0)), note: 'ดีลที่ยังไม่ปิด' },
 ])
@@ -24,7 +25,7 @@ const canStart = computed(() => ['sm', 'admin'].includes(session.role))
 
 <template>
   <div class="page">
-    <PageHeader module="Sales · ก่อนขาย" title="Solution Catalog" scope="ทุกทีม DT" subtitle="โซลูชันสำเร็จรูปที่ขายซ้ำได้ — เริ่มโครงการแบบ Product-led ได้เอกสารตั้งต้นทันที">
+    <PageHeader module="Sales · ก่อนขาย" title="Solution Catalog" :scope="scope.label" subtitle="โซลูชันสำเร็จรูปที่ขายซ้ำได้ — เริ่มโครงการแบบ Product-led ได้เอกสารตั้งต้นทันที">
       <router-link v-if="canStart" to="/projects/new" class="btn primary">ลงทะเบียน Product-led</router-link>
     </PageHeader>
     <KpiStrip :items="kpis" />
