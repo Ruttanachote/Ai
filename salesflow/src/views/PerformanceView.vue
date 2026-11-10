@@ -13,7 +13,8 @@ import { doneDay } from '../domain/workflow'
 
 const canPick = computed(() => ['head', 'admin', 'pmo'].includes(session.role))
 const people = computed(() => PEOPLE.filter((u) => u.role === 'dev' || u.role === 'pm').filter((u) => session.role !== 'head' || groupOf(u.team ?? '') === groupOf(person(session.userId)?.team ?? '')))
-const who = ref(session.userId)
+// Admin / PMO are not in the PM-Dev list themselves, so start on the first person they can see.
+const who = ref(canPick.value && !people.value.some((u) => u.id === session.userId) ? people.value[0]?.id ?? session.userId : session.userId)
 const month = ref(TODAY_ISO.slice(0, 7))
 const days = computed(() => {
   const out: string[] = []

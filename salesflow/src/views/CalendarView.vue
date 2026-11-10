@@ -75,7 +75,9 @@ const upcoming = computed(() => events.value.filter((e) => e.day >= TODAY_ISO &&
 .f { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; padding: 4px 10px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); cursor: pointer; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
 .cal header { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-.cal header h2 { font-size: 18px; min-width: 160px; text-align: center; }
+.cal header { flex-wrap: wrap; }
+.cal header .btn.ghost { min-width: 40px; }
+.cal header h2 { font-size: 18px; min-width: 0; flex: 0 1 auto; text-align: center; }
 .dow, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .dow span { font-size: 12px; color: var(--muted); text-align: center; }
 .day { min-height: 108px; border: 1px solid var(--line); border-radius: 8px; padding: 4px; display: grid; align-content: start; gap: 2px; background: var(--surface); }
@@ -89,4 +91,6 @@ const upcoming = computed(() => events.value.filter((e) => e.day >= TODAY_ISO &&
 .up { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
 .up li { display: grid; gap: 2px; }
 @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .day { min-height: 72px; } .ev { font-size: 12px; } }
+/* Phones: day cells are ~40px wide, so events become colour bars; the 14-day list below carries the text. */
+@media (max-width: 560px) { .cal { padding: 12px; } .dow, .grid { gap: 2px; } .day { min-height: 56px; padding: 3px; border-radius: 6px; } .ev { font-size: 0; height: 6px; padding: 0; pointer-events: none; } .more { font-size: 10px; } }
 </style>

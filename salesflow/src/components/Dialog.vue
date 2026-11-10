@@ -21,9 +21,13 @@ const emit = defineEmits<{ close: [] }>()
 .dlg.wide { max-width: 720px; }
 header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 8px; }
 .x { padding: 0 10px; }
-.content { padding: 8px 24px 16px; overflow-y: auto; display: grid; gap: 16px; }
-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px 20px; border-top: 1px solid var(--line); }
+.content { padding: 8px 24px 16px; overflow-y: auto; overflow-x: hidden; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 16px 24px 20px; border-top: 1px solid var(--line); }
+@media (max-width: 560px) { header { padding: 16px 16px 6px; } .content { padding: 6px 16px 14px; } footer { padding: 12px 16px 16px; } }
 </style>
 <style>
+/* Long option labels must not push a field wider than the dialog on phones. */
+.dlg .content form, .dlg .content .field, .dlg .content fieldset { min-width: 0; }
+.dlg .content select.input, .dlg .content input.input, .dlg .content textarea.input { width: 100%; min-width: 0; max-width: 100%; }
 .dlg .content .chip { white-space: normal; height: auto; padding: 8px 12px; border-radius: 8px; line-height: 1.5; }
 </style>

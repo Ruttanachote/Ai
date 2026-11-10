@@ -91,8 +91,10 @@ function signIn() {
 .ms { min-height: 46px; font-size: 15px; }
 @media (max-width: 900px) {
   .login { grid-template-columns: 1fr; }
-  .visual { min-height: 440px; }
-  .caption { padding: 32px 20px; }
+  .visual { min-height: 0; order: 2; }
+  .form { order: 1; }
+  .caption { position: relative; padding: 32px 20px; }
+  .form { padding: 32px 20px; min-height: 0; }
   .flow { grid-template-columns: 1fr; }
 }
 </style>

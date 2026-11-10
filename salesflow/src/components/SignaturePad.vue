@@ -125,7 +125,7 @@ function save() { if (!empty.value) emit('save', exportPng(), mode.value) }
         <span v-if="!strokes.length" class="ph" aria-hidden="true">ลากเพื่อเซ็นชื่อที่นี่</span>
       </div>
       <div class="tools">
-        <span class="small muted">สีหมึก</span>
+        <span class="small muted" style="white-space: nowrap">สีหมึก</span>
         <button v-for="i in INKS" :key="i.c" class="ink" :class="{ on: ink === i.c }" :style="{ background: i.c }" :aria-label="`หมึก${i.l}`" :aria-pressed="ink === i.c" @click="ink = i.c" />
         <span class="sp2" />
         <button class="btn ghost sm" :disabled="!strokes.length" @click="undo">ย้อนกลับ</button>
@@ -152,7 +152,8 @@ function save() { if (!empty.value) emit('save', exportPng(), mode.value) }
 canvas { display: block; width: 100%; aspect-ratio: 560 / 180; cursor: crosshair; touch-action: none; border-radius: var(--r-md); }
 .line { position: absolute; left: 6%; right: 6%; bottom: 24%; border-bottom: 1px solid #c8ccd4; pointer-events: none; }
 .ph { position: absolute; inset: 0; display: grid; place-items: center; color: #9aa1ae; pointer-events: none; font-size: 14px; }
-.tools { display: flex; align-items: center; gap: 8px; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sp { min-width: 0; }
 .sp2 { flex: 1; }
 .ink { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line-strong); cursor: pointer; padding: 0; }
 .ink.on { box-shadow: 0 0 0 2px var(--focus); }

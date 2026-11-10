@@ -433,5 +433,5 @@ function create(kind: 'cost' | 'quote') {
 .pvph p { margin: 0; }
 .trash { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .trash li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
-@media (max-width: 640px) { .mg { grid-template-columns: 1fr; } .search { max-width: none; } }
+@media (max-width: 640px) { .mg { grid-template-columns: 1fr; } .search { max-width: none; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .folder { padding: 12px 6px 10px; } }
 </style>
