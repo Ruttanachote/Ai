@@ -35,7 +35,7 @@ export function requirementsFor(stage: StageKey, p: Project, today: string): str
     if (!(p.sales ?? []).length) e.push('ต้องมี Sale ที่ทำงานคู่กับ SM อย่างน้อย 1 คน')
   }
   if (idx(stage) >= idx('forecast') && idx(stage) >= 0) {
-    if (!validApproval(p, today)) e.push('ต้องมีใบเสนอราคาที่อนุมัติครบและยังไม่หมดอายุ')
+    if (!validApproval(p, today)) e.push('Cost Sheet และ Quotation ต้อง Approved ครบทุกขั้นและยังไม่หมดอายุ (แท็บ Cost Sheet และใบเสนอราคา)')
     if (!p.expectedClose) e.push('ต้องกำหนด Expected Close')
     // Sales documents at 70%: TOR Final reviewed by the group head, and a Proposal (renewals excluded).
     if (p.type !== 'MA') {

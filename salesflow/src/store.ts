@@ -20,6 +20,8 @@ export function setRole(r: Role, userId?: string) {
 /** Dev-team accounts (one per person — SA, BA, UX/UI, Front-end, Back-end, DevOps, QA). */
 export const devAccounts = () => PEOPLE.filter((p) => p.role === 'dev').sort((a, b) => (a.team ?? '').localeCompare(b.team ?? '') || (a.position ?? '').localeCompare(b.position ?? ''))
 
+import { seedDocs } from './data/seedDocs'
+seedDocs(PROJECTS)
 export const projects = reactive(PROJECTS)
 /** Helpdesk tickets — Call center adds them, MA works them; one list for every page. */
 export const tickets = reactive(TICKETS)
@@ -65,8 +67,11 @@ export const SETTINGS = reactive({ tolerancePct: 2, gpDropPct: 3, approvalValidD
 export function moveStage(id: string, to: StageKey, note: string, by: string) {
   const p = projects.find((x) => x.id === id)
   if (!p) return
+  const from = p.stage
   p.stage = to
   p.history.push({ stage: to, note, at: 'วันนี้', by })
+  p.activities ??= []
+  p.activities.unshift({ id: 'st' + Date.now(), at: TODAY_ISO, who: by, type: 'stage', text: `เปลี่ยนสถานะ${note ? ' — ' + note : ''}`, from, to })
 }
 
 /** Feedback messages — rendered by Naive UI's message API in App (see Feedback.vue). */
@@ -153,6 +158,14 @@ import type { Project } from './data/model'
  * step (or closes it and locks the approved figures); reject sends it back to the SM with the
  * documents to fix. Same rule wherever the approver decides.
  */
+import { costTotals } from './domain/salesdocs'
+import type { CostSheet } from './data/model'
+/** After a Cost Sheet is approved: Revenue / COGS / GP / CM go back to the project and dashboards read them. */
+export function writeBack(p: Project, cs: CostSheet) {
+  const t = costTotals(cs)
+  p.revenue = t.revenue; p.cost = t.cogs; p.contributionMargin = t.cm
+  p.financeSource = { costSheetId: cs.id, label: `จาก Cost Sheet rev.${cs.revision} · อนุมัติ ${cs.approvedAt ?? TODAY_ISO}` }
+}
 export function decideApproval(p: Project, kind: 'approve' | 'reject', note: string, fixDocs: string[], channel: 'web' | 'email_link' | 'mail_inbox' = 'web') {
   const a = p.approval
   if (!a) return
@@ -163,12 +176,22 @@ export function decideApproval(p: Project, kind: 'approve' | 'reject', note: str
   s.at = 'วันนี้'
   s.channel = channel
   s.note = ((kind === 'reject' && fixDocs.length ? `[แก้: ${fixDocs.join(', ')}] ` : '') + note) || undefined
-  if (kind === 'reject') { a.status = 'rejected'; a.fixDocs = [...fixDocs] }
-  else if (a.steps[i + 1]) a.steps[i + 1].status = 'pending'
+  const cs = p.costSheets?.find((c) => c.id === a.costSheetId)
+  const qt = p.quotations?.find((q) => q.id === a.quotationId)
+  if (kind === 'reject') {
+    a.status = 'rejected'; a.fixDocs = [...fixDocs]
+    if (cs) cs.status = 'REJECTED'
+    if (qt) qt.status = 'REJECTED'
+  } else if (a.steps[i + 1]) a.steps[i + 1].status = 'pending'
   else {
     a.status = 'approved'
     if (a.snapshot) { p.revenue = a.snapshot.revenue; p.cost = a.snapshot.cost }
+    // Approved: lock both documents and write the figures back to the project.
+    if (cs) { cs.status = 'APPROVED'; cs.approvedAt = TODAY_ISO; writeBack(p, cs) }
+    if (qt) { qt.status = 'APPROVED'; qt.approvedAt = TODAY_ISO }
   }
+  p.activities ??= []
+  p.activities.unshift({ id: 'a' + Date.now(), at: TODAY_ISO, who: s.who, type: 'approval', text: `${s.role}: ${kind === 'approve' ? 'อนุมัติ' : 'ส่งกลับแก้ไข'} ${a.version}${s.note ? ' — ' + s.note : ''}` })
   const sm = a.submittedBy ?? p.sm
   const next = kind === 'approve' ? a.steps[i + 1] : undefined
   outbox.unshift({ id: 'm' + mailNo++, at: TODAY_ISO, from: 'One Platform', to: sm, kind: 'email', ref: p.id + ':' + a.version + ':' + i,
@@ -179,7 +202,7 @@ export function decideApproval(p: Project, kind: 'approve' | 'reject', note: str
 }
 
 /** Mails the approver has opened in Mail Inbox (key: projectId:version). */
-export const mailRead = reactive(new Set<string>(['p3:v2', 'p4:v2']))
+export const mailRead = reactive(new Set<string>(['p3:rev.2', 'p4:rev.2']))
 export const mailStarred = reactive(new Set<string>())
 
 /* ---------------- Team administration (admin) ---------------- */

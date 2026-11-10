@@ -411,6 +411,10 @@ export interface Project {
   deliveredAt?: string
   renewalNotices?: { round: 1 | 2; at: string; to: string }[]
   devNotified?: string
+  /** Written back from the approved Cost Sheet. */
+  contributionMargin?: number
+  /** Where Revenue / COGS come from: the approved Cost Sheet, or a manual estimate. */
+  financeSource?: { costSheetId: string; label: string }
 }
 
 /* ---------------- Leave declaration (not synced with HR — a log of who is away and what it touches) ---------------- */

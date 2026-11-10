@@ -44,6 +44,8 @@ watch([list, () => route.query.p], () => {
 }, { immediate: true })
 
 const gp = computed(() => mail.value?.a.snapshot?.gp ?? null)
+const csDoc = computed(() => mail.value?.p.costSheets?.find((c) => c.id === mail.value?.a.costSheetId))
+const qtDoc = computed(() => mail.value?.p.quotations?.find((q) => q.id === mail.value?.a.quotationId))
 const myTurn = computed(() => !!mail.value && mail.value.state === 'pending' && canDecideStep(mail.value.step, session.role) && mail.value.a.submittedBy !== session.userId)
 
 // Decision
@@ -152,8 +154,8 @@ const CHANNEL: Record<string, string> = { web: 'ในระบบ', email_link:
 
           <h4 class="att-h">2 attachments</h4>
           <div class="atts">
-            <a class="att" href="#" @click.prevent="notify('เปิดไฟล์ใน Excel Online (อ่านอย่างเดียว)', 'info')"><Icon name="excel" :size="22" /><span>Cost Sheet {{ mail.a.version }}.xlsx</span><span class="chip" :class="MAIL_STATE[mail.state].tone">{{ MAIL_STATE[mail.state].label }}</span></a>
-            <a class="att" href="#" @click.prevent="notify('เปิด PDF ใบเสนอราคา', 'info')"><Icon name="file" :size="22" /><span>Quotation {{ mail.a.version }}.pdf</span></a>
+            <router-link class="att" :to="mail.a.costSheetId ? `/projects/${mail.p.id}/cost-sheet/${mail.a.costSheetId}` : `/projects/${mail.p.id}?tab=cost`"><Icon name="excel" :size="22" /><span>Cost Sheet {{ csDoc?.docNo ?? '' }} {{ mail.a.version }}</span><span class="chip" :class="MAIL_STATE[mail.state].tone">{{ MAIL_STATE[mail.state].label }}</span></router-link>
+            <router-link class="att" :to="mail.a.quotationId ? `/projects/${mail.p.id}/quotation/${mail.a.quotationId}` : `/projects/${mail.p.id}?tab=cost`"><Icon name="file" :size="22" /><span>Quotation {{ qtDoc?.docNo ?? '' }} {{ mail.a.version }}</span></router-link>
           </div>
 
           <section class="chain">

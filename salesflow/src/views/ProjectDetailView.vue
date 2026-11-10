@@ -7,8 +7,10 @@ import StageBadge from '../components/StageBadge.vue'
 import Avatar from '../components/Avatar.vue'
 import Icon from '../components/Icon.vue'
 import Dialog from '../components/Dialog.vue'
-import FolderGrid from '../components/FolderGrid.vue'
-import CostSheetPanel from '../components/CostSheetPanel.vue'
+import DocumentsPanel from '../components/docs/DocumentsPanel.vue'
+import CostQuotePanel from '../components/docs/CostQuotePanel.vue'
+import ActivityPanel from '../components/docs/ActivityPanel.vue'
+import { canSeeCost, isOwner } from '../docstore'
 import DeliveryPanel from '../components/DeliveryPanel.vue'
 import MaPanel from '../components/MaPanel.vue'
 import PmRounds from '../components/PmRounds.vue'
@@ -33,11 +35,11 @@ type Tab = 'overview' | 'req' | 'cost' | 'proc' | 'delivery' | 'ma' | 'history'
 const tab = ref<Tab>((useRoute().query.tab as Tab) || 'overview')
 const post = computed(() => !!p.value && ['win', 'handover', 'delivery', 'warranty', 'ended', 'cancelled'].includes(p.value.stage))
 const tabs = computed(() => {
-  const t: { k: Tab; l: string }[] = [{ k: 'overview', l: 'ภาพรวมและเอกสาร' }, ...(p.value?.type !== 'MA' ? [{ k: 'req' as Tab, l: 'Requirement และ TOR' }] : []), { k: 'cost', l: 'Cost Sheet และใบเสนอราคา' }]
+  const t: { k: Tab; l: string }[] = [{ k: 'overview', l: 'ภาพรวมและเอกสาร' }, ...(p.value?.type !== 'MA' ? [{ k: 'req' as Tab, l: 'Requirement และ TOR' }] : []), ...(p.value && canSeeCost(p.value) ? [{ k: 'cost' as Tab, l: 'Cost Sheet และใบเสนอราคา' }] : [])]
   if (p.value?.bid || post.value) t.push({ k: 'proc', l: 'ประมูล หลักประกัน ค่าปรับ' })
   if (post.value) t.push({ k: 'delivery', l: p.value?.stage === 'win' || p.value?.stage === 'handover' ? 'Handover' : 'แผนงานและ Task' })
   if (p.value && ['warranty', 'ended'].includes(p.value.stage)) t.push({ k: 'ma', l: 'ประกันและ MA' })
-  t.push({ k: 'history', l: 'ประวัติโครงการ' })
+  t.push({ k: 'history', l: 'Activity' })
   return t
 })
 
@@ -138,12 +140,10 @@ const reopened = computed(() => projects.filter((x) => x.reopenedFromId === prop
 const fromLost = computed(() => projects.find((x) => x.id === p.value?.reopenedFromId))
 
 const gp = computed(() => (p.value ? p.value.revenue - p.value.cost : 0))
-const files = { TOR: 3, Proposal: 2, 'Cost Sheet': 1, Quotation: 1, Contract: 1, 'Official PO': 1, Handover: 2, 'Summary Plan Sheet': 1, 'PM Report': 4, 'Warranty Certificate': 1, 'SLA Report': 3 }
 const dates = computed(() => p.value ? [
   ['Bid Due Date', p.value.bidDue], ['Expected Close', p.value.expectedClose], ['Start Project', p.value.startProject],
   ['End Project', p.value.endProject], ['Start Warranty', p.value.startWarranty], ['End Warranty', p.value.endWarranty],
 ] as [string, string | undefined][] : [])
-const drop = ref(false)
 </script>
 
 <template>
@@ -165,9 +165,10 @@ const drop = ref(false)
           <template v-if="parent"> · ต่อจาก <router-link :to="`/projects/${parent.id}`">{{ parent.code }}</router-link></template>
           <template v-if="fromLost"> · เปิดใหม่จาก <router-link :to="`/projects/${fromLost.id}`">{{ fromLost.code }}</router-link></template>
         </p>
-        <div v-if="moves.length || canReopen" class="moves">
+        <div v-if="moves.length || canReopen || isOwner(p)" class="moves">
           <button v-for="m in moves" :key="m" class="btn" :class="m === 'lose' || m === 'cancelled' ? 'quiet' : 'light'" @click="target = m">ย้ายไป {{ stageOf(m).label }}</button>
           <button v-if="canReopen" class="btn light" @click="reopen">เปิดโครงการใหม่จากดีลนี้</button>
+          <button v-if="isOwner(p) && ['pipeline', 'forecast', 'rebidding'].includes(p.stage) && p.approval?.status !== 'pending'" class="btn light" @click="tab = 'cost'">Send to Approve</button>
         </div>
         <p v-if="reopened.length" class="sub small">เปิดใหม่แล้วเป็น <router-link v-for="r in reopened" :key="r.id" :to="`/projects/${r.id}`">{{ r.code }}</router-link></p>
       </div>
@@ -190,9 +191,10 @@ const drop = ref(false)
             <dt>ลูกค้า</dt><dd><router-link v-if="p.customerAccountId" :to="`/accounts/${p.customerAccountId}`">{{ account(p.customerAccountId)?.name }}</router-link><template v-else>{{ p.customer }}<em>ยังไม่ผูกทะเบียนลูกค้า</em></template></dd>
             <dt>End User</dt><dd>{{ account(p.endUserAccountId)?.name ?? p.endUser }}</dd>
             <template v-if="p.contractValue"><dt>มูลค่าตามสัญญา</dt><dd class="num strong">{{ baht(p.contractValue) }}</dd></template>
-            <dt>Revenue</dt><dd class="num strong">{{ baht(p.revenue) }}<em v-if="!p.revenue">รอ Quotation อนุมัติ</em></dd>
+            <dt>Revenue</dt><dd class="num strong">{{ baht(p.revenue) }}<em v-if="p.financeSource" class="src">{{ p.financeSource.label }}</em><em v-else-if="p.revenue" class="src est">ประมาณการ — ยังไม่มี Cost Sheet อนุมัติ</em><em v-else>รอ Cost Sheet อนุมัติ</em></dd>
             <dt>Cost (COGS)</dt><dd class="num">{{ baht(p.cost) }}<em v-if="!p.cost">รอ Cost Sheet อนุมัติ</em></dd>
             <dt>Gross Profit</dt><dd class="num strong">{{ baht(gp) }}<span v-if="p.revenue" class="muted"> · {{ ((gp / p.revenue) * 100).toFixed(1) }}%</span></dd>
+            <template v-if="p.contributionMargin !== undefined"><dt>Contribution Margin</dt><dd class="num">{{ baht(p.contributionMargin) }}</dd></template>
             <dt>Budget ลูกค้า</dt><dd class="num">{{ baht(p.budget) }}</dd>
             <template v-if="stageOf(p.stage).phase === 'presale'">
               <dt>โอกาสปิด</dt><dd class="num">{{ Math.round(probability(p) * 100) }}% · ถ่วงน้ำหนัก {{ baht(Math.round(weightedValue(p))) }}</dd>
@@ -239,27 +241,7 @@ const drop = ref(false)
       </div>
 
       <div class="right">
-        <section class="panel">
-          <div class="panel-head"><h2>เอกสารก่อนการขาย</h2><span class="muted small">SharePoint › {{ p.code }}</span></div>
-          <FolderGrid :stage="p.stage" set="pre" :files="p.stage === 'opportunity' ? {} : files" @open="(n) => notify(`เปิดโฟลเดอร์ ${n} ใน SharePoint`)" />
-        </section>
-        <section class="panel">
-          <div class="panel-head"><h2>เอกสารหลังการขาย</h2></div>
-          <FolderGrid :stage="p.stage" set="post" :files="post ? files : {}" @open="(n) => notify(`เปิดโฟลเดอร์ ${n} ใน SharePoint`)" />
-        </section>
-        <section v-if="['warranty', 'ended'].includes(p.stage) || p.type === 'MA'" class="panel">
-          <div class="panel-head"><h2>เอกสารประกันและ MA</h2></div>
-          <FolderGrid :stage="p.stage" set="ma" :files="files" @open="(n) => notify(`เปิดโฟลเดอร์ ${n} ใน SharePoint`)" />
-        </section>
-        <section class="panel">
-          <div class="panel-head"><h2>เอกสารอื่น</h2></div>
-          <label class="drop" :class="{ on: drop }" @dragover.prevent="drop = true" @dragleave="drop = false" @drop.prevent="drop = false; notify('อัปโหลดไฟล์แล้ว')">
-            <input type="file" multiple class="sr" @change="notify('อัปโหลดไฟล์แล้ว')" />
-            <Icon name="upload" :size="22" />
-            <strong>คลิกหรือลากไฟล์มาวางเพื่ออัปโหลด</strong>
-            <span class="muted small">เช่น บันทึกการประชุม ภาพหน้างาน</span>
-          </label>
-        </section>
+        <DocumentsPanel :p="p" @open-cost="tab = 'cost'" />
         <section v-if="children.length" class="panel">
           <div class="panel-head"><h2>โครงการ MA ต่อเนื่อง</h2></div>
           <router-link v-for="c in children" :key="c.id" :to="`/projects/${c.id}`" class="child">
@@ -270,21 +252,13 @@ const drop = ref(false)
     </div>
 
     <RequirementPanel v-if="tab === 'req'" :p="p" />
-    <CostSheetPanel v-if="tab === 'cost'" :p="p" />
+    <CostQuotePanel v-if="tab === 'cost'" :p="p" />
     <DeliveryPanel v-if="tab === 'delivery'" :p="p" />
     <PmRounds v-if="tab === 'overview' && session.role !== 'opn'" :p="p" class="pmov" />
     <MaPanel v-if="tab === 'ma'" :p="p" />
     <ProcurementPanel v-if="tab === 'proc'" :p="p" />
 
-    <section v-if="tab === 'history'" class="panel">
-      <ol class="hist">
-        <li v-for="(h, i) in [...p.history].reverse()" :key="i">
-          <StageBadge :stage="h.stage" />
-          <div><strong>{{ h.note }}</strong><p class="small muted">{{ h.at }} · {{ h.by }}</p></div>
-        </li>
-        <li v-if="!p.history.length" class="muted">ยังไม่มีประวัติ</li>
-      </ol>
-    </section>
+    <ActivityPanel v-if="tab === 'history'" :p="p" />
 
     <Dialog :open="!!target" :title="target ? `ย้ายไป ${stageOf(target).label}` : ''" wide @close="target = null">
       <p v-if="target">{{ stageOf(target).hint }}</p>
@@ -412,4 +386,6 @@ const drop = ref(false)
 @media (max-width: 1100px) { .ov { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .cover-in { padding: 20px; } .hist li { grid-template-columns: 1fr; gap: 6px; } }
 .pmov { margin-top: 20px; }
+.kv dd em.src { display: block; font-style: normal; font-size: 12px; color: var(--win); }
+.kv dd em.src.est { color: var(--warn); }
 </style>
