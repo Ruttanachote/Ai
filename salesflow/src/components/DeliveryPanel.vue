@@ -28,7 +28,7 @@ const checklist = reactive([
 ])
 watch(checklist, () => { props.p.handoverDone = checklist.every((c) => c.done) }, { deep: true })
 const pick = reactive({ pm: props.p.pm ?? '', team: props.p.team })
-const canAssign = computed(() => ['pmo', 'head', 'admin'].includes(session.role))
+const canAssign = computed(() => ['pmo', 'admin'].includes(session.role))
 // PMO picks a PM whose skills fit the project (hardware / on-site vs. software), lightest load first.
 const need = computed(() => projectNeeds(props.p))
 const candidates = computed(() => rankPms(props.p, PEOPLE, projects))
@@ -184,7 +184,7 @@ function crToWork(c: (typeof crs)[number]) {
         <button v-if="canNotifyDev" class="btn" @click="notifyDev">แจ้งทีมพัฒนา + ขอ PM</button>
         <p v-else-if="p.devNotified" class="small muted">แจ้งทีมพัฒนาและ PMO แล้ว {{ thDate(p.devNotified) }}</p>
         <button v-if="canAssign" class="btn primary" :disabled="!pick.pm" @click="assign">มอบหมาย PM และนัดประชุม Handover</button>
-        <p v-else class="hint">PMO หรือหัวหน้ากลุ่มเป็นผู้มอบหมาย PM</p>
+        <p v-else class="hint">PMO เป็นผู้เลือกและมอบหมาย PM</p>
       </div>
     </div>
     <div class="att">

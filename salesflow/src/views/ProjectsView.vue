@@ -71,7 +71,7 @@ const kpis = computed(() => [
 <template>
   <div class="page">
     <PageHeader module="Projects & Customers · ข้อมูลกลาง" title="Project Register" :scope="scope.label" :subtitle="`${list.length} รายการ`">
-      <router-link v-if="['sm', 'head', 'admin'].includes(session.role)" to="/projects/new" class="btn primary">ลงทะเบียนโครงการ</router-link>
+      <router-link v-if="['sm', 'admin'].includes(session.role)" to="/projects/new" class="btn primary">ลงทะเบียนโครงการ</router-link>
     </PageHeader>
     <KpiStrip :items="kpis" />
 

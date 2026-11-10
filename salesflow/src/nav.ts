@@ -33,8 +33,8 @@ export const NAV: NavGroup[] = [
   {
     title: 'Projects & Customers · ข้อมูลกลาง',
     items: [
-      { to: '/projects', label: 'Project Register', icon: 'list', roles: ALL },
-      { to: '/accounts', label: 'Customer Accounts', icon: 'people', roles: ['sm', 'head', 'pmo', 'ma', 'admin'] },
+      { to: '/projects', label: 'Project Register', icon: 'list', roles: ALL.filter((r) => r !== 'callcenter') },
+      { to: '/accounts', label: 'Customer Accounts', icon: 'people', roles: ['sm', 'head', 'ma', 'admin'] },
     ],
   },
   {
@@ -42,8 +42,8 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/', label: 'Sales Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'admin'] },
       { to: '/pipeline', label: 'Sales Pipeline', icon: 'board', roles: ['sm', 'head', 'admin'] },
-      { to: '/projects/new', label: 'Opportunity Registration', icon: 'plus', roles: ['sm', 'head', 'admin'] },
-      { to: '/catalog', label: 'Solution Catalog', icon: 'folder', roles: ['sm', 'head', 'pmo', 'admin'] },
+      { to: '/projects/new', label: 'Opportunity Registration', icon: 'plus', roles: ['sm', 'admin'] },
+      { to: '/catalog', label: 'Solution Catalog', icon: 'folder', roles: ['sm', 'head', 'admin'] },
     ],
   },
   {
@@ -57,7 +57,7 @@ export const NAV: NavGroup[] = [
   {
     title: 'After-Sales · ประกันและ MA',
     items: [
-      { to: '/ma', label: 'Warranty & Maintenance', icon: 'shield', roles: ['ma', 'pmo', 'head', 'sm', 'admin'] },
+      { to: '/ma', label: 'Warranty & Maintenance', icon: 'shield', roles: ['ma', 'admin'] },
       { to: '/helpdesk', label: 'Service Desk', icon: 'ticket', roles: ['callcenter', 'ma', 'admin'] },
     ],
   },
@@ -65,7 +65,7 @@ export const NAV: NavGroup[] = [
     title: 'Finance · จัดซื้อและการเงิน',
     items: [
       { to: '/procurement', label: 'Purchase Requisitions', icon: 'file', roles: ['opn', 'pm', 'admin'] },
-      { to: '/guarantees', label: 'Bank Guarantees', icon: 'lock', roles: ['opn', 'head', 'pmo', 'admin'] },
+      { to: '/guarantees', label: 'Bank Guarantees', icon: 'lock', roles: ['opn', 'admin'] },
     ],
   },
   {

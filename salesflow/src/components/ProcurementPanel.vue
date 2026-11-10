@@ -63,7 +63,7 @@ const cash = computed(() =>
     return { ...m, vat, wht, net: m.payment! + vat - wht }
   }),
 )
-const canEdit = computed(() => ['sm', 'head', 'pm', 'admin'].includes(session.role))
+const canEdit = computed(() => ['sm', 'pm', 'admin'].includes(session.role))
 </script>
 
 <template>

@@ -40,7 +40,7 @@ const tabs = computed(() => {
 
 const moves = computed(() => (p.value ? allowedMoves(p.value.stage, session.role, p.value.type).filter((m) => !(p.value!.stage === 'lose' && m === 'pipeline')) : []))
 // Lost deals are never reopened in place (win rate history must not change) — heads open a new linked deal.
-const canReopen = computed(() => p.value?.stage === 'lose' && ['head', 'exec', 'admin'].includes(session.role))
+const canReopen = computed(() => p.value?.stage === 'lose' && ['head', 'admin'].includes(session.role))
 const target = ref<StageKey | null>(null)
 const reason = ref('')
 const forward = computed(() => !!target.value && !['lose', 'cancelled'].includes(target.value))

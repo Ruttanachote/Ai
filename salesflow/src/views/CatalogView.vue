@@ -19,7 +19,7 @@ const kpis = computed(() => [
   { label: 'มูลค่าที่ชนะแล้ว', value: mb(rows.value.reduce((s, r) => s + sum(r.won, bookedValue), 0)), note: 'ตามสัญญา' },
   { label: 'Pipeline เปิดอยู่', value: mb(rows.value.reduce((s, r) => s + sum(r.open, pipelineValue), 0)), note: 'ดีลที่ยังไม่ปิด' },
 ])
-const canStart = computed(() => ['sm', 'head', 'admin'].includes(session.role))
+const canStart = computed(() => ['sm', 'admin'].includes(session.role))
 </script>
 
 <template>

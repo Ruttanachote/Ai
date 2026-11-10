@@ -59,9 +59,9 @@ export type Role = 'sm' | 'head' | 'deputy' | 'exec' | 'pmo' | 'opn' | 'pm' | 'd
 // Sale is not a platform user — Sale names are kept on each project for reference only.
 export const ROLES: Record<Role, { label: string; th: string }> = {
   sm: { label: 'Solution Manager (Pre-sale)', th: 'เก็บ Requirement กับ Sale ประเมิน Man-day ทำ Cost Sheet และใบเสนอราคาตาม TOR' },
-  head: { label: 'หัวหน้ากลุ่ม / หัวหน้าทีม Dev', th: 'ดูยอดทั้งกลุ่ม เข้าประชุม Handover เปิดดีลใหม่จากงานที่แพ้ ยกเลิกโครงการ' },
-  deputy: { label: 'รองผู้บริหาร DT', th: 'อนุมัติ Cost Sheet และใบเสนอราคาขั้นแรก' },
-  exec: { label: 'ผู้บริหาร DT', th: 'อนุมัติขั้นสุดท้าย ดูยอดขายทุกกลุ่ม' },
+  head: { label: 'หัวหน้ากลุ่ม / หัวหน้าทีม Dev', th: 'ดูยอดทั้งกลุ่ม ตรวจ TOR Final จัดคนให้โครงการ เปิดดีลใหม่จากงานที่แพ้ ยกเลิกโครงการ' },
+  deputy: { label: 'รองผู้บริหาร DT', th: 'อนุมัติราคาขั้นแรกใน Mail Inbox ดูทีมและสถานะโครงการ' },
+  exec: { label: 'ผู้บริหาร DT', th: 'อนุมัติราคาขั้นสุดท้าย ดูทุกทีมเทียบเป้าและสถานะโครงการ' },
   pmo: { label: 'PMO (DT3-3)', th: 'จัดประชุม Handover มอบหมาย PM และทีม Dev' },
   opn: { label: 'OPN (DT3-2)', th: 'จัดซื้อและการเงินโครงการ อนุมัติการเบิกจ่ายจัดซื้อ' },
   pm: { label: 'Project Manager', th: 'รับงานหลัง Handover คุมขอบเขต แผน ความเสี่ยง อนุมัติ OT ในวงเงินที่กันไว้' },
@@ -93,7 +93,8 @@ export interface Team {
 
 /** Which stage transitions each role may perform (enforced server-side as well). */
 export function allowedMoves(stage: StageKey, role: Role, type?: ProjectType): StageKey[] {
-  const lead = role === 'head' || role === 'deputy' || role === 'exec' || role === 'admin'
+  // Executives (deputy, exec) approve and oversee; they do not move project stages themselves.
+  const lead = role === 'head' || role === 'admin'
   // MA-type renewals are sold by the MA team, so MA moves them through the sales stages.
   const sm = role === 'sm' || lead || (type === 'MA' && role === 'ma')
   switch (stage) {

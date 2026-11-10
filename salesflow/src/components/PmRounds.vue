@@ -12,7 +12,7 @@ import { notify, session } from '../store'
 const props = defineProps<{ p: Project }>()
 const plan = computed(() => props.p.pmPlan)
 const rounds = computed(() => props.p.pmRounds ?? [])
-const canEdit = computed(() => ['ma', 'admin', 'head'].includes(session.role) || (session.role === 'sm' && props.p.sm === session.userId && !['warranty', 'ended'].includes(props.p.stage)))
+const canEdit = computed(() => ['ma', 'admin'].includes(session.role) || (session.role === 'sm' && props.p.sm === session.userId && !['warranty', 'ended'].includes(props.p.stage)))
 const sent = computed(() => rounds.value.filter((r) => r.status === 'sent').length)
 const open = ref<string | null>(null)
 

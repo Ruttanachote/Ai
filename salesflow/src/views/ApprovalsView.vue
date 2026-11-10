@@ -18,7 +18,7 @@ const waiting = computed(() =>
 // TOR Final waiting for this group head (or admin) before it goes to the customer.
 const torQueue = computed(() => scope.value.list.filter((p) => p.torReview?.status === 'pending' && ['head', 'admin'].includes(session.role)))
 const others = computed(() => withApproval.value.filter((p) => !waiting.value.includes(p)))
-const reopen = computed(() => (['head', 'exec', 'admin'].includes(session.role) ? scope.value.list.filter((p) => p.stage === 'lose') : []))
+const reopen = computed(() => (['head', 'admin'].includes(session.role) ? scope.value.list.filter((p) => p.stage === 'lose') : []))
 const kpis = computed(() => [
   { label: 'ถึงคิวคุณ', value: String(waiting.value.length + torQueue.value.length), note: mb(sum(waiting.value, pipelineValue)) + ' มูลค่ารวม', tone: waiting.value.length ? ('warn' as const) : ('' as const) },
   { label: 'รอผู้อื่นพิจารณา', value: String(others.value.filter((p) => approvalState(p, TODAY_ISO) === 'pending').length), note: 'คำขอที่ยังไม่ครบทุกขั้น' },

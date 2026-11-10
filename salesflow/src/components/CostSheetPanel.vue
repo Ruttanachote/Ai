@@ -67,7 +67,7 @@ function recall() {
   notify('ดึงคำขออนุมัติกลับแล้ว แก้ไฟล์แล้วส่งใหม่ได้')
 }
 // SM owns sales quotations; for MA-type renewals the MA team issues the quotation itself.
-const isOwner = computed(() => (props.p.type === 'MA' ? ['ma', 'admin'] : ['sm', 'head', 'admin']).includes(session.role))
+const isOwner = computed(() => (props.p.type === 'MA' ? ['ma', 'admin'] : ['sm', 'admin']).includes(session.role))
 const canSubmit = computed(() => isOwner.value && (!a.value || ['stale', 'recalled', 'rejected'].includes(a.value.status ?? '') || a.value.steps.some((s) => s.status === 'rejected') || expired.value))
 
 // SM briefs the approvers in a meeting first; the meeting is recorded with the request and shown in Mail Inbox.
@@ -188,7 +188,7 @@ function decide() {
           <dt>ใช้ได้ถึง</dt><dd class="small">{{ thDate(p.approval.validUntil) }}</dd>
           <dt>รหัสตรวจสอบ</dt><dd class="small num">{{ p.approval.snapshotHash?.slice(0, 12) }}</dd>
         </dl>
-        <p v-if="pendingStep && isSubmitter && ['head', 'exec', 'admin'].includes(session.role)" class="hint">คุณเป็นผู้ส่งคำขอนี้ จึงพิจารณาเองไม่ได้</p>
+        <p v-if="pendingStep && isSubmitter && session.role === 'admin'" class="hint">คุณเป็นผู้ส่งคำขอนี้ จึงพิจารณาเองไม่ได้</p>
         <ol v-if="p.approval" class="steps">
           <li v-for="s in p.approval.steps" :key="s.who" :class="s.status">
             <span class="mk" />
