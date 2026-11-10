@@ -37,6 +37,12 @@ export function requirementsFor(stage: StageKey, p: Project, today: string): str
   if (idx(stage) >= idx('forecast') && idx(stage) >= 0) {
     if (!validApproval(p, today)) e.push('ต้องมีใบเสนอราคาที่อนุมัติครบและยังไม่หมดอายุ')
     if (!p.expectedClose) e.push('ต้องกำหนด Expected Close')
+    // Sales documents at 70%: TOR Final reviewed by the group head, and a Proposal (renewals excluded).
+    if (p.type !== 'MA') {
+      if (!p.salesDocs?.tor) e.push('ต้องแนบ TOR Final')
+      else if (p.torReview?.status !== 'approved') e.push('TOR Final ต้องผ่านการตรวจของหัวหน้ากลุ่มก่อน')
+      if (!p.salesDocs?.proposal) e.push('ต้องมี Proposal (สร้างจาก Template ได้)')
+    }
   }
   if (stage === 'rebidding' || (idx(stage) >= idx('forecast') && idx(stage) >= 0 && isTender(p))) {
     if (isTender(p) && !p.bid?.method) e.push('ต้องระบุวิธีจัดซื้อจัดจ้าง')

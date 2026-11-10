@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
-import { ACCOUNTS, PHOTOS, SALES_TEAMS, TODAY_ISO, account, person } from '../data/mock'
+import { ACCOUNTS, CATALOG, PHOTOS, SALES_TEAMS, TODAY_ISO, account, person } from '../data/mock'
 import { validateCreate } from '../domain/rules'
 import type { ProjectType } from '../data/model'
 import { notify, projects, session } from '../store'
@@ -10,6 +10,7 @@ import { notify, projects, session } from '../store'
 const router = useRouter()
 const me = person(session.userId)
 const f = reactive({
+  origin: 'customer' as 'customer' | 'product', catalogId: '',
   name: '', customerAccountId: '', endUserAccountId: '', type: 'พัฒนาระบบ' as ProjectType, team: SALES_TEAMS.some((t) => t.code === me?.team) ? me!.team! : 'DT4-LC',
   budget: null as number | null, expectedClose: '', sales: '', nextStep: '', note: '',
 })
@@ -22,6 +23,15 @@ const errors = computed(() => ({
 }))
 const busy = ref(false)
 const serverErrors = ref<string[]>([])
+// Product-led: start from a Solution Catalog item (name, team and price prefilled).
+const item = computed(() => CATALOG.find((c) => c.id === f.catalogId))
+function pickCatalog() {
+  const c = item.value
+  if (!c) return
+  if (!f.name.trim()) f.name = c.name
+  f.team = c.team
+  if (f.budget === null) f.budget = c.price
+}
 const customers = ACCOUNTS.filter((a) => a.type === 'customer')
 const endUsers = computed(() => ACCOUNTS.filter((a) => a.parentId === f.customerAccountId || a.id === f.customerAccountId))
 
@@ -33,6 +43,8 @@ function create() {
   const draft = {
     id: '', code: '', name: f.name.trim(), customer: cust?.name ?? 'รอระบุลูกค้า', endUser: account(f.endUserAccountId)?.name ?? cust?.name ?? 'รอระบุลูกค้า',
     customerAccountId: f.customerAccountId || undefined, endUserAccountId: f.endUserAccountId || undefined,
+    origin: f.origin, catalogId: f.origin === 'product' ? f.catalogId || undefined : undefined,
+    salesDocs: f.origin === 'product' && item.value ? { proposal: item.value.proposal.replace('-template', '-v1') } : undefined,
     type: f.type, stage: 'opportunity' as const, team: f.team, revenue: 0, cost: 0, budget: f.budget ?? 0, sm: session.userId, sales: salesList.value,
     collaborators: [], nextStep: '', cover: PHOTOS.workshop, history: [],
   }
@@ -61,6 +73,22 @@ function create() {
           <h1>Opportunity Registration</h1>
           <p class="muted">กรอกเท่าที่รู้ตอนนี้ ข้อมูลอื่นเพิ่มได้ภายหลัง โครงการจะเริ่มที่สถานะ Opportunity</p>
         </header>
+
+        <fieldset class="field">
+          <legend>แหล่งที่มาของโครงการ</legend>
+          <div class="types">
+            <label :class="{ on: f.origin === 'customer' }"><input v-model="f.origin" type="radio" name="origin" value="customer" /> ลูกค้ามีโอกาสจ้าง</label>
+            <label :class="{ on: f.origin === 'product' }"><input v-model="f.origin" type="radio" name="origin" value="product" /> ทีมคิด Product เอง (Product-led)</label>
+          </div>
+        </fieldset>
+        <div v-if="f.origin === 'product'" class="field">
+          <label for="cat">เลือกจาก Solution Catalog</label>
+          <select id="cat" v-model="f.catalogId" class="input" @change="pickCatalog">
+            <option value="">เลือกโซลูชัน…</option>
+            <option v-for="c in CATALOG" :key="c.id" :value="c.id">{{ c.name }} · {{ c.team }}</option>
+          </select>
+          <span v-if="item" class="hint">{{ item.summary }} · ราคาอ้างอิง {{ item.price.toLocaleString() }} บาท · {{ item.manday }} Man-day · ได้ Proposal ตั้งต้นจาก Template</span>
+        </div>
 
         <div class="field">
           <label for="name">ชื่อโครงการ</label>

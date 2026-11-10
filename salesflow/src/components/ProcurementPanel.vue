@@ -20,6 +20,7 @@ const steps = computed(() => {
   return [
     { k: 'ประกาศเชิญชวน', d: x.announce, note: 'ไม่น้อยกว่า 3 วันทำการ (วงเงิน 0.5–100 ล้าน)' },
     { k: 'ยื่นข้อเสนอผ่าน e-GP', d: x.submit, note: 'แนบหลักประกันการเสนอราคา 5%' },
+    { k: 'คาดว่าประกาศผล', d: x.resultDue, note: 'ระบบเตือน SM ล่วงหน้า 1 วัน ให้ติดตามผลจาก Sale', edit: true },
     { k: 'ประกาศผู้ชนะ', d: x.result, note: 'คืนหลักประกันซองภายใน 15 วัน (ยกเว้น 3 รายต่ำสุด)' },
     { k: 'สิ้นสุดระยะอุทธรณ์', d: appealEnds.value, note: '7 วันทำการหลังประกาศผล — ยื่นผ่าน e-GP เท่านั้น (แบบ อธ 1)' },
     { k: 'ลงนามสัญญา', d: x.signed, note: 'วางหลักประกันสัญญา 5% ก่อนลงนาม' },
@@ -85,6 +86,7 @@ const canEdit = computed(() => ['sm', 'head', 'pm', 'admin'].includes(session.ro
             <strong>{{ s.k }}</strong>
             <span class="d num">{{ s.d ? thDate(s.d) : 'ยังไม่กำหนด' }}<em v-if="s.d && daysUntil(s.d) > 0"> · อีก {{ daysUntil(s.d) }} วัน</em></span>
             <p class="small muted">{{ s.note }}</p>
+            <input v-if="'edit' in s && canEdit && !b?.result" type="date" class="input rd" :value="b?.resultDue" aria-label="วันที่คาดว่าประกาศผล" @change="b!.resultDue = ($event.target as HTMLInputElement).value; notify('บันทึกวันคาดว่าประกาศผลแล้ว — ระบบจะเตือนล่วงหน้า 1 วัน')" />
           </div>
         </li>
       </ol>
@@ -158,4 +160,5 @@ const canEdit = computed(() => ['sm', 'head', 'pm', 'admin'].includes(session.ro
 .bad { color: var(--lose); }
 .hint { margin-top: 8px; }
 @media (max-width: 1100px) { .two { grid-template-columns: 1fr; } .egp { grid-template-columns: 1fr; gap: 14px; } .egp li::before { display: none; } .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.rd { width: auto; min-height: 32px; padding: 2px 8px; font-size: 13.5px; margin-top: 4px; }
 </style>

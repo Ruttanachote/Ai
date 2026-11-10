@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ROLES, type Role } from '../data/model'
 import { TEAMS, GROUP_NAME, mb, thDate } from '../data/mock'
 import { TH_GOV_2026 } from '../domain/calendar'
-import { SETTINGS } from '../store'
+import { jobLog, outbox, runScheduler, SETTINGS, weeklyReports } from '../store'
+import { RULES as JOB_RULES } from '../domain/scheduler'
+
 import PageHeader from '../components/PageHeader.vue'
 
-const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'teams' | 'm365'>('roles')
+const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'jobs' | 'teams' | 'm365'>('roles')
 const R = Object.keys(ROLES) as Role[]
 type Level = 'full' | 'own' | 'view' | ''
 // Columns follow ROLES: SM, หัวหน้ากลุ่ม, รองผู้บริหาร, ผู้บริหาร, PMO, OPN, PM, Dev, MA, Call center, Admin
@@ -57,6 +59,9 @@ const CHANNELS = reactive([
   { k: 'teams', name: 'Teams Workflows ต่อช่อง DT', what: 'โพสต์การ์ดเมื่อชนะงาน, Handover, ประกันใกล้หมด', on: true, fixed: false },
   { k: 'am', name: 'ปุ่มอนุมัติในอีเมล (Actionable Message)', what: 'เฟส 2 — ต้องลงทะเบียนกับ Microsoft, ใช้บนเบราว์เซอร์มือถือไม่ได้, หมดอายุ 1 เดือน', on: false, fixed: false },
 ])
+watch(CHANNELS, (c) => { SETTINGS.channels.email = !!c.find((x) => x.k === 'email')?.on; SETTINGS.channels.teams = !!c.find((x) => x.k === 'teams')?.on }, { deep: true, immediate: true })
+const ran = ref('')
+function runNow(weekly = false) { const n = runScheduler(weekly); ran.value = n ? `ส่งแจ้งเตือนใหม่ ${n} รายการ` : 'ไม่มีรายการใหม่ (ส่งครบแล้ว)' }
 const WEBHOOKS = reactive(TEAMS.map((t) => ({ team: t.code, url: t.code === 'DT4-2' ? 'https://prod-27.southeastasia.logic.azure.com/workflows/…' : '' })))
 // reactive() proxies the same object, so domain rules see added holidays immediately.
 const cal = reactive(TH_GOV_2026)
@@ -77,6 +82,7 @@ function addHoliday() {
       <button role="tab" :aria-selected="tab === 'approval'" @click="tab = 'approval'">ลำดับการอนุมัติ</button>
       <button role="tab" :aria-selected="tab === 'calendar'" @click="tab = 'calendar'">ปฏิทินวันทำการ</button>
       <button role="tab" :aria-selected="tab === 'channels'" @click="tab = 'channels'">ช่องทางแจ้งเตือน</button>
+      <button role="tab" :aria-selected="tab === 'jobs'" @click="tab = 'jobs'">งานอัตโนมัติ · Outbox</button>
       <button role="tab" :aria-selected="tab === 'teams'" @click="tab = 'teams'">ทีม DT และเป้า</button>
       <button role="tab" :aria-selected="tab === 'm365'" @click="tab = 'm365'">Microsoft 365</button>
     </div>
@@ -128,6 +134,29 @@ function addHoliday() {
       <div class="panel">
         <div class="panel-head"><h2>URL ของ Teams Workflow ต่อทีม</h2></div>
         <div v-for="w in WEBHOOKS" :key="w.team" class="hook"><span>{{ w.team }}</span><input v-model="w.url" class="input" placeholder="วาง URL จาก Workflow “Post to a channel when a webhook request is received”" /></div>
+      </div>
+    </section>
+
+    <section v-if="tab === 'jobs'" class="jobs">
+      <div class="panel">
+        <div class="panel-head"><h2>งานอัตโนมัติรายวัน (07:00)</h2>
+          <span class="acts"><button class="btn sm" @click="runNow()">รันตอนนี้</button><button class="btn sm" @click="runNow(true)">รัน + Weekly report</button></span></div>
+        <p v-if="ran" class="small win">{{ ran }}</p>
+        <ul class="rules"><li v-for="(l, k) in JOB_RULES" :key="k"><b>{{ k }}</b> {{ l }}</li></ul>
+        <h3 class="mt">ประวัติการรัน</h3>
+        <ol class="runs"><li v-for="(r, i) in jobLog" :key="i"><b>{{ r.at }}</b> · {{ r.count }} รายการ<ul><li v-for="(x, j) in r.items" :key="j" class="small"><span class="chip">{{ x.rule }}</span> {{ x.text }} <span class="muted">→ {{ x.to }}</span></li></ul></li></ol>
+      </div>
+      <div class="panel scroll-x">
+        <div class="panel-head"><h2>Outbox (อีเมล / Teams)</h2><span class="muted small">ส่งผ่าน Microsoft Graph · retry อัตโนมัติ · {{ outbox.length }} รายการ</span></div>
+        <table class="table">
+          <thead><tr><th>วันที่</th><th>ช่องทาง</th><th>จาก</th><th>ถึง</th><th>หัวเรื่อง</th></tr></thead>
+          <tbody><tr v-for="m in outbox.slice(0, 40)" :key="m.id"><td class="small">{{ m.at }}</td><td><span class="chip" :class="m.kind === 'email' ? 'presale' : 'post'">{{ m.kind === 'email' ? 'อีเมล' : 'Teams' }}</span></td><td class="small">{{ m.from }}</td><td class="small">{{ m.to }}</td><td>{{ m.subject }}</td></tr>
+            <tr v-if="!outbox.length"><td colspan="5" class="muted">ยังไม่มีรายการ</td></tr></tbody>
+        </table>
+        <h3 class="mt">Weekly report ล่าสุด</h3>
+        <table class="table"><thead><tr><th>สัปดาห์</th><th>โครงการ</th><th>PM</th><th class="r">เสร็จ</th><th class="r">ค้าง</th><th class="r">เลยกำหนด</th><th class="r">ชม.</th><th class="r">OT</th></tr></thead>
+          <tbody><tr v-for="r in weeklyReports" :key="r.id"><td>{{ thDate(r.week) }}</td><td>{{ r.projectId }}</td><td>{{ r.pm }}</td><td class="r num">{{ r.done }}</td><td class="r num">{{ r.open }}</td><td class="r num">{{ r.late }}</td><td class="r num">{{ r.hours }}</td><td class="r num">{{ r.ot }}</td></tr>
+            <tr v-if="!weeklyReports.length"><td colspan="8" class="muted">ส่งทุกวันศุกร์ — กด “รัน + Weekly report” เพื่อดูตัวอย่าง</td></tr></tbody></table>
       </div>
     </section>
 
@@ -184,4 +213,11 @@ function addHoliday() {
 .hgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .pair { display: flex; gap: 6px; }
 @media (max-width: 760px) { .hgrid { grid-template-columns: 1fr 1fr; } }
+.jobs { display: grid; gap: 16px; }
+.rules { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.runs { padding-left: 18px; display: grid; gap: 8px; font-size: 14px; }
+.runs ul { list-style: none; padding: 0; display: grid; gap: 2px; }
+.acts { display: flex; gap: 6px; }
+.mt { margin-top: 16px; }
+.win { color: var(--win); }
 </style>

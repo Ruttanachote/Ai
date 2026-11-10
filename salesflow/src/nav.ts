@@ -12,7 +12,7 @@ export const NAV: NavGroup[] = [
     title: 'General',
     items: [
       { to: '/my-work', label: 'My Tasks', icon: 'check', roles: [...ALL, 'dev'] },
-      { to: '/approvals', label: 'Approval Requests', icon: 'inbox', roles: ['deputy', 'exec', 'admin'] },
+      { to: '/approvals', label: 'Approval Requests', icon: 'inbox', roles: ['head', 'deputy', 'exec', 'admin'] },
       { to: '/projects', label: 'Project Register', icon: 'list', roles: ALL },
       { to: '/accounts', label: 'Customer Accounts', icon: 'people', roles: ['sm', 'head', 'deputy', 'exec', 'pmo', 'ma', 'admin'] },
     ],
@@ -23,6 +23,7 @@ export const NAV: NavGroup[] = [
       { to: '/', label: 'Sales Dashboard', icon: 'dashboard', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
       { to: '/pipeline', label: 'Sales Pipeline', icon: 'board', roles: ['sm', 'head', 'deputy', 'exec', 'admin'] },
       { to: '/projects/new', label: 'Opportunity Registration', icon: 'plus', roles: ['sm', 'head', 'admin'] },
+      { to: '/catalog', label: 'Solution Catalog', icon: 'folder', roles: ['sm', 'head', 'deputy', 'exec', 'pmo', 'admin'] },
     ],
   },
   {

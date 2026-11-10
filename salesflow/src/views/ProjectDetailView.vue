@@ -12,6 +12,7 @@ import CostSheetPanel from '../components/CostSheetPanel.vue'
 import DeliveryPanel from '../components/DeliveryPanel.vue'
 import MaPanel from '../components/MaPanel.vue'
 import PmRounds from '../components/PmRounds.vue'
+import RequirementPanel from '../components/RequirementPanel.vue'
 import ProcurementPanel from '../components/ProcurementPanel.vue'
 import { moveStage, notify, projects, session } from '../store'
 import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account } from '../data/mock'
@@ -25,11 +26,11 @@ const p = computed(() => projects.find((x) => x.id === props.id))
 const parent = computed(() => projects.find((x) => x.id === p.value?.parentId))
 const children = computed(() => projects.filter((x) => x.parentId === props.id))
 
-type Tab = 'overview' | 'cost' | 'proc' | 'delivery' | 'ma' | 'history'
+type Tab = 'overview' | 'req' | 'cost' | 'proc' | 'delivery' | 'ma' | 'history'
 const tab = ref<Tab>('overview')
 const post = computed(() => !!p.value && ['win', 'handover', 'delivery', 'warranty', 'ended', 'cancelled'].includes(p.value.stage))
 const tabs = computed(() => {
-  const t: { k: Tab; l: string }[] = [{ k: 'overview', l: 'ภาพรวมและเอกสาร' }, { k: 'cost', l: 'Cost Sheet และใบเสนอราคา' }]
+  const t: { k: Tab; l: string }[] = [{ k: 'overview', l: 'ภาพรวมและเอกสาร' }, ...(p.value?.type !== 'MA' ? [{ k: 'req' as Tab, l: 'Requirement และ TOR' }] : []), { k: 'cost', l: 'Cost Sheet และใบเสนอราคา' }]
   if (p.value?.bid || post.value) t.push({ k: 'proc', l: 'ประมูล หลักประกัน ค่าปรับ' })
   if (post.value) t.push({ k: 'delivery', l: p.value?.stage === 'win' || p.value?.stage === 'handover' ? 'Handover' : 'แผนงานและ Task' })
   if (p.value && ['warranty', 'ended'].includes(p.value.stage)) t.push({ k: 'ma', l: 'ประกันและ MA' })
@@ -265,6 +266,7 @@ const drop = ref(false)
       </div>
     </div>
 
+    <RequirementPanel v-if="tab === 'req'" :p="p" />
     <CostSheetPanel v-if="tab === 'cost'" :p="p" />
     <DeliveryPanel v-if="tab === 'delivery'" :p="p" />
     <PmRounds v-if="tab === 'overview' && session.role !== 'opn'" :p="p" class="pmov" />

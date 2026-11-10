@@ -55,3 +55,20 @@ export const nextRound = (p: Project, today: string) => (p.pmRounds ?? []).find(
 
 /** Renewal notices to the customer: round 1 at 3 months, round 2 at 1 month before warranty ends. */
 export const RENEWAL_NOTICES = [{ days: 90, label: 'รอบที่ 1 (3 เดือนก่อนหมดประกัน)' }, { days: 30, label: 'รอบที่ 2 (1 เดือนก่อนหมดประกัน)' }]
+
+/** Warranty runs `months` from the start date, ending the day before the anniversary. */
+export const warrantyEnd = (start: string, months: number) => addDays(addMonths(start, months), -1)
+
+/** MA confirms the hand-over from the PM: the project enters warranty and PM rounds are planned. */
+export function acceptIntoWarranty(p: Project, by: string, today: string) {
+  if (!p.maHandover) return false
+  const months = p.terms?.warrantyMonths ?? 12
+  p.maHandover.acceptedAt = today
+  p.maHandover.acceptedBy = by
+  p.stage = 'warranty'
+  p.startWarranty = p.deliveredAt ?? today
+  p.endWarranty = warrantyEnd(p.startWarranty, months)
+  p.stageSince = today
+  if (p.pmPlan) p.pmRounds = planRounds(p)
+  return true
+}

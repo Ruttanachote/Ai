@@ -1,5 +1,5 @@
 import { computed, reactive } from 'vue'
-import { APPROVAL_CHAIN, type Approval, type Leave, type Role, type StageKey } from './data/model'
+import { APPROVAL_CHAIN, type Approval, type Leave, type OutboxMail, type Role, type StageKey, type WeeklyReport } from './data/model'
 import { PEOPLE, PROJECTS, TICKETS, person, groupOf, GROUP_NAME } from './data/mock'
 
 // Demo session — in production this comes from Microsoft Entra ID (app roles claim).
@@ -60,7 +60,7 @@ export const scope = computed(() => {
 
 /** Admin-tunable approval thresholds (Settings → ลำดับการอนุมัติ). */
 import { DEFAULT_HOURS } from './domain/timesheet'
-export const SETTINGS = reactive({ tolerancePct: 2, gpDropPct: 3, approvalValidDays: 60, hours: { ...DEFAULT_HOURS } })
+export const SETTINGS = reactive({ tolerancePct: 2, gpDropPct: 3, approvalValidDays: 60, hours: { ...DEFAULT_HOURS }, channels: { email: true, teams: true } })
 
 export function moveStage(id: string, to: StageKey, note: string, by: string) {
   const p = projects.find((x) => x.id === id)
@@ -120,3 +120,28 @@ export const leaves = reactive<Leave[]>([
     log: [{ at: '6 พ.ย. 08:40', who: 'dev4', text: 'แจ้งลาครึ่งวันบ่าย 11 พ.ย. (ลาป่วย) · ไม่กระทบงาน' }],
   },
 ])
+
+/* ---------------- Scheduled jobs (07:00 daily in production) + outbox ---------------- */
+import { dailyJobs } from './domain/scheduler'
+import { TODAY_ISO } from './data/mock'
+export const outbox = reactive<OutboxMail[]>([])
+export const weeklyReports = reactive<WeeklyReport[]>([])
+export const jobLog = reactive<{ at: string; count: number; items: { rule: string; text: string; to: string }[] }[]>([])
+const sentKeys = new Set<string>()
+let mailNo = 1
+/** Run the daily job now: notices in-app (+ email / Teams per channel settings), mails to the outbox. */
+export function runScheduler(forceWeekly = false) {
+  const headOf = (team: string) => PEOPLE.find((u) => u.role === 'head' && (u.team === team || groupOf(u.team ?? '') === groupOf(team)))?.id
+  const { jobs, reports } = dailyJobs(projects, tickets, leaves, TODAY_ISO, { headOf, maLead: 'wm', forceWeekly })
+  const fresh = jobs.filter((j) => !sentKeys.has(j.key))
+  fresh.forEach((j) => {
+    sentKeys.add(j.key)
+    notifications.unshift({ id: nid++, to: j.to, text: j.text, link: j.link, at: 'งานอัตโนมัติ 07:00', read: false })
+    if (j.mail && SETTINGS.channels[j.mail.kind]) outbox.unshift({ id: 'm' + mailNo++, at: TODAY_ISO, ...j.mail, ref: j.key })
+    if (SETTINGS.channels.teams && !j.mail) outbox.unshift({ id: 'm' + mailNo++, at: TODAY_ISO, from: 'One Platform', to: j.to, subject: j.text, kind: 'teams', ref: j.key })
+    if (j.apply && j.projectId) { const p = projects.find((x) => x.id === j.projectId); if (p) j.apply(p) }
+  })
+  reports.filter((r) => !weeklyReports.some((x) => x.id === r.id)).forEach((r) => weeklyReports.unshift(r))
+  jobLog.unshift({ at: TODAY_ISO + ' 07:00', count: fresh.length, items: fresh.map((j) => ({ rule: j.rule, text: j.text, to: j.to })) })
+  return fresh.length
+}

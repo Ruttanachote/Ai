@@ -24,6 +24,7 @@ const router = createRouter({
     { path: '/procurement', component: () => import('./views/ProcurementView.vue') },
     { path: '/helpdesk', component: () => import('./views/HelpdeskView.vue') },
     { path: '/work', component: () => import('./views/WorkspacesView.vue') },
+    { path: '/catalog', component: () => import('./views/CatalogView.vue') },
     { path: '/my-work', component: () => import('./views/MyWorkView.vue') },
     { path: '/work/:id', component: () => import('./views/WorkspaceView.vue'), props: true },
     { path: '/print/quotation/:id', component: () => import('./views/QuotationPrintView.vue'), props: true },

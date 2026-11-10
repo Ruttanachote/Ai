@@ -15,10 +15,12 @@ const withApproval = computed(() => scope.value.list.filter((p) => approvalState
 const waiting = computed(() =>
   withApproval.value.filter((p) => p.approval?.submittedBy !== session.userId && canDecideStep(pendingStep(p, TODAY_ISO), session.role)),
 )
+// TOR Final waiting for this group head (or admin) before it goes to the customer.
+const torQueue = computed(() => scope.value.list.filter((p) => p.torReview?.status === 'pending' && ['head', 'admin'].includes(session.role)))
 const others = computed(() => withApproval.value.filter((p) => !waiting.value.includes(p)))
 const reopen = computed(() => (['head', 'exec', 'admin'].includes(session.role) ? scope.value.list.filter((p) => p.stage === 'lose') : []))
 const kpis = computed(() => [
-  { label: 'ถึงคิวคุณ', value: String(waiting.value.length), note: mb(sum(waiting.value, pipelineValue)) + ' มูลค่ารวม', tone: waiting.value.length ? ('warn' as const) : ('' as const) },
+  { label: 'ถึงคิวคุณ', value: String(waiting.value.length + torQueue.value.length), note: mb(sum(waiting.value, pipelineValue)) + ' มูลค่ารวม', tone: waiting.value.length ? ('warn' as const) : ('' as const) },
   { label: 'รอผู้อื่นพิจารณา', value: String(others.value.filter((p) => approvalState(p, TODAY_ISO) === 'pending').length), note: 'คำขอที่ยังไม่ครบทุกขั้น' },
   { label: 'ต้องส่งใหม่', value: String(withApproval.value.filter((p) => ['stale', 'rejected', 'expired'].includes(approvalState(p, TODAY_ISO))).length), note: 'แก้ไฟล์หลังส่ง ส่งกลับ หรือหมดอายุ' },
   { label: 'GP ต่ำกว่า 25%', value: String(waiting.value.filter((p) => (gpPct(p) ?? 100) < 25).length), note: 'ในคำขอที่ถึงคิวคุณ', tone: waiting.value.some((p) => (gpPct(p) ?? 100) < 25) ? ('bad' as const) : ('' as const) },
@@ -29,6 +31,15 @@ const kpis = computed(() => [
   <div class="page">
     <PageHeader module="General" title="Approval Requests" :scope="scope.label" subtitle="อนุมัติได้จากหน้านี้หรือจากลิงก์ในอีเมล" />
     <KpiStrip :items="kpis" />
+
+    <section v-if="torQueue.length" class="panel block">
+      <div class="panel-head"><h2>TOR Final รอหัวหน้ากลุ่มตรวจ</h2><span class="muted small">ตรวจก่อน SM ส่งลูกค้า</span></div>
+      <router-link v-for="p in torQueue" :key="p.id" :to="`/projects/${p.id}`" class="req">
+        <Avatar :id="p.sm" :size="36" />
+        <div class="main"><strong>{{ p.name }}</strong><p class="small muted">{{ p.code }} · {{ p.salesDocs?.tor }} · v{{ p.torReview?.version }} ส่ง {{ p.torReview?.at }}</p></div>
+        <span class="chip warn">เปิดแท็บ Requirement และ TOR</span>
+      </router-link>
+    </section>
 
     <section class="list">
       <router-link v-for="p in waiting" :key="p.id" :to="`/projects/${p.id}`" class="req">

@@ -15,6 +15,9 @@ import WorkForms from '../components/work/WorkForms.vue'
 import WorkDrawer from '../components/work/WorkDrawer.vue'
 import WorkReports from '../components/work/WorkReports.vue'
 import WorkSettings from '../components/work/WorkSettings.vue'
+import WorkMilestones from '../components/work/WorkMilestones.vue'
+import WorkRisks from '../components/work/WorkRisks.vue'
+import WorkPeople from '../components/work/WorkPeople.vue'
 import { canManage as manages } from '../components/work/actions'
 import { defaultAutomation, defaultWorkflow } from '../domain/workflow'
 import StageBadge from '../components/StageBadge.vue'
@@ -29,16 +32,16 @@ const router = useRouter()
 const p = computed(() => projects.find((x) => x.id === props.id))
 const canManage = computed(() => !!p.value && manages(p.value))
 
-type View = 'summary' | 'list' | 'board' | 'calendar' | 'timeline' | 'backlog' | 'reports' | 'docs' | 'forms' | 'settings'
+type View = 'summary' | 'list' | 'board' | 'calendar' | 'timeline' | 'backlog' | 'milestones' | 'risks' | 'people' | 'reports' | 'docs' | 'forms' | 'settings'
 const VIEW_LABEL: Record<View, { l: string; icon: string }> = {
   summary: { l: 'Summary', icon: 'dashboard' }, list: { l: 'List', icon: 'list' }, board: { l: 'Board', icon: 'board' }, calendar: { l: 'Calendar', icon: 'clock' },
-  timeline: { l: 'Timeline', icon: 'gantt' }, backlog: { l: 'Backlog', icon: 'inbox' }, reports: { l: 'Reports', icon: 'chart' }, settings: { l: 'Settings', icon: 'settings' }, docs: { l: 'Docs', icon: 'file' }, forms: { l: 'Forms', icon: 'ticket' },
+  timeline: { l: 'Timeline', icon: 'gantt' }, backlog: { l: 'Backlog', icon: 'inbox' }, reports: { l: 'Reports', icon: 'chart' }, milestones: { l: 'Milestones', icon: 'flag' }, risks: { l: 'Risks', icon: 'alert' }, people: { l: 'Stakeholders', icon: 'people' }, settings: { l: 'Settings', icon: 'settings' }, docs: { l: 'Docs', icon: 'file' }, forms: { l: 'Forms', icon: 'ticket' },
 }
 // Template decides the order and which views open first; the rest stay one click away.
 const views = computed<View[]>(() => {
   const t = p.value?.workspace?.template ?? 'milestone'
   const first = WORKSPACE_TEMPLATES[t].views as View[]
-  const rest = (['summary', 'list', 'board', 'calendar', 'timeline', 'reports', 'docs', 'forms', 'settings'] as View[]).filter((v) => !first.includes(v))
+  const rest = (['summary', 'list', 'board', 'calendar', 'timeline', 'milestones', 'risks', 'people', 'reports', 'docs', 'forms', 'settings'] as View[]).filter((v) => !first.includes(v))
   return [...first, ...rest]
 })
 const view = ref<View>('summary')
@@ -108,7 +111,7 @@ function switchTemplate(t: WorkspaceTemplate) {
         <button v-for="v in views" :key="v" role="tab" :aria-selected="view === v" @click="view = v"><Icon :name="VIEW_LABEL[v].icon" :size="15" /> {{ VIEW_LABEL[v].l }}</button>
       </nav>
 
-      <div v-if="!['docs', 'forms', 'settings', 'reports'].includes(view)" class="tools">
+      <div v-if="!['docs', 'forms', 'settings', 'reports', 'milestones', 'risks', 'people'].includes(view)" class="tools">
         <label class="srch"><Icon name="search" :size="16" /><input v-model="f.q" placeholder="ค้นหางาน รหัส หรือ Label" aria-label="ค้นหางาน" /></label>
         <div class="who" role="group" aria-label="กรองตามผู้รับผิดชอบ">
           <button v-for="id in team" :key="id" class="av" :class="{ on: f.assignees.includes(id) }" :aria-pressed="f.assignees.includes(id)" @click="toggle(f.assignees, id)"><Avatar :id="id" :size="28" /></button>
@@ -144,6 +147,9 @@ function switchTemplate(t: WorkspaceTemplate) {
       <WorkForms v-else-if="view === 'forms'" :p="p" />
       <WorkReports v-else-if="view === 'reports'" :p="p" />
       <WorkSettings v-else-if="view === 'settings'" :p="p" />
+      <WorkMilestones v-else-if="view === 'milestones'" :p="p" />
+      <WorkRisks v-else-if="view === 'risks'" :p="p" :team="team" />
+      <WorkPeople v-else-if="view === 'people'" :p="p" :team="team" />
     </template>
 
     <WorkDrawer :p="p" :item="openItem" :team="team" @close="openItem = null" @open="openItem = $event" />

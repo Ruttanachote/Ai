@@ -7,7 +7,8 @@ import type { Project } from '../../src/data/model.ts'
 const base = (o: Partial<Project> = {}): Project => ({
   id: 'p', code: 'C', name: 'Test', customer: 'X', endUser: 'X', type: 'พัฒนาระบบ', stage: 'pipeline', team: 'DT2',
   revenue: 10_000_000, cost: 7_000_000, budget: 11_000_000, sm: 'rk', sales: ['Sirinya B.'], collaborators: [], nextStep: '', cover: '',
-  history: [], customerAccountId: 'a1', expectedClose: '2026-12-20', ...o,
+  history: [], customerAccountId: 'a1', expectedClose: '2026-12-20',
+  salesDocs: { tor: 'TOR.docx', proposal: 'Proposal.docx' }, torReview: { status: 'approved', version: 1, at: '2026-10-01' }, ...o,
 })
 const approved = (rev = 10_000_000, cost = 7_000_000, validUntil = '2027-01-31') => ({
   version: 'v1', submittedAt: '', status: 'approved' as const, validUntil, snapshot: { revenue: rev, cost, gp: 30 },
@@ -91,4 +92,13 @@ test('P0-11: handover needs contract terms, PM and (for tenders) a performance b
     bonds: [{ kind: 'performance' as const, pct: 5, amount: 1, form: 'BG', bank: 'B', issued: '2026-01-01', expires: '2027-01-01' }] }
   assert.deepEqual(handoverGate(ready, true).errors, [])
   assert.ok(handoverGate({ ...ready, terms: { ...ready.terms, penaltyRatePerDay: 0.01 } }, true).errors.some((e) => e.includes('0.20%')))
+})
+
+test('Forecast needs TOR Final reviewed by the group head and a Proposal (not for MA renewals)', () => {
+  const ok = { approval: approved() }
+  const errs = (o: Partial<Project>) => validateMove(base({ ...ok, ...o }), { to: 'forecast', today: '2026-11-06', gateChecked: true }).errors
+  assert.ok(errs({ salesDocs: {} }).some((e) => e.includes('TOR Final')))
+  assert.ok(errs({ torReview: { status: 'pending', version: 1, at: '2026-11-01' } }).some((e) => e.includes('หัวหน้ากลุ่ม')))
+  assert.ok(errs({ salesDocs: { tor: 'x' } }).some((e) => e.includes('Proposal')))
+  assert.deepEqual(errs({ type: 'MA', salesDocs: {}, torReview: undefined }), [])
 })

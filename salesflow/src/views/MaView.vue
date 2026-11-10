@@ -12,6 +12,9 @@ import PmRoundActions from '../components/PmRoundActions.vue'
 import { dueRounds, nextRound, STATE_LABEL } from '../domain/pm'
 import { person, TODAY_ISO } from '../data/mock'
 import { PM_CYCLES } from '../data/model'
+import { acceptIntoWarranty, warrantyEnd } from '../domain/pm'
+import { notify, pushNotices, session } from '../store'
+import type { Project } from '../data/model'
 
 // Buckets use the same thresholds as the project's "ประกันและ MA" tab; tickets and renewals
 // are limited to the projects this role can see.
@@ -29,6 +32,15 @@ const renewals = computed(() => scope.value.list.filter((p) => p.type === 'MA'))
 // Preventive Maintenance rounds that need action now (prepare / send / late) across visible projects.
 const pmQueue = computed(() => dueRounds(scope.value.list, TODAY_ISO))
 const pmPlanned = computed(() => scope.value.list.filter((p) => p.pmPlan && p.stage === 'warranty'))
+// M-01 / M-02: hand-overs from PMs waiting for the MA team to accept.
+const intake = computed(() => scope.value.list.filter((p) => p.maHandover && !p.maHandover.acceptedAt))
+const canAccept = computed(() => ['ma', 'admin'].includes(session.role))
+function accept(p: Project) {
+  acceptIntoWarranty(p, session.userId, TODAY_ISO)
+  p.history.push({ stage: 'warranty', note: `ทีม MA รับมอบเข้าประกัน ${p.terms?.warrantyMonths ?? 12} เดือน (${p.startWarranty} – ${p.endWarranty})`, at: 'วันนี้', by: person(session.userId)?.name ?? 'ทีม MA' })
+  if (p.pm) pushNotices([{ to: p.pm, projectId: p.id, text: `ทีม MA รับมอบ ${p.name} เข้าประกันแล้ว` }])
+  notify(`รับมอบ ${p.name} — ประกันถึง ${thDate(p.endWarranty)}${p.pmRounds?.length ? ` · สร้างรอบ PM ${p.pmRounds.length} รอบ` : ''}`)
+}
 const kpis = computed(() => [
   { label: 'โครงการในระยะประกัน', value: String(base.value.length), note: mb(sum(base.value, bookedValue)) + ' มูลค่าตามสัญญา' },
   { label: 'หมดภายใน 30 วัน', value: String(buckets.value[0].list.length), note: 'ต้องตามคำตอบเรื่องต่อ MA', tone: buckets.value[0].list.length ? ('warn' as const) : ('' as const) },
@@ -60,6 +72,21 @@ const kpis = computed(() => [
         <p v-if="!b.list.length" class="small muted none">ไม่มีโครงการในช่วงนี้</p>
       </section>
     </div>
+
+    <section v-if="intake.length" class="panel pmq">
+      <div class="panel-head"><h2>รอรับมอบเข้าประกัน</h2><span class="muted small">PM ส่งมอบครบทุกงวดแล้ว — ยืนยันเพื่อเริ่มระยะประกัน</span></div>
+      <table class="table">
+        <thead><tr><th>โครงการ</th><th>ส่งโดย</th><th>ผู้ติดต่อลูกค้า</th><th>เอกสาร</th><th>ประกัน</th><th /></tr></thead>
+        <tbody><tr v-for="p in intake" :key="p.id">
+          <td><router-link :to="`/projects/${p.id}`">{{ p.name }}</router-link><p class="small muted">{{ p.maHandover?.note }}</p></td>
+          <td class="small">{{ person(p.maHandover!.by)?.name }} · {{ thDate(p.maHandover!.at) }}</td>
+          <td class="small">{{ p.maHandover!.contact }}</td>
+          <td class="small">{{ p.maHandover!.docs.length }} รายการ</td>
+          <td class="small">{{ p.terms?.warrantyMonths ?? 12 }} เดือน · ถึง {{ thDate(warrantyEnd(p.deliveredAt ?? TODAY_ISO, p.terms?.warrantyMonths ?? 12)) }}</td>
+          <td class="r"><button v-if="canAccept" class="btn sm primary" @click="accept(p)">รับมอบเข้าประกัน</button></td>
+        </tr></tbody>
+      </table>
+    </section>
 
     <section class="panel pmq">
       <div class="panel-head"><h2>รอบ Preventive Maintenance</h2><span class="muted small">ทีมพัฒนาเตรียมรายงานจาก Template → ทีม MA ส่งอีเมลจากกล่องกลาง</span></div>

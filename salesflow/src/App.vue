@@ -9,7 +9,7 @@ import Icon from './components/Icon.vue'
 import Avatar from './components/Avatar.vue'
 import Feedback from './components/Feedback.vue'
 import CommandPalette from './components/CommandPalette.vue'
-import { devAccounts, notifications, session, setRole } from './store'
+import { devAccounts, notifications, runScheduler, session, setRole } from './store'
 import { NAV, HOME } from './nav'
 import { ROLES, type Role } from './data/model'
 import { person } from './data/mock'
@@ -84,6 +84,9 @@ function openNote(n: { link: string; read: boolean }) { n.read = true; bellOpen.
 const readAll = () => mine.value.forEach((n) => (n.read = true))
 
 watch(() => route.path, () => { mobileOpen.value = false; bellOpen.value = false })
+// Demo: the 07:00 daily job runs once when someone signs in (production: server scheduler).
+let ranToday = false
+watch(() => session.signedIn, (on) => { if (on && !ranToday) { ranToday = true; runScheduler() } }, { immediate: true })
 const bare = computed(() => route.path === '/login' || route.path.startsWith('/print/'))
 </script>
 

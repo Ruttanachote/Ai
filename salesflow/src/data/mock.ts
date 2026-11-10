@@ -1,4 +1,4 @@
-import { PM_TEMPLATES, type Account, type Person, type Project, type Task, type Team } from './model'
+import { PM_TEMPLATES, type Account, type CatalogItem, type Person, type Project, type Task, type Team } from './model'
 
 // Unsplash footage — loaded by the viewer's browser; components fall back to a tone if blocked.
 export const img = (id: string, w = 1200) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=70`
@@ -397,4 +397,51 @@ import { planRounds } from '../domain/pm.ts'
     if (r.due === '2026-11-28') Object.assign(r, { status: 'ready', preparedBy: 'dev4', preparedAt: '2026-11-04', summary: 'อุปกรณ์ Core switch 2 ชุด Firmware ล่าสุด · Link utilisation สูงสุด 62%', findings: 'UPS ห้อง Server แบตเตอรี่เสื่อม 1 ลูก', advice: 'เปลี่ยนแบตเตอรี่ UPS ภายในไตรมาสนี้', files: ['PM-NMC-2569-R2.pdf', 'utilisation-ต.ค.-พ.ย.xlsx'] })
   })
   set('p10', { cycle: 1, first: '2026-02-15', leadDays: 10, preparer: 'dev1', customerEmail: 'saraban@sesao9.go.th', template: PM_TEMPLATES[0] }, '2026-10-31')
+}
+
+// ── Solution Catalog (product-led deals) ─────────────────────────────────────────────────
+export const CATALOG: CatalogItem[] = [
+  { id: 'c-saraban', name: 'e-Saraban สารบรรณอิเล็กทรอนิกส์', team: 'DT4-LC', summary: 'รับ–ส่งหนังสือ ลงนามอิเล็กทรอนิกส์ ทะเบียนหนังสือ เชื่อมระบบกลางภาครัฐ', price: 3_900_000, manday: 220, modules: ['ทะเบียนรับ–ส่ง', 'ลงนาม e-Signature', 'สืบค้นเอกสาร', 'รายงาน'], proposal: 'Proposal-eSaraban-template.docx', owner: 'rk' },
+  { id: 'c-queue', name: 'Smart Queue จองคิวออนไลน์', team: 'DT4-CNA', summary: 'จองคิวผ่าน LINE / เว็บ แจ้งเตือน SMS ตู้กดบัตรคิว Dashboard ผู้บริหาร', price: 5_400_000, manday: 260, modules: ['จองคิว LINE OA', 'ตู้กดบัตร', 'SMS / แจ้งเตือน', 'Dashboard'], proposal: 'Proposal-SmartQueue-template.docx', owner: 'np' },
+  { id: 'c-permit', name: 'e-Permit ใบอนุญาตออนไลน์', team: 'DT4-LC', summary: 'ยื่นคำขอใบอนุญาต ตรวจเอกสาร ชำระเงิน Thai QR ออกใบอนุญาตอิเล็กทรอนิกส์', price: 9_600_000, manday: 480, modules: ['ยื่นคำขอ', 'ตรวจเอกสาร', 'ชำระเงิน Thai QR', 'ใบอนุญาต e-License'], proposal: 'Proposal-ePermit-template.docx', owner: 'rk' },
+  { id: 'c-ocr', name: 'AI Document OCR', team: 'DT4-AI', summary: 'อ่านเอกสารภาษาไทยด้วย AI จัดหมวดและดึงข้อมูลเข้าระบบอัตโนมัติ', price: 7_200_000, manday: 300, modules: ['OCR ภาษาไทย', 'จัดหมวดเอกสาร', 'ตรวจทานโดยคน', 'API'], proposal: 'Proposal-AI-OCR-template.docx', owner: 'np' },
+]
+{
+  const link = (pid: string, cid: string) => { const p = PROJECTS.find((x) => x.id === pid); if (p) { p.origin = 'product'; p.catalogId = cid } }
+  link('p10', 'c-saraban'); link('p8', 'c-queue'); link('p6', 'c-permit'); link('p7', 'c-ocr'); link('p2', 'c-permit')
+  // Sales documents + TOR review on the pre-sale deals that are already past Forecast
+  for (const id of ['p3', 'p4']) { const p = PROJECTS.find((x) => x.id === id)!; p.salesDocs = { tor: `TOR-Final-${p.code}-v2.docx`, proposal: `Proposal-${p.code}-v2.docx` }; p.torReview = { status: 'approved', version: 2, at: '2026-10-20', by: 'sw', decidedAt: '2026-10-21' } }
+  const p2 = PROJECTS.find((x) => x.id === 'p2')!
+  p2.requirement = { overview: 'ระบบ e-Service ยื่นขอใบอนุญาตธุรกิจออนไลน์ 12 ประเภท รองรับผู้ใช้ 30,000 ราย/ปี เชื่อมระบบ DOPA และ e-Payment', process: '1) ผู้ประกอบการยื่นคำขอ + แนบเอกสาร 2) เจ้าหน้าที่ตรวจ / ขอเอกสารเพิ่ม 3) ชำระค่าธรรมเนียม 4) อนุมัติ + ออกใบอนุญาต e-License 5) ต่ออายุ', meetings: [{ at: '2026-09-12', title: 'เก็บ Requirement กองทะเบียนธุรกิจ', notes: 'ต้องการเชื่อม DOPA · ลดเวลาอนุมัติจาก 15 เป็น 3 วัน' }], updated: '2026-10-02' }
+  p2.salesDocs = { tor: 'TOR-Final-PIP-69-0098-v1.docx' }
+  p2.torReview = { status: 'pending', version: 1, at: '2026-11-05' }
+  const p4 = PROJECTS.find((x) => x.id === 'p4')!
+  if (p4.bid) p4.bid.resultDue = '2026-11-07'
+  // Renewal notices already sent before today
+  const n = (id: string, round: 1 | 2, at: string) => { const p = PROJECTS.find((x) => x.id === id)!; p.renewalNotices = [...(p.renewalNotices ?? []), { round, at, to: p.pmPlan?.customerEmail ?? '' }] }
+  n('p8', 1, '2026-09-06'); n('p9', 1, '2026-08-30')
+}
+
+// ── PM records: deliverables per installment, stakeholders, risks, meetings ─────────────
+{
+  const p6 = PROJECTS.find((x) => x.id === 'p6')!
+  const [m1, m2, m3, m4] = p6.milestones!
+  Object.assign(m1, { pct: 20, deliverables: [{ name: 'รายงานออกแบบระบบ (SA)', owner: 'sa1', status: 'ready' }, { name: 'Prototype หน้าจอ (UX/UI)', owner: 'ux1', status: 'ready' }], finalCheck: { by: 'ak', at: '2026-09-14' }, sentAt: '2026-09-15', acceptance: { doc: 'หนังสือตรวจรับงวด1.pdf', at: '2026-09-25', by: 'ak' } })
+  Object.assign(m2, { pct: 30, deliverables: [{ name: 'ระบบยื่นคำขอ + ตรวจเอกสาร (ติดตั้งบน Staging)', owner: 'dev1', status: 'review' }, { name: 'รายงานผลทดสอบระบบ', owner: 'qa1', status: 'draft' }, { name: 'คู่มือติดตั้งระบบ', owner: 'ops1', status: 'draft' }] })
+  Object.assign(m3, { pct: 20, deliverables: [{ name: 'รายงานผล UAT', owner: 'qa1', status: 'draft' }, { name: 'คู่มือผู้ใช้', owner: 'dev1', status: 'draft' }] })
+  Object.assign(m4, { pct: 30, deliverables: [{ name: 'เอกสารส่งมอบระบบ + Source code', owner: 'ak', status: 'draft' }] })
+  p6.stakeholders = [
+    { id: 'sh1', side: 'customer', name: 'นายวีระ ชัยมงคล', position: 'ผู้อำนวยการกองช่าง', email: 'weera@chiangrai.go.th', phone: '053-711-xxx', focal: true, topics: 'ขั้นตอนอนุมัติใบอนุญาต' },
+    { id: 'sh2', side: 'customer', name: 'นางสาวกมลวรรณ ศรีสุข', position: 'นักวิชาการคอมพิวเตอร์', email: 'kamonwan@chiangrai.go.th', topics: 'Server · ระบบชำระเงิน' },
+    { id: 'sh3', side: 'us', name: 'Arthit K.', position: 'Project Manager', email: 'arthit@stream.co.th', focal: true },
+    { id: 'sh4', side: 'us', name: 'Ruttanachot K.', position: 'Solution Manager', email: 'ruttanachot@stream.co.th' },
+  ]
+  p6.risks = [
+    { id: 'r1', title: 'API ชำระเงินของธนาคารเปลี่ยนเวอร์ชันระหว่างพัฒนา', likelihood: 3, impact: 3, owner: 'dev3', plan: 'นัด Tech call กับธนาคาร 8 พ.ย. · เผื่อเวลาทดสอบ 1 สัปดาห์', status: 'open', at: '2026-11-03' },
+    { id: 'r2', title: 'ผู้ใช้งานฝั่งลูกค้าว่างทดสอบ UAT ได้แค่ 2 วัน/สัปดาห์', likelihood: 2, impact: 2, owner: 'ak', plan: 'แบ่ง UAT เป็น 3 รอบย่อย', status: 'watch', at: '2026-10-20' },
+    { id: 'r3', title: 'Server ลูกค้าส่งมอบล่าช้า 1 สัปดาห์', likelihood: 1, impact: 2, owner: 'ops1', plan: 'ใช้ Staging ของบริษัทชั่วคราว', status: 'open', at: '2026-10-10' },
+  ]
+  p6.meetings = [{ id: 'mt1', kind: 'kickoff', title: 'Kick-off Smart Permit Platform', date: '2026-07-01', time: '10:00', attendees: ['sh1', 'sh2', 'ak', 'rk', 'dl'], place: 'ศาลากลาง / Microsoft Teams', sentAt: '2026-06-28', by: 'ak' }]
+  const p13 = PROJECTS.find((x) => x.id === 'p13')!
+  p13.milestones!.forEach((m, i) => { m.pct = [40, 40, 20][i]; m.deliverables = [{ name: `เอกสารส่งมอบ ${m.name}`, owner: 'ks', status: 'draft' }] })
 }

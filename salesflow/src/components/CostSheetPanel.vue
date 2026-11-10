@@ -90,6 +90,8 @@ function submit() {
   }
   notify(`ส่งอีเมลขออนุมัติ (ลิงก์เข้าระบบ) ถึง ${props.p.approval.steps[1].who} แล้ว`)
 }
+const FIX_DOCS = ['Cost Sheet', 'ใบเสนอราคา (Quotation)', 'Proposal']
+const fix = ref<string[]>([])
 function decide() {
   if (!a.value || !canDecide.value) return
   const steps = a.value.steps
@@ -97,8 +99,8 @@ function decide() {
   steps[i].status = decideOpen.value === 'approve' ? 'approved' : 'rejected'
   steps[i].at = 'วันนี้'
   steps[i].channel = 'web'
-  steps[i].note = note.value || undefined
-  if (decideOpen.value === 'reject') a.value.status = 'rejected'
+  steps[i].note = (decideOpen.value === 'reject' && fix.value.length ? `[แก้: ${fix.value.join(', ')}] ` : '') + note.value || undefined
+  if (decideOpen.value === 'reject') { a.value.status = 'rejected'; a.value.fixDocs = [...fix.value] }
   else if (steps[i + 1]) steps[i + 1].status = 'pending'
   else {
     a.value.status = 'approved'
@@ -108,6 +110,7 @@ function decide() {
   notify(decideOpen.value === 'approve' ? 'อนุมัติแล้ว ระบบแจ้ง SM ทางอีเมล' : 'ส่งกลับให้ SM แก้ไขแล้ว')
   decideOpen.value = null
   note.value = ''
+  fix.value = []
 }
 </script>
 
@@ -180,7 +183,7 @@ function decide() {
       <section class="panel">
         <h3>ลำดับการอนุมัติ</h3>
         <dl v-if="p.approval?.snapshot" class="rec">
-          <dt>สถานะ</dt><dd><span class="chip" :class="stale ? 'warn' : approved && !expired ? 'win' : p.approval.status === 'rejected' ? 'lose' : ''">{{ stale ? 'ไฟล์ถูกแก้หลังส่ง' : expired ? 'หมดอายุ' : approved ? 'อนุมัติแล้ว' : p.approval.status === 'recalled' ? 'ดึงกลับแล้ว' : p.approval.status === 'rejected' ? 'ส่งกลับแก้ไข' : 'รอพิจารณา' }}{{ p.approval.postAward ? ' · หลังได้งาน' : '' }}</span></dd>
+          <dt>สถานะ</dt><dd><span class="chip" :class="stale ? 'warn' : approved && !expired ? 'win' : p.approval.status === 'rejected' ? 'lose' : ''">{{ stale ? 'ไฟล์ถูกแก้หลังส่ง' : expired ? 'หมดอายุ' : approved ? 'อนุมัติแล้ว' : p.approval.status === 'recalled' ? 'ดึงกลับแล้ว' : p.approval.status === 'rejected' ? 'ส่งกลับแก้ไข' : 'รอพิจารณา' }}{{ p.approval.postAward ? ' · หลังได้งาน' : '' }}</span><span v-if="p.approval.status === 'rejected' && p.approval.fixDocs?.length" class="small bad"> ต้องแก้: {{ p.approval.fixDocs.join(', ') }}</span></dd>
           <dt>ตัวเลขที่อนุมัติ</dt><dd class="num">{{ baht(p.approval.snapshot.revenue) }} · GP {{ p.approval.snapshot.gp }}%</dd>
           <template v-if="p.approval.snapshot.contractValue"><dt>มูลค่า PO</dt><dd class="num">{{ baht(p.approval.snapshot.contractValue) }}</dd></template>
           <dt>ไฟล์ที่อนุมัติ</dt><dd class="small">{{ p.approval.archivedPath }} · SharePoint v{{ p.approval.spVersionId }}</dd>
@@ -242,9 +245,13 @@ function decide() {
       <textarea id="n" v-model="note" class="input" rows="3" />
       <span v-if="decideOpen === 'reject'" class="hint">SM จะเห็นข้อความนี้ในอีเมลและในประวัติเวอร์ชัน</span>
     </div>
+    <fieldset v-if="decideOpen === 'reject'" class="field fx">
+      <legend>เอกสารที่ต้องแก้</legend>
+      <label v-for="d in FIX_DOCS" :key="d"><input v-model="fix" type="checkbox" :value="d" /> {{ d }}</label>
+    </fieldset>
     <template #foot>
       <button class="btn" @click="decideOpen = null">ยกเลิก</button>
-      <button class="btn primary" :disabled="decideOpen === 'reject' && !note.trim()" @click="decide">{{ decideOpen === 'approve' ? 'อนุมัติ' : 'ส่งกลับแก้ไข' }}</button>
+      <button class="btn primary" :disabled="decideOpen === 'reject' && (!note.trim() || !fix.length)" @click="decide">{{ decideOpen === 'approve' ? 'อนุมัติ' : 'ส่งกลับแก้ไข' }}</button>
     </template>
   </Dialog>
 
@@ -300,4 +307,7 @@ dd.good { color: var(--win); } dd.bad { color: var(--lose); }
 .mail span { display: inline-block; width: 56px; color: var(--muted); }
 .mbody { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--ink-2); }
 @media (max-width: 1100px) { .cs { grid-template-columns: 1fr; } }
+.fx { border: 0; padding: 0; display: flex; gap: 14px; flex-wrap: wrap; }
+.fx legend { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; width: 100%; }
+.fx label { display: flex; gap: 6px; align-items: center; font-size: 14px; }
 </style>

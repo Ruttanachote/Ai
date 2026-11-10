@@ -132,6 +132,8 @@ export interface Approval {
   validUntil?: string
   /** Post-award approval raised because the PO differs from the approved quote (P0-3). */
   postAward?: boolean
+  /** Documents the approver asked to fix when sending it back. */
+  fixDocs?: string[]
 }
 
 export type HandoverParty = 'sm' | 'pm' | 'ma' | 'opn' | 'devlead'
@@ -262,7 +264,16 @@ export interface Workspace { template: WorkspaceTemplate; key: string; nextNo: n
   members?: WorkspaceMember[]; workflow?: Workflow; automation?: AutomationRule[]; estimate?: 'points' | 'hours'; hourlyRate?: number }
 
 export type MilestoneState = 'planned' | 'delivered' | 'inspected' | 'invoiced' | 'paid'
-export interface Milestone { name: string; start: string; end: string; progress: number; payment?: number; paid?: boolean; state?: MilestoneState; deliveredAt?: string }
+export interface Deliverable { name: string; owner?: string; status: 'draft' | 'review' | 'ready' }
+export interface Milestone {
+  name: string; start: string; end: string; progress: number; payment?: number; paid?: boolean; state?: MilestoneState; deliveredAt?: string
+  /** % of contract value for this installment (งวด). */
+  pct?: number
+  deliverables?: Deliverable[]
+  finalCheck?: { by: string; at: string }
+  sentAt?: string
+  acceptance?: { doc: string; at: string; by: string }
+}
 
 /** Thai e-GP procurement sub-workflow (พ.ร.บ.จัดซื้อจัดจ้างฯ 2560). */
 export interface BidInfo {
@@ -271,6 +282,8 @@ export interface BidInfo {
   refPrice?: number
   announce?: string
   submit?: string
+  /** Expected result announcement date — SM is reminded the day before. */
+  resultDue?: string
   result?: string
   signed?: string
   ourBid?: number
@@ -337,6 +350,23 @@ export interface Project {
   /** Preventive Maintenance cycle agreed in the proposal, and the rounds generated from it. */
   pmPlan?: PmPlan
   pmRounds?: PmRound[]
+  /** Where the deal came from; product-led deals start from a Solution Catalog item. */
+  origin?: 'customer' | 'product'
+  catalogId?: string
+  /** Requirement workspace (SM, pre-sale). */
+  requirement?: { overview: string; process: string; meetings: { at: string; title: string; notes: string }[]; updated?: string }
+  /** Sales documents checklist required at Forecast (70%). */
+  salesDocs?: { tor?: string; proposal?: string }
+  torReview?: { status: 'pending' | 'approved' | 'returned'; version: number; at: string; by?: string; note?: string; decidedAt?: string }
+  stakeholders?: Stakeholder[]
+  meetings?: Meeting[]
+  risks?: Risk[]
+  staffRequests?: StaffRequest[]
+  /** PM hands the project to MA; MA confirms → Warranty. */
+  maHandover?: { at: string; by: string; contact: string; docs: string[]; note?: string; acceptedAt?: string; acceptedBy?: string }
+  deliveredAt?: string
+  renewalNotices?: { round: 1 | 2; at: string; to: string }[]
+  devNotified?: string
 }
 
 /* ---------------- Leave declaration (not synced with HR — a log of who is away and what it touches) ---------------- */
@@ -365,3 +395,14 @@ export interface PmRound {
 export const PM_CYCLES: Record<1 | 3 | 6, string> = { 1: 'รายเดือน', 3: 'ราย 3 เดือน', 6: 'ราย 6 เดือน' }
 export const PM_TEMPLATES = ['รายงาน PM ระบบซอฟต์แวร์ (มาตรฐาน DT)', 'รายงาน PM ระบบเครือข่าย / Infrastructure', 'รายงาน PM อุปกรณ์ IoT']
 export const MA_MAILBOX = 'ma-support@stream.co.th'
+
+export interface Stakeholder { id: string; side: 'customer' | 'us'; name: string; position: string; email?: string; phone?: string; focal?: boolean; topics?: string }
+export interface Meeting { id: string; kind: 'kickoff' | 'team' | 'requirement' | 'handover' | 'review'; title: string; date: string; time: string; attendees: string[]; place: string; sentAt: string; by: string }
+export const MEETING_KINDS: Record<Meeting['kind'], string> = { kickoff: 'Kick-off', team: 'ประชุมทีม', requirement: 'เก็บ Requirement', handover: 'Handover', review: 'ทบทวนงวดงาน' }
+export interface Risk { id: string; title: string; likelihood: 1 | 2 | 3; impact: 1 | 2 | 3; owner: string; plan: string; status: 'open' | 'watch' | 'closed'; at: string }
+export const riskLevel = (r: Pick<Risk, 'likelihood' | 'impact'>) => { const v = r.likelihood * r.impact; return v >= 6 ? 'สูง' : v >= 3 ? 'กลาง' : 'ต่ำ' }
+export interface StaffRequest { id: string; role: MemberRole; count: number; from: string; to: string; note?: string; status: 'pending' | 'filled' | 'declined'; by: string; at: string; filled?: string[]; decidedBy?: string }
+/** Reusable solutions the teams sell again (Product-led deals start here). */
+export interface CatalogItem { id: string; name: string; team: string; summary: string; price: number; manday: number; modules: string[]; proposal: string; owner: string }
+export interface OutboxMail { id: string; at: string; from: string; to: string; subject: string; kind: 'email' | 'teams'; ref?: string }
+export interface WeeklyReport { id: string; week: string; projectId: string; pm: string; done: number; open: number; late: number; hours: number; ot: number; at: string }

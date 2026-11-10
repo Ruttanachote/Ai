@@ -42,3 +42,14 @@ test('round state: prepare inside lead days, ready → MA sends, late after due,
   p.pmRounds = planRounds(p).map((r) => (r.due < '2026-11-01' ? { ...r, status: 'sent' as const } : r))
   assert.deepEqual(dueRounds([p], '2026-11-06').map((x) => [x.r.due, x.state]), [['2026-11-15', 'prepare']])
 })
+
+test('MA accepts the hand-over: warranty dates from delivery + contract months, rounds planned', async () => {
+  const { acceptIntoWarranty, warrantyEnd } = await import('../../src/domain/pm.ts')
+  assert.equal(warrantyEnd('2027-01-31', 12), '2028-01-30')
+  const p = proj({ stage: 'delivery', startWarranty: undefined, endWarranty: undefined, deliveredAt: '2027-01-31', terms: { warrantyMonths: 24 } as never,
+    maHandover: { at: '2027-01-31', by: 'ak', contact: 'x', docs: [] }, pmPlan: { cycle: 6, first: '2027-07-31', leadDays: 14, template: 't' } })
+  assert.equal(acceptIntoWarranty(p, 'wm', '2027-02-02'), true)
+  assert.equal(p.stage, 'warranty')
+  assert.deepEqual([p.startWarranty, p.endWarranty], ['2027-01-31', '2029-01-30'])
+  assert.equal(p.pmRounds?.length, 3)
+})

@@ -2,12 +2,13 @@
 import { computed, reactive, ref, watch } from 'vue'
 import Avatar from './Avatar.vue'
 import Icon from './Icon.vue'
-import { HANDOVER_PARTIES, type ContractTerms, type OtRequest, type Project, type Task } from '../data/model'
+import { HANDOVER_PARTIES, riskLevel, type ContractTerms, type OtRequest, type Project, type Task } from '../data/model'
 import { handoverGate, isTender } from '../domain/rules'
 import { effort, health, lateTasks, paidAmount, progressPct, otBudget } from '../domain/metrics'
 import KpiStrip from './KpiStrip.vue'
 import { PEOPLE, SALES_TEAMS, baht, groupOf, person, thDate, TODAY, TODAY_ISO } from '../data/mock'
-import { notify, session } from '../store'
+import { notify, pushNotices, session } from '../store'
+import { outbox } from '../store'
 import { newItem, record } from '../domain/work'
 
 const props = defineProps<{ p: Project }>()
@@ -48,7 +49,23 @@ const gate = computed(() => handoverGate(props.p, checklist.every((c) => c.done)
 // with a Teams link) and ticks attendance after the meeting; the gate needs all five.
 const devLeadOf = (team: string) => PEOPLE.find((x) => x.role === 'head' && x.team === team)?.id ?? PEOPLE.find((x) => x.role === 'head' && x.team === groupOf(team))?.id ?? ''
 const DEFAULT_WHO = { ma: 'wm', opn: 'op' }
+// S-10: after Close Win the SM tells the dev team and asks PMO for a PM.
+const canNotifyDev = computed(() => (props.p.sm === session.userId || ['head', 'admin'].includes(session.role)) && !props.p.devNotified)
+function notifyDev() {
+  const lead = devLeadOf(props.p.team)
+  pushNotices([
+    { to: 'pj', projectId: props.p.id, text: `${props.p.name} ชนะงานแล้ว — ขอ PM สำหรับ Handover` },
+    ...(lead ? [{ to: lead, projectId: props.p.id, text: `${props.p.name} ชนะงานแล้ว — เตรียมทีมพัฒนาและเข้าประชุม Handover` }] : []),
+  ])
+  outbox.unshift({ id: 'm' + Date.now(), at: TODAY_ISO, from: 'One Platform', to: `PMO DT3-3, ${person(lead)?.name ?? 'หัวหน้าทีม Dev'}`, subject: `ชนะงาน ${props.p.name} — ขอ PM และเตรียมทีม`, kind: 'teams' })
+  props.p.devNotified = TODAY_ISO
+  notify('แจ้ง PMO และหัวหน้าทีมพัฒนาแล้ว (Teams + กระดิ่ง)')
+}
 function assign() {
+  // H-02: the assigned PM gets Manage Project on this project only.
+  if (!props.p.collaborators.includes(pick.pm)) props.p.collaborators = [...props.p.collaborators, pick.pm]
+  props.p.history.push({ stage: props.p.stage, note: `มอบหมาย ${person(pick.pm)?.name} เป็น PM · ให้สิทธิ์ Manage Project`, at: 'วันนี้', by: person(session.userId)?.name ?? '' })
+  pushNotices([{ to: pick.pm, projectId: props.p.id, text: `คุณได้รับมอบหมายเป็น PM ของ ${props.p.name} — มีสิทธิ์ Manage Project แล้ว` }])
   props.p.pm = pick.pm
   props.p.team = pick.team
   props.p.handover = {
@@ -59,6 +76,10 @@ function assign() {
       attended: props.p.handover?.attendees.find((a) => a.party === k)?.attended ?? false,
     })),
   }
+  // H-03: Teams meeting invite to the five parties.
+  const who = props.p.handover.attendees.map((a) => person(a.who)?.name).filter(Boolean).join(', ')
+  props.p.meetings = [{ id: 'mt' + Date.now(), kind: 'handover', title: `Handover ${props.p.name}`, date: TODAY_ISO, time: '10:00', attendees: props.p.handover.attendees.map((a) => a.who), place: 'Microsoft Teams', sentAt: TODAY_ISO, by: session.userId }, ...(props.p.meetings ?? [])]
+  outbox.unshift({ id: 'm' + Date.now(), at: TODAY_ISO, from: person(session.userId)?.name ?? 'PMO', to: who, subject: `นัดประชุม Handover ${props.p.name} (Microsoft Teams)`, kind: 'email' })
   notify(`มอบหมาย ${person(pick.pm)?.name} เป็น PM แล้ว — ส่งนัดประชุม Handover (Teams) ถึงผู้เข้าร่วม 5 ฝ่าย`)
 }
 const canMarkAttendance = computed(() => ['pmo', 'admin'].includes(session.role))
@@ -115,11 +136,7 @@ const kpis = computed(() => {
 })
 const toneOf = (t: 'ok' | 'warn' | 'bad') => (t === 'ok' ? ('' as const) : t)
 
-const risks = [
-  { lvl: 'สูง', t: 'API ชำระเงินของธนาคารเปลี่ยนเวอร์ชันระหว่างพัฒนา', owner: 'dev3', act: 'นัด Tech call กับธนาคาร 8 พ.ย.' },
-  { lvl: 'กลาง', t: 'ผู้ใช้งานฝั่งลูกค้าว่างทดสอบ UAT ได้แค่ 2 วัน/สัปดาห์', owner: 'ak', act: 'แบ่ง UAT เป็น 3 รอบย่อย' },
-  { lvl: 'ต่ำ', t: 'Server ลูกค้าส่งมอบล่าช้า 1 สัปดาห์', owner: 'ak', act: 'ใช้ Staging ของบริษัทชั่วคราว' },
-]
+const risks = computed(() => (props.p.risks ?? []).filter((r) => r.status !== 'closed').map((r) => ({ lvl: riskLevel(r), t: r.title, owner: r.owner, act: r.plan })))
 const crs = reactive([
   { id: 'CR-03', t: 'เพิ่มหน้าจอรายงานสถิติรายอำเภอ', md: 6, cost: 72_000, status: 'รอลูกค้าอนุมัติ', approved: false },
   { id: 'CR-02', t: 'เปลี่ยน OTP จาก SMS เป็น ThaiD', md: 4, cost: 0, status: 'อนุมัติ — อยู่ในขอบเขตเดิม', approved: true },
@@ -159,6 +176,8 @@ function crToWork(c: (typeof crs)[number]) {
           </select>
           <span class="hint">ดูความว่างของทีมได้ที่เมนู Resource Workload</span>
         </div>
+        <button v-if="canNotifyDev" class="btn" @click="notifyDev">แจ้งทีมพัฒนา + ขอ PM</button>
+        <p v-else-if="p.devNotified" class="small muted">แจ้งทีมพัฒนาและ PMO แล้ว {{ thDate(p.devNotified) }}</p>
         <button v-if="canAssign" class="btn primary" :disabled="!pick.pm" @click="assign">มอบหมาย PM และนัดประชุม Handover</button>
         <p v-else class="hint">PMO หรือหัวหน้ากลุ่มเป็นผู้มอบหมาย PM</p>
       </div>
