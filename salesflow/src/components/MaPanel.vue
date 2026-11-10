@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Dialog from './Dialog.vue'
+import PmRounds from './PmRounds.vue'
 import type { Project } from '../data/model'
 import { CONTRACTS, baht, daysUntil, thDate, person, TODAY_ISO } from '../data/mock'
 import { bookedValue } from '../domain/metrics'
@@ -20,9 +21,9 @@ const maShare = ref(50)
 const notices = computed(() => [
   { d: 180, who: 'ลูกค้าภาครัฐ', what: 'แจ้งลูกค้าตั้งงบ MA ในคำของบประมาณปีถัดไป (รอบยื่นคำของบราว พ.ค.)' },
   { d: 120, who: 'ภายใน · MA + SM', what: 'สรุปการใช้งาน Ticket SLA และคะแนนสุขภาพลูกค้า เตรียมเสนอต่อ' },
-  { d: 90, who: 'ภายใน · SM', what: 'ทำใบเสนอราคา MA (ค่าเริ่มต้น 12% ของมูลค่าเดิม ปรับได้) และขออนุมัติ' },
-  { d: 60, who: 'ลูกค้า', what: 'ส่งใบเสนอราคา MA ก่อนกำหนดแจ้งต่อสัญญาตามสัญญา' },
-  { d: 30, who: 'ลูกค้า', what: 'ส่งหนังสือแจ้งหมดประกัน พร้อมสอบถามการต่อ MA และแนบใบเสนอราคา' },
+  { d: 90, who: 'ลูกค้า · แจ้งเตือนรอบที่ 1 (3 เดือน)', what: 'อีเมลจากกล่องกลางทีม MA ถามลูกค้าเรื่องต่อ MA · ทีม MA ทำใบเสนอราคา (ค่าเริ่มต้น 12%) และขออนุมัติ' },
+  { d: 60, who: 'ทีม MA', what: 'ส่งใบเสนอราคา MA ให้ลูกค้าที่ตอบรับ' },
+  { d: 30, who: 'ลูกค้า · แจ้งเตือนรอบที่ 2 (1 เดือน)', what: 'อีเมลย้ำจากกล่องกลางทีม MA พร้อมแนบใบเสนอราคา และแจ้งหัวหน้าทีมถ้ายังไม่มีคำตอบ' },
   { d: 7, who: 'ลูกค้า', what: 'ติดตามคำตอบ ถ้ายังไม่ตอบ แจ้งหัวหน้ากลุ่ม' },
   { d: 0, who: 'ระบบ', what: 'หมดประกัน → ปิดโครงการ (Ended) หรือเปิดโครงการ MA ใหม่' },
 ])
@@ -69,6 +70,8 @@ function renew() {
       </ol>
     </section>
 
+    <PmRounds :p="p" class="wide" />
+
     <section class="panel">
       <div class="panel-head"><h2>Ticket ในระยะประกัน</h2><span class="muted small">SLA ตามสัญญา: P1 4 ชม. · P2 8 ชม. · P3 3 วันทำการ</span></div>
       <table v-if="tickets.length" class="table">
@@ -103,7 +106,7 @@ function renew() {
 
 <style scoped>
 .ma { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
-.ma > .panel:last-child { grid-column: 1 / -1; }
+.ma > .panel:last-child, .ma > .wide { grid-column: 1 / -1; }
 .count { display: grid; gap: 12px; }
 .days { font-size: 64px; font-weight: 700; line-height: 1; display: grid; }
 .days span { font-size: 14px; font-weight: 500; color: var(--muted); font-family: var(--font); margin-top: 6px; }

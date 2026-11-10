@@ -8,6 +8,10 @@ import { projects, scope, tickets as allTickets } from '../store'
 import { CONTRACTS, baht, daysUntil, thDate, addDays, mb } from '../data/mock'
 import { warrantyBucket, bookedValue, sum } from '../domain/metrics'
 import { customerName } from '../display'
+import PmRoundActions from '../components/PmRoundActions.vue'
+import { dueRounds, nextRound, STATE_LABEL } from '../domain/pm'
+import { person, TODAY_ISO } from '../data/mock'
+import { PM_CYCLES } from '../data/model'
 
 // Buckets use the same thresholds as the project's "ประกันและ MA" tab; tickets and renewals
 // are limited to the projects this role can see.
@@ -22,10 +26,14 @@ const buckets = computed(() => [
 ])
 const tickets = computed(() => allTickets.filter((t) => ids.value.has(t.project)).map((t) => ({ ...t, p: scope.value.list.find((p) => p.id === t.project) })))
 const renewals = computed(() => scope.value.list.filter((p) => p.type === 'MA'))
+// Preventive Maintenance rounds that need action now (prepare / send / late) across visible projects.
+const pmQueue = computed(() => dueRounds(scope.value.list, TODAY_ISO))
+const pmPlanned = computed(() => scope.value.list.filter((p) => p.pmPlan && p.stage === 'warranty'))
 const kpis = computed(() => [
   { label: 'โครงการในระยะประกัน', value: String(base.value.length), note: mb(sum(base.value, bookedValue)) + ' มูลค่าตามสัญญา' },
   { label: 'หมดภายใน 30 วัน', value: String(buckets.value[0].list.length), note: 'ต้องตามคำตอบเรื่องต่อ MA', tone: buckets.value[0].list.length ? ('warn' as const) : ('' as const) },
   { label: 'Ticket เปิดอยู่', value: String(tickets.value.filter((t) => t.severity !== 'CR').length), note: tickets.value.filter((t) => t.used >= 100).length + ' รายการเกิน SLA', tone: tickets.value.some((t) => t.used >= 100) ? ('bad' as const) : ('' as const) },
+  { label: 'รายงาน PM ต้องทำ', value: String(pmQueue.value.length), note: `${pmQueue.value.filter((x) => x.state === 'toSend').length} รอ MA ส่ง · ${pmQueue.value.filter((x) => x.state === 'late').length} เลยกำหนด`, tone: pmQueue.value.some((x) => x.state === 'late') ? ('bad' as const) : pmQueue.value.length ? ('warn' as const) : ('' as const) },
   { label: 'สัญญา MA ที่ต่อแล้ว', value: String(renewals.value.length), note: mb(sum(renewals.value, bookedValue)) + ' ต่อปี' },
 ])
 </script>
@@ -52,6 +60,24 @@ const kpis = computed(() => [
         <p v-if="!b.list.length" class="small muted none">ไม่มีโครงการในช่วงนี้</p>
       </section>
     </div>
+
+    <section class="panel pmq">
+      <div class="panel-head"><h2>รอบ Preventive Maintenance</h2><span class="muted small">ทีมพัฒนาเตรียมรายงานจาก Template → ทีม MA ส่งอีเมลจากกล่องกลาง</span></div>
+      <table class="table">
+        <thead><tr><th>โครงการ</th><th>รอบ</th><th>กำหนดส่งลูกค้า</th><th>สถานะ</th><th>ผู้เตรียม</th><th /></tr></thead>
+        <tbody>
+          <tr v-for="x in pmQueue" :key="x.r.id">
+            <td><router-link :to="`/projects/${x.p.id}`">{{ x.p.name }}</router-link><p class="small muted">{{ PM_CYCLES[x.p.pmPlan!.cycle] }}</p></td>
+            <td class="num">{{ x.r.no }}</td><td>{{ thDate(x.r.due) }}</td>
+            <td><span class="chip" :class="STATE_LABEL[x.state].tone">{{ STATE_LABEL[x.state].label }}</span></td>
+            <td class="small">{{ person(x.r.preparedBy ?? x.p.pmPlan!.preparer)?.name ?? 'ทีมพัฒนา' }}</td>
+            <td class="r"><PmRoundActions :p="x.p" :r="x.r" /></td>
+          </tr>
+          <tr v-if="!pmQueue.length"><td colspan="6" class="muted">ไม่มีรอบที่ต้องทำตอนนี้</td></tr>
+        </tbody>
+      </table>
+      <p class="small muted">รอบถัดไป: <template v-for="p in pmPlanned" :key="p.id">{{ p.name }} {{ nextRound(p, TODAY_ISO) ? thDate(nextRound(p, TODAY_ISO)!.due) : '—' }} · </template></p>
+    </section>
 
     <section class="panel">
       <div class="panel-head"><h2>คิว Ticket ตาม SLA</h2><button class="btn sm">รับเรื่องใหม่</button></div>
@@ -116,4 +142,5 @@ const kpis = computed(() => [
 .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); }
 .row:last-child { border-bottom: 0; }
 @media (max-width: 1000px) { .radar { grid-template-columns: 1fr; } }
+.pmq { margin-bottom: 20px; }
 </style>

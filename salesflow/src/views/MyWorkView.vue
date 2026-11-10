@@ -4,6 +4,8 @@ import PageHeader from '../components/PageHeader.vue'
 import KpiStrip from '../components/KpiStrip.vue'
 import LeaveDialog from '../components/LeaveDialog.vue'
 import LeaveLog from '../components/LeaveLog.vue'
+import PmRoundActions from '../components/PmRoundActions.vue'
+import { dueRounds, STATE_LABEL } from '../domain/pm'
 import WorkTypeIcon from '../components/work/WorkTypeIcon.vue'
 import PriorityIcon from '../components/work/PriorityIcon.vue'
 import WorkDrawer from '../components/work/WorkDrawer.vue'
@@ -37,6 +39,9 @@ const kpis = computed(() => [
   { label: 'OT รออนุมัติ', value: String(otPending.value.length), note: otPending.value.length ? `${otPending.value.reduce((s, o) => s + o.hours, 0)} ชม. รอ PM` : 'ไม่มี', tone: otPending.value.length ? ('warn' as const) : ('' as const) },
 ])
 const leaveOpen = ref(false)
+// PM reports this person prepares (named preparer, or member of the project's workspace).
+const pmToPrepare = computed(() => dueRounds(projects, TODAY_ISO).filter((x) => x.r.status !== 'ready' &&
+  (x.p.pmPlan?.preparer === session.userId || (!x.p.pmPlan?.preparer && x.p.workspace?.members?.some((m) => m.userId === session.userId)))))
 const notes = computed(() => notifications.filter((n) => n.to === session.userId).slice(0, 6))
 
 const openItem = ref<{ p: Project; t: Task } | null>(null)
@@ -70,6 +75,14 @@ const team = (p: Project) => (p.workspace?.members ?? []).filter((m) => m.role !
               <router-link :to="`/work/${p.id}`" class="btn sm ghost">บอร์ด</router-link>
             </li>
           </ul>
+        </section>
+        <section v-if="pmToPrepare.length" class="panel flush">
+          <h3>รายงาน Preventive Maintenance ที่ต้องเตรียม <span class="muted">{{ pmToPrepare.length }}</span></h3>
+          <ul><li v-for="x in pmToPrepare" :key="x.r.id" class="pmr">
+            <span class="chip" :class="STATE_LABEL[x.state].tone">{{ STATE_LABEL[x.state].label }}</span>
+            <span class="ttl">รอบที่ {{ x.r.no }} · {{ x.p.name }}<small>ส่งให้ทีม MA ก่อน {{ thDate(x.r.due) }} · {{ x.p.pmPlan?.template }}</small></span>
+            <PmRoundActions :p="x.p" :r="x.r" />
+          </li></ul>
         </section>
         <section v-if="!open.length" class="panel empty">
           <h3>ไม่มีงานค้าง</h3>
@@ -135,4 +148,5 @@ ul { list-style: none; margin: 0; padding: 0; }
 .mt-s { margin-top: 8px; }
 @media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .flush li { grid-template-columns: auto minmax(0, 1fr) auto; } .flush li > :nth-child(3), .flush li > :nth-child(5), .flush li > :nth-child(6) { display: none; } }
+.flush li.pmr { grid-template-columns: auto minmax(0, 1fr) auto; }
 </style>

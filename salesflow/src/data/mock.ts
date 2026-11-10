@@ -1,4 +1,4 @@
-import type { Account, Person, Project, Task, Team } from './model'
+import { PM_TEMPLATES, type Account, type Person, type Project, type Task, type Team } from './model'
 
 // Unsplash footage — loaded by the viewer's browser; components fall back to a tone if blocked.
 export const img = (id: string, w = 1200) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=70`
@@ -367,4 +367,23 @@ import { defaultAutomation, defaultWorkflow } from '../domain/workflow.ts'
     tasks,
     history: [{ stage: 'delivery', note: 'Kick-off Sprint 1', at: '5 ต.ค. 69', by: 'Kanya S.' }],
   })
+}
+
+// ── Preventive Maintenance plans (agreed in each proposal) and rounds ─────────────────────
+import { planRounds } from '../domain/pm.ts'
+{
+  const set = (id: string, plan: Project['pmPlan'], sentUpTo: string, extra: (r: NonNullable<Project['pmRounds']>[number]) => void = () => {}) => {
+    const p = PROJECTS.find((x) => x.id === id)!
+    p.pmPlan = plan
+    p.pmRounds = planRounds(p).map((r) => {
+      if (r.due <= sentUpTo) Object.assign(r, { status: 'sent', preparedBy: plan!.preparer, preparedAt: r.due, sentBy: 'wm', sentAt: r.due, sentTo: plan!.customerEmail, summary: 'ระบบทำงานปกติ ตรวจ Log และสำรองข้อมูลครบ' })
+      extra(r)
+      return r
+    })
+  }
+  set('p8', { cycle: 3, first: '2026-03-05', leadDays: 30, preparer: 'dev3', customerEmail: 'it-opd@mnh-hospital.go.th', template: PM_TEMPLATES[0] }, '2026-09-30')
+  set('p9', { cycle: 6, first: '2026-05-28', leadDays: 30, preparer: 'dev4', customerEmail: 'noc@eastport.go.th', template: PM_TEMPLATES[1] }, '2026-06-30', (r) => {
+    if (r.due === '2026-11-28') Object.assign(r, { status: 'ready', preparedBy: 'dev4', preparedAt: '2026-11-04', summary: 'อุปกรณ์ Core switch 2 ชุด Firmware ล่าสุด · Link utilisation สูงสุด 62%', findings: 'UPS ห้อง Server แบตเตอรี่เสื่อม 1 ลูก', advice: 'เปลี่ยนแบตเตอรี่ UPS ภายในไตรมาสนี้', files: ['PM-NMC-2569-R2.pdf', 'utilisation-ต.ค.-พ.ย.xlsx'] })
+  })
+  set('p10', { cycle: 1, first: '2026-02-15', leadDays: 10, preparer: 'dev1', customerEmail: 'saraban@sesao9.go.th', template: PM_TEMPLATES[0] }, '2026-10-31')
 }

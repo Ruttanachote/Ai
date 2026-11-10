@@ -317,6 +317,9 @@ export interface Project {
   /** PM workspace — created by the PM after Handover by choosing a template. */
   workspace?: Workspace
   history: { stage: StageKey; note: string; at: string; by: string }[]
+  /** Preventive Maintenance cycle agreed in the proposal, and the rounds generated from it. */
+  pmPlan?: PmPlan
+  pmRounds?: PmRound[]
 }
 
 /* ---------------- Leave declaration (not synced with HR — a log of who is away and what it touches) ---------------- */
@@ -332,3 +335,16 @@ export interface Leave {
   createdAt: string; status: 'active' | 'cancelled'; impacts: LeaveImpact[]
   log: { at: string; who: string; text: string }[]
 }
+
+/* ---------------- Preventive Maintenance (PM report) rounds ---------------- */
+/** Agreed at sales time: every 1, 3 or 6 months from the first round date. */
+export interface PmPlan { cycle: 1 | 3 | 6; first: string; leadDays: number; preparer?: string; customerEmail?: string; template: string }
+export type PmRoundStatus = 'planned' | 'preparing' | 'ready' | 'sent'
+export interface PmRound {
+  id: string; no: number; due: string; status: PmRoundStatus
+  summary?: string; findings?: string; advice?: string; files?: string[]
+  preparedBy?: string; preparedAt?: string; sentBy?: string; sentAt?: string; sentTo?: string; returned?: string
+}
+export const PM_CYCLES: Record<1 | 3 | 6, string> = { 1: 'รายเดือน', 3: 'ราย 3 เดือน', 6: 'ราย 6 เดือน' }
+export const PM_TEMPLATES = ['รายงาน PM ระบบซอฟต์แวร์ (มาตรฐาน DT)', 'รายงาน PM ระบบเครือข่าย / Infrastructure', 'รายงาน PM อุปกรณ์ IoT']
+export const MA_MAILBOX = 'ma-support@stream.co.th'

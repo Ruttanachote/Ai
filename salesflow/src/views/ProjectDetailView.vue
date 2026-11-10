@@ -11,6 +11,7 @@ import FolderGrid from '../components/FolderGrid.vue'
 import CostSheetPanel from '../components/CostSheetPanel.vue'
 import DeliveryPanel from '../components/DeliveryPanel.vue'
 import MaPanel from '../components/MaPanel.vue'
+import PmRounds from '../components/PmRounds.vue'
 import ProcurementPanel from '../components/ProcurementPanel.vue'
 import { moveStage, notify, projects, session } from '../store'
 import { baht, person, thDate, daysSince, TEAMS, TODAY_ISO, account } from '../data/mock'
@@ -266,6 +267,7 @@ const drop = ref(false)
 
     <CostSheetPanel v-if="tab === 'cost'" :p="p" />
     <DeliveryPanel v-if="tab === 'delivery'" :p="p" />
+    <PmRounds v-if="tab === 'overview' && session.role !== 'opn'" :p="p" class="pmov" />
     <MaPanel v-if="tab === 'ma'" :p="p" />
     <ProcurementPanel v-if="tab === 'proc'" :p="p" />
 
@@ -404,4 +406,5 @@ const drop = ref(false)
 .hist strong { font-weight: 500; }
 @media (max-width: 1100px) { .ov { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .cover-in { padding: 20px; } .hist li { grid-template-columns: 1fr; gap: 6px; } }
+.pmov { margin-top: 20px; }
 </style>
