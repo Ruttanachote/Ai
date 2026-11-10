@@ -177,7 +177,7 @@ function crToWork(c: (typeof crs)[number]) {
         <div class="field">
           <label for="team">ทีม DT ที่พัฒนา</label>
           <select id="team" v-model="pick.team" class="input" :disabled="!canAssign">
-            <option v-for="t in SALES_TEAMS" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option>
+            <option v-for="t in SALES_TEAMS.filter((x) => x.active !== false)" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option>
           </select>
           <span class="hint">ดูความว่างของทีมได้ที่เมนู Resource Workload</span>
         </div>

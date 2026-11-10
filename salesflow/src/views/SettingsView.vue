@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { ROLES, type Role } from '../data/model'
-import { TEAMS, GROUP_NAME, mb, thDate } from '../data/mock'
+import { TEAMS, thDate } from '../data/mock'
 import { TH_GOV_2026 } from '../domain/calendar'
 import { jobLog, leaves, outbox, projects, runScheduler, SETTINGS, weeklyReports } from '../store'
 import { person } from '../data/mock'
 import { RULES as JOB_RULES } from '../domain/scheduler'
 
 import PageHeader from '../components/PageHeader.vue'
+import TeamsAdmin from '../components/admin/TeamsAdmin.vue'
+import { teamLog } from '../store'
+import { useRoute } from 'vue-router'
 
-const tab = ref<'roles' | 'approval' | 'calendar' | 'channels' | 'jobs' | 'audit' | 'teams' | 'm365'>('roles')
+type SettingsTab = 'roles' | 'approval' | 'calendar' | 'channels' | 'jobs' | 'audit' | 'teams' | 'm365'
+const tab = ref<SettingsTab>((useRoute().query.tab as SettingsTab) || 'roles')
 const R = Object.keys(ROLES) as Role[]
 type Level = 'full' | 'own' | 'view' | ''
 // Columns follow ROLES: SM, หัวหน้ากลุ่ม, รองผู้บริหาร, ผู้บริหาร, PMO, OPN, PM, Dev, MA, Call center, Admin
@@ -83,6 +87,7 @@ const audit = computed(() => {
     if (p.torReview?.decidedAt) rows.push({ k: p.torReview.decidedAt, when: p.torReview.decidedAt, who: person(p.torReview.by)?.name ?? '', src: `${p.code} · TOR`, text: `TOR Final v${p.torReview.version}: ${p.torReview.status}` })
   }
   for (const l of leaves) for (const g of l.log) rows.push({ k: l.createdAt, when: `${l.createdAt} ${g.at}`, who: person(g.who)?.name ?? g.who, src: 'การลา', text: g.text })
+  for (const l of teamLog) rows.push({ k: l.at, when: l.at, who: person(l.by)?.name ?? l.by, src: `ทีม ${l.team}`, text: l.changes.map((c) => `${c.field}: ${c.from ?? '—'} → ${c.to ?? '—'}`).join(' · ') + (l.reason ? ` (${l.reason})` : '') })
   for (const m of outbox) rows.push({ k: m.at, when: m.at, who: m.from, src: m.kind === 'email' ? 'อีเมล' : 'Teams', text: `ถึง ${m.to}: ${m.subject}` })
   const q = aq.value.trim().toLowerCase()
   return rows.filter((r) => !q || [r.who, r.src, r.text].some((v) => v.toLowerCase().includes(q))).sort((a, b) => b.k.localeCompare(a.k))
@@ -111,7 +116,7 @@ function addHoliday() {
       <button role="tab" :aria-selected="tab === 'channels'" @click="tab = 'channels'">ช่องทางแจ้งเตือน</button>
       <button role="tab" :aria-selected="tab === 'jobs'" @click="tab = 'jobs'">งานอัตโนมัติ · Outbox</button>
       <button role="tab" :aria-selected="tab === 'audit'" @click="tab = 'audit'">Audit log</button>
-      <button role="tab" :aria-selected="tab === 'teams'" @click="tab = 'teams'">ทีม DT และเป้า</button>
+      <button role="tab" :aria-selected="tab === 'teams'" @click="tab = 'teams'">ทีมและทีมย่อย</button>
       <button role="tab" :aria-selected="tab === 'm365'" @click="tab = 'm365'">Microsoft 365</button>
     </div>
 
@@ -195,14 +200,7 @@ function addHoliday() {
         <tbody><tr v-for="(r, i) in audit.slice(0, 200)" :key="i"><td class="small nowrap">{{ r.when }}</td><td class="small">{{ r.who }}</td><td class="small"><span class="chip">{{ r.src }}</span></td><td class="small">{{ r.text }}</td></tr></tbody></table>
     </section>
 
-    <section v-if="tab === 'teams'" class="panel">
-      <table class="table">
-        <thead><tr><th>รหัส</th><th>ชื่อทีม</th><th>กลุ่ม</th><th>บทบาท</th><th>เดิม</th><th class="r">เป้ายอดขายปี 2569</th></tr></thead>
-        <tbody><tr v-for="t in TEAMS" :key="t.code"><td><strong>{{ t.code }}</strong></td><td>{{ t.name }}</td><td class="small">{{ GROUP_NAME[t.group] }}</td>
-          <td><span class="chip" :class="t.kind === 'sales' ? 'presale' : ''">{{ t.kind === 'sales' ? 'ทีมขาย/พัฒนา' : t.kind === 'support' ? 'ทีมสนับสนุน' : 'ผู้บริหาร' }}</span></td>
-          <td class="small muted">{{ t.formerly ?? '—' }}</td><td class="r num">{{ t.target ? mb(t.target) : '—' }}</td></tr></tbody>
-      </table>
-    </section>
+    <TeamsAdmin v-if="tab === 'teams'" />
 
     <section v-if="tab === 'm365'" class="m365">
       <div v-for="a in APPS" :key="a.name" class="panel app">

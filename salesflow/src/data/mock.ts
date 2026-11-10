@@ -51,13 +51,13 @@ export const TEAMS: Team[] = [
   { code: 'DT1', name: 'Digital Infrastructure', group: 'DT1', kind: 'sales', target: 120_000_000, formerly: 'BU1 + BU2', headcount: 14, load: 0.82 },
   { code: 'DT2', name: 'Digital Security', group: 'DT2', kind: 'sales', target: 45_000_000, formerly: 'BU4', headcount: 8, load: 0.7 },
   { code: 'DT3', name: 'Digital Edge & Services', group: 'DT3', kind: 'sales', target: 60_000_000, formerly: 'BU5 + BU6', headcount: 11, load: 0.95 },
-  { code: 'DT3-2', name: 'OPN — จัดซื้อและการเงินโครงการ', group: 'DT3', kind: 'support' },
-  { code: 'DT3-3', name: 'PMO', group: 'DT3', kind: 'support' },
-  { code: 'DT4-LC', name: 'Low Code', group: 'DT4', kind: 'sales', target: 40_000_000, formerly: 'BU3', headcount: 9, load: 0.9 },
+  { code: 'DT3-2', name: 'OPN — จัดซื้อและการเงินโครงการ', group: 'DT3', kind: 'support', head: 'op' },
+  { code: 'DT3-3', name: 'PMO', group: 'DT3', kind: 'support', head: 'pj', note: 'มอบหมาย PM และติดตามโครงการที่ส่งมอบ' },
+  { code: 'DT4-LC', name: 'Low Code', group: 'DT4', kind: 'sales', target: 40_000_000, formerly: 'BU3', headcount: 9, load: 0.9, head: 'dl', note: 'พัฒนาระบบด้วย Low Code สำหรับภาครัฐและองค์กร' },
   { code: 'DT4-CNA', name: 'CNA (Cloud Native App)', group: 'DT4', kind: 'sales', target: 35_000_000, formerly: 'BU3', headcount: 7, load: 1.08 },
   { code: 'DT4-IoT', name: 'IoT', group: 'DT4', kind: 'sales', target: 20_000_000, formerly: 'BU5-IoT', headcount: 5, load: 0.55 },
   { code: 'DT4-AI', name: 'AI', group: 'DT4', kind: 'sales', target: 30_000_000, formerly: 'BU3', headcount: 6, load: 0.78 },
-  { code: 'MA', name: 'ทีม MA และ Call center', group: 'MA', kind: 'support' },
+  { code: 'MA', name: 'ทีม MA และ Call center', group: 'MA', kind: 'support', head: 'wm' },
   { code: 'DT-EXEC', name: 'ผู้บริหาร DT', group: 'DT-EXEC', kind: 'exec' },
 ]
 export const GROUP_NAME: Record<string, string> = {

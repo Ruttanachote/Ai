@@ -89,6 +89,20 @@ export interface Team {
   headcount?: number
   /** Average planned utilisation this month (0–1+) from plans and timesheets; used when no allocation rows exist. */
   load?: number
+  /** Team head (person id). */
+  head?: string
+  /** What the team does — shown on the team detail. */
+  note?: string
+  /** Inactive teams stay on old projects but cannot be picked for new work. */
+  active?: boolean
+}
+
+/** One change to a team, kept for the admin's history view and the audit log. */
+export interface TeamChange {
+  id: string; team: string; at: string; by: string
+  action: 'create' | 'update' | 'deactivate' | 'activate'
+  changes: { field: string; from?: string; to?: string }[]
+  reason?: string
 }
 
 /** Which stage transitions each role may perform (enforced server-side as well). */

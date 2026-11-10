@@ -126,7 +126,7 @@ function create() {
         <div class="two">
           <div class="field">
             <label for="team">ทีมเจ้าของโครงการ (Profit Center)</label>
-            <select id="team" v-model="f.team" class="input"><option v-for="t in SALES_TEAMS" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option></select>
+            <select id="team" v-model="f.team" class="input"><option v-for="t in SALES_TEAMS.filter((x) => x.active !== false)" :key="t.code" :value="t.code">{{ t.code }} · {{ t.name }}</option></select>
           </div>
           <div class="field">
             <label for="bud">Budget ลูกค้า (บาท)</label>

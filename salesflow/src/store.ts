@@ -181,3 +181,46 @@ export function decideApproval(p: Project, kind: 'approve' | 'reject', note: str
 /** Mails the approver has opened in Mail Inbox (key: projectId:version). */
 export const mailRead = reactive(new Set<string>(['p3:v2', 'p4:v2']))
 export const mailStarred = reactive(new Set<string>())
+
+/* ---------------- Team administration (admin) ---------------- */
+import type { Team, TeamChange } from './data/model'
+import { TEAMS, SALES_TEAMS } from './data/mock'
+import { diffTeam } from './domain/teams'
+/** reactive() proxies the same arrays every page reads, so changes show everywhere. */
+export const teams = reactive(TEAMS)
+const salesTeams = reactive(SALES_TEAMS)
+export const teamLog = reactive<TeamChange[]>([
+  { id: 'tl1', team: 'DT4-LC', at: '2026-01-05 09:10', by: 'tc', action: 'create', changes: [{ field: 'รหัสทีม', to: 'DT4-LC' }, { field: 'ชื่อทีม', to: 'Low Code' }, { field: 'กลุ่ม', to: 'DT4' }], reason: 'โครงสร้าง DT SBU 2026 (แยกจาก BU3)' },
+  { id: 'tl2', team: 'DT4-LC', at: '2026-04-01 14:22', by: 'tc', action: 'update', changes: [{ field: 'เป้ายอดขาย', from: '฿35,000,000', to: '฿40,000,000' }], reason: 'ปรับเป้าครึ่งปีหลัง' },
+  { id: 'tl3', team: 'DT4-LC', at: '2026-06-15 10:05', by: 'tc', action: 'update', changes: [{ field: 'หัวหน้าทีม', to: 'Somkiat L.' }] },
+  { id: 'tl4', team: 'DT4-AI', at: '2026-01-05 09:12', by: 'tc', action: 'create', changes: [{ field: 'รหัสทีม', to: 'DT4-AI' }, { field: 'ชื่อทีม', to: 'AI' }], reason: 'โครงสร้าง DT SBU 2026' },
+])
+let tlNo = 10
+const nowStamp = () => `${TODAY_ISO} ${new Date().toTimeString().slice(0, 5)}`
+const nameOf = (id?: string) => person(id)?.name ?? ''
+/** Add a team or save edits; records who changed which field. Returns the number of changed fields. */
+export function saveTeam(draft: Team, isNew: boolean, by: string, reason?: string) {
+  if (isNew) {
+    const t = { ...draft, active: true }
+    teams.push(t)
+    if (t.kind === 'sales') salesTeams.push(teams[teams.length - 1])
+    teamLog.unshift({ id: 'tl' + tlNo++, team: t.code, at: nowStamp(), by, action: 'create', changes: diffTeam({}, t, nameOf), reason })
+    return 1
+  }
+  const t = teams.find((x) => x.code === draft.code)
+  if (!t) return 0
+  const changes = diffTeam(t, draft, nameOf)
+  if (!changes.length) return 0
+  const wasSales = t.kind === 'sales'
+  Object.assign(t, draft)
+  if (!wasSales && t.kind === 'sales') salesTeams.push(t)
+  if (wasSales && t.kind !== 'sales') salesTeams.splice(salesTeams.indexOf(t), 1)
+  teamLog.unshift({ id: 'tl' + tlNo++, team: t.code, at: nowStamp(), by, action: 'update', changes, reason })
+  return changes.length
+}
+export function setTeamActive(code: string, active: boolean, by: string, reason: string) {
+  const t = teams.find((x) => x.code === code)
+  if (!t) return
+  teamLog.unshift({ id: 'tl' + tlNo++, team: code, at: nowStamp(), by, action: active ? 'activate' : 'deactivate', changes: diffTeam(t, { ...t, active }, nameOf), reason })
+  t.active = active
+}

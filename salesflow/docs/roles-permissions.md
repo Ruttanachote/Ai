@@ -15,7 +15,7 @@
 | **ทีมพัฒนา** | My Tasks | My Tasks · Calendar · My Performance · Project Workspace | ทำงานบนบอร์ด · บันทึกเวลา/OT · แจ้งลา · เตรียมรายงาน PM (ไม่เห็นราคา) |
 | **ทีม MA** | Warranty & Maintenance | My Tasks · Calendar · Project Register · Customer Accounts · Warranty & Maintenance · Service Desk | รับมอบเข้าประกัน · ส่งรายงาน PM จากกล่องกลาง · แจ้งต่อประกัน · ใบเสนอราคาต่อ MA · Ticket |
 | **Call center** | Service Desk | My Tasks · Calendar · Service Desk | รับเคสและติดตาม SLA |
-| **ผู้ดูแลระบบ** | System Settings | ทุกเมนู | ตั้งค่า ผู้ใช้ สิทธิ์ ทีม · Audit log |
+| **ผู้ดูแลระบบ** | System Settings | ทุกเมนู | ตั้งค่า ผู้ใช้ สิทธิ์ · จัดการทีมและทีมย่อย (เพิ่ม แก้ไข ดูรายละเอียด ประวัติ ปิดใช้งาน) · Audit log |
 
 ## สิ่งที่ตัดออกในรอบนี้
 | บทบาท | ตัดออก | เหตุผล |
