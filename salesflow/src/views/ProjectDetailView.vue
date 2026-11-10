@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Photo from '../components/Photo.vue'
 import StageRail from '../components/StageRail.vue'
 import StageBadge from '../components/StageBadge.vue'
@@ -27,7 +27,7 @@ const parent = computed(() => projects.find((x) => x.id === p.value?.parentId))
 const children = computed(() => projects.filter((x) => x.parentId === props.id))
 
 type Tab = 'overview' | 'req' | 'cost' | 'proc' | 'delivery' | 'ma' | 'history'
-const tab = ref<Tab>('overview')
+const tab = ref<Tab>((useRoute().query.tab as Tab) || 'overview')
 const post = computed(() => !!p.value && ['win', 'handover', 'delivery', 'warranty', 'ended', 'cancelled'].includes(p.value.stage))
 const tabs = computed(() => {
   const t: { k: Tab; l: string }[] = [{ k: 'overview', l: 'ภาพรวมและเอกสาร' }, ...(p.value?.type !== 'MA' ? [{ k: 'req' as Tab, l: 'Requirement และ TOR' }] : []), { k: 'cost', l: 'Cost Sheet และใบเสนอราคา' }]

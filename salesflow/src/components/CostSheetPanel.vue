@@ -4,7 +4,8 @@ import Icon from './Icon.vue'
 import Dialog from './Dialog.vue'
 import type { Project } from '../data/model'
 import { baht, person, thDate, TODAY_ISO } from '../data/mock'
-import { notify, session, SETTINGS, newApprovalSteps, canDecideStep, APPROVER_OF } from '../store'
+import { notify, session, SETTINGS, newApprovalSteps, canDecideStep, APPROVER_OF, decideApproval } from '../store'
+import { PEOPLE } from '../data/mock'
 import { APPROVAL_CHAIN } from '../data/model'
 import { costSheet } from '../domain/metrics'
 
@@ -69,7 +70,13 @@ function recall() {
 const isOwner = computed(() => (props.p.type === 'MA' ? ['ma', 'admin'] : ['sm', 'head', 'admin']).includes(session.role))
 const canSubmit = computed(() => isOwner.value && (!a.value || ['stale', 'recalled', 'rejected'].includes(a.value.status ?? '') || a.value.steps.some((s) => s.status === 'rejected') || expired.value))
 
+// SM briefs the approvers in a meeting first; the meeting is recorded with the request and shown in Mail Inbox.
+const msg = ref('')
+const meet = ref({ date: TODAY_ISO, place: 'Teams', attendees: [APPROVER_OF.deputy!, APPROVER_OF.exec!] as string[], summary: '' })
+const meetPeople = PEOPLE.filter((u) => ['head', 'deputy', 'exec', 'pmo'].includes(u.role))
+const meetOk = computed(() => !!meet.value.date && meet.value.attendees.length > 0 && meet.value.summary.trim().length >= 10)
 function submit() {
+  if (!meetOk.value) return
   sendOpen.value = false
   const nextV = a.value ? Number(a.value.version.slice(1)) + 1 : 1
   const snap = { revenue: Math.round(rev.value), cost: Math.round(total.value), gp: Math.round(gpPct.value * 10) / 10 }
@@ -87,26 +94,17 @@ function submit() {
     archivedPath: `Cost Sheet/Submitted/v${nextV}.xlsx`,
     validUntil: valid.toISOString().slice(0, 10),
     steps: newApprovalSteps(session.userId, props.p.type === 'MA' ? 'ทีม MA ส่งขออนุมัติ' : 'SM ส่งขออนุมัติ'),
+    message: msg.value.trim() || undefined,
+    preMeeting: { date: meet.value.date, place: meet.value.place, attendees: [...meet.value.attendees], summary: meet.value.summary.trim() },
   }
+  msg.value = ''
   notify(`ส่งอีเมลขออนุมัติ (ลิงก์เข้าระบบ) ถึง ${props.p.approval.steps[1].who} แล้ว`)
 }
 const FIX_DOCS = ['Cost Sheet', 'ใบเสนอราคา (Quotation)', 'Proposal']
 const fix = ref<string[]>([])
 function decide() {
-  if (!a.value || !canDecide.value) return
-  const steps = a.value.steps
-  const i = steps.findIndex((s) => s.status === 'pending')
-  steps[i].status = decideOpen.value === 'approve' ? 'approved' : 'rejected'
-  steps[i].at = 'วันนี้'
-  steps[i].channel = 'web'
-  steps[i].note = (decideOpen.value === 'reject' && fix.value.length ? `[แก้: ${fix.value.join(', ')}] ` : '') + note.value || undefined
-  if (decideOpen.value === 'reject') { a.value.status = 'rejected'; a.value.fixDocs = [...fix.value] }
-  else if (steps[i + 1]) steps[i + 1].status = 'pending'
-  else {
-    a.value.status = 'approved'
-    props.p.revenue = a.value.snapshot?.revenue ?? Math.round(rev.value)
-    props.p.cost = a.value.snapshot?.cost ?? Math.round(total.value)
-  }
+  if (!a.value || !canDecide.value || !decideOpen.value) return
+  decideApproval(props.p, decideOpen.value, note.value, fix.value, 'web')
   notify(decideOpen.value === 'approve' ? 'อนุมัติแล้ว ระบบแจ้ง SM ทางอีเมล' : 'ส่งกลับให้ SM แก้ไขแล้ว')
   decideOpen.value = null
   note.value = ''
@@ -234,8 +232,21 @@ function decide() {
         ปุ่ม “อนุมัติ” และ “ส่งกลับแก้ไข” อยู่ในอีเมลนี้ (Outlook Actionable Message) หรือเปิดในระบบ
       </div>
     </div>
-    <div class="field"><label for="m">ข้อความถึงผู้อนุมัติ (ไม่บังคับ)</label><textarea id="m" class="input" rows="2" /></div>
-    <template #foot><button class="btn" @click="sendOpen = false">ยกเลิก</button><button class="btn primary" @click="submit">ส่งขออนุมัติ</button></template>
+    <fieldset class="field meet">
+      <legend>บันทึกการประชุมก่อนส่ง <span class="req">จำเป็น</span></legend>
+      <p class="hint">SM นัดประชุมชี้แจงผู้อนุมัติก่อนส่งอีเมล ผู้อนุมัติจะเห็นบันทึกนี้ใน Mail Inbox</p>
+      <div class="row2">
+        <div class="field"><label for="md">วันที่ประชุม</label><input id="md" v-model="meet.date" type="date" class="input" /></div>
+        <div class="field"><label for="mp">สถานที่ / ช่องทาง</label><input id="mp" v-model="meet.place" class="input" /></div>
+      </div>
+      <div class="field">
+        <span class="lbl">ผู้เข้าประชุม</span>
+        <div class="att"><label v-for="u in meetPeople" :key="u.id"><input v-model="meet.attendees" type="checkbox" :value="u.id" /> {{ u.name }}</label></div>
+      </div>
+      <div class="field"><label for="ms">สรุปผลการประชุม</label><textarea id="ms" v-model="meet.summary" class="input" rows="2" placeholder="เช่น ปรับ Margin Hardware เหลือ 12%" /></div>
+    </fieldset>
+    <div class="field"><label for="m">ข้อความถึงผู้อนุมัติ (ไม่บังคับ)</label><textarea id="m" v-model="msg" class="input" rows="2" /></div>
+    <template #foot><button class="btn" @click="sendOpen = false">ยกเลิก</button><button class="btn primary" :disabled="!meetOk" @click="submit">ส่งขออนุมัติ</button></template>
   </Dialog>
 
   <Dialog :open="!!decideOpen" :title="decideOpen === 'approve' ? `อนุมัติราคา ${p.approval?.version}` : 'ส่งกลับให้ SM แก้ไข'" @close="decideOpen = null">
@@ -310,4 +321,10 @@ dd.good { color: var(--win); } dd.bad { color: var(--lose); }
 .fx { border: 0; padding: 0; display: flex; gap: 14px; flex-wrap: wrap; }
 .fx legend { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; width: 100%; }
 .fx label { display: flex; gap: 6px; align-items: center; font-size: 14px; }
+.meet { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; display: grid; gap: 10px; margin: 12px 0; }
+.meet legend { font-weight: 600; padding: 0 6px; }
+.meet .req { font-size: 12px; color: var(--warn); font-weight: 500; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.att { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; }
+.lbl { font-size: 13px; color: var(--muted); }
 </style>

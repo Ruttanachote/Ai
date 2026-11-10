@@ -145,3 +145,39 @@ export function runScheduler(forceWeekly = false) {
   jobLog.unshift({ at: TODAY_ISO + ' 07:00', count: fresh.length, items: fresh.map((j) => ({ rule: j.rule, text: j.text, to: j.to })) })
   return fresh.length
 }
+
+/* ---------------- Approval decisions (Cost Sheet tab, Mail Inbox, email link) ---------------- */
+import type { Project } from './data/model'
+/**
+ * Record the approver's decision on the pending step. Approve passes the request to the next
+ * step (or closes it and locks the approved figures); reject sends it back to the SM with the
+ * documents to fix. Same rule wherever the approver decides.
+ */
+export function decideApproval(p: Project, kind: 'approve' | 'reject', note: string, fixDocs: string[], channel: 'web' | 'email_link' | 'mail_inbox' = 'web') {
+  const a = p.approval
+  if (!a) return
+  const i = a.steps.findIndex((s) => s.status === 'pending')
+  if (i < 0) return
+  const s = a.steps[i]
+  s.status = kind === 'approve' ? 'approved' : 'rejected'
+  s.at = 'วันนี้'
+  s.channel = channel
+  s.note = ((kind === 'reject' && fixDocs.length ? `[แก้: ${fixDocs.join(', ')}] ` : '') + note) || undefined
+  if (kind === 'reject') { a.status = 'rejected'; a.fixDocs = [...fixDocs] }
+  else if (a.steps[i + 1]) a.steps[i + 1].status = 'pending'
+  else {
+    a.status = 'approved'
+    if (a.snapshot) { p.revenue = a.snapshot.revenue; p.cost = a.snapshot.cost }
+  }
+  const sm = a.submittedBy ?? p.sm
+  const next = kind === 'approve' ? a.steps[i + 1] : undefined
+  outbox.unshift({ id: 'm' + mailNo++, at: TODAY_ISO, from: 'One Platform', to: sm, kind: 'email', ref: p.id + ':' + a.version + ':' + i,
+    subject: kind === 'reject' ? `[Cost Sheet] ${p.name} ${a.version} — ส่งกลับแก้ไข` : next ? `[Cost Sheet] ${p.name} ${a.version} — ผ่านขั้น ${s.role} ส่งต่อ ${next.who}` : `[Cost Sheet] ${p.name} ${a.version} — อนุมัติครบทุกขั้น` })
+  if (next?.whoId) outbox.unshift({ id: 'm' + mailNo++, at: TODAY_ISO, from: 'One Platform', to: next.whoId, kind: 'email', ref: p.id + ':' + a.version + ':next', subject: `[Cost Sheet] ${p.name} — ขออนุมัติ ${a.version}` })
+  pushNotices([{ to: sm, projectId: p.id, text: kind === 'reject' ? `${s.who} ส่งกลับ ${p.name} ${a.version} ให้แก้ไข` : next ? `${s.who} อนุมัติ ${p.name} แล้ว — รอ ${next.who}` : `${p.name} ${a.version} อนุมัติครบแล้ว` }])
+  notifications[0].link = `/projects/${p.id}`
+}
+
+/** Mails the approver has opened in Mail Inbox (key: projectId:version). */
+export const mailRead = reactive(new Set<string>(['p3:v2', 'p4:v2']))
+export const mailStarred = reactive(new Set<string>())

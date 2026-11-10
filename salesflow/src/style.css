@@ -144,3 +144,9 @@ p.muted, span.muted, .hint, .muted.small, p.small, .desc, .n-empty__description,
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
 }
+
+/* Segmented control (single choice) — shared by dashboards and filters */
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { border: 0; background: none; padding: 0 14px; border-radius: 4px; font: 500 14px var(--font); color: var(--muted); cursor: pointer; min-height: 32px; }
+.seg button[aria-checked='true'] { background: var(--ink); color: var(--on-ink); }
+.seg button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }

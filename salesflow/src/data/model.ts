@@ -85,6 +85,10 @@ export interface Team {
   kind: 'sales' | 'support' | 'exec'
   target?: number
   formerly?: string
+  /** Staff in the team (HR headcount — includes people who do not log in to the platform). */
+  headcount?: number
+  /** Average planned utilisation this month (0–1+) from plans and timesheets; used when no allocation rows exist. */
+  load?: number
 }
 
 /** Which stage transitions each role may perform (enforced server-side as well). */
@@ -117,7 +121,7 @@ export interface Approval {
   version: string
   submittedAt: string
   /** `approver` says which role decides this step (the submit step has none). */
-  steps: { who: string; role: string; status: 'approved' | 'pending' | 'rejected' | 'waiting'; at?: string; note?: string; whoId?: string; approver?: Role; onBehalfOf?: string; channel?: 'web' | 'email_link' }[]
+  steps: { who: string; role: string; status: 'approved' | 'pending' | 'rejected' | 'waiting'; at?: string; note?: string; whoId?: string; approver?: Role; onBehalfOf?: string; channel?: 'web' | 'email_link' | 'mail_inbox' }[]
   /** stale = workbook changed after approval; recalled = SM pulled it back. */
   status?: 'pending' | 'approved' | 'rejected' | 'recalled' | 'stale'
   submittedBy?: string
@@ -134,7 +138,12 @@ export interface Approval {
   postAward?: boolean
   /** Documents the approver asked to fix when sending it back. */
   fixDocs?: string[]
+  /** SM briefs the approvers before sending — recorded with the request and shown in the approval mail. */
+  preMeeting?: PreMeeting
+  /** Message the SM wrote in the approval mail. */
+  message?: string
 }
+export interface PreMeeting { date: string; attendees: string[]; summary: string; place?: string }
 
 export type HandoverParty = 'sm' | 'pm' | 'ma' | 'opn' | 'devlead'
 export const HANDOVER_PARTIES: { k: HandoverParty; label: string }[] = [
