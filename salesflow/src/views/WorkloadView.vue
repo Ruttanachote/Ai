@@ -15,6 +15,7 @@ import { addDays } from '../domain/work'
 import { leaves, notify, pushNotices } from '../store'
 import { MEMBER_ROLES, type Project, type StaffRequest } from '../data/model'
 import Dialog from '../components/Dialog.vue'
+import { PM_SKILLS, type PmSkill } from '../data/model'
 import { groupOf } from '../data/mock'
 import { thDate, TODAY_ISO } from '../data/mock'
 
@@ -105,6 +106,26 @@ const kpis = computed(() => {
     { label: 'ความต้องการจาก Pipeline', value: demand.value.reduce((s, d) => s + d.weighted, 0) + ' MD', note: 'Man-day ถ่วงน้ำหนักตามโอกาสปิด' },
   ]
 })
+
+// PMO keeps each PM's strengths up to date; the Handover tab ranks PMs by them.
+const canEditPm = computed(() => ['pmo', 'admin'].includes(session.role))
+const ver = ref(0) // PEOPLE is plain seed data — bump to re-render after an edit
+const pms = computed(() => (void ver.value, PEOPLE).filter((u) => u.role === 'pm').map((u) => ({ u, active: projects.filter((p) => p.pm === u.id && ['win', 'handover', 'delivery'].includes(p.stage)) })))
+function toggleSkill(id: string, k: PmSkill) {
+  const u = PEOPLE.find((x) => x.id === id)
+  if (!u) return
+  u.pmProfile ??= { skills: [], onsite: false }
+  const s = u.pmProfile.skills
+  u.pmProfile.skills = s.includes(k) ? s.filter((x) => x !== k) : [...s, k]
+  ver.value++
+}
+function setOnsite(id: string, v: boolean) {
+  const u = PEOPLE.find((x) => x.id === id)
+  if (!u) return
+  u.pmProfile ??= { skills: [], onsite: false }
+  u.pmProfile.onsite = v
+  ver.value++
+}
 </script>
 
 <template>
@@ -193,6 +214,19 @@ const kpis = computed(() => {
       <p class="hint">ใช้ดูล่วงหน้าว่าถ้าชนะงาน ทีมไหนจะขาดคน · การจองแบ่งเป็น “จองเบื้องต้น” (ยังไม่กินกำลังคน) และ “จองแน่นอน” (มอบหมาย Task ได้) หลัง Handover</p>
     </section>
 
+    <section v-if="canEditPm" class="panel pmskill">
+      <div class="panel-head"><h2>PM และความถนัด</h2><span class="muted small">ใช้จัดอันดับ PM ตอนมอบหมายในแท็บ Handover — คลิกเพื่อเปิด/ปิดความถนัด</span></div>
+      <div v-for="r in pms" :key="r.u.id" class="pmrow">
+        <Avatar :id="r.u.id" :size="32" />
+        <div class="pmn"><strong>{{ r.u.name }}</strong><span class="small muted">{{ r.u.pmProfile?.note ?? '—' }}</span></div>
+        <div class="sks">
+          <button v-for="(lbl, k) in PM_SKILLS" :key="k" class="chip" :class="{ post: r.u.pmProfile?.skills.includes(k) }" :aria-pressed="!!r.u.pmProfile?.skills.includes(k)" @click="toggleSkill(r.u.id, k)">{{ lbl }}</button>
+          <label class="small on"><input type="checkbox" :checked="r.u.pmProfile?.onsite" @change="setOnsite(r.u.id, ($event.target as HTMLInputElement).checked)" /> ลงพื้นที่ได้บ่อย</label>
+        </div>
+        <span class="small num">{{ r.active.length }}/{{ r.u.pmProfile?.maxProjects ?? 3 }} โครงการ</span>
+      </div>
+    </section>
+
     <section class="panel note">
       <h3>อ่านตารางนี้อย่างไร</h3>
       <p class="muted">คลิกชื่อเพื่อดูว่าชั่วโมงมาจากโครงการไหน ช่องสีแดงคือคนที่ถูกจองเกินกำลัง — PM ควรเลื่อน Task หรือขอคนเพิ่มจากหัวหน้ากลุ่มก่อนเริ่มสัปดาห์นั้น
@@ -241,4 +275,12 @@ const kpis = computed(() => {
 .lh { font-size: 15px; margin-top: 6px; }
 .reqs { margin-top: 16px; }
 .cand { display: flex; gap: 8px; align-items: center; font-size: 14px; padding: 4px 0; }
+.pmskill { margin-top: 20px; }
+.pmrow { display: grid; grid-template-columns: auto minmax(160px, 220px) 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pmrow:last-child { border-bottom: 0; }
+.pmn { display: grid; }
+.sks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sks button.chip { border: 1px solid var(--line); cursor: pointer; font-family: var(--font); }
+.sks .on { display: inline-flex; gap: 6px; align-items: center; margin-left: 6px; }
+@media (max-width: 800px) { .pmrow { grid-template-columns: auto 1fr; } .sks { grid-column: 1 / -1; } }
 </style>

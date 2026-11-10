@@ -281,7 +281,7 @@ pages.append(swimlane(
      ('cw', 4, 2, 'sub', 'ตรวจ Close Win\n→ M1 · L3 / M3 · L3'),
      ('rq', 0, 3, 'task', 'แจ้งทีมพัฒนา\n+ ขอ PM'),
      ('n1', 4, 4, 'sys', 'แจ้ง PMO + หัวหน้า Dev\n(Teams / อีเมล)'),
-     ('as', 1, 5, 'task', 'มอบหมาย PM\n(ดูภาระงาน)'),
+     ('as', 1, 5, 'task', 'เลือก PM ตามความถนัด\n(HW/ลงพื้นที่ · SW) + ภาระงาน'),
      ('gr', 4, 6, 'sys', 'ให้สิทธิ์ Manage Project\nกับ PM คนนี้'),
      ('mt', 1, 7, 'task', 'จัดประชุม Handover'),
      ('att', 3, 8, 'task', 'เข้าร่วม: SM · PM ·\nMA · OPN · Dev lead'),
@@ -293,7 +293,7 @@ pages.append(swimlane(
      ('e', 2, 13, 'end', 'PM เริ่มงาน\n→ M4')],
     [('s', 'po'), ('po', 'cw'), ('cw', 'rq', 'ผ่าน → Close Win'), ('rq', 'n1'), ('n1', 'as'), ('as', 'gr'), ('gr', 'mt'), ('mt', 'att'), ('att', 'tm'), ('att', 'bd'),
      ('tm', 'gt'), ('bd', 'gt'), ('gt', 'miss', 'ไม่ผ่าน'), ('miss', 'gt'), ('gt', 'dl', 'ผ่าน'), ('dl', 'e')],
-    ['Requirement บอก “SM หา PM” ส่วนโครงสร้าง 2026 ให้ PMO (DT3-3) มอบหมาย — ใน Flow นี้ SM ขอ และ PMO มอบหมาย (ยืนยันอีกครั้ง)',
+    ['ยืนยันแล้ว: SM ขอ PM → หัวหน้าทีม PMO เลือก PM ตามความถนัด (เช่น ติดตั้ง Hardware ลงพื้นที่บ่อย / พัฒนาระบบ Software) และภาระงาน',
      'PM ไม่อยู่ช่วง Pre-sale: เริ่มรับงานที่ Handover', 'ผู้เข้าประชุม 5 ฝ่ายต้องครบจึงผ่าน Gate']))
 
 pages.append(swimlane(
@@ -333,7 +333,7 @@ pages.append(sequence(
     [('sm', 'SM', 'actor'), ('api', 'API', 'sys'), ('rule', 'Domain rules', 'sys'), ('db', 'Database', 'sys'), ('tm', 'Teams / Outlook', 'ext'), ('pmo', 'PMO', 'actor'), ('pm', 'PM', 'actor')],
     [('sm', 'api', 'อัปโหลด PO + มูลค่าสัญญา', 'sync'), ('api', 'rule', 'closeWinRule() · checkContractValue()', 'sync'), ('rule', 'api', 'ผ่าน / ต้องอนุมัติหลังได้งาน', 'ret'),
      ('api', 'db', 'สถานะ Close Win + ประวัติ', 'sync'), ('api', 'tm', 'แจ้ง PMO + หัวหน้า Dev: ขอ PM', 'async'), ('tm', 'pmo', 'การแจ้งเตือน', 'async'),
-     ('pmo', 'api', 'มอบหมาย PM', 'sync'), ('api', 'db', 'ให้สิทธิ์ Manage Project · สถานะ Handover', 'sync'), ('api', 'tm', 'นัดประชุม Handover 5 ฝ่าย', 'async'),
+     ('pmo', 'api', 'เลือก PM จากรายชื่อที่แนะนำ (ความถนัด · ภาระงาน)', 'sync'), ('api', 'db', 'ให้สิทธิ์ Manage Project · สถานะ Handover', 'sync'), ('api', 'tm', 'นัดประชุม Handover 5 ฝ่าย', 'async'),
      ('tm', 'pm', 'คำเชิญประชุม', 'async'), ('pm', 'api', 'บันทึกผู้เข้าประชุม + เงื่อนไขสัญญา', 'sync'), ('api', 'rule', 'handoverGate()', 'sync'),
      ('rule', 'api', 'ผ่าน', 'ret'), ('api', 'db', 'สถานะ In Delivery', 'sync'), ('api', 'pm', 'เปิดสร้างพื้นที่งาน', 'ret')],
     [('alt [ต้อง Post-award] → M2 ก่อน', 2, 2)]))
@@ -675,7 +675,7 @@ items = [
     ('✓', 'PM-1 PM ไม่อยู่ช่วง Pre-sale เริ่มที่ Handover', 'allowedMoves: Handover → Delivery โดย PM/PMO'),
     ('✓', 'PM-5 เลือกวิธีบริหาร', 'มี Template ตามงวดงาน (Waterfall) · Scrum · Kanban'),
     ('✓', 'SM-3/4 เอกสารที่ 70% + หัวหน้าตรวจ TOR Final ก่อนส่งลูกค้า', 'Forecast ต้องมี TOR Final ที่หัวหน้ากลุ่มผ่าน + Proposal · Requirement Workspace'),
-    ('?', 'SM-11 “SM หา PM” vs โครงสร้าง 2026 “PMO มอบหมาย PM”', 'Flow ใช้: SM แจ้ง/ขอ → PMO มอบหมาย → ระบบให้สิทธิ์ Manage Project'),
+    ('✓', 'SM-11 SM ขอ PM → PMO เลือก PM (ยืนยันแล้ว)', 'ระบบแนะนำ PM ตามความถนัดที่ตรงกับประเภทโครงการ + ลงพื้นที่ได้ + ภาระงาน · PMO แก้ความถนัดได้ใน Resource Workload'),
     ('✓', 'PM-3 Stakeholder / Focal point · นัด Kick-off', 'Stakeholder Register 2 ฝ่าย + ส่งนัด Outlook/Teams + หน้าบันทึกประชุม'),
     ('✓', 'PM-8 เอกสารส่งมอบ + Final Check', 'สิ่งส่งมอบต่องวด → Final Check → ส่งลูกค้า → ตรวจรับ → แจ้ง OPN วางบิล'),
     ('✓', 'TP-8/9 OT + หลักฐาน · 8 ชม./วัน', 'แยก OT อัตโนมัตินอก 08:30–17:30 และวันหยุด · บังคับแนบหลักฐาน · Timesheet (เวลาเริ่มนับ OT ตั้งค่าได้ เช่น 19:30)'),

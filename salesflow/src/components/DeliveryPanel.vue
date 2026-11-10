@@ -9,6 +9,9 @@ import { PEOPLE, SALES_TEAMS, baht, groupOf, person, thDate, TODAY, TODAY_ISO } 
 import { notify, pushNotices, session } from '../store'
 import { outbox } from '../store'
 import { newItem, record } from '../domain/work'
+import { projectNeeds, rankPms } from '../domain/staffing'
+import { PM_SKILLS } from '../data/model'
+import { projects } from '../store'
 
 const props = defineProps<{ p: Project }>()
 const view = ref<'plan' | 'ot' | 'risks'>('plan')
@@ -26,6 +29,9 @@ const checklist = reactive([
 watch(checklist, () => { props.p.handoverDone = checklist.every((c) => c.done) }, { deep: true })
 const pick = reactive({ pm: props.p.pm ?? '', team: props.p.team })
 const canAssign = computed(() => ['pmo', 'head', 'admin'].includes(session.role))
+// PMO picks a PM whose skills fit the project (hardware / on-site vs. software), lightest load first.
+const need = computed(() => projectNeeds(props.p))
+const candidates = computed(() => rankPms(props.p, PEOPLE, projects))
 
 // P0-11 · contract terms are structured data (penalty exposure, SLA, tax) — required before delivery starts.
 const terms = reactive<ContractTerms>(props.p.terms ? { ...props.p.terms } : {
@@ -151,13 +157,23 @@ function crToWork(c: (typeof crs)[number]) {
         <li v-for="c in checklist" :key="c.t"><label><input v-model="c.done" type="checkbox" /> {{ c.t }}</label></li>
       </ul>
       <div class="assign">
-        <div class="field">
-          <label for="pm">Project Manager</label>
-          <select id="pm" v-model="pick.pm" class="input" :disabled="!canAssign">
-            <option value="" disabled>เลือก PM</option>
-            <option v-for="u in PEOPLE.filter((x) => x.role === 'pm' && x.team === 'DT3-3')" :key="u.id" :value="u.id">{{ u.name }} · PMO</option>
-          </select>
-        </div>
+        <fieldset class="field pms">
+          <legend>Project Manager</legend>
+          <p class="hint">โครงการนี้ต้องการ: <b>{{ need.skills.map((k) => PM_SKILLS[k]).join(' · ') }}</b>{{ need.onsite ? ' · ลงพื้นที่บ่อย' : '' }} — เรียงจากตรงความถนัดที่สุดและงานน้อยที่สุด</p>
+          <label v-for="(c, i) in candidates" :key="c.pm.id" class="pmc" :class="{ on: pick.pm === c.pm.id, full: c.full }">
+            <input v-model="pick.pm" type="radio" name="pm" :value="c.pm.id" :disabled="!canAssign" />
+            <Avatar :id="c.pm.id" :size="32" />
+            <span class="pmi">
+              <strong>{{ c.pm.name }} <span v-if="i === 0 && !c.full && c.matched.length" class="chip win">แนะนำ</span></strong>
+              <span class="small muted">{{ c.pm.pmProfile?.note }}</span>
+              <span class="sk">
+                <span v-for="k in c.pm.pmProfile?.skills ?? []" :key="k" class="chip" :class="{ post: c.matched.includes(k) }">{{ PM_SKILLS[k] }}</span>
+                <span v-if="c.pm.pmProfile?.onsite" class="chip" :class="{ post: need.onsite }">ลงพื้นที่ได้</span>
+              </span>
+            </span>
+            <span class="ld small" :class="{ bad: c.full }">{{ c.active }}/{{ c.max }} โครงการ<template v-if="c.full"><br />เต็ม</template></span>
+          </label>
+        </fieldset>
         <div class="field">
           <label for="team">ทีม DT ที่พัฒนา</label>
           <select id="team" v-model="pick.team" class="input" :disabled="!canAssign">
@@ -322,12 +338,26 @@ function crToWork(c: (typeof crs)[number]) {
 .tgrid .field { align-content: start; }
 .missing { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-md); padding: 10px 14px; font-size: 13.5px; width: 100%; }
 .missing ul { margin: 4px 0 0; padding-left: 18px; }
-.hgrid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+.hgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 24px; align-items: start; }
+.check { align-content: start; }
 .check { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
 .check label { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: var(--r-sm); cursor: pointer; }
 .check label:hover { background: var(--sunken); }
 .check input { width: 18px; height: 18px; accent-color: var(--ink); }
 .assign { display: grid; gap: 14px; align-content: start; }
+.pms { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+.pms legend { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 4px; }
+.pmc { display: grid; grid-template-columns: auto auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; }
+.pmc:hover { border-color: var(--line-strong); }
+.pmc.on { border-color: var(--primary); background: var(--primary-soft); }
+.pmc.full { opacity: 0.7; }
+.pmc:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
+.pmi { display: grid; gap: 2px; min-width: 0; }
+.pmi strong { font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.sk { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.sk .chip { height: 20px; font-size: 11.5px; padding: 0 8px; }
+.ld { text-align: right; color: var(--muted); white-space: nowrap; }
+.ld.bad { color: var(--lose); }
 
 .bad { color: var(--lose) !important; }
 

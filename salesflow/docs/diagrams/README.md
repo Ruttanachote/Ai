@@ -36,7 +36,7 @@
 | ✓ | PM-1 PM ไม่อยู่ช่วง Pre-sale เริ่มที่ Handover | allowedMoves: Handover → Delivery โดย PM/PMO |
 | ✓ | PM-5 เลือกวิธีบริหาร | มี Template ตามงวดงาน (Waterfall) · Scrum · Kanban |
 | ✓ | SM-3/4 เอกสารที่ 70% + หัวหน้าตรวจ TOR Final ก่อนส่งลูกค้า | Forecast ต้องมี TOR Final ที่หัวหน้ากลุ่มผ่าน + Proposal · Requirement Workspace |
-| ? | SM-11 “SM หา PM” vs โครงสร้าง 2026 “PMO มอบหมาย PM” | Flow ใช้: SM แจ้ง/ขอ → PMO มอบหมาย → ระบบให้สิทธิ์ Manage Project |
+| ✓ | SM-11 SM ขอ PM → PMO เลือก PM (ยืนยันแล้ว) | ระบบแนะนำ PM ตามความถนัดที่ตรงกับประเภทโครงการ + ลงพื้นที่ได้ + ภาระงาน · PMO แก้ความถนัดได้ใน Resource Workload |
 | ✓ | PM-3 Stakeholder / Focal point · นัด Kick-off | Stakeholder Register 2 ฝ่าย + ส่งนัด Outlook/Teams + หน้าบันทึกประชุม |
 | ✓ | PM-8 เอกสารส่งมอบ + Final Check | สิ่งส่งมอบต่องวด → Final Check → ส่งลูกค้า → ตรวจรับ → แจ้ง OPN วางบิล |
 | ✓ | TP-8/9 OT + หลักฐาน · 8 ชม./วัน | แยก OT อัตโนมัตินอก 08:30–17:30 และวันหยุด · บังคับแนบหลักฐาน · Timesheet (เวลาเริ่มนับ OT ตั้งค่าได้ เช่น 19:30) |
