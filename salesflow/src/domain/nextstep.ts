@@ -1,7 +1,7 @@
 // "What do I still need before the next status?" — the same conditions as requirementsFor()
 // (rules.ts), but as a checklist where every item says where to go to fix it.
-import type { Project, StageKey } from '../data/model.ts'
-import { isTender, validApproval } from './rules.ts'
+import { HANDOVER_PARTIES, type Project, type StageKey } from '../data/model.ts'
+import { appealWindowEnd, isTender, validApproval } from './rules.ts'
 
 export type Fix =
   | { kind: 'edit'; field: 'customer' | 'team' | 'sales' | 'expectedClose' | 'bidMethod' }
@@ -36,7 +36,24 @@ export function stageChecklist(p: Project, to: StageKey, today: string): CheckIt
   }
   if (to === 'win') {
     const has = (f: string) => (p.documents ?? []).some((d) => d.folder === f && !d.deletedAt)
+    // Same conditions as closeWinRule(): tender deals also need e-GP, the winner announcement and the appeal window.
+    if (isTender(p)) {
+      add('egp', 'บันทึกเลขโครงการ e-GP', !!p.bid?.egpNo, 'จากประกาศบน e-GP', { kind: 'tab', tab: 'proc' }, 'บันทึกเลข e-GP')
+      add('result', 'บันทึกวันประกาศผู้ชนะ', !!p.bid?.result, 'วันที่ e-GP ประกาศว่าเราชนะ', { kind: 'tab', tab: 'proc' }, 'บันทึกผลประกาศ')
+      const end = appealWindowEnd(p)
+      add('appeal', 'พ้นระยะอุทธรณ์ 7 วันทำการ', !!end && today > end, end ? `ครบกำหนด ${end} — ย้ายได้หลังวันนี้` : 'นับจากวันประกาศผู้ชนะ', { kind: 'tab', tab: 'proc' }, 'ดูกำหนดอุทธรณ์')
+    }
     add('contract', 'อัปโหลดสัญญาหรือ PO ที่ลงนาม', has('contract') || has('official-po'), 'โฟลเดอร์ Contract หรือ Official PO', { kind: 'folder', folder: has('contract') ? 'official-po' : 'contract' }, 'อัปโหลดเอกสาร')
+  }
+  if (to === 'delivery') {
+    // Same conditions as handoverGate(): checklist, PM, meeting attendees, contract terms, performance bond.
+    const att = p.handover?.attendees ?? []
+    const missing = HANDOVER_PARTIES.filter((x) => !att.some((a) => a.party === x.k && a.who && a.attended))
+    add('pm', 'มอบหมาย PM', !!p.pm, 'PMO เลือก PM ตามทักษะที่โครงการต้องการ', { kind: 'tab', tab: 'delivery' }, 'เลือก PM')
+    add('meeting', 'ประชุม Handover ครบทุกฝ่าย', !missing.length, missing.length ? 'ยังขาด: ' + missing.map((x) => x.label).join(', ') : 'บันทึกผู้เข้าประชุมแล้ว', { kind: 'tab', tab: 'delivery' }, 'บันทึกการประชุม')
+    add('checklist', 'Checklist Handover ครบ', !!p.handoverDone, 'ติ๊กทุกข้อในแท็บ Handover', { kind: 'tab', tab: 'delivery' }, 'เปิด Checklist')
+    add('terms', 'กรอกเงื่อนไขสัญญา', !!p.terms && p.terms.penaltyRatePerDay > 0 && p.terms.penaltyRatePerDay <= 0.002 && p.terms.warrantyMonths > 0, 'อัตราค่าปรับ (0.01–0.20%/วัน) และระยะรับประกัน', { kind: 'tab', tab: 'delivery' }, 'กรอกเงื่อนไข')
+    if (isTender(p)) add('bond', 'บันทึกหลักประกันสัญญา', (p.bonds ?? []).some((b) => b.kind === 'performance'), 'งานภาครัฐต้องวางหลักประกันสัญญา', { kind: 'tab', tab: 'proc' }, 'เพิ่มหลักประกัน')
   }
   return out
 }

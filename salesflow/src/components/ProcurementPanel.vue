@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { Project } from '../data/model'
-import { baht, daysUntil, thDate, TODAY } from '../data/mock'
+import { computed, reactive, ref, watch } from 'vue'
+import type { BidInfo, Bond, Project } from '../data/model'
+import Dialog from './Dialog.vue'
+import { appealWindowEnd as appealEndOf, isTender } from '../domain/rules'
+import { baht, daysUntil, thDate, TODAY, TODAY_ISO } from '../data/mock'
 import { appealWindowEnd } from '../domain/rules'
 import { bondReturnDue } from '../domain/metrics'
 import { notify, session } from '../store'
+import { log } from '../docstore'
 
 // Thai public procurement (พ.ร.บ.จัดซื้อจัดจ้างฯ 2560 + ระเบียบกระทรวงการคลัง 2560).
 // Figures are defaults — confirm against each TOR / contract.
@@ -63,15 +66,79 @@ const cash = computed(() =>
     return { ...m, vat, wht, net: m.payment! + vat - wht }
   }),
 )
-const canEdit = computed(() => ['sm', 'pm', 'admin'].includes(session.role))
+const canEdit = computed(() => ['sm', 'pm', 'pmo', 'opn', 'admin'].includes(session.role))
+
+/* ---------- Procurement data entry (SM): what the stage moves need ---------- */
+// Forecast needs the method; Rebidding needs the e-GP number and reference price; Close Win needs
+// the winner-announcement date and the 7-working-day appeal window to have passed.
+const PRESALE_OR_WIN = ['opportunity', 'pipeline', 'forecast', 'rebidding', 'win']
+const canEditBid = computed(() => PRESALE_OR_WIN.includes(props.p.stage) && (props.p.sm === session.userId || props.p.collaborators.includes(session.userId) || session.role === 'admin' || session.role === 'head'))
+const METHODS: BidInfo['method'][] = ['e-bidding', 'e-market', 'คัดเลือก', 'เฉพาะเจาะจง', 'เอกชน']
+const blank = () => ({ method: (isTender(props.p) ? 'e-bidding' : 'เอกชน') as BidInfo['method'], egpNo: '', refPrice: null as number | null, ourBid: null as number | null, announce: '', submit: '', resultDue: '', result: '', signed: '' })
+const form = reactive(blank())
+const editing = ref(false)
+function fill() { const x = props.p.bid; Object.assign(form, blank(), x ? { ...x, egpNo: x.egpNo ?? '', refPrice: x.refPrice ?? null, ourBid: x.ourBid ?? null, announce: x.announce ?? '', submit: x.submit ?? '', resultDue: x.resultDue ?? '', result: x.result ?? '', signed: x.signed ?? '' } : {}) }
+watch(() => props.p.id, fill, { immediate: true })
+const need = computed(() => {
+  const st = props.p.stage
+  const gov = form.method !== 'เอกชน'
+  return { method: true, egpNo: gov && ['forecast', 'rebidding', 'win'].includes(st), refPrice: gov && ['forecast', 'rebidding'].includes(st), result: gov && ['rebidding', 'win'].includes(st) }
+})
+const formAppeal = computed(() => (form.result ? appealEndOf({ ...props.p, bid: { method: form.method, result: form.result } }) : undefined))
+function saveBid() {
+  const n = (v: number | null) => (v && v > 0 ? v : undefined)
+  const s = (v: string) => v.trim() || undefined
+  props.p.bid = { ...(props.p.bid ?? {}), method: form.method, egpNo: s(form.egpNo), refPrice: n(form.refPrice), ourBid: n(form.ourBid), announce: s(form.announce), submit: s(form.submit), resultDue: s(form.resultDue), result: s(form.result), signed: s(form.signed) }
+  props.p.salesMotion = form.method === 'เอกชน' ? 'direct' : 'tender'
+  log(props.p, 'field', `บันทึกข้อมูลจัดซื้อ — ${form.method}${form.egpNo ? ' · e-GP ' + form.egpNo : ''}${form.result ? ' · ประกาศผู้ชนะ ' + form.result : ''}`)
+  editing.value = false
+  notify('บันทึกข้อมูลการจัดซื้อแล้ว')
+}
+
+/* ---------- Bonds ---------- */
+const bondOpen = ref(false)
+const bond = reactive({ kind: 'bid' as Bond['kind'], pct: 5, amount: null as number | null, form: 'หนังสือค้ำประกันธนาคาร', bank: '', issued: '', expires: '' })
+const bondBase = computed(() => (bond.kind === 'bid' ? props.p.bid?.refPrice ?? props.p.budget : props.p.contractValue ?? props.p.revenue) || 0)
+function openBond(kind: Bond['kind']) {
+  Object.assign(bond, { kind, pct: 5, amount: null, form: 'หนังสือค้ำประกันธนาคาร', bank: '', issued: TODAY_ISO, expires: '' })
+  bondOpen.value = true
+}
+watch(() => [bond.kind, bond.pct], () => { if (bondOpen.value) bond.amount = Math.round(bondBase.value * bond.pct / 100) || null })
+const bondErr = computed(() => (!bond.amount || bond.amount <= 0 ? 'ระบุมูลค่า' : !bond.bank.trim() ? 'ระบุธนาคาร / ผู้ออก' : !bond.issued || !bond.expires ? 'ระบุวันที่ออกและวันหมดอายุ' : bond.expires <= bond.issued ? 'วันหมดอายุต้องหลังวันที่ออก' : ''))
+const bondTried = ref(false)
+function saveBond() {
+  bondTried.value = true
+  if (bondErr.value) return
+  props.p.bonds = [...(props.p.bonds ?? []), { kind: bond.kind, pct: bond.pct, amount: bond.amount!, form: bond.form, bank: bond.bank.trim(), issued: bond.issued, expires: bond.expires }]
+  log(props.p, 'field', `บันทึก${bond.kind === 'bid' ? 'หลักประกันการเสนอราคา' : 'หลักประกันสัญญา'} ${baht(bond.amount!)} · ${bond.bank}`)
+  bondOpen.value = false; bondTried.value = false
+  notify('บันทึกหลักประกันแล้ว')
+}
 </script>
 
 <template>
   <div class="proc">
-    <section v-if="b" class="panel">
+    <section v-if="canEditBid && (editing || !b)" class="panel bidform">
+      <div class="panel-head"><h2>บันทึกข้อมูลการจัดซื้อ</h2><span class="muted small">ช่องที่มี * ต้องกรอกก่อนย้ายสถานะถัดไป</span></div>
+      <form class="bf" @submit.prevent="saveBid">
+        <div class="field"><label for="bm">วิธีจัดซื้อจัดจ้าง *</label><select id="bm" v-model="form.method" class="input"><option v-for="m in METHODS" :key="m">{{ m }}</option></select><span class="hint">เลือก "เอกชน" ถ้าลูกค้าซื้อผ่าน PO — ไม่มีขั้นตอน e-GP</span></div>
+        <template v-if="form.method !== 'เอกชน'">
+          <div class="field"><label for="beg">เลขโครงการ e-GP{{ need.egpNo || p.stage === 'pipeline' ? ' *' : '' }}</label><input id="beg" v-model="form.egpNo" class="input num" placeholder="เช่น 69109012345" /><span class="hint">ต้องมีก่อนย้ายไป Rebidding</span></div>
+          <div class="field"><label for="brp">ราคากลาง (บาท){{ need.refPrice || p.stage === 'pipeline' ? ' *' : '' }}</label><input id="brp" v-model.number="form.refPrice" class="input num" type="number" min="0" step="1000" /></div>
+          <div class="field"><label for="bob">ราคาที่เรายื่น (บาท)</label><input id="bob" v-model.number="form.ourBid" class="input num" type="number" min="0" step="1000" /><span class="hint">ต้องไม่สูงกว่าราคาในใบเสนอราคาที่อนุมัติ</span></div>
+          <div class="field"><label for="ban">วันประกาศเชิญชวน</label><input id="ban" v-model="form.announce" class="input" type="date" /></div>
+          <div class="field"><label for="bsu">วันยื่นข้อเสนอ</label><input id="bsu" v-model="form.submit" class="input" type="date" /></div>
+          <div class="field"><label for="brd">วันที่คาดว่าประกาศผล</label><input id="brd" v-model="form.resultDue" class="input" type="date" /><span class="hint">ระบบเตือน SM ล่วงหน้า 1 วัน</span></div>
+          <div class="field"><label for="bre">วันประกาศผู้ชนะ (เราชนะ){{ need.result ? ' *' : '' }}</label><input id="bre" v-model="form.result" class="input" type="date" /><span class="hint">{{ formAppeal ? `พ้นระยะอุทธรณ์ 7 วันทำการ ${thDate(formAppeal)} — ย้ายเป็น Close Win ได้หลังวันนี้` : 'ต้องมีก่อนย้ายเป็น Close Win' }}</span></div>
+          <div class="field"><label for="bsi">วันลงนามสัญญา</label><input id="bsi" v-model="form.signed" class="input" type="date" /></div>
+        </template>
+        <div class="bfoot"><button v-if="b" type="button" class="btn" @click="editing = false; fill()">ยกเลิก</button><button type="submit" class="btn primary">บันทึกข้อมูลจัดซื้อ</button></div>
+      </form>
+    </section>
+    <section v-if="b && !(canEditBid && editing)" class="panel">
       <div class="panel-head">
         <h2>{{ isGov ? 'การจัดซื้อจัดจ้างภาครัฐ (e-GP)' : 'การซื้อของลูกค้าเอกชน' }}</h2>
-        <span class="chip presale">{{ b.method }}</span>
+        <span class="hd"><span class="chip presale">{{ b.method }}</span><button v-if="canEditBid" class="btn sm" @click="fill(); editing = true">แก้ไขข้อมูลจัดซื้อ</button></span>
       </div>
       <div v-if="isGov" class="facts">
         <div><span>เลขโครงการ e-GP</span><b class="num">{{ b.egpNo ?? 'ยังไม่ประกาศ' }}</b></div>
@@ -95,7 +162,7 @@ const canEdit = computed(() => ['sm', 'pm', 'admin'].includes(session.role))
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>ทะเบียนหลักประกัน</h2><button v-if="canEdit" class="btn sm" @click="notify('เพิ่มหลักประกัน')">เพิ่มหลักประกัน</button></div>
+      <div class="panel-head"><h2>ทะเบียนหลักประกัน</h2><span v-if="canEdit" class="hd"><button class="btn sm" @click="openBond('bid')">+ หลักประกันซอง</button><button class="btn sm" @click="openBond('performance')">+ หลักประกันสัญญา</button></span></div>
       <table v-if="bonds.length" class="table">
         <thead><tr><th>ประเภท</th><th>รูปแบบ</th><th class="r">มูลค่า</th><th>หมดอายุ</th><th>ครบกำหนดขอคืน</th><th>สถานะ</th></tr></thead>
         <tbody>
@@ -111,6 +178,20 @@ const canEdit = computed(() => ['sm', 'pm', 'admin'].includes(session.role))
       </table>
       <p v-else class="muted">ยังไม่มีหลักประกัน — งานภาครัฐ e-bidding ต้องวางหลักประกันการเสนอราคา 5% ของวงเงินงบประมาณ</p>
     </section>
+
+    <Dialog :open="bondOpen" :title="bond.kind === 'bid' ? 'เพิ่มหลักประกันการเสนอราคา' : 'เพิ่มหลักประกันสัญญา'" @close="bondOpen = false">
+      <div class="two2">
+        <div class="field"><label for="bk">ประเภท</label><select id="bk" v-model="bond.kind" class="input"><option value="bid">หลักประกันการเสนอราคา (ซอง)</option><option value="performance">หลักประกันสัญญา</option></select></div>
+        <div class="field"><label for="bp">อัตรา (%)</label><input id="bp" v-model.number="bond.pct" class="input num" type="number" min="0" max="100" step="0.5" /></div>
+        <div class="field"><label for="ba">มูลค่า (บาท)</label><input id="ba" v-model.number="bond.amount" class="input num" type="number" min="0" step="1000" /><span class="hint">คำนวณจาก{{ bond.kind === 'bid' ? 'ราคากลาง / งบ' : 'มูลค่าสัญญา' }} {{ baht(bondBase) }}</span></div>
+        <div class="field"><label for="bfm">รูปแบบ</label><select id="bfm" v-model="bond.form" class="input"><option>หนังสือค้ำประกันธนาคาร</option><option>หนังสือค้ำประกันอิเล็กทรอนิกส์ (e-LG)</option><option>เงินสด</option><option>เช็คธนาคาร</option></select></div>
+        <div class="field"><label for="bb">ธนาคาร / ผู้ออก</label><input id="bb" v-model="bond.bank" class="input" placeholder="เช่น ธนาคารกรุงไทย" /></div>
+        <div class="field"><label for="bi">วันที่ออก</label><input id="bi" v-model="bond.issued" class="input" type="date" /></div>
+        <div class="field"><label for="bx">วันหมดอายุ</label><input id="bx" v-model="bond.expires" class="input" type="date" /></div>
+      </div>
+      <p v-if="bondTried && bondErr" class="msg" role="alert">{{ bondErr }}</p>
+      <template #foot><button class="btn" @click="bondOpen = false">ยกเลิก</button><button class="btn primary" @click="saveBond">บันทึกหลักประกัน</button></template>
+    </Dialog>
 
     <section v-if="p.milestones" class="two">
       <div class="panel">
@@ -160,5 +241,11 @@ const canEdit = computed(() => ['sm', 'pm', 'admin'].includes(session.role))
 .bad { color: var(--lose); }
 .hint { margin-top: 8px; }
 @media (max-width: 1100px) { .two { grid-template-columns: 1fr; } .egp { grid-template-columns: 1fr; gap: 14px; } .egp li::before { display: none; } .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bf { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 16px; }
+.bfoot { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+.hd { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.two2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.msg { color: var(--lose); font-size: 13px; margin: 8px 0 0; }
+@media (max-width: 560px) { .two2 { grid-template-columns: 1fr; } }
 .rd { width: auto; min-height: 32px; padding: 2px 8px; font-size: 14px; margin-top: 4px; }
 </style>

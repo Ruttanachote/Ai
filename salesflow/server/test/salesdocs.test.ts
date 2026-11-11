@@ -102,3 +102,45 @@ test('next-step checklist covers every requirement and points to where to fix it
   assert.deepEqual(list.find((i) => i.id === 'customer')?.fix, { kind: 'edit', field: 'customer' })
   assert.deepEqual(list.find((i) => i.id === 'approval')?.fix, { kind: 'tab', tab: 'cost' })
 })
+
+import { validateMove } from '../../src/domain/rules.ts'
+// A tender deal that meets every Forecast requirement, sitting in Rebidding.
+const ready = (o: Partial<Project> = {}): Project => ({
+  id: 'p', code: 'C', name: 'P', customer: '', endUser: '', customerAccountId: 'a', type: 'NNS', stage: 'rebidding', team: 'DT4-LC', revenue: 5_000_000, cost: 3_000_000, budget: 5_000_000,
+  sm: 'rk', sales: ['S'], collaborators: [], nextStep: '', cover: '', history: [], salesMotion: 'tender', expectedClose: '2026-12-20',
+  salesDocs: { tor: 'TOR.pdf', proposal: 'P.pdf' }, torReview: { status: 'approved', version: 1, at: '2026-11-01' },
+  approval: { version: 'rev.1', status: 'approved', steps: [{ role: 'x', who: 'x', status: 'approved' }], snapshot: { revenue: 5_000_000, cost: 3_000_000, gp: 0 } },
+  bid: { method: 'e-bidding', egpNo: '691', refPrice: 5_200_000, result: '2026-10-20' },
+  documents: [{ id: 'd', folder: 'contract', title: 'สัญญา', versions: [] }],
+  ...o,
+} as unknown as Project)
+
+test('Close Win checklist lists every rule the move enforces (tender: e-GP, result, appeal window, contract)', () => {
+  const today = '2026-11-10'
+  assert.deepEqual(stageChecklist(ready(), 'win', today).filter((i) => !i.ok), [])
+  assert.equal(validateMove(ready(), { to: 'win', today, gateChecked: true, hasContractFile: true, contractValue: 5_000_000 }).ok, true)
+  // Missing result → both the checklist and the move say so
+  const noResult = ready({ bid: { method: 'e-bidding', egpNo: '691', refPrice: 1 } })
+  assert.ok(stageChecklist(noResult, 'win', today).some((i) => i.id === 'result' && !i.ok))
+  assert.equal(validateMove(noResult, { to: 'win', today, gateChecked: true, hasContractFile: true, contractValue: 5_000_000 }).ok, false)
+  // Inside the appeal window → item not done, move blocked
+  const recent = ready({ bid: { method: 'e-bidding', egpNo: '691', refPrice: 1, result: '2026-11-09' } })
+  assert.ok(stageChecklist(recent, 'win', today).some((i) => i.id === 'appeal' && !i.ok))
+  assert.equal(validateMove(recent, { to: 'win', today, gateChecked: true, hasContractFile: true, contractValue: 5_000_000 }).ok, false)
+})
+
+test('In Delivery checklist matches the handover gate', () => {
+  const p = ready({ stage: 'handover', pm: 'ak', handoverDone: true, terms: { penaltyRatePerDay: 0.001, penaltyBasis: 'whole_contract', penaltyMinPerDay: 100, warrantyMonths: 12 },
+    handover: { attendees: ['sm', 'pm', 'ma', 'opn', 'devlead'].map((party) => ({ party, who: 'x', attended: true })) } } as unknown as Partial<Project>)
+  const list = stageChecklist(p, 'delivery', '2026-11-10')
+  assert.deepEqual(list.filter((i) => !i.ok).map((i) => i.id), ['bond'])
+  assert.equal(validateMove(p, { to: 'delivery', today: '2026-11-10', gateChecked: true, handoverChecklistDone: true }).ok, false)
+  p.bonds = [{ kind: 'performance', pct: 5, amount: 1, form: '', bank: '', issued: '', expires: '' }]
+  assert.deepEqual(stageChecklist(p, 'delivery', '2026-11-10').filter((i) => !i.ok), [])
+  assert.equal(validateMove(p, { to: 'delivery', today: '2026-11-10', gateChecked: true, handoverChecklistDone: true }).ok, true)
+})
+
+test('a Cost Sheet with no revenue cannot be saved (the quotation would have no lines)', () => {
+  const cs = example({ revenue: [{ id: 'r', type: 'Software', description: 'X', qty: 1, unitPrice: 0 }] })
+  assert.match(validateCostSheet(cs).errors.revenue ?? '', /Revenue รวมเป็น 0/)
+})

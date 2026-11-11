@@ -40,7 +40,8 @@ const tab = ref<Tab>((useRoute().query.tab as Tab) || 'overview')
 const post = computed(() => !!p.value && ['win', 'handover', 'delivery', 'warranty', 'ended', 'cancelled'].includes(p.value.stage))
 const tabs = computed(() => {
   const t: { k: Tab; l: string }[] = [{ k: 'overview', l: 'ภาพรวมและเอกสาร' }, ...(p.value?.type !== 'MA' ? [{ k: 'req' as Tab, l: 'Requirement และ TOR' }] : []), ...(p.value && canSeeCost(p.value) ? [{ k: 'cost' as Tab, l: 'Cost Sheet และใบเสนอราคา' }] : [])]
-  if (p.value?.bid || post.value) t.push({ k: 'proc', l: 'ประมูล หลักประกัน ค่าปรับ' })
+  // Procurement data is entered from the sales stages on (method, e-GP, reference price, result).
+  if (p.value && (p.value.bid || post.value || p.value.stage !== 'lose')) t.push({ k: 'proc', l: post.value ? 'ประมูล หลักประกัน ค่าปรับ' : 'จัดซื้อ / ประมูล' })
   if (post.value) t.push({ k: 'delivery', l: p.value?.stage === 'win' || p.value?.stage === 'handover' ? 'Handover' : 'แผนงานและ Task' })
   if (p.value && ['warranty', 'ended'].includes(p.value.stage)) t.push({ k: 'ma', l: 'ประกันและ MA' })
   t.push({ k: 'history', l: 'Activity' })

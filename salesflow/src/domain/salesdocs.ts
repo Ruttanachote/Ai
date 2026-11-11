@@ -152,6 +152,8 @@ export function validateCostSheet(cs: CostSheet, gmFloor = 25): { errors: Record
   if (cs.payments.some((p) => p < 0)) errors.payments = 'กรอกเป็นตัวเลขที่ไม่ติดลบ'
   const t = costTotals(cs)
   if (Math.round(t.paymentsPct * 100) !== 10000) errors.payments = `Payment#1–#5 รวมได้ ${t.paymentsPct}% ต้องเท่ากับ 100%`
+  // A sheet with no revenue cannot become a quotation — catch it here, not on the quotation page.
+  if (!errors.revenue && t.revenue <= 0) errors.revenue = 'Revenue รวมเป็น 0 — กรอก Qty และ Unit Price ของรายการรายได้'
   if (t.revenue < t.totalExpense && !cs.lossReason?.trim()) errors.lossReason = 'โครงการขาดทุน กรุณาระบุเหตุผล'
   if (t.revenue && t.gmPct < gmFloor) warn.gm = `Margin ต่ำกว่าเกณฑ์ ${gmFloor}% — ต้องผ่านการพิจารณาของผู้บริหาร`
   return { errors, warn }
