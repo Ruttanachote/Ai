@@ -8,16 +8,17 @@ import { person, thDate, TODAY_ISO } from '../data/mock'
 import { MEETING_KINDS } from '../data/model'
 import { TH_GOV_2026 } from '../domain/calendar'
 import { addDays } from '../domain/work'
-import { leaves, scope, session } from '../store'
+import { leaves, projects, scope, session } from '../store'
+import { calendarScopeText, canSeeLeave, canSeeMeeting, projectTeam } from '../domain/calendarAccess'
 
 type Kind = 'holiday' | 'leave' | 'meeting' | 'milestone' | 'pm' | 'bid' | 'quote' | 'warranty'
 const KINDS: Record<Kind, { l: string; tone: string }> = {
   holiday: { l: 'วันหยุด', tone: 'idle' }, leave: { l: 'ลา', tone: 'lose' }, meeting: { l: 'ประชุม', tone: 'presale' }, milestone: { l: 'ส่งงวดงาน', tone: 'win' },
   pm: { l: 'รอบ PM', tone: 'post' }, bid: { l: 'ประกาศผลประมูล', tone: 'warn' }, quote: { l: 'ใบเสนอราคาหมดอายุ', tone: 'warn' }, warranty: { l: 'หมดประกัน', tone: 'lose' },
 }
-// Who sees which kind: SM does not see the team's leave; bid results and quotation expiry
-// are sales follow-ups, so only SM and PM see them.
-const HIDE: Partial<Record<Kind, string[]>> = { leave: ['sm'] }
+// Bid results and quotation expiry are sales follow-ups, so only SM and PM see them.
+// Leave and meetings are filtered per person by calendarAccess (SM sees only their own leave).
+const HIDE: Partial<Record<Kind, string[]>> = {}
 const ONLY: Partial<Record<Kind, string[]>> = { bid: ['sm', 'pm'], quote: ['sm', 'pm'] }
 const visible = (k: Kind) => !HIDE[k]?.includes(session.role) && (!ONLY[k] || ONLY[k]!.includes(session.role))
 const kinds = computed(() => (Object.keys(KINDS) as Kind[]).filter(visible))
@@ -27,11 +28,13 @@ const router = useRouter()
 const events = computed(() => {
   const out: { day: string; kind: Kind; text: string; link?: string }[] = []
   for (const d of TH_GOV_2026.holidays) out.push({ day: d, kind: 'holiday', text: 'วันหยุดราชการ' })
-  for (const l of leaves.filter((x) => x.status === 'active'))
+  const me = person(session.userId)!
+  const pmTeam = session.role === 'pm' ? projectTeam(session.userId, projects) : new Set<string>()
+  for (const l of leaves.filter((x) => x.status === 'active' && canSeeLeave(me, session.role, person(x.who), pmTeam)))
     for (let d = l.from; d <= l.to; d = addDays(d, 1)) out.push({ day: d, kind: 'leave', text: `${person(l.who)?.name}${l.part !== 'full' ? (l.part === 'am' ? ' (เช้า)' : ' (บ่าย)') : ''}`, link: '/my-work' })
   for (const p of scope.value.list) {
     const link = `/projects/${p.id}`
-    for (const m of p.meetings ?? []) out.push({ day: m.date, kind: 'meeting', text: `${m.time} ${MEETING_KINDS[m.kind]} · ${p.name}`, link })
+    for (const m of (p.meetings ?? []).filter((x) => canSeeMeeting(session.userId, session.role, x, p))) out.push({ day: m.date, kind: 'meeting', text: `${m.time} ${MEETING_KINDS[m.kind]} · ${p.name}`, link })
     for (const m of p.milestones ?? []) if (!m.acceptance) out.push({ day: m.end, kind: 'milestone', text: `${m.name} · ${p.name}`, link })
     for (const r of p.pmRounds ?? []) if (r.status !== 'sent') out.push({ day: r.due, kind: 'pm', text: `PM รอบ ${r.no} · ${p.name}`, link })
     if (p.bid?.resultDue && !p.bid.result) out.push({ day: p.bid.resultDue, kind: 'bid', text: p.name, link })
@@ -53,7 +56,7 @@ const upcoming = computed(() => events.value.filter((e) => e.day >= TODAY_ISO &&
 
 <template>
   <div class="page">
-    <PageHeader module="My Work · งานของฉัน" title="Calendar" :scope="scope.label" :subtitle="`ปฏิทินกลาง — ${kinds.map((k) => KINDS[k].l).join(' · ')}`" />
+    <PageHeader module="My Work · งานของฉัน" title="Calendar" :scope="calendarScopeText(session.role, person(session.userId)?.team)" :subtitle="`ปฏิทินกลาง — ${kinds.map((k) => KINDS[k].l).join(' · ')}`" />
     <div class="filters">
       <label v-for="key in kinds" :key="key" class="f" :class="KINDS[key].tone"><input v-model="on[key]" type="checkbox" /> {{ KINDS[key].l }}</label>
     </div>
