@@ -50,3 +50,19 @@ AI ช่วย: เขียน API/Schema และต่อหน้าจอ
 เงื่อนไข: AI รุ่นองค์กร ไม่ใส่ข้อมูลลูกค้า/ข้อมูลส่วนบุคคลใน Prompt · คนรีวิวทุก Pull request + CI · วัดผลทุก Sprint ถ้า Sprint ที่ 2 ยังไม่เร็วตามแผน ใช้แผนปกติสำหรับ R2
 
 ไฟล์: `docs/timeline/One_Platform_Timeline.xlsx` (เปรียบเทียบ · Timeline ปกติ · Timeline ใช้ AI · Module · วิธีใช้ AI) · `docs/timeline/One_Platform_Timeline_แผนปกติ.png` · `docs/timeline/One_Platform_Timeline_ใช้AI.png`
+
+## แผนเร่ง 3 เดือน — ทุก Module ขึ้นระบบพร้อมกัน
+
+| | วันที่ |
+|---|---|
+| Kick-off | 30 พ.ย. 69 |
+| พัฒนาทุก Module คู่ขนาน (5 ทีมย่อย + AI) | 14 ธ.ค. 69 – 29 ม.ค. 70 |
+| SIT ทุก Module | 25 ม.ค. – 5 ก.พ. 70 |
+| UAT ทุกบทบาท | 8 – 19 ก.พ. 70 |
+| **Go-live ทุก Module (DT SBU)** | **22 ก.พ. 70** (ประมาณ 2.8 เดือน) |
+| Hypercare · ฟีเจอร์รอง Phase 1.1 | 22 ก.พ. – 26 มี.ค. 70 |
+| ขยายไป DB SBU / ปิดโครงการ | 22 มี.ค. – 9 เม.ย. 70 |
+
+ต้องมี: ทีม 21 คน (PM 1, SA 1, BA 2, UX/UI 1, BE 5, FE 5, Integration M365 2, DevOps 1, QA 4) · สิทธิ์ M365 อนุมัติก่อน Kick-off · ล็อกขอบเขตตามต้นแบบ · Key user ว่างช่วง UAT · Sprint 1 สัปดาห์
+ย้ายไป Phase 1.1: Solution Catalog · My Performance · OKR PDF · Burndown/รายงานเชิงลึก · Sync Outlook · แจ้งเตือน Teams · Upload Cost Sheet .xlsx
+ทางถอย: ถ้าสัปดาห์ที่ 6 งานพัฒนาไม่ถึง 60% เปลี่ยนเป็น Go-live 2 รอบตามแผนใช้ AI
