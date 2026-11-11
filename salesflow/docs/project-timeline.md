@@ -35,3 +35,18 @@
 | Hypercare | 4 (21–24) | 4 (36–39) |
 
 Critical path: สิทธิ์ Microsoft 365 จาก IT → M2 (Excel Online อ่าน Named range ด้วย token ผู้ใช้) → SIT R1
+
+## แผนใช้ AI ช่วยพัฒนาร่วมกับทีม (ทีมเท่าเดิม 11 คน)
+
+| Milestone | แผนปกติ | ใช้ AI | เร็วขึ้น |
+|---|---|---|---|
+| Go-live R1 | 19 เม.ย. 70 (สัปดาห์ 21) | 15 มี.ค. 70 (สัปดาห์ 16) | 5 สัปดาห์ |
+| Go-live R2 | 2 ส.ค. 70 (สัปดาห์ 36) | 31 พ.ค. 70 (สัปดาห์ 27) | 9 สัปดาห์ |
+| ปิดโครงการ | 24 ก.ย. 70 (สัปดาห์ 43) | 16 ก.ค. 70 (สัปดาห์ 33) | 10 สัปดาห์ |
+| Man-day งานพัฒนา | 600 | 385 | −36% |
+
+AI ช่วย: เขียน API/Schema และต่อหน้าจอจากต้นแบบ · สร้าง Unit/API/E2E test และ Test data (SIT 3 → 2 สัปดาห์) · Code review รอบแรก · ร่างโค้ด Graph API · คู่มือและสคริปต์ย้ายข้อมูล
+คงเดิม: อนุมัติสิทธิ์ Microsoft 365 จาก IT · UAT · อบรม · Hypercare · วันหยุด
+เงื่อนไข: AI รุ่นองค์กร ไม่ใส่ข้อมูลลูกค้า/ข้อมูลส่วนบุคคลใน Prompt · คนรีวิวทุก Pull request + CI · วัดผลทุก Sprint ถ้า Sprint ที่ 2 ยังไม่เร็วตามแผน ใช้แผนปกติสำหรับ R2
+
+ไฟล์: `docs/timeline/One_Platform_Timeline.xlsx` (เปรียบเทียบ · Timeline ปกติ · Timeline ใช้ AI · Module · วิธีใช้ AI) · `docs/timeline/One_Platform_Timeline_แผนปกติ.png` · `docs/timeline/One_Platform_Timeline_ใช้AI.png`
