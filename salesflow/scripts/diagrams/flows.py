@@ -90,14 +90,14 @@ pages.append(swimlane(
 pg = free('L0-3 สถานะโครงการ', 'Level 0 · วงจรสถานะโครงการ และบทบาทที่ย้ายสถานะได้ (allowedMoves)',
           'สถานะเดียวกันใช้ทุกหน้าจอ · ระบบตรวจเงื่อนไขก่อนย้ายทุกครั้ง (requirementsFor · closeWinRule · handoverGate)')
 st = {}
-row1 = [('opportunity', 'Opportunity\n10–20%'), ('pipeline', 'Pipeline\n40–50%'), ('forecast', 'Forecast\n70–80%'), ('rebidding', 'Rebidding\n(ประมูล)'), ('win', 'Close Win\n100%')]
-row2 = [('handover', 'Handover'), ('delivery', 'In Delivery'), ('warranty', 'Warranty'), ('ended', 'Ended')]
+row1 = [('opportunity', 'OPP · Opportunity\n10–20%'), ('pipeline', 'PL · Pipeline\n40–50%'), ('forecast', 'FC · Forecast\n70–80%'), ('rebidding', 'RB · Rebidding\n(ประมูล)'), ('win', 'CW · Close Win\n100%')]
+row2 = [('handover', 'HO · Handover'), ('delivery', 'DL · In Delivery'), ('warranty', 'WR · Warranty'), ('ended', 'END · Ended')]
 for i, (k, t) in enumerate(row1):
     st[k] = pg.add(t, 'state', 60 + i * 260, 120, 170, 64)
 for i, (k, t) in enumerate(row2):
     st[k] = pg.add(t, 'state', 320 + i * 260, 330, 170, 64)
-st['lose'] = pg.add('Close Lose', 'end', 70, 226, 150, 56)
-st['cancelled'] = pg.add('Cancelled', 'end', 590, 470, 150, 56)
+st['lose'] = pg.add('CL · Close Lose', 'end', 70, 226, 150, 56)
+st['cancelled'] = pg.add('CXL · Cancelled', 'end', 590, 470, 150, 56)
 pg.edge(st['opportunity'], st['pipeline'], 'SM')
 pg.edge(st['pipeline'], st['forecast'], 'SM')
 pg.edge(st['forecast'], st['rebidding'], 'SM (ภาครัฐ)')
@@ -113,7 +113,7 @@ pg.edge(st['lose'], st['pipeline'], 'หัวหน้า: เปิดเป�
 pg.edge(st['delivery'], st['cancelled'], 'หัวหน้า: ยกเลิก', 'exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;')
 pg.add('ทุกสถานะช่วงขายย้ายไป Close Lose ได้ (SM) · Win / Handover / Delivery ยกเลิกได้โดยหัวหน้ากลุ่ม\nโครงการ MA ที่ต่อสัญญา: ทีม MA เป็นผู้ย้ายสถานะช่วงขายเอง',
        'note', 820, 470, 520, 70)
-pg.add('เงื่อนไขหลักก่อนย้าย\n• Pipeline: ลูกค้า (Account) · ทีม DT · Sale ≥ 1\n• Forecast: ใบเสนอราคาอนุมัติครบและไม่หมดอายุ · Expected Close\n• Rebidding (ภาครัฐ): วิธีจัดซื้อ · เลข e-GP · ราคากลาง\n• Win: PO/สัญญา · ประกาศผล e-GP · พ้นอุทธรณ์ 7 วันทำการ\n• Delivery: Handover gate ครบ',
+pg.add('SM จบงานที่ CW แล้วส่งต่อทีมและ PM · ระบบแสดง "ขั้นถัดไป" พร้อมลิงก์ไปจุดที่ต้องกรอก\nเงื่อนไขหลักก่อนย้าย\n• Pipeline: ลูกค้า (Account) · ทีม DT · Sale ≥ 1\n• Forecast: ใบเสนอราคาอนุมัติครบและไม่หมดอายุ · Expected Close\n• Rebidding (ภาครัฐ): วิธีจัดซื้อ · เลข e-GP · ราคากลาง\n• Win: PO/สัญญา · ประกาศผล e-GP · พ้นอุทธรณ์ 7 วันทำการ\n• Delivery: Handover gate ครบ',
        'note', 60, 580, 640, 140)
 legend(pg, 60, 760)
 pages.append(pg)
@@ -154,7 +154,7 @@ pages.append(swimlane(
      ('v2', 'cs', 'ครบ'), ('cs', 'xl', '', 'dashed=1;'), ('cs', 'ap'), ('ap', 'ok'), ('ok', 'fix', 'ส่งกลับ'), ('fix', 'cs', 'เวอร์ชันใหม่'), ('ok', 'tor', 'อนุมัติ'),
      ('tor', 'torr', 'ส่งตรวจ'), ('torr', 'fc', 'ผ่าน'), ('fc', 'v3'), ('v3', 'td', 'ผ่าน'), ('td', 'rb', 'ใช่'), ('td', 'sale', 'ไม่ (เอกชน)'), ('rb', 'sale'),
      ('sale', 'res'), ('res', 'rec'), ('rec', 'rm', '', 'dashed=1;'), ('rec', 'wl'), ('wl', 'lose', 'ไม่'), ('lose', 'el'), ('wl', 'win', 'ใช่')],
-    ['TOR Final ต้องผ่านหัวหน้ากลุ่มก่อนส่งลูกค้า (SM-4) — ยังไม่มีในระบบ', 'Sale ไม่ใช้ระบบ: SM บันทึกการยื่นและผลแทน (SM-8, SM-9)',
+    ['TOR Final ต้องผ่านหัวหน้ากลุ่มก่อนส่งลูกค้า (SM-4) — แท็บ Requirement และ TOR', 'Sale ไม่ใช้ระบบ: SM บันทึกการยื่นและผลแทน (SM-8, SM-9)',
      'ทุกการย้ายสถานะตรวจด้วยกฎเดียวกันทั้งหน้าเว็บและ API (ดู M1 · L2)']))
 
 pages.append(swimlane(
@@ -166,7 +166,7 @@ pages.append(swimlane(
      ('f', 1, 4, 'dec', 'ปลายทาง ≥\nForecast?'),
      ('fc', 1, 5, 'dec', 'ใบเสนอราคาอนุมัติ\n& Expected Close?'),
      ('t', 1, 6, 'dec', 'Rebidding\nภาครัฐ?'),
-     ('tc', 1, 7, 'dec', 'วิธีจัดซื้อ · เลข e-GP\n· ราคากลาง?'),
+     ('tc', 1, 7, 'dec', 'วิธีจัดซื้อ · e-GP · ราคากลาง?\n(แท็บ จัดซื้อ/ประมูล)'),
      ('save', 1, 8, 'sys', 'บันทึกสถานะ + ประวัติ\n+ แจ้งผู้เกี่ยวข้อง'),
      ('e', 0, 8, 'end', 'สำเร็จ'),
      ('err', 0, 4, 'task', 'ระบบแสดงรายการที่ขาด\nSM เติมข้อมูลแล้วลองใหม่')],
@@ -230,7 +230,7 @@ pages.append(swimlane(
      ('d2', 'okk', 'อนุมัติ'), ('okk', 'nt'), ('nt', 'e'), ('d1', 'rej', 'ส่งกลับ', 'exitX=1;exitY=0.5;entryX=1;entryY=0.5;'), ('d2', 'rej', 'ส่งกลับ', 'exitX=1;exitY=0.5;entryX=1;entryY=0.75;'),
      ('rej', 'fx'), ('fx', 'sub', 'กลับไปส่งใหม่', 'exitX=0.5;exitY=1;entryX=0.5;entryY=1;')],
     ['ผู้อนุมัติกดจากอีเมลได้ทันที (ยืนยันตัวตนด้วยบัญชี M365) หรืออนุมัติใน Approval Requests',
-     'ระบุเอกสารที่ต้องแก้ (Cost Sheet / Quotation / Proposal) — To-be', 'ใบเสนอราคาต่อ MA ใช้ลำดับอนุมัติเดียวกัน (ทีม MA เป็นผู้ส่ง)']))
+     'Reject ต้องระบุเอกสารที่ต้องแก้ (Cost Sheet / Quotation) · ทุกขั้นแนบลายเซ็นอิเล็กทรอนิกส์', 'ใบเสนอราคาต่อ MA ใช้ลำดับอนุมัติเดียวกัน (ทีม MA เป็นผู้ส่ง)']))
 
 pages.append(swimlane(
     'M2 Approval · L2', 'M2 · Level 2: ตรวจการแก้ไขไฟล์ระหว่างรออนุมัติ (Stale) และหลังอนุมัติ', ['SM', 'One Platform', 'ผู้อนุมัติ'],

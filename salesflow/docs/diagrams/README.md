@@ -1,6 +1,6 @@
 # One Platform — Business Flow Diagrams (draw.io)
 
-ไฟล์หลัก: `one-platform-flows.drawio` (35 หน้า) — เปิดด้วย app.diagrams.net / draw.io Desktop / ส่วนขยาย Draw.io ใน VS Code
+ไฟล์หลัก: `one-platform-flows.drawio` (35 หน้า · Business flow) และ `one-platform-sa.drawio` (19 หน้า · System Analysis) — เปิดด้วย app.diagrams.net / draw.io Desktop / ส่วนขยาย Draw.io ใน VS Code
 ภาพตัวอย่างดูในเบราว์เซอร์ได้ที่ `preview.html` (ใช้ตรวจเลย์เอาต์ ไม่ใช่ภาพจาก draw.io จริง)
 สร้างจากโค้ด: `python3 scripts/diagrams/flows.py` — แก้เนื้อหาที่ `scripts/diagrams/flows.py` แล้วรันใหม่ ไฟล์จะตรงกับกฎในระบบเสมอ
 
@@ -45,3 +45,16 @@
 | ✓ | MA-3/4 รอบ Preventive Maintenance + ส่งอีเมลลูกค้า | รอบตามที่เสนอขาย 1/3/6 เดือน → ทีมพัฒนาเตรียมรายงาน → MA ส่งจากกล่องกลาง |
 | ✓ | MA-5 แจ้งลูกค้า 3 เดือน / 1 เดือน | งานอัตโนมัติรายวันส่งอีเมลจากกล่องกลาง MA รอบ 1 (90 วัน) และรอบ 2 (30 วัน + แจ้งหัวหน้า) |
 | ? | เกณฑ์ระบบ: อายุใบเสนอราคา 60 วัน · PO ต่าง ±2% · GP ลด 3 จุด · ค่าปรับ ≤ 0.20%/วัน | ค่าเริ่มต้นจากต้นแบบ ปรับได้ใน System Settings — ต้องยืนยันตัวเลขจริงของบริษัท |
+
+## System Analysis — `one-platform-sa.drawio` (19 หน้า)
+สร้างจากโค้ด: `python3 scripts/diagrams/sa.py docs/diagrams/nav.json` (nav.json ส่งออกจาก `src/nav.ts`) · ภาพตัวอย่าง `sa-preview.html`
+
+| หน้า | เนื้อหา |
+|---|---|
+| SA-1 สถาปัตยกรรมระบบ | Browser (Vue + src/domain + MSAL) → API + Worker (Node) → Database · Microsoft 365 (Entra, SharePoint, Excel, Outlook, Teams) · ข้อกำหนดไม่ใช่ฟังก์ชัน |
+| SA-2 แผนผัง Module | 8 Module + บริการกลาง · ขอบเขต SM จบที่ Close Win |
+| SA-3 แบบจำลองข้อมูล | Entity หลัก 20 ตัว (Project, CostSheet, Quotation, Approval + ลายเซ็น, BidInfo, Bond, Workspace, Task, Leave, Ticket ฯลฯ) |
+| SA-4 สถานะและเงื่อนไข | Statechart OPP → END พร้อมตัวย่อ ผู้ย้าย และ Guard ก่อนย้ายทุกสถานะ |
+| SA-5 สิทธิ์ตามบทบาท | Role × เมนู 11 บทบาท (สร้างจาก src/nav.ts) |
+| M1–M8, C Design | ต่อ Module: ผู้ใช้และสิทธิ์ · หน้าจอ (Route) · กฎธุรกิจ (src/domain) · ข้อมูล · การเชื่อมต่อ · Flow หลัก |
+| S1–S5 | Sequence: ส่งอนุมัติ + ลายเซ็น · ย้ายสถานะ + Checklist · OKR Report Export · ปฏิทินตามสิทธิ์ · งานตามเวลา |
